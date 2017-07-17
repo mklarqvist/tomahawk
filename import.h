@@ -1,6 +1,4 @@
-#ifndef IMPORT_H_
-#define IMPORT_H_
-
+#include "utility.h"
 #include "tomahawk/TomahawkImporter.h"
 
 int import(int argc, char** argv){
@@ -23,5 +21,3 @@ int import(int argc, char** argv){
 
 	return 0;
 }
-
-#endif /* IMPORT_H_ */

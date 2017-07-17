@@ -1,6 +1,6 @@
-#ifndef VIEW_H_
-#define VIEW_H_
+#include <getopt.h>
 
+#include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "tomahawk/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
@@ -225,5 +225,3 @@ int view(int argc, char** argv){
 
 	return 0;
 }
-
-#endif /* VIEW_H_ */

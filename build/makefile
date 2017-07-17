@@ -4,7 +4,7 @@
 
 -include ../makefile.init
 
-RM := rm -rf
+RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -52,7 +52,7 @@ all: Tomahawk_private
 Tomahawk_private: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross G++ Linker'
-	g++ -pthread  -o "Tomahawk_private" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -pthread -o "Tomahawk_private" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

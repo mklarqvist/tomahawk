@@ -1,7 +1,4 @@
-#ifndef INDEX_H_
-#define INDEX_H_
-
-
+#include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "tomahawk/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
@@ -46,7 +43,3 @@ int index(int argc, char** argv){
 
 	return 0;
 }
-
-
-
-#endif /* INDEX_H_ */

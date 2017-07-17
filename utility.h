@@ -1,6 +1,7 @@
 #ifndef TOMAHAWK_UTILITY_H_
 #define TOMAHAWK_UTILITY_H_
 
+#include <iostream>
 #include "tomahawk/MagicConstants.h"
 
 void programMessage(void){

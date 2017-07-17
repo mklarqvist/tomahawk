@@ -1,6 +1,4 @@
-#ifndef SORT_H_
-#define SORT_H_
-
+#include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "tomahawk/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
@@ -59,5 +57,3 @@ int sort(int argc, char** argv){
 
 	return 0;
 }
-
-#endif /* SORT_H_ */

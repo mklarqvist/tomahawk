@@ -3,21 +3,21 @@
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
-CPP_SRCS += \
-../math/FisherTest.cpp 
+C_SRCS += \
+../third_party/xxhash.c 
 
 OBJS += \
-./math/FisherTest.o 
+./third_party/xxhash.o 
 
-CPP_DEPS += \
-./math/FisherTest.d 
+C_DEPS += \
+./third_party/xxhash.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-math/%.o: ../math/%.cpp
+third_party/%.o: ../third_party/%.c
 	@echo 'Building file: $<'
-	@echo 'Invoking: Cross G++ Compiler'
-	g++ -std=c++0x -O3 -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	@echo 'Invoking: Cross GCC Compiler'
+	gcc -std=c99 -O3 -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin -g -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

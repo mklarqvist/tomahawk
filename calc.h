@@ -1,8 +1,7 @@
-#ifndef CALC_H_
-#define CALC_H_
-
 #include <getopt.h>
 
+#include "utility.h"
+#include "tomahawk/MagicConstants.h"
 #include "tomahawk/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
@@ -294,8 +293,3 @@ int calc(int argc, char** argv){
 
 	return 0;
 }
-
-
-
-
-#endif /* CALC_H_ */
