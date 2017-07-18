@@ -74,6 +74,15 @@ private:
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
 
+	inline bool ValidateHeader(std::ifstream& in) const{
+		char MAGIC[Constants::WRITE_HEADER_MAGIC_LENGTH];
+		in.read(MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
+
+		if(strncmp(MAGIC, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) == 0)
+			return true;
+		return false;
+	}
+
 private:
 	U64 samples; // has to match header
 	float version; // has to match header
