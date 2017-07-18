@@ -17,7 +17,7 @@ GZController::~GZController(){}
 
 void GZController::Clear(){ this->buffer_.reset(); }
 
-U32 GZController::InflateSize(IO::BasicBuffer& input) const{
+U32 GZController::InflateSize(buffer_type& input) const{
 	const TGZFHeader* header = reinterpret_cast<const TGZFHeader*>(&input.data[0]);
 	if(!header->Validate()){
 		 std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid TGZF header" << std::endl;
@@ -30,7 +30,7 @@ U32 GZController::InflateSize(IO::BasicBuffer& input) const{
 	return header->BSIZE;
 }
 
-bool GZController::Inflate(IO::BasicBuffer& input, IO::BasicBuffer& output) const{
+bool GZController::Inflate(buffer_type& input, buffer_type& output) const{
 	const TGZFHeader* header = reinterpret_cast<const TGZFHeader*>(&input[0]);
 	if(!header->Validate()){
 		 std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid TGZF header" << std::endl;
@@ -91,7 +91,7 @@ bool GZController::Inflate(IO::BasicBuffer& input, IO::BasicBuffer& output) cons
 	return(true);
 }
 
-bool GZController::Deflate(IO::BasicBuffer& meta, IO::BasicBuffer& rle){
+bool GZController::Deflate(buffer_type& meta, buffer_type& rle){
 	// initialize the gzip header
 	//char* buffer = new char[input_length + 10];
 

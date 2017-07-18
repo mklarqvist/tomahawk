@@ -178,18 +178,19 @@ public:
 	}
 
 	void WriteVariant(const TotempoleReader& totempole, IO::BasicBuffer& buffer) const{
-		const char separator = ((this->meta[this->metaPointer].position >> 1) & 1) == 1 ? '|' : '/'; // ? incorrect result when using phased bit directly for some reason
+		// All genotypes in this line will have the same phase
+		const char separator = this->currentMeta().phased == 1 ? '|' : '/';
 
 		// Note:
 		// Much faster to first write to a char buffer then flush
 		// instead of keep writing to cout (even without manual flushing)
 		buffer += totempole.getContig(this->support->contigID).name;
 		buffer += '\t';
-		buffer += std::to_string(this->meta[this->metaPointer].position >> 2);
+		buffer += std::to_string(this->currentMeta().position);
 		buffer += '\t';
-		buffer += Constants::REF_ALT_LOOKUP[this->meta[this->metaPointer].ref_alt >> 4];
+		buffer += Constants::REF_ALT_LOOKUP[this->currentMeta().ref_alt >> 4];
 		buffer += '\t';
-		buffer += Constants::REF_ALT_LOOKUP[this->meta[this->metaPointer].ref_alt & ((1 << 4) - 1)];
+		buffer += Constants::REF_ALT_LOOKUP[this->currentMeta().ref_alt & ((1 << 4) - 1)];
 		buffer += '\t';
 		buffer += Constants::QUAL;
 		buffer += '\t';
@@ -201,7 +202,7 @@ public:
 		buffer += '\t';
 
 		// For each run length encoded entry
-		for(U32 i = 0; i < this->meta[this->metaPointer].runs - 1; ++i){
+		for(U32 i = 0; i < this->currentMeta().runs - 1; ++i){
 			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleA];
 			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleB];
 
@@ -215,12 +216,12 @@ public:
 		}
 
 		// For the last run length encoded entry
-		const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->meta[this->metaPointer].runs - 1].alleleA];
-		const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->meta[this->metaPointer].runs - 1].alleleB];
+		const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleA];
+		const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleB];
 
 		// Repeat genotype run-length - 1 times
 		// Do not put a tab delimiter last
-		for(U32 k = 0; k < (*this)[this->meta[this->metaPointer].runs - 1].runs - 1; ++k){
+		for(U32 k = 0; k < (*this)[this->currentMeta().runs - 1].runs - 1; ++k){
 			buffer += left;
 			buffer += separator;
 			buffer += right;
@@ -234,9 +235,7 @@ public:
 	}
 
 	bool buildPacked(const U64& samples);
-	void clearPacked(void){
-		delete this->packed;
-	}
+	void clearPacked(void){ delete this->packed; }
 
 public:
 	U32 metaPointer;

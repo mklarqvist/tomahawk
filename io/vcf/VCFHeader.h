@@ -11,11 +11,13 @@ namespace Tomahawk {
 namespace VCF{
 
 struct VCFHeaderContig{
+	typedef VCFHeaderContig self_type;
+
 public:
 	VCFHeaderContig() : length(0), tomahawkBlocks(0){}
 	~VCFHeaderContig(){}
 
-	friend std::ostream& operator<<(std::ostream& out, const VCFHeaderContig& contig){
+	friend std::ostream& operator<<(std::ostream& out, const self_type& contig){
 		out << contig.name << '\t' << contig.length;
 		return(out);
 	}
@@ -25,15 +27,19 @@ public:
 public:
 	std::string name;
 	U32 length;
+	// keep track of how many blocks we've seen for this contig
+	// used during import
 	U32 tomahawkBlocks;
 };
 
 struct VCFHeaderLineKeyValue{
+	typedef VCFHeaderLineKeyValue self_type;
+
 public:
 	VCFHeaderLineKeyValue(){}
 	~VCFHeaderLineKeyValue(){}
 
-	friend std::ostream& operator<<(std::ostream& out, const VCFHeaderLineKeyValue& pair){
+	friend std::ostream& operator<<(std::ostream& out, const self_type& pair){
 		out << pair.lKEY << '/' << pair.lVALUE << '\t' << std::string(&pair.KEY[0], pair.lKEY) << '\t' << std::string(&pair.VALUE[0], pair.lVALUE);
 		return(out);
 	}

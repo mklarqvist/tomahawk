@@ -32,7 +32,9 @@ disequilibrium data is written out in `two` and `toi` format. There is an option
 to produce human-readable tab-delimited output for smaller datasets (`-N` flag in `calc`).
 
 By default Tomahawk only operates on bi-allelic SNVs and as such filters out
-indels and complex variants.
+indels and complex variants. Tomahawk does not support mixed phasing of genotypes
+in the same variant (e.g. `0|0`, `0/1`) and converts all genotypes to unphased
+if any unphased genotypes are found in that line.
 Importing a variant document (`vcf`/`bcf`) to Tomahawk requires the `import` command.
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi`

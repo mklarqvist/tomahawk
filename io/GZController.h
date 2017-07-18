@@ -29,6 +29,9 @@ namespace Tomahawk{
 namespace IO{
 
 class GZController{
+	typedef GZController self_type;
+	typedef IO::BasicBuffer buffer_type;
+
 public:
 	GZController();
 	GZController(const char* data, const U32 length);
@@ -36,19 +39,17 @@ public:
 	~GZController();
 
 	void Clear();
-	//bool Inflate(char* input_data, U32 length);
-	bool Inflate(IO::BasicBuffer& input, IO::BasicBuffer& output) const;
-	bool Deflate(IO::BasicBuffer& meta, IO::BasicBuffer& rle);
-	U32 InflateSize(IO::BasicBuffer& input) const;
+	bool Inflate(buffer_type& input, buffer_type& output) const;
+	bool Deflate(buffer_type& meta, buffer_type& rle);
+	U32 InflateSize(buffer_type& input) const;
 
-
-	friend std::ostream& operator<<(std::ostream& stream, const GZController& entry){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream.write(entry.buffer_.data, entry.buffer_.pointer);
 		return stream;
 	}
 
 public:
-	IO::BasicBuffer buffer_;
+	buffer_type buffer_;
 };
 
 }
