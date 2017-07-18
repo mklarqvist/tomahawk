@@ -132,7 +132,7 @@ public:
 
 		// Parse
 		if(!this->Parse()){
-			std::cerr << "Could not parse" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not parse Totempole..." << std::endl;
 			return false;
 		}
 
@@ -180,12 +180,12 @@ private:
 
 	bool Parse(){
 		if(this->filesize_ < Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH){
-			std::cerr << "file too small" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Failed MAGIC..." << std::endl;
 			return false;
 		}
 
 		if(!this->Validate()){
-			std::cerr << "could not vlaidate" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not validate Totempole header..." << std::endl;
 			return false;
 		}
 
