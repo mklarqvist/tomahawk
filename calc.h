@@ -30,7 +30,8 @@ void calc_usage(void){
 	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1e-4)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
-	"  -S       Hide all program messages [null]\n";
+	"  -d       Show real-time progress update in cerr [null]\n"
+	"  -s       Hide all program messages [null]\n";
 }
 
 int calc(int argc, char** argv){
@@ -61,6 +62,7 @@ int calc(int argc, char** argv){
 		{"maxR2",		optional_argument, 0,  'R' },
 		{"minalelles",	optional_argument, 0,  'a' },
 		{"maxalleles",	optional_argument, 0,  'A' },
+		{"detailedProgress",		no_argument, 0,  'd' },
 		{"silent",		no_argument, 0,  's' },
 		// Not implemented
 		{"windowBases",	optional_argument, 0,  'w' },
@@ -81,11 +83,12 @@ int calc(int argc, char** argv){
 	int64_t minAlleles = CALC_DEFAULT_MINALLELES;
 	int64_t maxAlleles = CALC_DEFAULT_MAXALLELES;
 	S32 windowBases = -1, windowPosition = -1; // not implemented
-	bool silent = false;
 	bool phased = false;
 	bool forceFunction = false;
+	SILENT = 0;
+	bool detailedProgress = false;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sNBc:C:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdNBc:C:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -199,7 +202,13 @@ int calc(int argc, char** argv){
 		break;
 
 	  case 's':
-		  silent = true;
+		  SILENT = 1;
+		  detailedProgress = false;
+		  break;
+
+	  case 'd':
+		  SILENT = 0;
+		  detailedProgress = true;
 		  break;
 
 	  default:
@@ -207,8 +216,6 @@ int calc(int argc, char** argv){
 		  return(1);
 		}
 	}
-
-	std::cerr << "here" << std::endl;
 
 	if(input.length() == 0){
 		std::cout << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
@@ -221,8 +228,10 @@ int calc(int argc, char** argv){
 	}
 
 	// Print messages
-	programMessage();
-	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling calc..." << std::endl;
+	if(!SILENT){
+		programMessage();
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling calc..." << std::endl;
+	}
 
 	// Parse Totempole index
 	std::string index = input + '.' + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
@@ -263,6 +272,10 @@ int calc(int argc, char** argv){
 	//blocks.push_back(20);
 	//blocks.push_back(21);
 	//tomahawk.getBlocks(blocks);
+
+	tomahawk.setDetailedProgress(detailedProgress);
+	tomahawk.SetSilent(SILENT);
+
 	if(!tomahawk.SetPThreshold(minP))
 		return false;
 
@@ -273,7 +286,6 @@ int calc(int argc, char** argv){
 	if(!tomahawk.SetThreads(threads))
 		return false;
 
-	tomahawk.SetSilent(silent);
 	if(forceFunction)
 		tomahawk.SetPhased(phased);
 
@@ -288,8 +300,6 @@ int calc(int argc, char** argv){
 		return false;
 
 	tomahawk.Calculate();
-	//tomahawk.Calculate(blocks2);
-	//tomahawk.AllVersusAll(blocks);
 
 	return 0;
 }

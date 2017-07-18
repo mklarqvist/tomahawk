@@ -24,8 +24,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include <iostream>
 #include <getopt.h>
 
-int VERBOSITY = 1;
-
 #include "utility.h"
 #include "calc.h"
 #include "import.h"

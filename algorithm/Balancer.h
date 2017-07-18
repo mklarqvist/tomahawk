@@ -47,8 +47,10 @@ public:
 
 		//
 		if(selected.isDiagonal()){
-			std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is diagonal (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+			if(!SILENT){
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is diagonal (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+			}
 
 			U32 loadThread = selected.getSize()/threads;
 			U32 it = 0;
@@ -66,7 +68,7 @@ public:
 						// if broken over a line
 						// i.e. not broken on the same line number
 						if(from == i){
-							std::cerr << "B\t" << threadID << ": " << from << '-' << i+1 << '\t' << fromCol << '-' << j << '\t' << selected.fromRow+from << '-' << selected.fromRow+(i+1) << '\t' << selected.fromColumn+fromCol << '-' << selected.toColumn+j << std::endl;
+							//std::cerr << "B\t" << threadID << ": " << from << '-' << i+1 << '\t' << fromCol << '-' << j << '\t' << selected.fromRow+from << '-' << selected.fromRow+(i+1) << '\t' << selected.fromColumn+fromCol << '-' << selected.toColumn+j << std::endl;
 							this->thread_distribution[threadID].push_back(block_type(from, i+1, fromCol, j, selected.fromRow+from, selected.fromRow+i+1, selected.fromColumn+fromCol, selected.fromColumn+j));
 						}
 						// If broken over multiple lines
@@ -78,16 +80,16 @@ public:
 
 							// If next line: no middle full lines
 							if(from + 1 == i){
-								std::cerr << "N\t" << threadID << ": " << from << '-' << from+1 << '\t' << fromCol << '-' << selected.getColumns() << '\t' << "FALSE" << std::endl;
-								std::cerr << "N\t" << threadID << ": " << i << '-' << i+1 << '\t' << i << '-' << j << '\t' << "FALSE" << std::endl;
+								//std::cerr << "N\t" << threadID << ": " << from << '-' << from+1 << '\t' << fromCol << '-' << selected.getColumns() << '\t' << "FALSE" << std::endl;
+								//std::cerr << "N\t" << threadID << ": " << i << '-' << i+1 << '\t' << i << '-' << j << '\t' << "FALSE" << std::endl;
 								this->thread_distribution[threadID].push_back(block_type(from, from+1, fromCol, selected.getColumns(), selected.fromRow+from, selected.fromRow+from+1, selected.fromColumn+fromCol, selected.toColumn));
 								this->thread_distribution[threadID].push_back(block_type(i, i+1, i, j, selected.fromRow+i, selected.fromRow+i+1, selected.fromColumn+i, selected.fromColumn+j));
 								fromCol = j;
 								from = i;
 							} else {
-								std::cerr << "E\t" << threadID << ": " << from << '-' << from + 1 << '\t' << fromCol << '-' << selected.getColumns() << '\t' << selected.fromRow+from << '-' << selected.fromRow+(from+1) << '\t' << selected.fromColumn+fromCol << '-' << selected.toColumn << std::endl;
-								std::cerr << "E\t" << threadID << ": " << from + 1 << '-' << i << '\t' << from + 1 << '-' << selected.getColumns() << '\t' << selected.fromRow+from+1 << '-' << selected.fromRow+(i) << '\t' << selected.fromColumn+from+1 << '-' << selected.toColumn << std::endl;
-								std::cerr << "E\t" << threadID << ": " << i << '-' << i + 1 << '\t' << i << '-' << j << '\t' << selected.fromRow+i << '-' << selected.fromRow+(i+1) << '\t' << selected.fromColumn+i << '-' << selected.fromColumn+j << std::endl;
+								//std::cerr << "E\t" << threadID << ": " << from << '-' << from + 1 << '\t' << fromCol << '-' << selected.getColumns() << '\t' << selected.fromRow+from << '-' << selected.fromRow+(from+1) << '\t' << selected.fromColumn+fromCol << '-' << selected.toColumn << std::endl;
+								//std::cerr << "E\t" << threadID << ": " << from + 1 << '-' << i << '\t' << from + 1 << '-' << selected.getColumns() << '\t' << selected.fromRow+from+1 << '-' << selected.fromRow+(i) << '\t' << selected.fromColumn+from+1 << '-' << selected.toColumn << std::endl;
+								//std::cerr << "E\t" << threadID << ": " << i << '-' << i + 1 << '\t' << i << '-' << j << '\t' << selected.fromRow+i << '-' << selected.fromRow+(i+1) << '\t' << selected.fromColumn+i << '-' << selected.fromColumn+j << std::endl;
 								this->thread_distribution[threadID].push_back(block_type(from, from + 1, fromCol, selected.getColumns(), selected.fromRow+from, selected.fromRow+from+1, selected.fromColumn+fromCol, selected.toColumn));
 								this->thread_distribution[threadID].push_back(block_type(from + 1, i, from + 1, selected.getColumns(), selected.fromRow+from+1, selected.fromRow+i, selected.fromColumn+from+1, selected.toColumn, true));
 								this->thread_distribution[threadID].push_back(block_type(i, i + 1, i, j, selected.fromRow+i, selected.fromRow+i+1, selected.fromColumn+i, selected.fromColumn+j));
@@ -104,8 +106,10 @@ public:
 		}
 		// Is not a diagonal square
 		else {
-			std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is square (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+			if(!SILENT){
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is square (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+			}
 
 			U32 loadThread = selected.getSize()/threads;
 			U32 it = 0;

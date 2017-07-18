@@ -3,6 +3,8 @@
 
 #include "../TypeDefinitions.h"
 
+extern int SILENT;
+
 namespace Tomahawk{
 namespace Constants{
 
@@ -39,10 +41,11 @@ const U32 TOMAHAWK_BLOCK_HEADER_LENGTH = sizeof(U32) + sizeof(U16) + sizeof(U32)
 const BYTE TOMAHAWK_ALLELE_PACK_WIDTH = 2;
 const BYTE TOMAHAWK_SNP_PACK_WIDTH = TOMAHAWK_ALLELE_PACK_WIDTH * 2;
 
+// Encoding for alleles
 const char TOMAHAWK_ALLELE_LOOKUP[4] = {2, 3, 0, 1};
 const char TOMAHAWK_ALLELE_LOOKUP_REVERSE[4] = {'0', '1', '.', '?'};
 
-//
+// Encoding for bases
 const char* const REF_ALT_LOOKUP = "ATGCN";
 const BYTE REF_ALT_A = 0;
 const BYTE REF_ALT_T = 1;
@@ -50,10 +53,13 @@ const BYTE REF_ALT_G = 2;
 const BYTE REF_ALT_C = 3;
 const BYTE REF_ALT_N = 4;
 
+// Upper bounds
 const U32 UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
 const U32 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
 const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
 const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
+
+// EOF
 //const char* const TOMAHAWK_EOF_MARKER = "We will be known forever by the tracks we leave" - Santee Sioux Native Americans from Dakota;
 //const U32 TOMAHAWK_EOF_MARKER_LENGTH = 31;
 

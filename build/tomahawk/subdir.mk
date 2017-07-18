@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../tomahawk/MagicConstants.cpp \
 ../tomahawk/TomahawkCalculationWriter.cpp \
 ../tomahawk/TomahawkImportWriter.cpp \
 ../tomahawk/TomahawkImporter.cpp \
@@ -12,6 +13,7 @@ CPP_SRCS += \
 ../tomahawk/TotempoleReader.cpp 
 
 OBJS += \
+./tomahawk/MagicConstants.o \
 ./tomahawk/TomahawkCalculationWriter.o \
 ./tomahawk/TomahawkImportWriter.o \
 ./tomahawk/TomahawkImporter.o \
@@ -20,6 +22,7 @@ OBJS += \
 ./tomahawk/TotempoleReader.o 
 
 CPP_DEPS += \
+./tomahawk/MagicConstants.d \
 ./tomahawk/TomahawkCalculationWriter.d \
 ./tomahawk/TomahawkImportWriter.d \
 ./tomahawk/TomahawkImporter.d \

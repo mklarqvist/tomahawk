@@ -34,28 +34,8 @@ class TomahawkReader {
 	};
 
 public:
-	TomahawkReader(const TotempoleReader& header) :
-		samples(0),
-		version(0),
-		filesize_(0),
-		bit_width_(0),
-		silent(false),
-		threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
-		writer(nullptr),
-		buffer_(header.getLargestBlockSize()+64),
-		data_(this->buffer_),
-		outputBuffer_(header.getLargestBlockSize()+64),
-		gzip_controller_(),
-		totempole_(header),
-		balancer()
-	{}
-
-	~TomahawkReader(){
-		this->buffer_.deleteAll();
-		this->data_.deleteAll();
-		this->outputBuffer_.deleteAll();
-		delete writer;
-	}
+	TomahawkReader(const TotempoleReader& header);
+	~TomahawkReader();
 
 	bool Open(const std::string input);
 	bool ValidateHeader(void);
@@ -65,90 +45,31 @@ public:
 	bool getBlock(const U32 blockID);
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
-
-	bool SetR2Threshold(const double min, const double max){
-		if(min < 0 || max > 1){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid R-squared values: " << min << '-' << max << std::endl;
-			return false;
-		}
-
-		if(min > max){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid R-squared values: " << min << '-' << max << std::endl;
-			return false;
-		}
-
-		this->parameters.R2_min = min - Constants::ALLOWED_ROUNDING_ERROR;
-		this->parameters.R2_max = max + Constants::ALLOWED_ROUNDING_ERROR;
-
-		return true;
-	}
-
-	bool SetMinimumAlleles(const U64 min){
-		this->parameters.minimum_alleles = min;
-		return true;
-	}
-
-	bool SetThreads(const S32 threads){
-		if(threads <= 0){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid number of threads: " << threads << std::endl;
-			return false;
-		}
-		this->threads = threads;
-		return true;
-	}
-
-	void SetPhased(const bool phased){
-		std::cerr << Helpers::timestamp("LOG") << "Forcing phasing of all variants: " << (phased ? "Phased..." : "Unphased...") << std::endl;
-		if(phased)
-			this->parameters.force = parameter_type::phasedFunction;
-		else
-			this->parameters.force = parameter_type::unphasedFunction;
-	}
+	bool SetR2Threshold(const double min, const double max);
+	bool SetMinimumAlleles(const U64 min);
+	bool SetThreads(const S32 threads);
+	void SetPhased(const bool phased);
 	bool SetChunkDesired(const S32 desired){ return(this->balancer.setDesired(desired)); }
 	bool SetChunkSelected(const S32 selected){ return(this->balancer.setSelected(selected)); }
 	void SetSilent(const bool silent){ this->silent = silent; }
-
-	bool SetPThreshold(const double P){
-		if(P > 1 || P < 0){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid P-value threshold: " << P << std::endl;
-			return false;
-		}
-		this->parameters.P_threshold = P;
-		return true;
-	}
-
+	bool SetPThreshold(const double P);
 	bool Calculate(std::vector< std::pair<U32,U32> >& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();
-
 	bool SelectWriterOutputType(const IO::TomahawkCalculationWriterInterace::type& writer_type);
-	bool OpenWriter(void){
-		if(this->writer == nullptr)
-			this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::cout);
-
-		return(this->writer->open());
-	}
 	void SetOutputType(IO::TomahawkCalculationWriterInterace::compression type){ this->parameters.compression_type = type; }
-
-	bool OpenWriter(const std::string destination){
-		if(this->writer == nullptr){
-			if(destination == "-"){
-				this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::cout);
-				return(this->writer->open());
-			}
-			this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::file);
-		}
-
-		return(this->writer->open(destination));
-	}
+	bool OpenWriter(void);
+	bool OpenWriter(const std::string destination);
+	void setDetailedProgress(const bool yes);
 
 private:
 	bool __CalculateWrapper();
-	template <class T> bool __Calculate();
 	void DetermineBitWidth(void);
 	U64 GetUncompressedSizes(std::vector<U32>& blocks);
 	U64 GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks);
 	U64 GetUncompressedSizes(void);
+
+	template <class T> bool __Calculate();
 	template <class T> bool outputBlock(const U32 blockID);
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
@@ -256,17 +177,25 @@ bool TomahawkReader::__Calculate(){
 	for(U32 i = 0; i < this->blockDataOffsets_.size(); ++i)
 		controller.Add(this->blockDataOffsets_[i].data, this->blockDataOffsets_[i].entry);
 
+	if(!this->silent){
 #if SIMD_AVAILABLE == 1
 	std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
 #else
 	std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
 #endif
 	std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
+	}
+
+	// Build 1-bit representation
 	controller.BuildVectorized();
-	std::cerr << "Done..." << std::endl;
+
+	if(!this->silent)
+		std::cerr << "Done..." << std::endl;
 
 	const U64 variants = controller.getVariants();
-	std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
+
+	if(!this->silent)
+		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
 	// Todo: validate
 	U64 totalComparisons = 0;
@@ -305,28 +234,31 @@ bool TomahawkReader::__Calculate(){
 		}
 	}
 	this->progress.SetComparisons(totalComparisons);
-	std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
+
+	if(!this->silent)
+		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
 	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->threads];
 	std::vector<std::thread*> thread_pool;
 
 	// Setup workers
-	std::cerr << this->parameters << std::endl;
-	std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->threads << " threads: ";
+	if(!this->silent){
+		std::cerr << this->parameters << std::endl;
+		std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->threads << " threads: ";
+	}
 
 	for(U32 i = 0; i < this->threads; ++i){
 		slaves[i] = new TomahawkCalculateSlave<T>(controller, *this->writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
-		std::cerr << '.';
+		if(!this->silent)
+			std::cerr << '.';
 	}
-	std::cerr << std::endl;
+	if(!this->silent)
+		std::cerr << std::endl;
 
 	// Start threads
 	if(!this->silent)
 		this->progress.Start();
-
-	// Todo: fix
-	//this->progress.SetDetailed(true);
 
 	// Setup front-end interface
 	Interface::Timer timer;
@@ -344,17 +276,20 @@ bool TomahawkReader::__Calculate(){
 	this->progress.Stop();
 
 	// Print slave statistics
-	std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
-	for(U32 i = 0; i < this->threads; ++i)
-		std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
-
-	// Reduce into first slave
-	for(U32 i = 1; i < this->threads; ++i){
-		*slaves[0] += *slaves[i];
+	if(!this->silent){
+		std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
+		for(U32 i = 0; i < this->threads; ++i)
+			std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
 	}
 
-	std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*this->totempole_.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-	std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*this->totempole_.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+	// Reduce into first slave
+	for(U32 i = 1; i < this->threads; ++i)
+		*slaves[0] += *slaves[i];
+
+	if(!this->silent){
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*this->totempole_.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*this->totempole_.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+	}
 
 	// Cleanup
 	delete [] slaves;

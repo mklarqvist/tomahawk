@@ -193,7 +193,8 @@ private:
 		this->header_ = reinterpret_cast<TotempoleHeader*>(&this->data_[buffer_pointer]);
 		buffer_pointer += Constants::TOTEMPOLE_HEADER_SIZE;
 
-		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->header_->blocks)) << " blocks..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->header_->blocks)) << " blocks..." << std::endl;
 
 		U32* contigs = reinterpret_cast<U32*>(&this->data_[buffer_pointer]);
 		buffer_pointer += sizeof(U32);
@@ -217,7 +218,8 @@ private:
 			buffer_pointer += *length;
 		}
 
-		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->contigs_.size())) << " contigs and " << Helpers::NumberThousandsSeparator(std::to_string(this->sampleNames_.size())) << " samples..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->contigs_.size())) << " contigs and " << Helpers::NumberThousandsSeparator(std::to_string(this->sampleNames_.size())) << " samples..." << std::endl;
 
 		if(buffer_pointer != this->header_->offset){
 			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Corrupt file" << std::endl;
@@ -264,7 +266,8 @@ private:
 		for(U32 i = 0; i < this->header_->blocks; ++i)
 			totalEntries += (*this)[i].variants;
 
-		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(totalEntries)) << " variants..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(totalEntries)) << " variants..." << std::endl;
 
 		for(U32 i = 0; i < Constants::eof_length; ++i){
 			U64* eof = reinterpret_cast<U64*>(&this->data_[buffer_pointer]);
