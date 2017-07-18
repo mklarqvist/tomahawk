@@ -11,7 +11,7 @@ Compiling Tomahawk with default parameters is straightforward.
 git clone https://github.com/mklarqvist/Tomahawk_private
 cd Tomahawk_private
 cd build
-make
+make -j 28
 ```
 By default, Tomahawk compiles using extremely aggressive optimization flags and with
 native architecture-specific instructions
@@ -39,7 +39,7 @@ Importing a variant document (`vcf`/`bcf`) to Tomahawk requires the `import` com
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi`
 ```bash
-tomahawk import -i file.vcf -o outPrefix
+tomahawk import -i file.vcf -o outPrefix -m 0.2
 ```
 
 ```bash

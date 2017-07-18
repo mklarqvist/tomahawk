@@ -52,6 +52,8 @@ public:
 
 private:
 	bool Validate(std::ifstream& in) const;
+	void BuildUpdateContigs(void);
+	bool ValidateEOF(std::ifstream& in);
 	bool BuildHashTables(void);
 
 private:

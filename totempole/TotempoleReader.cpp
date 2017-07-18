@@ -114,40 +114,15 @@ bool TotempoleReader::Open(const std::string filename){
 #endif
 	}
 
-	// Find boundaries for Totempole blocks
-	// Master index of indices
-	// Update contig data
-	U32 lastContigID = this->entries[0].contigID;
-	this->contigs[lastContigID].minPosition = this->entries[0].minPosition;
-	this->contigs[lastContigID].blocksStart = 0;
-	for(U32 i = 1; i < this->getBlocks(); ++i){
-		if(lastContigID != this->entries[i].contigID){
-			this->contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
-			this->contigs[lastContigID].blocksEnd = i;
-			this->contigs[this->entries[i].contigID].minPosition = this->entries[i].minPosition;
-			this->contigs[this->entries[i].contigID].blocksStart = i;
-		}
-		lastContigID = this->entries[i].contigID;
-	}
-	const TotempoleEntry& lastEntry = this->entries[this->getBlocks() - 1];
-	this->contigs[lastEntry.contigID].blocksEnd = this->getBlocks();
-	this->contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
+	this->BuildUpdateContigs();
 
 #if DEBUG_MODE == 1
 	for(U32 i = 0; i < this->size(); ++i)
 		std::cerr << this->contigs[i] << std::endl;
 #endif
 
-	// Check EOF
-	reader.read(&temp_buffer[0], Constants::eof_length*sizeof(U64));
-	for(U32 i = 0; i < Constants::eof_length; ++i){
-		const U64* eof = reinterpret_cast<const U64*>(&temp_buffer[sizeof(U64)*i]);
-
-		if(*eof != Constants::eof[i]){
-			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") <<  "Truncated index file!" << std::endl;
-			return false;
-		}
-	}
+	if(!this->ValidateEOF(reader))
+		return false;
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->getSamples())) << " blocks..." << std::endl;
@@ -168,6 +143,41 @@ bool TotempoleReader::Open(const std::string filename){
 	}
 
 	return true;
+}
+
+bool TotempoleReader::ValidateEOF(std::ifstream& in){
+	char temp_buffer[Constants::eof_length*sizeof(U64)];
+	in.read(&temp_buffer[0], Constants::eof_length*sizeof(U64));
+	for(U32 i = 0; i < Constants::eof_length; ++i){
+		const U64* eof = reinterpret_cast<const U64*>(&temp_buffer[sizeof(U64)*i]);
+
+		if(*eof != Constants::eof[i]){
+			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") <<  "Truncated index file!" << std::endl;
+			return false;
+		}
+	}
+	return true;
+}
+
+void TotempoleReader::BuildUpdateContigs(void){
+	// Find boundaries for Totempole blocks
+	// Master index of indices
+	// Update contig data
+	U32 lastContigID = this->entries[0].contigID;
+	this->contigs[lastContigID].minPosition = this->entries[0].minPosition;
+	this->contigs[lastContigID].blocksStart = 0;
+	for(U32 i = 1; i < this->getBlocks(); ++i){
+		if(lastContigID != this->entries[i].contigID){
+			this->contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
+			this->contigs[lastContigID].blocksEnd = i;
+			this->contigs[this->entries[i].contigID].minPosition = this->entries[i].minPosition;
+			this->contigs[this->entries[i].contigID].blocksStart = i;
+		}
+		lastContigID = this->entries[i].contigID;
+	}
+	const TotempoleEntry& lastEntry = this->entries[this->getBlocks() - 1];
+	this->contigs[lastEntry.contigID].blocksEnd = this->getBlocks();
+	this->contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
 }
 
 bool TotempoleReader::BuildHashTables(void){
