@@ -16,12 +16,18 @@ public:
 
 	friend std::ofstream& operator<<(std::ofstream& os, const TomahawkEntryMeta& entry){
 		const U32 writePos = ( entry.position << 30 ) | ( entry.phased << 1 ) | entry.missing;
-		os << writePos << entry.ref_alt << entry.runs << entry.MAF << entry.HWE_P;
+		os.write(reinterpret_cast<const char*>(&writePos), sizeof(U32));
+		os.write(reinterpret_cast<const char*>(&entry.ref_alt), sizeof(BYTE));
+		os.write(reinterpret_cast<const char*>(&entry.runs), sizeof(U32));
+		os.write(reinterpret_cast<const char*>(&entry.MAF), sizeof(double));
+		os.write(reinterpret_cast<const char*>(&entry.HWE_P), sizeof(double));
+
+		//os << writePos << entry.ref_alt << entry.runs << entry.MAF << entry.HWE_P;
 		return os;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const TomahawkEntryMeta& entry){
-		out << (entry.position >> 2) << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MAF << '\t' << entry.HWE_P;
+		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MAF << '\t' << entry.HWE_P;
 		return(out);
 	}
 

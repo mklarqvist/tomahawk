@@ -39,6 +39,7 @@ public:
 	TomahawkReader(const TotempoleReader& header);
 	~TomahawkReader();
 
+	// Reader functions
 	bool Open(const std::string input);
 	bool ValidateHeader(void);
 	bool getBlocks(void);
@@ -47,6 +48,8 @@ public:
 	bool getBlock(const U32 blockID);
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
+
+	// Calc functions
 	bool SetR2Threshold(const double min, const double max);
 	bool SetMinimumAlleles(const U64 min);
 	bool SetThreads(const S32 threads);
