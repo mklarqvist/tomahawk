@@ -11,12 +11,12 @@
 #include "TomahawkCalculationWriter.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
-#include "TomahawkReaderControllerManager.h"
 #include "TomahawkCalculateSlaveOutputManager.h"
 #include "../algorithm/FisherTest.h"
 #include "../algorithm/LoadBalancerBlock.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "../algorithm/TomahawkSlaveSIMDHelper.h"
+#include "TomahawkBlockManager.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -172,16 +172,15 @@ template <class T>
 class TomahawkCalculateSlave{
 	//Basic typedefs
 	typedef TomahawkCalculateSlave<T> self_type;
-	typedef TomahawkReaderControllerManager<const T> manager_type;
-	typedef TomahawkReaderController<const T> controller_type;
+	typedef TomahawkBlockManager<const T> manager_type;
+	typedef TomahawkBlock<const T> controller_type;
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
 	typedef TomahawkCalculateSlaveOutputManager<T> output_manager_type;
 	typedef IO::TomahawkCalculationWriterInterace writer_type;
 	typedef Support::TomahawkOutputLD helper_type;
-
-	typedef TomahawkReaderControllerPackedPair<> simd_pair;
+	typedef TomahawkBlockPackedPair<> simd_pair;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock order_type;

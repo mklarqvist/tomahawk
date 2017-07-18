@@ -154,7 +154,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 
 template <class T>
 bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
-	TomahawkReaderController<T> tomahawk_controller(data, this->totempole_[blockID]);
+	TomahawkBlock<T> tomahawk_controller(data, this->totempole_[blockID]);
 
 	// Foreach variant in block
 	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
@@ -182,7 +182,7 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 
 template <class T>
 bool TomahawkReader::__Calculate(){
-	TomahawkReaderControllerManager<const T> controller(this->totempole_);
+	TomahawkBlockManager<const T> controller(this->totempole_);
 	for(U32 i = 0; i < this->blockDataOffsets_.size(); ++i)
 		controller.Add(this->blockDataOffsets_[i].data, this->blockDataOffsets_[i].entry);
 

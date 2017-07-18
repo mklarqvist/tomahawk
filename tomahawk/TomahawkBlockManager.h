@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKREADERCONTROLLERMANAGER_H_
-#define TOMAHAWK_TOMAHAWKREADERCONTROLLERMANAGER_H_
+#ifndef TOMAHAWK_TomahawkBlockManager_H_
+#define TOMAHAWK_TomahawkBlockManager_H_
 
 #include "../support/simd.h"
 #include "../algorithm/GenotypeBitPacker.h"
@@ -8,13 +8,13 @@
 namespace Tomahawk{
 
 template <class T, class Y = Support::TomahawkRun<T>>
-struct TomahawkReaderController; // forward declare: required for build function
+struct TomahawkBlock; // forward declare: required for build function
 
 
 template <int T = SIMD_ALIGNMENT>
-struct TomahawkReaderControllerPackedPair{
+struct TomahawkBlockPackedPair{
 public:
-	TomahawkReaderControllerPackedPair(const U32 size):
+	TomahawkBlockPackedPair(const U32 size):
 		frontZero(0),
 		tailZero(0),
 		frontZeroMissing(0),
@@ -31,7 +31,7 @@ public:
 		memset(this->mask, 0, size);
 	}
 
-	~TomahawkReaderControllerPackedPair(){
+	~TomahawkBlockPackedPair(){
 	#if SIMD_AVAILABLE == 1
 		_mm_free(this->data);
 		_mm_free(this->mask);
@@ -50,17 +50,17 @@ public:
 	BYTE* mask;
 } __attribute__((aligned(16)));
 
-class TomahawkReaderControllerPacked{
-	typedef TomahawkReaderControllerPackedPair<> pair_type;
+class TomahawkBlockPacked{
+	typedef TomahawkBlockPackedPair<> pair_type;
 public:
-	TomahawkReaderControllerPacked() : width(0), data(nullptr){}
-	~TomahawkReaderControllerPacked(){
+	TomahawkBlockPacked() : width(0), data(nullptr){}
+	~TomahawkBlockPacked(){
 		delete [] this->data;
 		delete this->data;
 	}
 
 	// copy constructor
-	TomahawkReaderControllerPacked(const TomahawkReaderControllerPacked& other) :
+	TomahawkBlockPacked(const TomahawkBlockPacked& other) :
 		width(other.width),
 		data(other.data)
 	{
@@ -68,7 +68,7 @@ public:
 	}
 
 	// move constructor
-	TomahawkReaderControllerPacked(TomahawkReaderControllerPacked&& other) noexcept :
+	TomahawkBlockPacked(TomahawkBlockPacked&& other) noexcept :
 		width(other.width),
 		data(other.data)
 	{
@@ -76,7 +76,7 @@ public:
 	}
 
 	/** Move assignment operator */
-	TomahawkReaderControllerPacked& operator=(TomahawkReaderControllerPacked&& other) noexcept{
+	TomahawkBlockPacked& operator=(TomahawkBlockPacked&& other) noexcept{
 		std::cerr << "move assign " << std::endl;
 		if(this != &other) // prevent self-move
 		{
@@ -87,7 +87,7 @@ public:
 	}
 
 	template <class T>
-	bool Build(TomahawkReaderController<T>& controller, const U64& samples);
+	bool Build(TomahawkBlock<T>& controller, const U64& samples);
 
 	inline const pair_type& getData(const U32 p) const{ return(*this->data[p]); }
 
@@ -98,7 +98,7 @@ public:
 
 
 template <class T, class Y>
-struct TomahawkReaderController{
+struct TomahawkBlock{
 	typedef Y		  	  type;
 	typedef type          value_type;
 	typedef type         *pointer;
@@ -111,21 +111,21 @@ struct TomahawkReaderController{
 	typedef TomahawkEntryMeta<T> meta_type;
 
 public:
-	TomahawkReaderController(const char* target, const TotempoleEntry& support) :
+	TomahawkBlock(const char* target, const TotempoleEntry& support) :
 		metaPointer(0),
 		runsPointer(0),
 		support(&support),
 		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
 		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWHK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
-		packed(new TomahawkReaderControllerPacked)
+		packed(new TomahawkBlockPacked)
 	{
 
 	}
 
-	~TomahawkReaderController() noexcept{}
+	~TomahawkBlock() noexcept{}
 
 	// copy constructor
-	TomahawkReaderController(const TomahawkReaderController& other) :
+	TomahawkBlock(const TomahawkBlock& other) :
 		metaPointer(other.metaPointer),
 		runsPointer(other.runsPointer),
 		support(other.support),
@@ -136,13 +136,13 @@ public:
 
 	}
 
-	void operator=(const TomahawkReaderController& other){
+	void operator=(const TomahawkBlock& other){
 		this->metaPointer = other.metaPointer;
 		this->runsPointer = other.runsPointer;
 	}
 
 	// move constructor
-	TomahawkReaderController(TomahawkReaderController&& other) noexcept :
+	TomahawkBlock(TomahawkBlock&& other) noexcept :
 		metaPointer(other.metaPointer),
 		runsPointer(other.runsPointer),
 		support(other.support),
@@ -153,8 +153,8 @@ public:
 
 	}
 
-	inline void updatePacked(const TomahawkReaderController& self){
-		this->packed = new TomahawkReaderControllerPacked(self.packed);
+	inline void updatePacked(const TomahawkBlock& self){
+		this->packed = new TomahawkBlockPacked(self.packed);
 	}
 
 
@@ -243,17 +243,17 @@ public:
 	const TotempoleEntry* const support; // parent Totempole information
 	const meta_type* const meta;
 	const type* const runs;
-	TomahawkReaderControllerPacked* packed;
+	TomahawkBlockPacked* packed;
 };
 
 template <class T>
-bool TomahawkReaderControllerPacked::Build(TomahawkReaderController<T>& controller, const U64& samples){
+bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples){
 	if(controller.support->variants == 0)
 		return false;
 
 	// Todo: put all variants in same buffer
 	controller.reset();
-	TomahawkReaderController<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkReaderController<T, Support::TomahawkRunPacked<T>>*>(&controller);
+	TomahawkBlock<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkBlock<T, Support::TomahawkRunPacked<T>>*>(&controller);
 
 	this->width = c.support->variants;
 	//const BYTE overlow_uneven_refs = this->width % 8;
@@ -312,24 +312,24 @@ bool TomahawkReaderControllerPacked::Build(TomahawkReaderController<T>& controll
 }
 
 template <class T, class Y>
-bool TomahawkReaderController<T, Y>::buildPacked(const U64& samples){
+bool TomahawkBlock<T, Y>::buildPacked(const U64& samples){
 	return(this->packed->Build(*this, samples));
 }
 
 
 template <class T>
-class TomahawkReaderControllerManager{
-	typedef TomahawkReaderControllerManager<T> self_type;
-	typedef TomahawkReaderController<const T> controller_type;
+class TomahawkBlockManager{
+	typedef TomahawkBlockManager<T> self_type;
+	typedef TomahawkBlock<const T> controller_type;
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
 
 public:
-	TomahawkReaderControllerManager(const TotempoleReader& header) :
+	TomahawkBlockManager(const TotempoleReader& header) :
 		header(header)
 	{}
-	~TomahawkReaderControllerManager(){}
+	~TomahawkBlockManager(){}
 
 	controller_type operator[](const U32 p) const{ return(controller_type(this->blocks[p])); } // copy constructor return
 	void Add(const char* data, const totempole_entry_type& entry){ this->blocks.push_back(controller_type(data, entry)); }
@@ -361,7 +361,7 @@ public:
 };
 
 template <class T>
-U64 TomahawkReaderControllerManager<T>::CountVariants(void){
+U64 TomahawkBlockManager<T>::CountVariants(void){
 	U64 total = 0;
 	// Within block comparisons
 	for(U32 i = 0; i < this->size(); ++i){
@@ -380,4 +380,4 @@ U64 TomahawkReaderControllerManager<T>::CountVariants(void){
 
 }
 
-#endif /* TOMAHAWK_TOMAHAWKREADERCONTROLLERMANAGER_H_ */
+#endif /* TOMAHAWK_TomahawkBlockManager_H_ */

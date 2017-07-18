@@ -201,6 +201,7 @@ int view(int argc, char** argv){
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
 
+		// Todo: action
 		// Parse remainder parameters
 		// Assume these parameters are contig or position values for filtering
 		for(U32 i = 2+hits; i < argc; ++i){
@@ -212,7 +213,6 @@ int view(int argc, char** argv){
 				return 1;
 			}
 		}
-
 
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;

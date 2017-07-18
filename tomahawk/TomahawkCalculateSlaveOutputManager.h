@@ -1,6 +1,8 @@
 #ifndef TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
 #define TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
 
+#include "TomahawkBlockManager.h"
+
 //#define SLAVE_FLUSH_LIMIT	65536
 #define SLAVE_FLUSH_LIMIT	10000000
 //#define SLAVE_FLUSH_LIMIT	5000
@@ -10,7 +12,7 @@ namespace Tomahawk{
 template <class T>
 struct TomahawkCalculateSlaveOutputManager{
 	typedef IO::TomahawkCalculationWriterInterace writer_type;
-	typedef TomahawkReaderController<const T> controller_type;
+	typedef TomahawkBlock<const T> controller_type;
 	typedef TomahawkCalculateSlaveOutputManager<T> self_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
