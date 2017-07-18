@@ -34,6 +34,8 @@ public:
 	// Always the same but contents in buffer may be different
 	virtual void operator<<(const IO::BasicBuffer& buffer) =0;
 
+	virtual void write(const char* data, const U32 length) =0;
+
 	// Header output
 	virtual bool writeHeader(void) =0;
 	virtual bool writeHeader(const totempole_type& totempole) =0;
@@ -64,6 +66,12 @@ public:
 
 	bool writeHeader(void){ return false; }
 	bool writeHeader(const totempole_type& totempole){ return false; }
+
+	void write(const char* data, const U32 length){
+		this->lock.lock();
+		std::cout.write(&data[0], length);
+		this->lock.unlock();
+	}
 
 	inline void operator<<(const IO::BasicBuffer& buffer){
 		// Mutex lock; write; unlock
@@ -102,7 +110,8 @@ public:
 			return false;
 		}
 
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening output file: " << output << "..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening output file: " << output << "..." << std::endl;
 
 		return true;
 	}
@@ -119,6 +128,12 @@ public:
 		// Extremely unlikely there is every any contention
 		this->lock.lock();
 		this->stream.write(&buffer.data[0], buffer.size());
+		this->lock.unlock();
+	}
+
+	void write(const char* data, const U32 length){
+		this->lock.lock();
+		this->stream.write(&data[0], length);
 		this->lock.unlock();
 	}
 

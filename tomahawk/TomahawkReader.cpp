@@ -523,7 +523,7 @@ bool TomahawkReader::Calculate(){
 	return(this->Calculate(this->balancer.getLoad()));
 }
 
-bool TomahawkReader::SelectWriterOutputType(const IO::GenericWriterInterace::type& writer_type){
+bool TomahawkReader::SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type){
 	if(this->writer != nullptr)
 		return false;
 

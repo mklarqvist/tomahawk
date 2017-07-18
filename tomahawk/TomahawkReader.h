@@ -61,7 +61,7 @@ public:
 	bool Calculate(std::vector< std::pair<U32,U32> >& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();
-	bool SelectWriterOutputType(const IO::GenericWriterInterace::type& writer_type);
+	bool SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type);
 	void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
 	bool OpenWriter(void);
 	bool OpenWriter(const std::string destination);
@@ -165,13 +165,14 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 
 		// Keep flushing regularly
 		if(this->outputBuffer_.size() > 65536){
-			std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+			this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+			//std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
 			this->outputBuffer_.reset();
 		}
 	}
 
 	// Flush last
-	std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+	this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
 
 	// Reset buffers
 	this->outputBuffer_.reset(); // reset

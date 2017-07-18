@@ -5,11 +5,43 @@
 #include "totempole/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
 
+void view_usage(void){
+	programMessage();
+	std::cout <<
+	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " view [options] <in.twk>|<in.two>\n"
+	"\n"
+	"Options:\n"
+	"  -i FILE  input Tomahawk (required)\n"
+	"  -o FILE  output file (- for stdout)\n\n"
+
+	"Twk parameters\n"
+	"  -G       (twk) drop genotypes in output [null]\n"
+	"  -h/H     (twk/two) header only / no header [null]\n"
+	"  -N       output in tab-delimited text format [null]\n"
+	"  -B       output in binary TWO format (default)[null]\n"
+	"  -t INT   number of CPU threads (default: maximum available)\n\n"
+
+	// Two parameters
+	"Two parameters\n"
+	"  -p float number of parts to split problem into (default: 1)\n"
+	"  -P float chosen part to compute (0 < -C < -c; default: 1)\n"
+	"  -d float number of parts to split problem into (default: 1)\n"
+	"  -D float chosen part to compute (0 < -C < -c; default: 1)\n"
+	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -A INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -f INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -F INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
+	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -d       Show real-time progress update in cerr [null]\n"
+	"  -s       Hide all program messages [null]\n";
+}
+
 int view(int argc, char** argv){
 	//argc -= 1; argv += 1;
 
 	if(argc < 3){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Missing parameters" << std::endl;
+		view_usage();
 		return(1);
 	}
 
@@ -26,8 +58,10 @@ int view(int argc, char** argv){
 		{"maxAlleles",	optional_argument, 0, 'A' },
 		{"flagInclude",	optional_argument, 0, 'f' },
 		{"flagExclude",	optional_argument, 0, 'F' },
-		{"help",		optional_argument, 0, 'h' },
-		{"longHelp",	optional_argument, 0, 'H' },
+		{"headerOnly",	no_argument, 0, 'h' },
+		{"noHeader",	no_argument, 0, 'h' },
+		{"dropGenotypes",	optional_argument, 0, 'G' },
+		{"longHelp",	no_argument, 0, 'H' },
 		{0,0,0,0}
 	};
 
@@ -42,7 +76,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:hH", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:hHG", long_options, &long_index)) != -1){
 		//std::cerr << c << ":" << (char)c << '\t' << long_index << std::endl;
 		hits += 2;
 		switch (c){
@@ -188,6 +222,7 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
+		tomahawk.SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
 		tomahawk.outputBlocks();
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::IO::TomahawkOutputReader reader;
