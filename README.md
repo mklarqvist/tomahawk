@@ -13,13 +13,13 @@ cd Tomahawk_private
 cd build
 make
 ```
-By default, Tomahawk compiles using extremely aggressive optimization flags and
-using native architecture instructions
+By default, Tomahawk compiles using extremely aggressive optimization flags and with
+native architecture-specific instructions
 (`-O3 -fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe
   -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin`)
 and internally compiles for the most recent SIMD-instruction set available.
-This might result in additional effort when submitting array jobs to
-computer farms/clouds with non-uniform hardware.
+This might result in additional effort when submitting jobs to
+computer farms/clouds with hardware different from the compiled target.
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `index`

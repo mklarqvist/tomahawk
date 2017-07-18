@@ -17,11 +17,13 @@ struct TomahawkCalculateSlaveOutputManager{
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
 
+	// Function pointer to write class function
 	typedef void (self_type::*outFunction)(const controller_type& a, const controller_type& b, const helper_type& helper);
 
 public:
 	TomahawkCalculateSlaveOutputManager(writer_type& writer,
 										const writer_type::compression type) :
+		writer_output_type(type),
 		outCount(0),
 		progressCount(0),
 		function(type == writer_type::compression::natural ? &self_type::AddNatural : &self_type::AddBinary),
@@ -41,6 +43,20 @@ public:
 		this->writer << this->buffer;
 		this->writer.flush();
 		this->buffer.reset();
+	}
+
+	bool writeHeaders(void){
+		if(this->writer_output_type == writer_type::compression::natural){
+			// Write tab-delimited header
+		} else if(this->writer_output_type == writer_type::compression::binary) {
+			// Write binary header
+			// Write index as we progress
+		} else{
+			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Illegal compression method: " << (int)this->writer_output_type << "..." << std::endl;
+			return false;
+		}
+
+		return true;
 	}
 
 	inline const U64& GetCounts(void) const{ return this->outCount; }
@@ -133,6 +149,7 @@ private:
 		}
 	}
 
+	const writer_type::compression writer_output_type;
 	U64 outCount;
 	U32 progressCount;
 	outFunction function;

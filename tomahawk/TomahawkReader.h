@@ -17,6 +17,8 @@
 #include "TomahawkCalcParameters.h"
 #include "../algorithm/Balancer.h"
 
+// MAJOR TODO: SEPARATE OUT TWK READER FROM CALC FUNCTIONS
+
 namespace Tomahawk {
 
 // TomahawkReader class simply reads compressed data from disk
