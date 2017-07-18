@@ -9,6 +9,8 @@ namespace Constants{
 
 #pragma pack(1)
 struct TotempoleEntry{
+	typedef TotempoleEntry self_type;
+
 public:
 	TotempoleEntry() : byte_offset(0), contigID(0), minPosition(0), maxPosition(0), variants(0), uncompressed_size(0){}
 	~TotempoleEntry(){}
@@ -29,6 +31,17 @@ public:
 		stream.write(reinterpret_cast<const char*>(&entry.variants),    sizeof(U16));
 		stream.write(reinterpret_cast<const char*>(&entry.uncompressed_size), sizeof(U32));
 		return stream;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& entry){
+		stream.read(reinterpret_cast<char*>(&entry.byte_offset), sizeof(U64));
+		stream.read(reinterpret_cast<char*>(&entry.contigID),    sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.minPosition), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.maxPosition), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.variants),    sizeof(U16));
+		stream.read(reinterpret_cast<char*>(&entry.uncompressed_size), sizeof(U32));
+
+		return(stream);
 	}
 
 	void reset(void){
