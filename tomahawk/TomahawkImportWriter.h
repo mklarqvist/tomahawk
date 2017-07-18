@@ -63,65 +63,44 @@ public:
 	}
 
 	void WriteHeaders(void){
-		///////////////
-		// Tomahawk
-		///////////////
-		// MAGIC | version | sample count
-		U64 samples = this->vcf_header_->samples_;
-		this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
-		this->streamTomahawk.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
-		this->streamTomahawk.write(reinterpret_cast<const char*>(&samples), sizeof(U64));
-
-		///////////////
-		// Totempole
-		///////////////
-		// MAGIC | version | sample count | controller byte | blocks | offset3
-		// Todo: move to structs
+		const U64& samples = this->vcf_header_->samples_;
 		TotempoleHeader h(samples);
 		this->streamTotempole << h;
-
-		/*
-		this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
-		this->streamTotempole.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
-		this->streamTotempole.write(reinterpret_cast<const char*>(&samples), sizeof(U64));
-		BYTE controller = 0; // Todo: fix -- currently unused
-		this->streamTotempole.write(reinterpret_cast<char*>(&controller), sizeof(BYTE)); // Controller byte
-		U32 nothing = 0; // At end-of-file, reopen file as in | out | binary and seek to this position and overwrite with the correct position
-		this->streamTotempole.write(reinterpret_cast<char*>(&nothing), sizeof(U32)); // Number of blocks in Tomahawk
-		this->streamTotempole.write(reinterpret_cast<char*>(&nothing), sizeof(U32)); // Size of largest uncompressed block
-		 */
+		TotempoleHeaderBase* hB = reinterpret_cast<TotempoleHeaderBase*>(&h);
+		this->streamTomahawk << *hB;
 
 		// Write the number of contigs
 		IO::BasicBuffer tempBuffer(65536);
-		const U32 contigs = this->vcf_header_->contigs_.size();
-		tempBuffer += contigs;
-		//this->streamTotempole.write(reinterpret_cast<const char*>(&contigs), sizeof(U32));
+		const U32 n_contigs = this->vcf_header_->contigs_.size();
+		this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
 		// Write contig data to Totempole
+		// length | n_char | chars[0 .. n_char - 1]
 		for(U32 i = 0; i < this->vcf_header_->contigs_.size(); ++i){
-			const U32 __size = this->vcf_header_->contigs_[i].name.size();
-			tempBuffer += this->vcf_header_->contigs_[i].length;
-			tempBuffer += __size;
-			tempBuffer += this->vcf_header_->contigs_[i].name;
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->contigs_[i].length), sizeof(U32));
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&__size), sizeof(U32));
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->contigs_[i].name[0]), __size);
+			TotempoleContigBase contig(this->vcf_header_->contigs_[i].length,
+									   this->vcf_header_->contigs_[i].name.size(),
+									   this->vcf_header_->contigs_[i].name);
+
+			this->streamTotempole << contig;
 		}
 
 		// Write sample names
+		// n_char | chars[0..n_char - 1]
 		for(U32 i = 0; i < samples; ++i){
-			const U32 __size = this->vcf_header_->sampleNames_[i].size();
-			tempBuffer += __size;
+			const U32 n_char = this->vcf_header_->sampleNames_[i].size();
+			tempBuffer += n_char;
 			tempBuffer += this->vcf_header_->sampleNames_[i];
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&__size), sizeof(U32));
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames_[i][0]), __size);
 		}
 
 		U32 headerOffset = this->streamTotempole.tellp();
 		headerOffset += sizeof(U32) + tempBuffer.size(); // avoid ambiguity
 		this->streamTotempole.write(reinterpret_cast<char*>(&headerOffset), sizeof(U32)); // Offset until end of totempole and start of header data
+
+		// Dump tempBuffer data to Totempole
 		this->streamTotempole.write(tempBuffer.data, tempBuffer.pointer);
-		tempBuffer.deleteAll(); // cleanup
+
+		// cleanup
+		tempBuffer.deleteAll();
 	}
 
 	void WriteFinal(void){

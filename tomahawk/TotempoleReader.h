@@ -25,7 +25,41 @@ struct Interval{
 	U32 to;
 };
 
-struct TotempoleContig{
+struct TotempoleContigBase{
+	typedef TotempoleContigBase self_type;
+
+public:
+	TotempoleContigBase(const U32& bases, const U32& n_char, const std::string& name) : bases(bases), n_char(n_char), name(name){}
+	TotempoleContigBase() : bases(0), n_char(0){}
+	~TotempoleContigBase(){}
+
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
+		stream << entry.bases << '\t' << entry.n_char << '\t' << entry.name;
+		return stream;
+	}
+
+	friend std::ostream& operator<<(std::ofstream& stream, const self_type& base){
+		stream.write(reinterpret_cast<const char*>(&base.bases), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.n_char), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size()); // Size of largest uncompressed block
+		return(stream);
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& base){
+		stream.read(reinterpret_cast<char *>(&base.bases), sizeof(U32));
+		stream.read(reinterpret_cast<char *>(&base.n_char), sizeof(U32));
+		base.name.resize(base.n_char);
+		stream.read(&base.name[0], base.n_char);
+		return(stream);
+	}
+
+public:
+	U32 bases;			// length of contig
+	U32 n_char;			// number of chars
+	std::string name;	// contig name
+};
+
+struct TotempoleContig : public TotempoleContigBase{
 typedef TotempoleContig self_type;
 
 public:
@@ -35,14 +69,6 @@ public:
 	friend std::ostream& operator<<(std::ostream& stream, const TotempoleContig& entry){
 		stream << entry.name << '\t' << entry.bases << '\t' << entry.minPosition << "-" << entry.maxPosition << '\t' << entry.blocksStart << "->" << entry.blocksEnd;
 		return stream;
-	}
-
-	// Data is written literally to disk so needs to be reinterpreted back
-	void updateFirst(char* buffer, std::ifstream& stream){
-		this->bases = *reinterpret_cast<const U32*>(&buffer[0]);
-		const U32* n_char = reinterpret_cast<const U32*>(&buffer[sizeof(U32)]);
-		stream.read(&buffer[sizeof(U32)*2], *n_char);
-		this->name = std::string(&buffer[sizeof(U32)*2], *n_char);
 	}
 
 	void updateSecond(char* buffer, std::ifstream& stream){
@@ -66,16 +92,40 @@ public:
 };
 
 // size of TotempoleHeader struct
-#define TOTEMPOLE_headerSIZE	sizeof(float) + sizeof(U64) + sizeof(BYTE) + 3*sizeof(U32);
 
-#pragma pack(1)
-struct TotempoleHeader{
+struct TotempoleHeaderBase{
+	typedef TotempoleHeaderBase self_type;
+
+public:
+	TotempoleHeaderBase() : version(0), samples(0){}
+	TotempoleHeaderBase(const U64 samples) :
+			version(Constants::PROGRAM_VERSION),
+			samples(samples)
+		{}
+
+	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
+		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
+		stream.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
+		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
+		return stream;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& header){
+		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
+		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
+		return(stream);
+	}
+
+public:
+	float version;	// version used to write header
+	U64 samples;	// number of samples
+};
+
+struct TotempoleHeader : public TotempoleHeaderBase{
 	typedef TotempoleHeader self_type;
 
 public:
 	TotempoleHeader() :
-		version(0),
-		samples(0),
 		controller(0),
 		blocks(0),
 		largest_uncompressed(0),
@@ -85,8 +135,7 @@ public:
 	// This ctor is used during construction
 	// only possible when sample count is known
 	TotempoleHeader(const U64 samples) :
-		version(Constants::PROGRAM_VERSION),
-		samples(samples),
+		TotempoleHeaderBase(samples),
 		controller(0),
 		blocks(0),
 		largest_uncompressed(0),
@@ -133,8 +182,6 @@ public:
 	}
 
 public:
-	float version;		// version used to write header
-	U64 samples;		// number of samples
 	BYTE controller;	// controller block
 	U32 blocks;			// number of blocks in Tomahawk
 	U32 largest_uncompressed;	// largest block-size in bytes
@@ -143,6 +190,7 @@ public:
 
 class TotempoleReader {
 	typedef TotempoleHeader headertype;
+	typedef TotempoleContigBase contig_base_type;
 	typedef TotempoleContig contig_type;
 	typedef TotempoleEntry  entry_type;
 
@@ -199,15 +247,16 @@ public:
 		// Get number of contigs
 		reader.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
 
-		char temp_buffer[65536];
 		this->contigs = new contig_type[this->size()];
+		contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(this->contigs);
 		for(U32 i = 0; i < this->size(); ++i){
-			reader.read(&temp_buffer[0], sizeof(U32)*2);
-			this->contigs[i].updateFirst(temp_buffer, reader);
-			//std::cerr << contigs[i] << std::endl;
+			//reader.read(&temp_buffer[0], sizeof(U32)*2);
+			//this->contigs[i].updateFirst(temp_buffer, reader);
+			reader >> contig_base[i];
+			std::cerr << contig_base[i] << std::endl;
 		}
 
-
+		char temp_buffer[65536];
 		this->samples = new std::string[this->header.samples];
 		for(U32 i = 0; i < this->header.samples; ++i){
 			reader.read(&temp_buffer[0], sizeof(U32));
