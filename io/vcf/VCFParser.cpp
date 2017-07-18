@@ -93,15 +93,18 @@ bool VCFParser::Build(){
 
 		const float missing = line.getMissingness(this->header_.samples_);
 		if(line.position == previous_position && *retValue == *prevRetValue){
-			std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position in file. Dropping... (" << this->header_[*retValue].name << ":" << line.position << ")" << std::endl;
+			if(!SILENT)
+				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position in file (" << this->header_[*retValue].name << ":" << line.position << "): Dropping..." << std::endl;
+
 			goto next;
 		}
 
-		// Execute only if the line is simple
-
+		// Execute only if the line is simple (biallelic and SNP)
 		if(line.IsSimple()){
 			if(missing > DEFAULT_MISSINGNESS_CUTOFF){
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Dropping " << this->header_[*retValue].name << ":" << line.position << " with " << missing*100 << "% missing values..." << std::endl;
+				if(!SILENT)
+					std::cerr << Helpers::timestamp("WARNING", "VCF") << "Dropping " << this->header_[*retValue].name << ":" << line.position << " with " << missing*100 << "% missing values..." << std::endl;
+
 				goto next;
 			}
 
@@ -113,7 +116,6 @@ bool VCFParser::Build(){
 				this->writer_.TotempoleSwitch(*retValue, previous_position_simple);
 			}
 			this->writer_ += line;
-
 		}
 
 		next:
@@ -140,9 +142,10 @@ bool VCFParser::Build(){
 		return false;
 	}
 
-	std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
-													 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
-													 << " blocks..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
+														 << " blocks..." << std::endl;
 
 	// Temp
 	//for(U32 i = 0; i < this->header_.getContigs(); ++i){
@@ -179,7 +182,9 @@ bool VCFParser::GetHeaderLines(void){
 		this->reader_.clear();
 	}
 
-	std::cerr << Helpers::timestamp("LOG", "VCF") << "Parsed " << this->header_.getLines()+1 << " header lines..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "VCF") << "Parsed " << this->header_.getLines()+1 << " header lines..." << std::endl;
+
 	return true;
 }
 
@@ -230,7 +235,9 @@ bool VCFParser::SampleLine(void){
 	// Last one
 	//std::cerr << std::string(&this->reader_[search_position], this->reader_.size()  - search_position) << std::endl;
 
-	std::cerr << Helpers::timestamp("LOG", "VCF") << "Found " << delimiters_found << " samples..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "VCF") << "Found " << delimiters_found << " samples..." << std::endl;
+
 	this->header_.setSamples(delimiters_found);
 
 	// Parse

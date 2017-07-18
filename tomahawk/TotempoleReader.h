@@ -149,7 +149,7 @@ class TotempoleReader {
 	typedef Tomahawk::Hash::HashTable<std::string, U32> hashtable;
 
 public:
-	TotempoleReader() : filesize(0), contigs(nullptr), samples(nullptr), entries(nullptr), contigsHashTable(nullptr), sampleHashTable(nullptr){}
+	TotempoleReader() : filesize(0), n_contigs(0), contigs(nullptr), samples(nullptr), entries(nullptr), contigsHashTable(nullptr), sampleHashTable(nullptr){}
 	~TotempoleReader(){
 		delete [] this->contigs;
 		delete [] this->entries;
