@@ -1,6 +1,8 @@
 #ifndef TOTEMPOLEHEADER_H_
 #define TOTEMPOLEHEADER_H_
 
+#include <bitset>
+
 namespace Tomahawk {
 namespace Totempole {
 

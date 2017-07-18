@@ -14,11 +14,11 @@ struct TomahawkCalcParameters{
 		R2_max(1 + Constants::ALLOWED_ROUNDING_ERROR),
 		P_threshold(1e-6),
 		minimum_alleles(5),
-		compression_type(IO::TomahawkCalculationWriterInterace::compression::binary),
+		compression_type(IO::GenericWriterInterace::compression::binary),
 		force(force_method::none)
 	{}
 
-	TomahawkCalcParameters(const double R2min, const double R2max, const double Pmin, IO::TomahawkCalculationWriterInterace::compression type, force_method force = force_method::none):
+	TomahawkCalcParameters(const double R2min, const double R2max, const double Pmin, IO::GenericWriterInterace::compression type, force_method force = force_method::none):
 		R2_min(R2min),
 		R2_max(R2max),
 		P_threshold(Pmin),
@@ -38,7 +38,7 @@ struct TomahawkCalcParameters{
 	double R2_max;
 	double P_threshold;
 	U64 minimum_alleles;
-	IO::TomahawkCalculationWriterInterace::compression compression_type;
+	IO::GenericWriterInterace::compression compression_type;
 	force_method force;
 };
 

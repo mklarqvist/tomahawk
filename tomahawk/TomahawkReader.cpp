@@ -77,7 +77,7 @@ bool TomahawkReader::SetR2Threshold(const double min, const double max){
 
 	bool TomahawkReader::OpenWriter(void){
 		if(this->writer == nullptr)
-			this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::cout);
+			this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
 
 		return(this->writer->open());
 	}
@@ -86,10 +86,10 @@ bool TomahawkReader::SetR2Threshold(const double min, const double max){
 	bool TomahawkReader::OpenWriter(const std::string destination){
 		if(this->writer == nullptr){
 			if(destination == "-"){
-				this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::cout);
+				this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
 				return(this->writer->open());
 			}
-			this->SelectWriterOutputType(IO::TomahawkCalculationWriterInterace::type::file);
+			this->SelectWriterOutputType(IO::GenericWriterInterace::type::file);
 		}
 
 		return(this->writer->open(destination));
@@ -131,6 +131,15 @@ bool TomahawkReader::ValidateHeader(void){
 	this->buffer_.pointer += Constants::TOMAHAWK_HEADER_LENGTH;
 
 	return this->Validate();
+}
+
+inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
+	char MAGIC[Constants::WRITE_HEADER_MAGIC_LENGTH];
+	in.read(MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
+
+	if(strncmp(MAGIC, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) == 0)
+		return true;
+	return false;
 }
 
 U64 TomahawkReader::GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks){
@@ -514,14 +523,14 @@ bool TomahawkReader::Calculate(){
 	return(this->Calculate(this->balancer.getLoad()));
 }
 
-bool TomahawkReader::SelectWriterOutputType(const IO::TomahawkCalculationWriterInterace::type& writer_type){
+bool TomahawkReader::SelectWriterOutputType(const IO::GenericWriterInterace::type& writer_type){
 	if(this->writer != nullptr)
 		return false;
 
-	if(writer_type == IO::TomahawkCalculationWriterInterace::type::cout)
-		this->writer = new IO::TomahawkCalculationWriterStandardOut;
+	if(writer_type == IO::GenericWriterInterace::type::cout)
+		this->writer = new IO::WriterStandardOut;
 	else
-		this->writer = new IO::TomahawkCalculationWriterFile;
+		this->writer = new IO::WriterFile;
 
 	return true;
 }

@@ -35,7 +35,7 @@ void calc_usage(void){
 }
 
 int calc(int argc, char** argv){
-	typedef Tomahawk::IO::TomahawkCalculationWriterInterace::compression compression_type;
+	typedef Tomahawk::IO::GenericWriterInterace::compression compression_type;
 
 	//argc -= 2; argv += 2;
 

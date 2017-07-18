@@ -11,7 +11,7 @@ namespace Tomahawk{
 
 template <class T>
 struct TomahawkCalculateSlaveOutputManager{
-	typedef IO::TomahawkCalculationWriterInterace writer_type;
+	typedef IO::GenericWriterInterace writer_type;
 	typedef TomahawkBlock<const T> controller_type;
 	typedef TomahawkCalculateSlaveOutputManager<T> self_type;
 	typedef Support::TomahawkOutputLD helper_type;

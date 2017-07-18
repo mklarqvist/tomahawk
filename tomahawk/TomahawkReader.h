@@ -61,8 +61,8 @@ public:
 	bool Calculate(std::vector< std::pair<U32,U32> >& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();
-	bool SelectWriterOutputType(const IO::TomahawkCalculationWriterInterace::type& writer_type);
-	void SetOutputType(IO::TomahawkCalculationWriterInterace::compression type){ this->parameters.compression_type = type; }
+	bool SelectWriterOutputType(const IO::GenericWriterInterace::type& writer_type);
+	void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
 	bool OpenWriter(void);
 	bool OpenWriter(const std::string destination);
 	void setDetailedProgress(const bool yes);
@@ -74,19 +74,14 @@ private:
 	U64 GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks);
 	U64 GetUncompressedSizes(void);
 
+	// Calc functions
 	template <class T> bool __Calculate();
 	template <class T> bool outputBlock(const U32 blockID);
+
+	// Reader functions
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
-
-	inline bool ValidateHeader(std::ifstream& in) const{
-		char MAGIC[Constants::WRITE_HEADER_MAGIC_LENGTH];
-		in.read(MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
-
-		if(strncmp(MAGIC, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) == 0)
-			return true;
-		return false;
-	}
+	bool ValidateHeader(std::ifstream& in) const;
 
 private:
 	U64 samples; // has to match header
@@ -98,7 +93,7 @@ private:
 
 	//
 	U32 threads;
-	IO::TomahawkCalculationWriterInterace* writer;
+	IO::GenericWriterInterace* writer;
 	Interface::ProgressBar progress;
 
 	// Todo: Move out

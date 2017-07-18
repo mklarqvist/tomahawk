@@ -8,7 +8,6 @@
 
 #include "../algorithm/spinlock.h"
 #include "TomahawkOutputLD.h"
-#include "TomahawkCalculationWriter.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
 #include "TomahawkCalculateSlaveOutputManager.h"
@@ -16,6 +15,7 @@
 #include "../algorithm/LoadBalancerBlock.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "../algorithm/TomahawkSlaveSIMDHelper.h"
+#include "BasicWriters.h"
 #include "TomahawkBlockManager.h"
 
 // Method 1: None: Input-specified (default)
@@ -178,7 +178,7 @@ class TomahawkCalculateSlave{
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
 	typedef TomahawkCalculateSlaveOutputManager<T> output_manager_type;
-	typedef IO::TomahawkCalculationWriterInterace writer_type;
+	typedef IO::GenericWriterInterace writer_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TomahawkBlockPackedPair<> simd_pair;
 

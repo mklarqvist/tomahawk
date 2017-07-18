@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKCALCULATIONWRITER_H_
-#define TOMAHAWK_TOMAHAWKCALCULATIONWRITER_H_
+#ifndef TOMAHAWK_BASICWRITERS_H_
+#define TOMAHAWK_BASICWRITERS_H_
 
 #include <fstream>
 #include <iostream>
@@ -15,7 +15,7 @@ namespace Tomahawk {
 namespace IO{
 
 // temp
-class TomahawkCalculationWriterInterace{
+class GenericWriterInterace{
 protected:
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TotempoleReader totempole_type;
@@ -25,8 +25,8 @@ public:
 	enum compression {natural, binary};
 
 public:
-	TomahawkCalculationWriterInterace(){}
-	virtual ~TomahawkCalculationWriterInterace(){}
+	GenericWriterInterace(){}
+	virtual ~GenericWriterInterace(){}
 
 	virtual bool open(void) =0;
 	virtual bool open(const std::string output) =0;
@@ -45,10 +45,10 @@ protected:
 	Algorithm::SpinLock lock;
 };
 
-class TomahawkCalculationWriterStandardOut : public TomahawkCalculationWriterInterace{
+class WriterStandardOut : public GenericWriterInterace{
 public:
-	TomahawkCalculationWriterStandardOut(){}
-	~TomahawkCalculationWriterStandardOut(){
+	WriterStandardOut(){}
+	~WriterStandardOut(){
 		// Flush upon termination
 		this->flush();
 		this->close();
@@ -76,10 +76,10 @@ public:
 };
 
 // case file
-class TomahawkCalculationWriterFile : public TomahawkCalculationWriterInterace{
+class WriterFile : public GenericWriterInterace{
 public:
-	TomahawkCalculationWriterFile(){}
-	~TomahawkCalculationWriterFile(){
+	WriterFile(){}
+	~WriterFile(){
 		// Flush upon termination
 		this->flush();
 		this->close();
@@ -131,4 +131,4 @@ private:
 } /* namespace IO */
 } /* namespace Tomahawk */
 
-#endif /* TOMAHAWK_TOMAHAWKCALCULATIONWRITER_H_ */
+#endif /* TOMAHAWK_BASICWRITERS_H_ */

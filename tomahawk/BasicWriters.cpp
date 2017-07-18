@@ -1,4 +1,4 @@
-#include "TomahawkCalculationWriter.h"
+#include "BasicWriters.h"
 
 namespace Tomahawk {
 namespace IO{
