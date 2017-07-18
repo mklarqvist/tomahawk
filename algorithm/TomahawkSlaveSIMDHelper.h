@@ -1,8 +1,6 @@
 #ifndef ALGORITHM_TOMAHAWKSLAVESIMDHELPER_H_
 #define ALGORITHM_TOMAHAWKSLAVESIMDHELPER_H_
 
-#include "../support/simd.h"
-
 namespace Tomahawk{
 namespace Support{
 

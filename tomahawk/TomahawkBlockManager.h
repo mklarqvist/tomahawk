@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_TomahawkBlockManager_H_
 #define TOMAHAWK_TomahawkBlockManager_H_
 
-#include "../support/simd.h"
+#include "../support/simd_definitions.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "TomahawkSupport.h"
 
