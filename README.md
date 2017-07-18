@@ -51,3 +51,6 @@ tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.
  ```bash
  tomahawk view -i file.twk
  ```
+
+ ### License
+ MIT <LICENSE>
