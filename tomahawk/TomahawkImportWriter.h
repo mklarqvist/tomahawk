@@ -72,8 +72,8 @@ public:
 		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 		this->streamTomahawk << *hB;
 
-		//
-		U32 nothing = 0;
+		// Write out dummy variable for IO offset
+		U32 nothing = 0; // Dummy variable
 		size_t posOffset = this->streamTotempole.tellp(); // remember current IO position
 		this->streamTotempole.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
 

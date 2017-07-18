@@ -1,15 +1,17 @@
-# Tomahawk
+![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
 
-![screenshot](tomahawk.png)
 
+### Usage
 ### Building
 ```bash
 cd build
 make
 ```
 
-### Example
+### Examples
+Tomahawk comprises five functions: `import`, `calc`, `view`, `sort`, and `index`
+
 ```bash
 tomahawk import -i file.vcf -o outPrefix
 ```

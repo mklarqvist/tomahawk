@@ -54,11 +54,7 @@ public:
 	~TotempoleHeader(){}
 
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		///////////////
-		// Totempole
-		///////////////
-		// MAGIC | version | sample count | controller byte | blocks | largest uncompressed
-		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
+		// version | sample count | controller byte | blocks | largest uncompressed
 		stream.write(reinterpret_cast<const char*>(&header.version), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(BYTE)); // Controller byte
