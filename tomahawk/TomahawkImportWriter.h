@@ -64,20 +64,19 @@ public:
 
 	void WriteHeaders(void){
 		const U64& samples = this->vcf_header_->samples_;
-		TotempoleHeader h(samples);
+		Totempole::TotempoleHeader h(samples);
 		this->streamTotempole << h;
-		TotempoleHeaderBase* hB = reinterpret_cast<TotempoleHeaderBase*>(&h);
+		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 		this->streamTomahawk << *hB;
 
 		// Write the number of contigs
-		IO::BasicBuffer tempBuffer(65536);
 		const U32 n_contigs = this->vcf_header_->contigs_.size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
 		// Write contig data to Totempole
 		// length | n_char | chars[0 .. n_char - 1]
 		for(U32 i = 0; i < this->vcf_header_->contigs_.size(); ++i){
-			TotempoleContigBase contig(this->vcf_header_->contigs_[i].length,
+			Totempole::TotempoleContigBase contig(this->vcf_header_->contigs_[i].length,
 									   this->vcf_header_->contigs_[i].name.size(),
 									   this->vcf_header_->contigs_[i].name);
 
@@ -86,6 +85,7 @@ public:
 
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
+		IO::BasicBuffer tempBuffer(65536);
 		for(U32 i = 0; i < samples; ++i){
 			const U32 n_char = this->vcf_header_->sampleNames_[i].size();
 			tempBuffer += n_char;

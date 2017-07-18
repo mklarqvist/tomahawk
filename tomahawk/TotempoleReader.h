@@ -12,6 +12,8 @@
 #include "../helpers.h"
 #include "TotempoleEntry.h"
 #include "../algorithm/OpenHashTable.h"
+#include "../io/totempole/TotempoleContig.h"
+#include "../io/totempole/TotempoleHeader.h"
 
 namespace Tomahawk {
 
@@ -25,173 +27,10 @@ struct Interval{
 	U32 to;
 };
 
-struct TotempoleContigBase{
-	typedef TotempoleContigBase self_type;
-
-public:
-	TotempoleContigBase(const U32& bases, const U32& n_char, const std::string& name) : bases(bases), n_char(n_char), name(name){}
-	TotempoleContigBase() : bases(0), n_char(0){}
-	~TotempoleContigBase(){}
-
-	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.bases << '\t' << entry.n_char << '\t' << entry.name;
-		return stream;
-	}
-
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& base){
-		stream.write(reinterpret_cast<const char*>(&base.bases), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.n_char), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size()); // Size of largest uncompressed block
-		return(stream);
-	}
-
-	friend std::istream& operator>>(std::istream& stream, self_type& base){
-		stream.read(reinterpret_cast<char *>(&base.bases), sizeof(U32));
-		stream.read(reinterpret_cast<char *>(&base.n_char), sizeof(U32));
-		base.name.resize(base.n_char);
-		stream.read(&base.name[0], base.n_char);
-		return(stream);
-	}
-
-public:
-	U32 bases;			// length of contig
-	U32 n_char;			// number of chars
-	std::string name;	// contig name
-};
-
-struct TotempoleContig : public TotempoleContigBase{
-typedef TotempoleContig self_type;
-
-public:
-	TotempoleContig() : minPosition(0), maxPosition(0), blocksStart(0), blocksEnd(0), bases(0){}
-	~TotempoleContig(){}
-
-	friend std::ostream& operator<<(std::ostream& stream, const TotempoleContig& entry){
-		stream << entry.name << '\t' << entry.bases << '\t' << entry.minPosition << "-" << entry.maxPosition << '\t' << entry.blocksStart << "->" << entry.blocksEnd;
-		return stream;
-	}
-
-	void updateSecond(char* buffer, std::ifstream& stream){
-		this->minPosition = *reinterpret_cast<const U32*>(&buffer[0]);
-		this->maxPosition = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)]);
-		this->blocksStart = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*2]);
-		this->blocksEnd   = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*3]);
-		this->bases       = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*4]);
-	}
-
-	// Updated second when read
-	// contigID is implicit
-	U32 minPosition;	// start position of contig
-	U32 maxPosition;	// end position of contig
-	U32 blocksStart; 	// start IO-seek position of blocks
-	U32 blocksEnd;		// end IO-seek position of blocks
-
-	// Updated first when read
-	U32 bases;			// length of contig
-	std::string name;	// contig name
-};
-
-// size of TotempoleHeader struct
-
-struct TotempoleHeaderBase{
-	typedef TotempoleHeaderBase self_type;
-
-public:
-	TotempoleHeaderBase() : version(0), samples(0){}
-	TotempoleHeaderBase(const U64 samples) :
-			version(Constants::PROGRAM_VERSION),
-			samples(samples)
-		{}
-
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
-		stream.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
-		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
-		return stream;
-	}
-
-	friend std::istream& operator>>(std::istream& stream, self_type& header){
-		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
-		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
-		return(stream);
-	}
-
-public:
-	float version;	// version used to write header
-	U64 samples;	// number of samples
-};
-
-struct TotempoleHeader : public TotempoleHeaderBase{
-	typedef TotempoleHeader self_type;
-
-public:
-	TotempoleHeader() :
-		controller(0),
-		blocks(0),
-		largest_uncompressed(0),
-		offset(0)
-	{}
-
-	// This ctor is used during construction
-	// only possible when sample count is known
-	TotempoleHeader(const U64 samples) :
-		TotempoleHeaderBase(samples),
-		controller(0),
-		blocks(0),
-		largest_uncompressed(0),
-		offset(0)
-	{}
-	~TotempoleHeader(){}
-
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		///////////////
-		// Totempole
-		///////////////
-		// MAGIC | version | sample count | controller byte | blocks | offset
-		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
-		stream.write(reinterpret_cast<const char*>(&header.version), sizeof(float));
-		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
-		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(BYTE)); // Controller byte
-		// At end-of-file, reopen file as in | out | binary and seek to this position and overwrite with the correct position
-		stream.write(reinterpret_cast<const char*>(&header.blocks), sizeof(U32)); // Number of blocks in Tomahawk
-		stream.write(reinterpret_cast<const char*>(&header.largest_uncompressed), sizeof(U32)); // Size of largest uncompressed block
-		return(stream);
-	}
-
-	friend std::ostream& operator<<(std::ostream& os, const self_type& block){
-		os <<
-		"version: " << block.version << '\n' <<
-		"samples: " << block.samples << '\n' <<
-		"controller: " << std::bitset<16>(block.controller) << '\n' <<
-		"blocks: " << block.blocks << '\n' <<
-		"largest: " << block.largest_uncompressed << '\n' <<
-		"offset: " << block.offset;
-
-		return(os);
-	}
-
-	friend std::istream& operator>>(std::istream& stream, self_type& block){
-		stream.read(reinterpret_cast<char *>(&block.version), sizeof(float));
-		stream.read(reinterpret_cast<char *>(&block.samples), sizeof(U64));
-		stream.read(reinterpret_cast<char *>(&block.controller), sizeof(BYTE));
-		stream.read(reinterpret_cast<char *>(&block.blocks), sizeof(U32));
-		stream.read(reinterpret_cast<char *>(&block.largest_uncompressed), sizeof(U32));
-		stream.read(reinterpret_cast<char *>(&block.offset), sizeof(U32));
-
-		return(stream);
-	}
-
-public:
-	BYTE controller;	// controller block
-	U32 blocks;			// number of blocks in Tomahawk
-	U32 largest_uncompressed;	// largest block-size in bytes
-	U32 offset;			// IO disk offset for start of data
-};
-
 class TotempoleReader {
-	typedef TotempoleHeader headertype;
-	typedef TotempoleContigBase contig_base_type;
-	typedef TotempoleContig contig_type;
+	typedef Totempole::TotempoleHeader header_type;
+	typedef Totempole::TotempoleContigBase contig_base_type;
+	typedef Totempole::TotempoleContig contig_type;
 	typedef TotempoleEntry  entry_type;
 
 	typedef Tomahawk::Hash::HashTable<std::string, U32> hashtable;
@@ -358,8 +197,8 @@ public:
 	const U32& getLargestBlockSize(void) const{ return this->header.largest_uncompressed; }
 	const U32& getBlocks(void) const{ return this->header.blocks; }
 	const U64& getSamples(void) const{ return this->header.samples; }
-	const TotempoleContig& getContig(const U32 contigID) const{ return this->contigs[contigID]; }
-	const TotempoleHeader& getHeader(void) const{ return(this->header); }
+	const contig_type& getContig(const U32 contigID) const{ return this->contigs[contigID]; }
+	const header_type& getHeader(void) const{ return(this->header); }
 
 private:
 	inline bool Validate(std::ifstream& in) const{
@@ -415,7 +254,7 @@ private:
 	U32 filesize;
 
 	U32 n_contigs;
-	headertype header;
+	header_type header;
 
 	contig_type* contigs;
 	std::string* samples;
