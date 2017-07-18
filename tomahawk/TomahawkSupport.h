@@ -31,6 +31,7 @@ public:
 
 namespace Constants{
 
+// Dummy variables used for Twk > VCF output
 const std::string PASS("PASS");
 const std::string GT("GT");
 const std::string QUAL("100");

@@ -63,6 +63,9 @@ public:
 	}
 
 	void WriteHeaders(void){
+		this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
+		this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
+
 		const U64& samples = this->vcf_header_->samples_;
 		Totempole::TotempoleHeader h(samples);
 		this->streamTotempole << h;
@@ -91,26 +94,16 @@ public:
 
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
-		IO::BasicBuffer tempBuffer(65536);
 		for(U32 i = 0; i < samples; ++i){
 			const U32 n_char = this->vcf_header_->sampleNames_[i].size();
-			tempBuffer += n_char;
-			tempBuffer += this->vcf_header_->sampleNames_[i];
+			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
+			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames_[i][0]), n_char);
 		}
 
-		//U32 headerOffset = this->streamTotempole.tellp();
-		//headerOffset += sizeof(U32) + tempBuffer.size(); // avoid ambiguity
-		//this->streamTotempole.write(reinterpret_cast<char*>(&headerOffset), sizeof(U32)); // Offset until end of Totempole and start of header data
-
-		// Dump tempBuffer data to Totempole
-		this->streamTotempole.write(tempBuffer.data, tempBuffer.pointer);
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position
 		this->streamTotempole.seekp(posOffset); // seek to previous position
 		this->streamTotempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
 		this->streamTotempole.seekp(curPos); // seek back to current IO position
-
-		// Clean-up buffer
-		tempBuffer.deleteAll();
 	}
 
 	void WriteFinal(void){

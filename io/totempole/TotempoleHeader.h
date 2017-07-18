@@ -15,7 +15,6 @@ public:
 	{}
 
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 		stream.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
 		return stream;
@@ -58,7 +57,7 @@ public:
 		///////////////
 		// Totempole
 		///////////////
-		// MAGIC | version | sample count | controller byte | blocks | offset
+		// MAGIC | version | sample count | controller byte | blocks | largest uncompressed
 		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 		stream.write(reinterpret_cast<const char*>(&header.version), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));

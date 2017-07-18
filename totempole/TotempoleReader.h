@@ -82,26 +82,24 @@ public:
 
 		// Load header data
 		reader >> this->header;
-#if DEBUG == 1
+#if DEBUG_MODE == 1
 		std::cerr << this->header << std::endl;
 #endif
 
 
 		// Get number of contigs
 		reader.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
-#if DEBUG == 1
+#if DEBUG_MODE == 1
 		std::cerr << this->n_contigs << std::endl;
 #endif
 		this->contigs = new contig_type[this->size()];
-		contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(this->contigs);
 		for(U32 i = 0; i < this->size(); ++i){
-			reader >> contig_base[i];
-#if DEBUG == 1
-			std::cerr << contig_base[i] << std::endl;
+			contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(&this->contigs[i]);
+			reader >> *contig_base;
+#if DEBUG_MODE == 1
+			std::cerr << *contig_base << std::endl;
 #endif
 		}
-
-		exit(1);
 
 		char temp_buffer[65536];
 		this->samples = new std::string[this->getSamples()];
@@ -110,7 +108,7 @@ public:
 			const U32 length = *reinterpret_cast<const U32*>(&temp_buffer[0]);
 			reader.read(&temp_buffer[sizeof(U32)], length);
 			this->samples[i] = std::string(&temp_buffer[sizeof(U32)], length);
-#if DEBUG == 1
+#if DEBUG_MODE == 1
 			std::cerr << i << '\t' << samples[i] << std::endl;
 #endif
 		}
@@ -121,32 +119,42 @@ public:
 			return false;
 		}
 
+#if DEBUG_MODE == 1
+		std::cerr << this->n_contigs << '\t' << this->header.blocks << '\t' << this->header.samples << std::endl;
+#endif
+
 		// Populate Totempole entries
 		this->entries = new TotempoleEntry[this->getBlocks()];
 		for(U32 i = 0; i < this->getBlocks(); ++i){
 			reader >> this->entries[i];
-#if DEBUG == 1
-			std::cerr << this->entries[i] << std::endl;
+#if DEBUG_MODE == 1
+			std::cerr << i << '\t' << this->header.blocks << '\t' << this->entries[i] << std::endl;
 #endif
 		}
 
 		// Find boundaries for Totempole blocks
 		// Master index of indices
+		// Update contig data
 		U32 lastContigID = this->entries[0].contigID;
-		contigs[lastContigID].minPosition = this->entries[0].minPosition;
-		contigs[lastContigID].blocksStart = 0;
-		for(U32 i = 1; i < this->getSamples(); ++i){
+		this->contigs[lastContigID].minPosition = this->entries[0].minPosition;
+		this->contigs[lastContigID].blocksStart = 0;
+		for(U32 i = 1; i < this->getBlocks(); ++i){
 			if(lastContigID != this->entries[i].contigID){
-				contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
-				contigs[lastContigID].blocksEnd = i;
-				contigs[this->entries[i].contigID].minPosition = this->entries[i].minPosition;
-				contigs[this->entries[i].contigID].blocksStart = i;
+				this->contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
+				this->contigs[lastContigID].blocksEnd = i;
+				this->contigs[this->entries[i].contigID].minPosition = this->entries[i].minPosition;
+				this->contigs[this->entries[i].contigID].blocksStart = i;
 			}
 			lastContigID = this->entries[i].contigID;
 		}
-		const TotempoleEntry& lastEntry = this->entries[this->getSamples() - 1];
-		contigs[lastEntry.contigID].blocksEnd = this->getSamples();
-		contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
+		const TotempoleEntry& lastEntry = this->entries[this->getBlocks() - 1];
+		this->contigs[lastEntry.contigID].blocksEnd = this->getBlocks();
+		this->contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
+
+#if DEBUG_MODE == 1
+		for(U32 i = 0; i < this->size(); ++i)
+			std::cerr << this->contigs[i] << std::endl;
+#endif
 
 		// Check EOF
 		reader.read(&temp_buffer[0], Constants::eof_length*sizeof(U64));
@@ -165,7 +173,7 @@ public:
 		}
 
 		U64 totalEntries = 0;
-		for(U32 i = 0; i < this->getSamples(); ++i)
+		for(U32 i = 0; i < this->getBlocks(); ++i)
 			totalEntries += this->entries[i].variants;
 
 		if(!SILENT)

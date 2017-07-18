@@ -360,6 +360,7 @@ bool TomahawkReader::Validate(void){
 	}
 
 	if(strncmp(this->buffer_.data, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) != 0){
+		std::cerr << std::string(&this->buffer_.data[0], Constants::WRITE_HEADER_MAGIC_LENGTH);
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal tomahawk file: failed MAGIC..." << std::endl;
 		return false;
 	}

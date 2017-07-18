@@ -20,7 +20,7 @@ public:
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& base){
 		stream.write(reinterpret_cast<const char*>(&base.bases), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&base.n_char), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size()); // Size of largest uncompressed block
+		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size());
 		return(stream);
 	}
 
@@ -42,20 +42,12 @@ struct TotempoleContig : public TotempoleContigBase{
 typedef TotempoleContig self_type;
 
 public:
-	TotempoleContig() : minPosition(0), maxPosition(0), blocksStart(0), blocksEnd(0), bases(0){}
+	TotempoleContig() : minPosition(0), maxPosition(0), blocksStart(0), blocksEnd(0){}
 	~TotempoleContig(){}
 
-	friend std::ostream& operator<<(std::ostream& stream, const TotempoleContig& entry){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.name << '\t' << entry.bases << '\t' << entry.minPosition << "-" << entry.maxPosition << '\t' << entry.blocksStart << "->" << entry.blocksEnd;
 		return stream;
-	}
-
-	void updateSecond(char* buffer, std::ifstream& stream){
-		this->minPosition = *reinterpret_cast<const U32*>(&buffer[0]);
-		this->maxPosition = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)]);
-		this->blocksStart = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*2]);
-		this->blocksEnd   = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*3]);
-		this->bases       = *reinterpret_cast<const U32*>(&buffer[sizeof(U32)*4]);
 	}
 
 	// Updated second when read
@@ -64,10 +56,6 @@ public:
 	U32 maxPosition;	// end position of contig
 	U32 blocksStart; 	// start IO-seek position of blocks
 	U32 blocksEnd;		// end IO-seek position of blocks
-
-	// Updated first when read
-	U32 bases;			// length of contig
-	std::string name;	// contig name
 };
 
 }
