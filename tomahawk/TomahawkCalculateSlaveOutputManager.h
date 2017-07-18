@@ -1,6 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
 #define TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
 
+#include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
 
 //#define SLAVE_FLUSH_LIMIT	65536

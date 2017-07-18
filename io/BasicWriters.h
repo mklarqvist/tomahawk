@@ -8,7 +8,7 @@
 #include "../helpers.h"
 #include "../algorithm/spinlock.h"
 #include "../io/BasicBuffer.h"
-#include "TomahawkOutputLD.h"
+#include "../tomahawk/TomahawkOutputLD.h"
 #include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {

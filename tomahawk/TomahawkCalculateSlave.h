@@ -15,7 +15,7 @@
 #include "../algorithm/LoadBalancerBlock.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "../algorithm/TomahawkSlaveSIMDHelper.h"
-#include "BasicWriters.h"
+#include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
 
 // Method 1: None: Input-specified (default)

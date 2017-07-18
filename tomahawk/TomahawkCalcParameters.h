@@ -1,6 +1,8 @@
 #ifndef TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_
 #define TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_
 
+#include "../io/BasicWriters.h"
+
 namespace Tomahawk{
 
 // Constant
