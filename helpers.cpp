@@ -1,28 +1,10 @@
-/*
-POLYGON - Next generation sequencing quality control and preprocessing
-Copyright (C) 2015-2016, Marcus D. R. Klarqvist.
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
-
 #include <ctime>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <iostream>
 #include <sys/time.h>
+#include <regex>
 
 #include "TypeDefinitions.h"
 #include "helpers.h"
@@ -173,6 +155,42 @@ std::string MillisecondsToTimestring(const U32 ms){
 	st << sec << '.' << pad << pad2 << remainder << 's';
 
 	return st.str();
+}
+
+bool matchPositionalStringTWO(const std::string& param){
+	return(std::regex_match(param, std::regex(
+			"^"
+			"([a-zA-Z0-9_\\.\\-]+[\\$]{0,1}){0,1}"
+			"([:]{1}[0-9]+"
+			"(([eE]{1}[0-9]){1,}){0,1}"
+			"([-]{1}[0-9]+"
+			"(([eE]{1}[0-9]){1,}){0,1})?"
+			")?"
+			"$"
+	)));
+}
+
+bool parsePositionalStringTWO(std::string& param){
+	std::size_t found = param.find(',');
+	if(found != std::string::npos){
+		std::cerr << "found: " << found << '/' << param.size() << std::endl;
+		std::vector<std::string> ret = Tomahawk::Helpers::split(param, ',');
+		if(ret.size() != 2){
+			std::cerr << "illegal format" << std::endl;
+			return 1;
+		}
+		if(!matchPositionalStringTWO(ret[0])){
+			std::cerr << "failed 1 " << std::endl;
+			return false;
+		}
+		if(!matchPositionalStringTWO(ret[1])){
+			std::cerr << "failed 2 " << std::endl;
+			return false;
+		}
+		return true;
+	}
+
+	return(matchPositionalStringTWO(param));
 }
 
 }

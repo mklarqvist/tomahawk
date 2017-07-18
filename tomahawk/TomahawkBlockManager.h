@@ -350,32 +350,12 @@ public:
 		return variants;
 	}
 
-private:
-	U64 CountVariants(void);
-
 public:
 	std::vector<controller_type> blocks;
 
 	// Header
 	const TotempoleReader& header;
 };
-
-template <class T>
-U64 TomahawkBlockManager<T>::CountVariants(void){
-	U64 total = 0;
-	// Within block comparisons
-	for(U32 i = 0; i < this->size(); ++i){
-		total += (this->blocks[i].size()*this->blocks[i].size() - this->blocks[i].size()) / 2;
-	}
-
-	// Across block comparsions
-	for(U32 i = 0; i < this->size() - 1; ++i){
-		for(U32 j = i + 1; j < this->size(); ++j){
-			total += this->blocks[i].size() * this->blocks[j].size();
-		}
-	}
-	return(total);
-}
 
 
 }

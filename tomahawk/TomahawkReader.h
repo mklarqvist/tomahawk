@@ -122,6 +122,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 		return false;
 	}
 
+	// Determine byte-width of data
 	U32 readLength = 0;
 	if(blockID != this->totempole_.getBlocks() - 1)
 		readLength = this->totempole_[blockID + 1].byte_offset - this->totempole_[blockID].byte_offset;
@@ -133,14 +134,19 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 		exit(1);
 	}
 
+	// Read from start to start + byte-width
 	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
 		std::cerr << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
 		std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
 		return false;
 	}
+	// Set buffer byte-width to data loaded
 	this->buffer_.pointer = readLength;
 
-	char* data_position = &this->data_.data[this->data_.pointer]; // Keep track of position because inflate function moves pointer
+	// Keep track of position because inflate function moves pointer
+	char* data_position = &this->data_.data[this->data_.pointer];
+
+	// Inflata TGZF block
 	if(!this->gzip_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << "failed" << std::endl;
 		return false;
@@ -156,7 +162,7 @@ template <class T>
 bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 	TomahawkBlock<T> tomahawk_controller(data, this->totempole_[blockID]);
 
-	// Foreach variant in block
+	// For each variant in Tomahawk block
 	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
 		tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_);
 

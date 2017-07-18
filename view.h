@@ -202,6 +202,19 @@ int view(int argc, char** argv){
 	std::transform(end.begin(), end.end(), end.begin(), ::tolower);
 	// std::cerr << end << std::endl;
 
+	// Todo: action
+	// Parse remainder parameters
+	// Assume these parameters are contig or position values for filtering
+	for(U32 i = 2+hits; i < argc; ++i){
+		std::string param(&argv[i][0]);
+		std::cerr << i << '\t' << param << std::endl;
+
+		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
+			std::cerr << "illegal" << std::endl;
+			return 1;
+		}
+	}
+
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
 		const std::string index = input + "." + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
 
@@ -224,6 +237,8 @@ int view(int argc, char** argv){
 
 		tomahawk.SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
 		tomahawk.outputBlocks();
+
+
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::IO::TomahawkOutputReader reader;
 		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
@@ -235,19 +250,6 @@ int view(int argc, char** argv){
 		//if(!filter.setFilterMGF(minAlleles)) return false;
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
-
-		// Todo: action
-		// Parse remainder parameters
-		// Assume these parameters are contig or position values for filtering
-		for(U32 i = 2+hits; i < argc; ++i){
-			std::string param(&argv[i][0]);
-			std::cerr << i << '\t' << param << std::endl;
-
-			if(!reader.parsePositionalString(param)){
-				std::cerr << "illegal" << std::endl;
-				return 1;
-			}
-		}
 
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;
