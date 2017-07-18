@@ -8,6 +8,7 @@ RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include totempole/subdir.mk
 -include tomahawk/subdir.mk
 -include third_party/zlib/subdir.mk
 -include third_party/subdir.mk

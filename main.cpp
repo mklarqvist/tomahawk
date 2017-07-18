@@ -1,4 +1,4 @@
-/*  main.cpp
+/*
 
     Copyright (C) 2016-2017 Genome Research Ltd.
     Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
@@ -20,6 +20,8 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
+
+#define DEBUG_MODE	1
 
 #include <iostream>
 #include <getopt.h>

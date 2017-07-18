@@ -2,7 +2,7 @@
 
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
-#include "tomahawk/TotempoleReader.h"
+#include "totempole/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
 
 int view(int argc, char** argv){

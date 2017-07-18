@@ -9,12 +9,12 @@
 #include "../io/vcf/VCFHeader.h"
 #include "../io/BasicBuffer.h"
 #include "../io/GZController.h"
-#include "TotempoleEntry.h"
+#include "../totempole/TotempoleEntry.h"
 #include "TomahawkEntryMeta.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
 #include "../algorithm/compression/ByteReshuffle.h"
 
-#include "../tomahawk/TotempoleReader.h"
+#include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {
 
@@ -69,16 +69,22 @@ public:
 		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 		this->streamTomahawk << *hB;
 
+		//
+		U32 nothing = 0;
+		size_t posOffset = this->streamTotempole.tellp(); // remember current IO position
+		this->streamTotempole.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
+
 		// Write the number of contigs
 		const U32 n_contigs = this->vcf_header_->contigs_.size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
+
 
 		// Write contig data to Totempole
 		// length | n_char | chars[0 .. n_char - 1]
 		for(U32 i = 0; i < this->vcf_header_->contigs_.size(); ++i){
 			Totempole::TotempoleContigBase contig(this->vcf_header_->contigs_[i].length,
-									   this->vcf_header_->contigs_[i].name.size(),
-									   this->vcf_header_->contigs_[i].name);
+											      this->vcf_header_->contigs_[i].name.size(),
+											      this->vcf_header_->contigs_[i].name);
 
 			this->streamTotempole << contig;
 		}
@@ -92,14 +98,18 @@ public:
 			tempBuffer += this->vcf_header_->sampleNames_[i];
 		}
 
-		U32 headerOffset = this->streamTotempole.tellp();
-		headerOffset += sizeof(U32) + tempBuffer.size(); // avoid ambiguity
-		this->streamTotempole.write(reinterpret_cast<char*>(&headerOffset), sizeof(U32)); // Offset until end of totempole and start of header data
+		//U32 headerOffset = this->streamTotempole.tellp();
+		//headerOffset += sizeof(U32) + tempBuffer.size(); // avoid ambiguity
+		//this->streamTotempole.write(reinterpret_cast<char*>(&headerOffset), sizeof(U32)); // Offset until end of Totempole and start of header data
 
 		// Dump tempBuffer data to Totempole
 		this->streamTotempole.write(tempBuffer.data, tempBuffer.pointer);
+		U32 curPos = this->streamTotempole.tellp(); // remember current IO position
+		this->streamTotempole.seekp(posOffset); // seek to previous position
+		this->streamTotempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
+		this->streamTotempole.seekp(curPos); // seek back to current IO position
 
-		// cleanup
+		// Clean-up buffer
 		tempBuffer.deleteAll();
 	}
 
@@ -110,7 +120,7 @@ public:
 			this->streamTomahawk.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
 		}
 
-		// Re-open file and write block counts and offset
+		// Re-open file and overwrite block counts and offset
 		const U32 shift = Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH + sizeof(float) + sizeof(U64) + sizeof(BYTE);
 		this->streamTotempole.flush();
 		std::fstream streamTemp(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios_base::binary | std::ios_base::out | std::ios_base::in);

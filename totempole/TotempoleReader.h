@@ -7,7 +7,7 @@
 #include <iostream>
 #include <algorithm>
 
-#include "MagicConstants.h"
+#include "../tomahawk/MagicConstants.h"
 #include "../TypeDefinitions.h"
 #include "../helpers.h"
 #include "TotempoleEntry.h"
@@ -82,27 +82,37 @@ public:
 
 		// Load header data
 		reader >> this->header;
+#if DEBUG == 1
+		std::cerr << this->header << std::endl;
+#endif
+
 
 		// Get number of contigs
 		reader.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
-
+#if DEBUG == 1
+		std::cerr << this->n_contigs << std::endl;
+#endif
 		this->contigs = new contig_type[this->size()];
 		contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(this->contigs);
 		for(U32 i = 0; i < this->size(); ++i){
-			//reader.read(&temp_buffer[0], sizeof(U32)*2);
-			//this->contigs[i].updateFirst(temp_buffer, reader);
 			reader >> contig_base[i];
+#if DEBUG == 1
 			std::cerr << contig_base[i] << std::endl;
+#endif
 		}
 
+		exit(1);
+
 		char temp_buffer[65536];
-		this->samples = new std::string[this->header.samples];
-		for(U32 i = 0; i < this->header.samples; ++i){
+		this->samples = new std::string[this->getSamples()];
+		for(U32 i = 0; i < this->getSamples(); ++i){
 			reader.read(&temp_buffer[0], sizeof(U32));
 			const U32 length = *reinterpret_cast<const U32*>(&temp_buffer[0]);
 			reader.read(&temp_buffer[sizeof(U32)], length);
 			this->samples[i] = std::string(&temp_buffer[sizeof(U32)], length);
-			//std::cerr << i << '\t' << samples[i] << std::endl;
+#if DEBUG == 1
+			std::cerr << i << '\t' << samples[i] << std::endl;
+#endif
 		}
 
 		if(reader.tellg() != this->header.offset){
@@ -112,10 +122,12 @@ public:
 		}
 
 		// Populate Totempole entries
-		this->entries = new TotempoleEntry[this->header.blocks];
-		for(U32 i = 0; i < this->header.blocks; ++i){
+		this->entries = new TotempoleEntry[this->getBlocks()];
+		for(U32 i = 0; i < this->getBlocks(); ++i){
 			reader >> this->entries[i];
-			//std::cerr << this->entries[i] << std::endl;
+#if DEBUG == 1
+			std::cerr << this->entries[i] << std::endl;
+#endif
 		}
 
 		// Find boundaries for Totempole blocks
@@ -123,7 +135,7 @@ public:
 		U32 lastContigID = this->entries[0].contigID;
 		contigs[lastContigID].minPosition = this->entries[0].minPosition;
 		contigs[lastContigID].blocksStart = 0;
-		for(U32 i = 1; i < this->header.blocks; ++i){
+		for(U32 i = 1; i < this->getSamples(); ++i){
 			if(lastContigID != this->entries[i].contigID){
 				contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
 				contigs[lastContigID].blocksEnd = i;
@@ -132,8 +144,8 @@ public:
 			}
 			lastContigID = this->entries[i].contigID;
 		}
-		const TotempoleEntry& lastEntry = this->entries[this->header.blocks - 1];
-		contigs[lastEntry.contigID].blocksEnd = this->header.blocks;
+		const TotempoleEntry& lastEntry = this->entries[this->getSamples() - 1];
+		contigs[lastEntry.contigID].blocksEnd = this->getSamples();
 		contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
 
 		// Check EOF
@@ -148,19 +160,19 @@ public:
 		}
 
 		if(!SILENT){
-			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->header.blocks)) << " blocks..." << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->size())) << " contigs and " << Helpers::NumberThousandsSeparator(std::to_string(this->header.samples)) << " samples..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->getSamples())) << " blocks..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->size())) << " contigs and " << Helpers::NumberThousandsSeparator(std::to_string(this->getSamples())) << " samples..." << std::endl;
 		}
 
 		U64 totalEntries = 0;
-		for(U32 i = 0; i < this->header.blocks; ++i)
+		for(U32 i = 0; i < this->getSamples(); ++i)
 			totalEntries += this->entries[i].variants;
 
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(totalEntries)) << " variants..." << std::endl;
 
 		// Parse
-		if(!this->Parse()){
+		if(!this->BuildHashTables()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not parse Totempole..." << std::endl;
 			return false;
 		}
@@ -210,13 +222,6 @@ private:
 		return false;
 	}
 
-	bool Parse(){
-		if(!this->BuildHashTables())
-			return false;
-
-		return true;
-	}
-
 	bool BuildHashTables(void){
 		if(this->size() < 1024)
 			this->contigsHashTable = new hashtable(1024);
@@ -232,13 +237,13 @@ private:
 			this->contigsHashTable->SetItem(&this->contigs[i].name[0], &this->contigs[i].name, i, this->contigs[i].name.size());
 		}
 
-		if(this->header.samples < 1024)
+		if(this->getSamples() < 1024)
 			this->sampleHashTable = new hashtable(1024);
 		else
-			this->sampleHashTable = new hashtable(this->header.samples * 2);
+			this->sampleHashTable = new hashtable(this->getSamples() * 2);
 
 		retValue = 0;
-		for(U32 i = 0; i < this->header.samples; ++i){
+		for(U32 i = 0; i < this->getSamples(); ++i){
 			if(this->sampleHashTable->GetItem(&this->samples[i][0], &this->samples[i], retValue, this->samples[i].size())){
 				std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated name! Impossible!" << std::endl;
 				return false;

@@ -1,10 +1,3 @@
-/*
- * TotempoleHeader.h
- *
- *  Created on: 18 Jul 2017
- *      Author: mk21
- */
-
 #ifndef TOTEMPOLEHEADER_H_
 #define TOTEMPOLEHEADER_H_
 
@@ -17,9 +10,9 @@ struct TotempoleHeaderBase{
 public:
 	TotempoleHeaderBase() : version(0), samples(0){}
 	TotempoleHeaderBase(const U64 samples) :
-			version(Constants::PROGRAM_VERSION),
-			samples(samples)
-		{}
+						version(Constants::PROGRAM_VERSION),
+						samples(samples)
+	{}
 
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
 		stream.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
@@ -108,8 +101,5 @@ public:
 
 }
 }
-
-
-
 
 #endif /* TOTEMPOLEHEADER_H_ */

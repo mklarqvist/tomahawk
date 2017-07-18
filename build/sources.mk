@@ -33,4 +33,5 @@ math \
 third_party \
 third_party/zlib \
 tomahawk \
+totempole \
 

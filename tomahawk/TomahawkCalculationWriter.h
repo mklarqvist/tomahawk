@@ -9,7 +9,7 @@
 #include "../algorithm/spinlock.h"
 #include "../io/BasicBuffer.h"
 #include "TomahawkOutputLD.h"
-#include "../tomahawk/TotempoleReader.h"
+#include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {
 namespace IO{

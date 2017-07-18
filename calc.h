@@ -2,7 +2,7 @@
 
 #include "utility.h"
 #include "tomahawk/MagicConstants.h"
-#include "tomahawk/TotempoleReader.h"
+#include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
 #define CALC_DEFAULT_MINR2 0.1
