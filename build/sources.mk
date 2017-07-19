@@ -23,12 +23,12 @@ CPP_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-algorithm \
 algorithm/compression \
 . \
 io \
 io/TomahawkOutput \
 io/vcf \
+math \
 third_party \
 third_party/zlib \
 tomahawk \

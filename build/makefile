@@ -12,11 +12,11 @@ RM := rm
 -include tomahawk/subdir.mk
 -include third_party/zlib/subdir.mk
 -include third_party/subdir.mk
+-include math/subdir.mk
 -include io/vcf/subdir.mk
 -include io/TomahawkOutput/subdir.mk
 -include io/subdir.mk
 -include algorithm/compression/subdir.mk
--include algorithm/subdir.mk
 -include subdir.mk
 -include objects.mk
 
