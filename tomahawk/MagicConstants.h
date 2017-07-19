@@ -26,9 +26,11 @@ const std::string OUTPUT_LD_SORT_INDEX_SUFFIX = "toi";
 // Headers
 const char* const WRITE_HEADER_MAGIC = "TOMAHAWK\1";
 const char* const WRITE_HEADER_INDEX_MAGIC = "TOTEMPOLE\1";
+const char* const WRITE_HEADER_LD_MAGIC = "TOMAHAWK~OUTPUT\1";
 const char* const WRITE_HEADER_LD_SORT_MAGIC = "TOMAHAWK~OUTPUT~INDEX\1";
 const U16 WRITE_HEADER_MAGIC_LENGTH = 9;
 const U16 WRITE_HEADER_MAGIC_INDEX_LENGTH = 10;
+const U16 WRITE_HEADER_LD_MAGIC_LENGTH = 16;
 const U16 WRITE_HEADER_LD_SORT_MAGIC_LENGTH = 22;
 
 // MAGIC | version | sample count | controller byte | number of blocks | offset

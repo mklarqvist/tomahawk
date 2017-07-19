@@ -68,6 +68,11 @@ public:
 	void setDetailedProgress(const bool yes);
 
 private:
+	bool WriteTwoHeader(void);
+	bool WriteTwoHeaderNatural(void);
+	bool WriteTwoHeaderBinary(void);
+
+private:
 	bool __CalculateWrapper();
 	void DetermineBitWidth(void);
 	U64 GetUncompressedSizes(std::vector<U32>& blocks);
@@ -279,6 +284,9 @@ bool TomahawkReader::__Calculate(){
 	// Setup front-end interface
 	Interface::Timer timer;
 	timer.Start();
+
+	// Write output header
+	this->WriteTwoHeader();
 
 	// Begin
 	for(U32 i = 0; i < this->threads; ++i)

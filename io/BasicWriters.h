@@ -10,11 +10,11 @@
 #include "../io/BasicBuffer.h"
 #include "../tomahawk/TomahawkOutputLD.h"
 #include "../totempole/TotempoleReader.h"
+#include "../tomahawk/MagicConstants.h"
 
 namespace Tomahawk {
 namespace IO{
 
-// temp
 class GenericWriterInterace{
 protected:
 	typedef Support::TomahawkOutputLD helper_type;
@@ -36,9 +36,7 @@ public:
 
 	virtual void write(const char* data, const U32 length) =0;
 
-	// Header output
-	virtual bool writeHeader(void) =0;
-	virtual bool writeHeader(const totempole_type& totempole) =0;
+	virtual std::ostream& getStream(void) =0;
 
 	virtual void flush(void) =0;
 	virtual bool close(void) =0;
@@ -58,14 +56,12 @@ public:
 
 	bool open(void){ return true; }
 	bool open(const std::string output){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot set output filename when destination is standard out..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot set filename when destination is standard out..." << std::endl;
 		return false;
 	}
 	void flush(void){ std::cout.flush(); }
 	inline bool close(void){ return true; }
-
-	bool writeHeader(void){ return false; }
-	bool writeHeader(const totempole_type& totempole){ return false; }
+	inline std::ostream& getStream(void){ return(std::cout); }
 
 	void write(const char* data, const U32 length){
 		this->lock.lock();
@@ -116,9 +112,7 @@ public:
 		return true;
 	}
 
-	bool writeHeader(void){ return false; }
-	bool writeHeader(const totempole_type& totempole){ return false; }
-
+	inline std::ostream& getStream(void){ return(this->stream); }
 	inline void flush(void){ this->stream.flush(); }
 	inline bool close(void){ this->stream.close(); return true; }
 

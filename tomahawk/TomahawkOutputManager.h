@@ -6,7 +6,7 @@
 #include "../io/GZController.h"
 
 //#define SLAVE_FLUSH_LIMIT	65536
-#define SLAVE_FLUSH_LIMIT	10000000
+#define SLAVE_FLUSH_LIMIT	10000000	// 10 MB default flush limit
 //#define SLAVE_FLUSH_LIMIT	5000
 
 namespace Tomahawk{
@@ -25,15 +25,16 @@ struct TomahawkOutputManager{
 
 public:
 	TomahawkOutputManager(writer_type& writer,
-										const writer_type::compression type) :
-		writer_output_type(type),
+						  const writer_type::compression type) :
 		outCount(0),
 		progressCount(0),
 		function(type == writer_type::compression::natural ? &self_type::AddNatural : &self_type::AddBinary),
 		writer(writer),
 		buffer(2*SLAVE_FLUSH_LIMIT),
 		sprintf_buffer(new char[255])
-	{}
+	{
+
+	}
 
 	~TomahawkOutputManager(){
 		this->Finalise();
@@ -135,19 +136,18 @@ private:
 				std::cerr << "failed deflate" << std::endl;
 				exit(1);
 			}
-			this->writer << this->compressor.buffer_;
+			this->writer << compressor.buffer_;
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
 	}
 
-	const writer_type::compression writer_output_type;
-	U64 outCount;		// lines written
-	U32 progressCount;	// lines added since last flush
+	U64 outCount;			// lines written
+	U32 progressCount;		// lines added since last flush
 	outFunction function;	// add function pointer
 	writer_type& writer;	// writer interface
 	buffer_type buffer;		// internal buffer
-	GZController compressor; // compressor
+	GZController compressor;// compressor
 	char* sprintf_buffer;	// special buffer used for sprintf writing scientific output in natural mode
 };
 

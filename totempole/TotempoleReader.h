@@ -32,7 +32,6 @@ class TotempoleReader {
 	typedef Totempole::TotempoleContigBase contig_base_type;
 	typedef Totempole::TotempoleContig contig_type;
 	typedef TotempoleEntry  entry_type;
-
 	typedef Tomahawk::Hash::HashTable<std::string, U32> hashtable;
 
 public:
@@ -49,6 +48,7 @@ public:
 	inline const entry_type& operator[](const U32 p) const{ return this->entries[p]; }
 	inline const contig_type& getContig(const U32 contigID) const{ return this->contigs[contigID]; }
 	inline const header_type& getHeader(void) const{ return(this->header); }
+	inline const contig_base_type* getContigBase(const U32 contigID) const{ return(reinterpret_cast<const contig_base_type*>(&this->contigs[contigID])); }
 
 private:
 	bool Validate(std::ifstream& in) const;
