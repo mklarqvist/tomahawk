@@ -22,6 +22,7 @@ public:
 
 	void Clear();
 	bool Inflate(buffer_type& input, buffer_type& output) const;
+	bool Deflate(buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
 	U32 InflateSize(buffer_type& input) const;
 

@@ -91,12 +91,8 @@ bool GZController::Inflate(buffer_type& input, buffer_type& output) const{
 	return(true);
 }
 
-bool GZController::Deflate(buffer_type& meta, buffer_type& rle){
-	// initialize the gzip header
-	//char* buffer = new char[input_length + 10];
-
-	meta += rle;
-	this->buffer_.resize(meta);
+bool GZController::Deflate(buffer_type& buffer){
+	this->buffer_.resize(buffer);
 
 	memset(this->buffer_.data, 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
 
@@ -119,8 +115,8 @@ bool GZController::Deflate(buffer_type& meta, buffer_type& rle){
     z_stream zs;
     zs.zalloc    = NULL;
     zs.zfree     = NULL;
-    zs.next_in   = (Bytef*)meta.data;
-    zs.avail_in  = meta.pointer;
+    zs.next_in   = (Bytef*)buffer.data;
+    zs.avail_in  = buffer.pointer;
     zs.next_out  = (Bytef*)&this->buffer_.data[Constants::TGZF_BLOCK_HEADER_LENGTH];
     zs.avail_out = this->buffer_.width -
                    Constants::TGZF_BLOCK_HEADER_LENGTH -
@@ -176,18 +172,20 @@ bool GZController::Deflate(buffer_type& meta, buffer_type& rle){
 
 	// store the CRC32 checksum
 	U32 crc = crc32(0, NULL, 0);
-	crc = crc32(crc, (Bytef*)meta.data, meta.pointer);
+	crc = crc32(crc, (Bytef*)buffer.data, buffer.pointer);
 	U32* c = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 8]);
 	*c = crc;
 	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 4]);
-	*uncompressed = meta.pointer; // Store uncompressed length
+	*uncompressed = buffer.pointer; // Store uncompressed length
 
-	//std::cerr << *uncompressed << std::endl;
-	//this->buffer_.data[compressedLength - 8] = crc;
-	//this->buffer_.data[compressedLength - 4] = meta.pointer; // uncompressed size
 	this->buffer_.pointer = compressedLength;
 
 	return true;
+}
+
+bool GZController::Deflate(buffer_type& meta, buffer_type& rle){
+	meta += rle;
+	return(this->Deflate(meta));
 }
 
 }

@@ -3,12 +3,14 @@
 
 #include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
+#include "../io/GZController.h"
 
 //#define SLAVE_FLUSH_LIMIT	65536
 #define SLAVE_FLUSH_LIMIT	10000000
 //#define SLAVE_FLUSH_LIMIT	5000
 
 namespace Tomahawk{
+namespace IO {
 
 template <class T>
 struct TomahawkOutputManager{
@@ -51,15 +53,13 @@ public:
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
 
 	template <class K>
-	self_type& operator<<(const K& data){
+	inline self_type& operator<<(const K& data){
 		this->buffer += data;
 		return(*this);
 	}
 
-	void flushIfFull(void){
+	inline void flushIfFull(void){
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
-			// Move to writer
-			//std::cout.write(&this->outstreamBuffer.data[0], this->outstreamBuffer.size());
 			this->writer << this->buffer;
 			this->buffer.reset();
 		}
@@ -131,21 +131,27 @@ private:
 		++this->progressCount;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
-			this->writer << this->buffer;
+			if(!this->compressor.Deflate(this->buffer)){
+				std::cerr << "failed deflate" << std::endl;
+				exit(1);
+			}
+			this->writer << this->compressor.buffer_;
 			this->buffer.reset();
+			this->compressor.Clear();
 		}
 	}
 
 	const writer_type::compression writer_output_type;
-	U64 outCount;
-	U32 progressCount;
-	outFunction function;
-	writer_type& writer;
-	buffer_type buffer;
-	char* sprintf_buffer;
+	U64 outCount;		// lines written
+	U32 progressCount;	// lines added since last flush
+	outFunction function;	// add function pointer
+	writer_type& writer;	// writer interface
+	buffer_type buffer;		// internal buffer
+	GZController compressor; // compressor
+	char* sprintf_buffer;	// special buffer used for sprintf writing scientific output in natural mode
 };
 
-
+}
 }
 
 #endif /* TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_ */

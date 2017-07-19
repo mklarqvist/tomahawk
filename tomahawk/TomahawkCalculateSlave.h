@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cmath>
 
+#include "../support/simd_definitions.h"
 #include "../algorithm/spinlock.h"
 #include "TomahawkOutputLD.h"
 #include "../interface/ProgressBar.h"
@@ -177,7 +178,7 @@ class TomahawkCalculateSlave{
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
-	typedef TomahawkOutputManager<T> output_manager_type;
+	typedef IO::TomahawkOutputManager<T> output_manager_type;
 	typedef IO::GenericWriterInterace writer_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TomahawkBlockPackedPair<> simd_pair;
