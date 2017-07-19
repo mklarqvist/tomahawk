@@ -42,66 +42,66 @@ bool TomahawkReader::SetR2Threshold(const double min, const double max){
 		return true;
 	}
 
-	bool TomahawkReader::SetMinimumAlleles(const U64 min){
-		this->parameters.minimum_alleles = min;
-		return true;
-	}
+bool TomahawkReader::SetMinimumAlleles(const U64 min){
+	this->parameters.minimum_alleles = min;
+	return true;
+}
 
-	bool TomahawkReader::SetThreads(const S32 threads){
-		if(threads <= 0){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid number of threads: " << threads << std::endl;
+bool TomahawkReader::SetThreads(const S32 threads){
+	if(threads <= 0){
+		std::cerr << Helpers::timestamp("ERROR") << "Invalid number of threads: " << threads << std::endl;
+		return false;
+	}
+	this->threads = threads;
+	return true;
+}
+
+void TomahawkReader::SetPhased(const bool phased){
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG") << "Forcing phasing of all variants: " << (phased ? "Phased..." : "Unphased...") << std::endl;
+
+	if(phased)
+		this->parameters.force = parameter_type::phasedFunction;
+	else
+		this->parameters.force = parameter_type::unphasedFunction;
+}
+
+bool TomahawkReader::SetPThreshold(const double P){
+		if(P > 1 || P < 0){
+			std::cerr << Helpers::timestamp("ERROR") << "Invalid P-value threshold: " << P << std::endl;
 			return false;
 		}
-		this->threads = threads;
+		this->parameters.P_threshold = P;
 		return true;
 	}
 
-	void TomahawkReader::SetPhased(const bool phased){
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG") << "Forcing phasing of all variants: " << (phased ? "Phased..." : "Unphased...") << std::endl;
+bool TomahawkReader::OpenWriter(void){
+	if(this->writer == nullptr)
+		this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
 
-		if(phased)
-			this->parameters.force = parameter_type::phasedFunction;
-		else
-			this->parameters.force = parameter_type::unphasedFunction;
-	}
+	return(this->writer->open());
+}
 
-	bool TomahawkReader::SetPThreshold(const double P){
-			if(P > 1 || P < 0){
-				std::cerr << Helpers::timestamp("ERROR") << "Invalid P-value threshold: " << P << std::endl;
-				return false;
-			}
-			this->parameters.P_threshold = P;
-			return true;
-		}
 
-	bool TomahawkReader::OpenWriter(void){
-		if(this->writer == nullptr)
+bool TomahawkReader::OpenWriter(const std::string destination){
+	if(this->writer == nullptr){
+		if(destination == "-"){
 			this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
-
-		return(this->writer->open());
-	}
-
-
-	bool TomahawkReader::OpenWriter(const std::string destination){
-		if(this->writer == nullptr){
-			if(destination == "-"){
-				this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
-				return(this->writer->open());
-			}
-			this->SelectWriterOutputType(IO::GenericWriterInterace::type::file);
+			return(this->writer->open());
 		}
-
-		return(this->writer->open(destination));
+		this->SelectWriterOutputType(IO::GenericWriterInterace::type::file);
 	}
 
-	void TomahawkReader::setDetailedProgress(const bool yes){
-		if(yes){
-			this->silent = false;
-			this->progress.SetDetailed(true);
-		} else
-			this->progress.SetDetailed(false);
-	}
+	return(this->writer->open(destination));
+}
+
+void TomahawkReader::setDetailedProgress(const bool yes){
+	if(yes){
+		this->silent = false;
+		this->progress.SetDetailed(true);
+	} else
+		this->progress.SetDetailed(false);
+}
 
 bool TomahawkReader::Open(const std::string input){
 	if(input.size() == 0){

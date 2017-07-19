@@ -7,6 +7,15 @@
 namespace Tomahawk {
 namespace VCF{
 
+class VariantParser{
+public:
+	VariantParser();
+	virtual ~VariantParser();
+
+	virtual bool getLine(void) =0;
+	virtual bool runLengthEncode() =0;
+};
+
 class VCFParser {
 	typedef VCFParser selfType;
 	typedef Tomahawk::reader& readerType;

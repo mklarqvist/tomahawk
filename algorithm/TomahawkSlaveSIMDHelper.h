@@ -4,6 +4,8 @@
 namespace Tomahawk{
 namespace Support{
 
+#include "../support/simd_definitions.h"
+
 template <int Y = SIMD_ALIGNMENT>
 struct TomahawkSlaveSIMDHelper{
 public:

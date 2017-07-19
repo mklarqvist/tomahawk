@@ -10,13 +10,13 @@
 #include "TomahawkOutputLD.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
-#include "TomahawkCalculateSlaveOutputManager.h"
 #include "../algorithm/FisherTest.h"
 #include "../algorithm/LoadBalancerBlock.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "../algorithm/TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
+#include "TomahawkOutputManager.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -177,7 +177,7 @@ class TomahawkCalculateSlave{
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
-	typedef TomahawkCalculateSlaveOutputManager<T> output_manager_type;
+	typedef TomahawkOutputManager<T> output_manager_type;
 	typedef IO::GenericWriterInterace writer_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TomahawkBlockPackedPair<> simd_pair;

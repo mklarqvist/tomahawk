@@ -7,7 +7,7 @@ namespace Tomahawk {
 namespace Support{
 
 struct TomahawkOutputLD{
-
+public:
 	TomahawkOutputLD();
 	~TomahawkOutputLD();
 
@@ -99,6 +99,7 @@ struct TomahawkOutputLD{
 		return(max2);
 	}
 
+public:
 	U16 controller;				// FLAG byte
 	float R2;					// R squared
 	float D;					// D

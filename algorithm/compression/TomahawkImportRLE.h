@@ -5,113 +5,82 @@
 #include <bitset>
 
 #include "../FisherTest.h"
+#include "RunLengthEncoding.h"
 
 namespace Tomahawk{
 namespace Algorithm{
 
-
-template <class T>
-int static inline PACK3(const BYTE& ref, char* target, T& length){
-	if(length <= 7){
-		*target++ = 0 | ((ref & 15) << 3) | (length & 7); // highest bit is 0
-		return 1;
-	}
-
-	char* target0 = target;
-	*target++ = 128 | ((ref & 15) << 3) | (length & 7);
-	length >>= 3;
-
-	while(true){
-		if(length <= 7){
-			*target++ = 0 | (length & 127); // highest bit is 0
-			length >>= 7;
-			break;
-		}
-
-		*target++ = 128 | (length & 127);
-		length >>= 7;
-	}
-	return(target - target0);
-}
-
-template <class T>
-int static inline UNPACK3(char* target, T& length, BYTE& ref){
-	if((*target & 128) == 0){
-		length = *target & 7;
-		ref = *target >> 3;
-		return 1;
-	}
-
-	char* target0 = target;
-	length = *target & 7;
-	ref = (*target >> 3) & 15;
-	++target;
-	U32 offset = 3;
-
-	while(true){
-		length |= (*target & 127) << offset;
-		offset += 7;
-
-		if((*target & 128) == 0) break;
-		++target;
-	}
-
-	return(target-target0);
-}
-
+// Todo: These should all be moved to VCF or BCF entry class
 struct TomahawkImportRLEHelper{
 	typedef TomahawkImportRLEHelper self_type;
 
 	TomahawkImportRLEHelper(const U64 expectedSamples) :
 		MAF(0),
+		MGF(0),
 		HWE_P(0),
 		missingValues(0),
 		phased(false),
 		expectedSamples(expectedSamples),
 		fisherTable(1)
 	{
-		memset(&this->counts[0], 0, sizeof(U64)*16);
+		memset(&this->countsGenotypes[0], 0, sizeof(U64)*16);
+		memset(&this->countsAlleles[0],   0, sizeof(U64)*3);
 	}
 	~TomahawkImportRLEHelper(){}
 
-	U64& operator[](const U32& p){ return(this->counts[p]); }
+	U64& operator[](const U32& p){ return(this->countsGenotypes[p]); }
 
-	inline void reset(){ counts[0] = 0; counts[1] = 0; counts[4] = 0; counts[5] = 0; }
+	inline void reset(){
+		this->countsGenotypes[0] = 0;
+		this->countsGenotypes[1] = 0;
+		this->countsGenotypes[4] = 0;
+		this->countsGenotypes[5] = 0;
+		this->countsAlleles[0]   = 0; // p
+		this->countsAlleles[1]   = 0; // q
+		this->countsAlleles[2]   = 0; // missing
+	}
 	inline const bool& hasMissing(void) const{ return(this->missingValues); }
 
-	void calculateMAF(void){
+	double calculateMAF(void){
+		if(this->countsAlleles[0] > this->countsAlleles[1])
+			return(this->countsAlleles[1]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
+		else
+			return(this->countsAlleles[0]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
+	}
+
+	void calculateMGF(void){
 		// Find the largest non-missing value
 		U64 curMax = 0;
 		U64* target; // To compare pointer address
-		if(this->counts[0] > curMax){
-			curMax = this->counts[0];
-			target = &this->counts[0];
+		if(this->countsGenotypes[0] > curMax){
+			curMax = this->countsGenotypes[0];
+			target = &this->countsGenotypes[0];
 		}
-		if(this->counts[1] > curMax){
-			curMax = this->counts[1];
-			target = &this->counts[1];
+		if(this->countsGenotypes[1] > curMax){
+			curMax = this->countsGenotypes[1];
+			target = &this->countsGenotypes[1];
 		}
-		if(this->counts[4] > curMax){
-			curMax = this->counts[4];
-			target = &this->counts[4];
+		if(this->countsGenotypes[4] > curMax){
+			curMax = this->countsGenotypes[4];
+			target = &this->countsGenotypes[4];
 		}
-		if(this->counts[5] > curMax){
-			curMax = this->counts[5];
-			target = &this->counts[5];
+		if(this->countsGenotypes[5] > curMax){
+			curMax = this->countsGenotypes[5];
+			target = &this->countsGenotypes[5];
 		}
 
 		// Find next largest non-missing value
 		U64 curMax2 = 0;
-		if(this->counts[0] >= curMax2 && &this->counts[0] != target)
-			curMax2 = this->counts[0];
-		if(this->counts[1] >= curMax2 && &this->counts[1] != target)
-			curMax2 = this->counts[1];
-		if(this->counts[4] >= curMax2 && &this->counts[4] != target)
-			curMax2 = this->counts[4];
-		if(this->counts[5] >= curMax2 && &this->counts[5] != target)
-			curMax2 = this->counts[5];
+		if(this->countsGenotypes[0] >= curMax2 && &this->countsGenotypes[0] != target)
+			curMax2 = this->countsGenotypes[0];
+		if(this->countsGenotypes[1] >= curMax2 && &this->countsGenotypes[1] != target)
+			curMax2 = this->countsGenotypes[1];
+		if(this->countsGenotypes[4] >= curMax2 && &this->countsGenotypes[4] != target)
+			curMax2 = this->countsGenotypes[4];
+		if(this->countsGenotypes[5] >= curMax2 && &this->countsGenotypes[5] != target)
+			curMax2 = this->countsGenotypes[5];
 
-		this->MAF = (double)curMax2/this->expectedSamples;
+		this->MGF = (double)curMax2/this->expectedSamples;
 	}
 
 	void determinePhase(const char& separator){
@@ -127,7 +96,7 @@ struct TomahawkImportRLEHelper{
 
 	void calculateHardyWeinberg(void){
 		// Total number of non-missing genotypes
-		const U64 totalValidGenotypes = this->counts[0] + this->counts[1] + this->counts[4] + this->counts[5];
+		const U64 totalValidGenotypes = this->countsGenotypes[0] + this->countsGenotypes[1] + this->countsGenotypes[4] + this->countsGenotypes[5];
 
 		// If total valid genotypes is not equal to all the individuals in a line
 		// trigger missing values flag
@@ -143,14 +112,14 @@ struct TomahawkImportRLEHelper{
 		//
 		// P is therefore: 2*{0} + {1} + {4} / 2*{0,1,4,5}
 		// Q is therefore: 2*{5} + {1} + {4} / 2*{0,1,4,5}
-		const double p = ((double)2*this->counts[0]+this->counts[1]+this->counts[4])/(2*totalValidGenotypes);
-		const double q = ((double)this->counts[1]+this->counts[4]+2*this->counts[5])/(2*totalValidGenotypes);
+		const double p = ((double)2*this->countsGenotypes[0]+this->countsGenotypes[1]+this->countsGenotypes[4])/(2*totalValidGenotypes);
+		const double q = ((double)this->countsGenotypes[1]+this->countsGenotypes[4]+2*this->countsGenotypes[5])/(2*totalValidGenotypes);
 		const double pp = p*p*totalValidGenotypes;
 		const double pq = 2*p*q*totalValidGenotypes;
 		const double qq = q*q*totalValidGenotypes;
-		double ppCV = pow(this->counts[0] - pp,2)/pp;
-		double pqCV = pow((this->counts[1] + this->counts[4]) - pq,2)/pq;
-		double qqCV = pow(this->counts[5] - qq,2)/qq;
+		double ppCV = pow(this->countsGenotypes[0] - pp,2)/pp;
+		double pqCV = pow((this->countsGenotypes[1] + this->countsGenotypes[4]) - pq,2)/pq;
+		double qqCV = pow(this->countsGenotypes[5] - qq,2)/qq;
 		if(pp < 1) ppCV = 0;
 		if(pq < 1) pqCV = 0;
 		if(qq < 1) qqCV = 0;
@@ -160,12 +129,16 @@ struct TomahawkImportRLEHelper{
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& self){
-		os << self.counts[0] << '\t' << self.counts[1] << '\t' << self.counts[4] << '\t' << self.counts[5] << '\t' << self.MAF;
+		os << self.countsGenotypes[0] << '\t' << self.countsGenotypes[1] << '\t' << self.countsGenotypes[4] << '\t' << self.countsGenotypes[5] << '\t' << self.MGF;
 		return(os);
 	}
 
-	U64 counts[16];
+	inline const U64 countAlleles(void) const{ return(this->countsAlleles[0] + this->countsAlleles[1] + this->countsAlleles[2]); }
+
+	U64 countsGenotypes[16];
+	U64 countsAlleles[3];
 	double MAF;
+	double MGF;
 	double HWE_P;
 	bool missingValues;
 	bool phased;
@@ -315,6 +288,8 @@ void TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 			runs += __dump;
 
 			this->helper_[type] += run_length;
+			this->helper_.countsAlleles[type >> 2] += run_length;
+			this->helper_.countsAlleles[type & 3]  += run_length;
 
 
 			run_length = 1;
@@ -326,11 +301,13 @@ void TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 
 	// Encode final
 	__dump =  (run_length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-	__dump ^= (curType & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+	__dump ^= (type & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 	runs += __dump;
 	total_samples += run_length;
 	//runs.pointer += PACK3(curType, &runs.data[runs.pointer], run_length);
 	this->helper_[type] += run_length;
+	this->helper_.countsAlleles[type >> 2] += run_length;
+	this->helper_.countsAlleles[type & 3]  += run_length;
 	++runsCount;
 
 	if(total_samples != this->VCFheader_.size()){
@@ -338,47 +315,23 @@ void TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 		exit(1);
 	}
 
-	this->helper_.calculateMAF();
+
+	this->helper_.calculateMGF();
 	this->helper_.calculateHardyWeinberg();
+
+	//std::cerr << this->helper_.countsAlleles[0] << '\t' << this->helper_.countsAlleles[1] << '\t' << this->helper_.countsAlleles[2] << '\t' << this->helper_.countAlleles() << '\t' << this->helper_.calculateMAF() << '\t' << this->helper_.MGF << std::endl;
+
 
 	// Position
 	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
 	position <<= 2;
 	position |= this->helper_.phased << 1;
 	position |= this->helper_.missingValues << 0;
-	meta += this->helper_.MAF;
+	meta += this->helper_.MGF;
 	meta += this->helper_.HWE_P;
-
-	/*
-	if(runs.pointer - startOffset > VCFheader_.size()/2){
-		this->savings += (runs.pointer - startOffset) - VCFheader_.size()/2;
-		std::cerr << runs.pointer - startOffset << '\t' << (runs.pointer - startOffset) - VCFheader_.size()/2 << '\t' << VCFheader_.size()/2 << '\t' << this->helper_.MAF << std::endl;
-		runs.pointer = startOffset;
-
-		U32 i = 0;
-		for(; i < line.simple_.size(); i += 2){
-			BYTE add = (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpA - 46] << 6) |
-					   (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpB - 46] << 4) |
-					   (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i+1].snpA - 46] << 2) |
-					   (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i+1].snpB - 46]);
-			runs += add;
-		}
-
-		BYTE add = 0;
-		for(; i < line.simple_.size(); ++i){
-			add <<= 2;
-			add |= (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpA - 46] << 2) | (Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpB - 46]);
-		}
-		runs += add;
-		runsCount = i;
-	}
-	*/
 	meta += runsCount;
 
-	//std::cerr << this->helper_.MAF << '\t' << runsCount << std::endl;
-
 	this->helper_.reset();
-	//std::cerr << "Sum: " << sum << '/' << this->VCFheader_.size() << std::endl;
 }
 
 
@@ -462,24 +415,21 @@ void TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::Bas
 		exit(1);
 	}
 
-	this->helper_.calculateMAF();
+	this->helper_.calculateMGF();
 	this->helper_.calculateHardyWeinberg();
 
 	// Position
 	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
-	//std::cerr << "Position start " << position << std::endl;
 	position <<= 2;
 	position |= this->helper_.phased << 1;
 	position |= this->helper_.missingValues << 0;
-	//std::cerr << "Position end " << position << std::endl;
 
 
-	meta += this->helper_.MAF;
+	meta += this->helper_.MGF;
 	meta += this->helper_.HWE_P;
 	meta += runsCount;
 
 	this->helper_.reset();
-	//std::cerr << "Sum: " << sum << '/' << this->VCFheader_.size() << std::endl;
 }
 
 }

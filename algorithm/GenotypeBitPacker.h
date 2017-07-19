@@ -90,15 +90,9 @@ public:
 		//std::cerr << this->destination_pointer << '\t' << this->currentOffset << std::endl;
 	}
 
-	U32 size(void) const{ return(this->destination_pointer*this->steps + (this->steps - this->currentOffset)); }
-	void setDestination(BYTE* dest){ this->destination = dest; }
-
-	void operator+=(const BYTE* value);
-	void operator<<(const BYTE* value);
-	void operator++(void);
-	void operator--(void);
-
-	const BYTE& operator[](const U32& p) const{ return(this->destination[p]); }
+	inline U32 size(void) const{ return(this->destination_pointer*this->steps + (this->steps - this->currentOffset)); }
+	inline void setDestination(BYTE* dest){ this->destination = dest; }
+	inline const BYTE& operator[](const U32& p) const{ return(this->destination[p]); }
 
 private:
 	const BYTE stepSize;		// step size (in bits)

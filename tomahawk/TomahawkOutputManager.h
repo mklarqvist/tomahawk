@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
-#define TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_
+#ifndef TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
+#define TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
 
 #include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
@@ -11,10 +11,10 @@
 namespace Tomahawk{
 
 template <class T>
-struct TomahawkCalculateSlaveOutputManager{
+struct TomahawkOutputManager{
 	typedef IO::GenericWriterInterace writer_type;
 	typedef TomahawkBlock<const T> controller_type;
-	typedef TomahawkCalculateSlaveOutputManager<T> self_type;
+	typedef TomahawkOutputManager<T> self_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
 
@@ -22,7 +22,7 @@ struct TomahawkCalculateSlaveOutputManager{
 	typedef void (self_type::*outFunction)(const controller_type& a, const controller_type& b, const helper_type& helper);
 
 public:
-	TomahawkCalculateSlaveOutputManager(writer_type& writer,
+	TomahawkOutputManager(writer_type& writer,
 										const writer_type::compression type) :
 		writer_output_type(type),
 		outCount(0),
@@ -33,7 +33,7 @@ public:
 		sprintf_buffer(new char[255])
 	{}
 
-	~TomahawkCalculateSlaveOutputManager(){
+	~TomahawkOutputManager(){
 		this->Finalise();
 		this->buffer.deleteAll();
 		delete [] this->sprintf_buffer;
@@ -44,20 +44,6 @@ public:
 		this->writer << this->buffer;
 		this->writer.flush();
 		this->buffer.reset();
-	}
-
-	bool writeHeaders(void){
-		if(this->writer_output_type == writer_type::compression::natural){
-			// Write tab-delimited header
-		} else if(this->writer_output_type == writer_type::compression::binary) {
-			// Write binary header
-			// Write index as we progress
-		} else{
-			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Illegal compression method: " << (int)this->writer_output_type << "..." << std::endl;
-			return false;
-		}
-
-		return true;
 	}
 
 	inline const U64& GetCounts(void) const{ return this->outCount; }
@@ -162,4 +148,4 @@ private:
 
 }
 
-#endif /* TOMAHAWK_TOMAHAWKCALCULATESLAVEOUTPUTMANAGER_H_ */
+#endif /* TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_ */

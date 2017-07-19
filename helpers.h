@@ -48,8 +48,7 @@ double diffclock(clock_t clock1, clock_t clock2);
 std::string NumberThousandsSeparator(std::string number);
 
 template <class T>
-inline T roundUp(T numToRound, int multiple)
-{
+T roundUp(T numToRound, int multiple){
 	if(multiple == 0) return numToRound;
 
 	int remainder = numToRound % multiple;

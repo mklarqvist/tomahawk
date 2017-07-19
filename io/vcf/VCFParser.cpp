@@ -94,7 +94,7 @@ bool VCFParser::Build(){
 		const float missing = line.getMissingness(this->header_.samples_);
 		if(line.position == previous_position && *retValue == *prevRetValue){
 			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position in file (" << this->header_[*retValue].name << ":" << line.position << "): Dropping..." << std::endl;
+				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << this->header_[*retValue].name << ":" << line.position << "): Dropping..." << std::endl;
 
 			goto next;
 		}
@@ -103,7 +103,7 @@ bool VCFParser::Build(){
 		if(line.IsSimple()){
 			if(missing > DEFAULT_MISSINGNESS_CUTOFF){
 				if(!SILENT)
-					std::cerr << Helpers::timestamp("WARNING", "VCF") << "Dropping " << this->header_[*retValue].name << ":" << line.position << " with " << missing*100 << "% missing values..." << std::endl;
+					std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << this->header_[*retValue].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
 				goto next;
 			}
@@ -147,12 +147,6 @@ bool VCFParser::Build(){
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 
-	// Temp
-	//for(U32 i = 0; i < this->header_.getContigs(); ++i){
-	//	if(this->header_.getContig(i).tomahawkBlocks > 0)
-	//		std::cerr << this->header_.getContig(i) << '\t' << this->header_.getContig(i).tomahawkBlocks << std::endl;
-	//}
-
 	return true;
 }
 
@@ -165,10 +159,6 @@ bool VCFParser::GetHeaderLines(void){
 
 	// Get header lines
 	while(this->reader_.getLine()){
-		//std::cout << std::string(this->reader_.buffer_, this->reader_.size()) << std::endl;
-		//std::cout << "last char: " << this->reader_[this->reader_.size()-2] << std::endl;
-		//std::cout << "Dump size and beginning: " << this->reader_.size() << '\t' << this->reader_.buffer_[0] << '\t' << this->reader_.buffer_[1] << std::endl;
-
 		if(this->reader_.buffer_[1] != '#')
 			break;
 

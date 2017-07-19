@@ -62,11 +62,13 @@ public:
 	void clear(void){ this->end_ = 0; }
 	bool empty(void) const{ return(this->end_ == 0); }
 	size_t capacity(void) const{ return this->capacity_; }
+
 	void capacity(uint32_t newSize){
 		delete [] this->buffer_;
 		this->capacity_ = newSize;
 		this->buffer_ = new type[newSize];
 	}
+
 	void resize(void){
 		type* old = this->buffer_;
 		this->buffer_ = new type[this->capacity_ * 2];
@@ -74,6 +76,7 @@ public:
 		this->capacity_ *= 2;
 		delete [] old;
 	}
+
 	void resize(uint32_t newSize){
 		uint32_t newSizeInternal = newSize;
 		if(newSizeInternal < this->end_){
@@ -100,8 +103,8 @@ public:
 	virtual bool read(void);
 	virtual bool read(const uint32_t length);
 	virtual bool readAppend(const uint32_t length);
-	const uint64_t& filesize(void){ return this->filesize_; }
-	uint64_t tellg(void){ return this->stream_.tellg(); }
+	inline const uint64_t& filesize(void){ return this->filesize_; }
+	inline uint64_t tellg(void){ return this->stream_.tellg(); }
 	bool getLine(void); // Read until finding a new line into buffer
 	bool getLine(std::string& data); // Read until finding a new line into string
 
