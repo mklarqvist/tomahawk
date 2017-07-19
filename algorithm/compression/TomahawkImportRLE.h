@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../FisherTest.h"
+#include "../../math/FisherTest.h"
 #include "RunLengthEncoding.h"
 
 namespace Tomahawk{

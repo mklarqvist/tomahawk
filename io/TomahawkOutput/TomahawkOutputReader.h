@@ -9,7 +9,7 @@
 
 #include "../../TypeDefinitions.h"
 #include "TomahawkOutputEntry.h"
-#include "../../support/PackedEntryReader.h"
+#include "../../io/PackedEntryReader.h"
 #include "TomahawkOutputFilterController.h"
 
 
@@ -20,6 +20,7 @@ namespace IO {
 class TomahawkOutputReader {
 	typedef TomahawkOutputEntry entry_type;
 	typedef TomahawkOutputFilterController filter_type;
+	typedef PackedEntryReader<entry_type, sizeof(entry_type)> reader_type;
 
 public:
 	TomahawkOutputReader();
@@ -37,7 +38,7 @@ private:
 	bool __viewFilter(void);
 
 public:
-	PackedEntryReader<entry_type, sizeof(entry_type)> reader;
+	reader_type reader;
 	filter_type filter;
 };
 
