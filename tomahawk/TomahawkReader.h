@@ -51,6 +51,7 @@ public:
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
 
+	// Todo: reimplement for writing Tomahawk output data
 	//bool SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type);
 	//void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
 	//bool OpenWriter(void);
@@ -58,6 +59,7 @@ public:
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const TotempoleReader& getTotempole(void) const{ return(this->totempole_); }
+	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
 
 private:
 	void DetermineBitWidth(void);
@@ -77,9 +79,7 @@ private:
 	U64 filesize_;
 	BYTE bit_width_;
 	std::ifstream stream_; // reader stream
-	//bool silent;
 
-	//
 	IO::GenericWriterInterace* writer;
 	TotempoleReader totempole_;
 

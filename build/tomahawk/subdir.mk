@@ -6,6 +6,7 @@
 CPP_SRCS += \
 ../tomahawk/MagicConstants.cpp \
 ../tomahawk/TomahawkCalc.cpp \
+../tomahawk/TomahawkCalcParameters.cpp \
 ../tomahawk/TomahawkImportWriter.cpp \
 ../tomahawk/TomahawkImporter.cpp \
 ../tomahawk/TomahawkOutputLD.cpp \
@@ -14,6 +15,7 @@ CPP_SRCS += \
 OBJS += \
 ./tomahawk/MagicConstants.o \
 ./tomahawk/TomahawkCalc.o \
+./tomahawk/TomahawkCalcParameters.o \
 ./tomahawk/TomahawkImportWriter.o \
 ./tomahawk/TomahawkImporter.o \
 ./tomahawk/TomahawkOutputLD.o \
@@ -22,6 +24,7 @@ OBJS += \
 CPP_DEPS += \
 ./tomahawk/MagicConstants.d \
 ./tomahawk/TomahawkCalc.d \
+./tomahawk/TomahawkCalcParameters.d \
 ./tomahawk/TomahawkImportWriter.d \
 ./tomahawk/TomahawkImporter.d \
 ./tomahawk/TomahawkOutputLD.d \

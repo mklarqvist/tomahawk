@@ -222,7 +222,7 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
-		tomahawk.SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
+		//this->SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){

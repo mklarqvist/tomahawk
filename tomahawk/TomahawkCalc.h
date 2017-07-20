@@ -53,7 +53,7 @@ bool TomahawkCalc::Calculate(){
 	const totempole_reader& totempole = this->reader.getTotempole();
 	TomahawkBlockManager<const T> controller(totempole);
 	for(U32 i = 0; i < totempole.size(); ++i)
-		controller.Add(this->blockDataOffsets_[i].data, this->blockDataOffsets_[i].entry);
+		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1

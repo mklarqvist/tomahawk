@@ -3,6 +3,15 @@
 
 namespace Tomahawk {
 
+TomahawkCalc::TomahawkCalc(void) :
+	threads(0),
+	writer(nullptr)
+{}
+
+TomahawkCalc::~TomahawkCalc(){
+	delete this->writer;
+}
+
 bool TomahawkCalc::Open(const std::string input, const std::string output){
 	if(!this->reader.Open(input)){
 		return false;
