@@ -82,6 +82,7 @@ private:
 		this->buffer += '\t';
 */
 
+		//  Todo: need Totempole for mapping contigID to name
 		this->buffer += std::to_string(a.support->contigID);
 		this->buffer += '\t';
 		this->buffer += std::to_string(a.meta[a.metaPointer].position);

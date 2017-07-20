@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <cerrno>
 #include "../TypeDefinitions.h"
 
 namespace Tomahawk {
@@ -12,6 +13,7 @@ namespace Algorithm{
 #define KF_GAMMA_EPS 1e-14
 #define KF_TINY 1e-290
 #define STIRLING_CONSTANT	0.5 * log(2 * M_PI)
+#define FISHER_TINY 1e-279
 
 class FisherTest{
 
@@ -38,7 +40,7 @@ public:
 	 * \log{\Gamma(z)}
 	 * AS245, 2nd algorithm, http://lib.stat.cmu.edu/apstat/245
 	 */
-	double kf_lgamma(double z){
+	double kf_lgamma(double z) const{
 		double x = 0;
 		x += 0.1659470187408462e-06 / (z+7);
 		x += 0.9934937113930748e-05 / (z+6);
@@ -53,7 +55,7 @@ public:
 	}
 
 	// regularized lower incomplete gamma function, by series expansion
-	double _kf_gammap(double s, double z){
+	double _kf_gammap(double s, double z) const{
 		double sum, x;
 		int k;
 		for (k = 1, sum = x = 1.; k < 100; ++k) {
@@ -64,7 +66,7 @@ public:
 	}
 
 	// regularized upper incomplete gamma function, by continued fraction
-	double _kf_gammaq(double s, double z){
+	double _kf_gammaq(double s, double z) const{
 		int j;
 		double C, D, f;
 		f = 1. + z - s; C = f; D = 0.;
@@ -84,56 +86,66 @@ public:
 		return exp(s * log(z) - z - kf_lgamma(s) - log(f));
 	}
 
-	double kf_gammap(double s, double z){return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
-	double kf_gammaq(double s, double z){return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
+	double kf_gammap(double s, double z) const{return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
+	double kf_gammaq(double s, double z) const{return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
 
+
+	__attribute__((always_inline))
 	inline double StirlingsApproximation(const double v) const{
 		return(STIRLING_CONSTANT + (v - 0.5) * log(v) - v + 1/(12*v) + 1/(360 * v * v * v));
 	}
 
-	inline double logN(const U32 value) const{
-		if(value < this->number)
-			return this->logN_values[value];
-		else
-			return this->StirlingsApproximation(value + 1);
+	__attribute__((always_inline))
+	inline double logN(const S32& value) const{
+		//if(value < this->number)
+		//	return this->logN_values[value];
+		//else
+			return this->StirlingsApproximation((double)value + 1);
 	}
 
-	inline double fisherTest(const U32 a, const U32 b, const U32 c, const U32 d) const{
+	__attribute__((always_inline))
+	inline double fisherTest(const S32 a, const S32 b, const S32 c, const S32 d) const{
 		// Rewrite Fisher's 2x2 test in log form
 		// return e^x
 		return(exp(logN(a+b) + logN(c+d) + logN(a+c) + logN(b+d) - logN(a) - logN(b) - logN(c) - logN(d) - logN(a + b + c + d)));
 	}
 
 
-	double fisherTestLess(U32 a, U32 b, U32 c, U32 d) const{
+	double fisherTestLess(S32 a, S32 b, S32 c, S32 d) const{
 		U32 minValue = a;
 		if(d < minValue) minValue = d;
 
-		double sum = 0;
-		for(U32 i = 0; i <= minValue; ++i){
-			sum += this->fisherTest(a, b, c, d);
+		if(minValue > 50)
+			return(this->chisqr(1, this->chiSquaredTest(a,b,c,d)));
 
+		double sum = 0;
+		for(U32 i = 0; i < minValue; ++i){
+			sum += this->fisherTest(a, b, c, d);
+			if(sum < FISHER_TINY) break;
 			--a, ++b, ++c, --d;
 		}
 
 		return(sum);
 	}
 
-	double fisherTestGreater(U32 a, U32 b, U32 c, U32 d) const{
+	double fisherTestGreater(S32 a, S32 b, S32 c, S32 d) const{
 		U32 minValue = b;
 		if(c < minValue) minValue = c;
+
+		if(minValue > 50)
+			return(this->chisqr(1, this->chiSquaredTest(a,b,c,d)));
 
 		double sum = 0;
 		for(U32 i = 0; i <= minValue; ++i){
 			sum += this->fisherTest(a, b, c, d);
-
+			if(sum < FISHER_TINY) break;
 			++a, --b, --c, ++d;
 		}
 
 		return(sum);
 	}
 
-	double chisqr(const S32& Dof, const double& Cv){
+	double chisqr(const S32& Dof, const double& Cv) const{
 		if(Cv < 0 || Dof < 1)
 			return 0.0;
 

@@ -198,8 +198,8 @@ public:
 						   const work_order& orders);
 
 	~TomahawkCalculateSlave();
-	TomahawkCalculateSlave(const TomahawkCalculateSlave& other);
-	TomahawkCalculateSlave(TomahawkCalculateSlave&& other) noexcept;
+	//TomahawkCalculateSlave(const TomahawkCalculateSlave& other);
+	//TomahawkCalculateSlave(TomahawkCalculateSlave&& other) noexcept;
 	TomahawkCalculateSlave& operator=(const TomahawkCalculateSlave& other);
 	TomahawkCalculateSlave& operator=(TomahawkCalculateSlave&& other) noexcept;
 	TomahawkCalculateSlave& operator+=(const TomahawkCalculateSlave& other);
@@ -352,77 +352,6 @@ TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 
 	template <class T>
 	TomahawkCalculateSlave<T>::~TomahawkCalculateSlave(){ }
-
-	/** Copy constructor */
-	template <class T>
-	TomahawkCalculateSlave<T>::TomahawkCalculateSlave (const TomahawkCalculateSlave& other) :
-		parameters(other.parameters),
-		block_comparisons(other.block_comparisons),
-		variant_comparisons(other.variant_comparisons),
-		samples(other.samples),
-		impossible(other.impossible),
-		possible(other.possible),
-		no_uncertainty(other.no_uncertainty),
-		insufficent_alleles(other.insufficent_alleles),
-		//false_positive(other.false_positive),
-		//false_negative(other.false_negative),
-		fisherController(1024),
-		manager(manager),
-		output_manager(other.output_manager),
-		progress(other.progress),
-		phase_function_across(other.phase_function_across),
-		orders(other.orders),
-		byte_width(other.byte_width),
-		byteAlignedEnd(other.byteAlignedEnd),
-		vectorCycles(other.vectorCycles),
-		phased_unbalanced_adjustment(other.phased_unbalanced_adjustment),
-		unphased_unbalanced_adjustment(other.unphased_unbalanced_adjustment)
-	{
-
-	}
-
-	/** Move constructor */
-	template <class T>
-	TomahawkCalculateSlave<T>::TomahawkCalculateSlave(TomahawkCalculateSlave&& other) noexcept :
-		parameters(other.parameters),
-		block_comparisons(other.block_comparisons),
-		variant_comparisons(other.variant_comparisons),
-		samples(other.samples),
-		impossible(other.impossible),
-		possible(other.possible),
-		no_uncertainty(other.no_uncertainty),
-		insufficent_alleles(other.insufficent_alleles),
-		//false_positive(other.false_positive),
-		//false_negative(other.false_negative),
-		fisherController(1024),
-		manager(other.manager),
-		output_manager(other.output_manager),
-		progress(other.progress),
-		phase_function_across(other.phase_function_across),
-		orders(other.orders),
-		byte_width(other.byte_width),
-		byteAlignedEnd(other.byteAlignedEnd),
-		vectorCycles(other.vectorCycles),
-		phased_unbalanced_adjustment(other.phased_unbalanced_adjustment),
-		unphased_unbalanced_adjustment(other.unphased_unbalanced_adjustment)
-	{
-	   std::swap(this->thread, other.thread);
-	}
-
-	 /** Copy assignment operator */
-	template <class T>
-	TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator=(const TomahawkCalculateSlave<T>& other){
-		self_type tmp(other);         // re-use copy-constructor
-		*this = std::move(tmp); // re-use move-assignment
-		return *this;
-	}
-
-	/** Move assignment operator */
-	template <class T>
-	TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator=(TomahawkCalculateSlave<T>&& other) noexcept{
-		std::swap(this->thread, other.thread);
-		return *this;
-	}
 
 	// Reduce function
 	template <class T>
@@ -1489,7 +1418,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 
 		// Fisher's exact test P value filter
 		if(this->helper.P > this->parameters.P_threshold){
-			//std::cerr << this->helper.P << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << std::endl;
+			//std::cerr << this->helper.P << '\t' << this->helper.D << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << std::endl;
+			//if(this->helper.P > 1)
+			//	exit(1);
+
 			return false;
 		}
 
