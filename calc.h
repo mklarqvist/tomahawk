@@ -2,8 +2,7 @@
 
 #include "utility.h"
 #include "tomahawk/MagicConstants.h"
-#include "totempole/TotempoleReader.h"
-#include "tomahawk/TomahawkReader.h"
+#include "tomahawk/TomahawkCalc.h"
 
 void calc_usage(void){
 	programMessage();
@@ -65,22 +64,14 @@ int calc(int argc, char** argv){
 		{0,0,0,0}
 	};
 
+	Tomahawk::TomahawkCalc tomahawk;
+	Tomahawk::TomahawkCalcParameters& parameters = tomahawk.getParameters();
 	std::string input;
 	std::string output = "-";
-	compression_type type = compression_type::binary;
-	S32 threads = std::thread::hardware_concurrency();
-	S32 parts = 1;
-	S32 startPart = 0;
-	float minR2 = CALC_DEFAULT_MINR2;
-	float maxR2 = CALC_DEFAULT_MAXR2;
-	double minP = CALC_DEFAULT_MINP;
-	int64_t minAlleles = CALC_DEFAULT_MINALLELES;
-	int64_t maxAlleles = CALC_DEFAULT_MAXALLELES;
-	S32 windowBases = -1, windowPosition = -1; // not implemented
-	bool phased = false;
-	bool forceFunction = false;
 	SILENT = 0;
 	bool detailedProgress = false;
+
+	S32 windowBases = -1, windowPosition = -1; // not implemented
 
 	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdNBc:C:?", long_options, &option_index)) != -1){
 		switch (c){
@@ -94,86 +85,84 @@ int calc(int argc, char** argv){
 			output = std::string(optarg);
 			break;
 		case 't':
-			threads = atoi(optarg);
-			if(threads <= 0){
+			parameters.n_threads = atoi(optarg);
+			if(parameters.n_threads <= 0){
 				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive number of worker threads" << std::endl;
 				return(1);
 			}
 			break;
 		case 'N':
-			type = compression_type::natural;
+			parameters.compression_type = compression_type::natural;
 			break;
 		case 'B':
-			type = compression_type::binary;
+			parameters.compression_type = compression_type::binary;
 			break;
 		case 'c':
-			parts = atoi(optarg);
-			if(parts <= 0){
+			parameters.n_chunks = atoi(optarg);
+			if(parameters.n_chunks <= 0){
 				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative or zero amount of partitions" << std::endl;
 				return(1);
 			}
 			break;
 		case 'C':
-			startPart = atoi(optarg);
-			--startPart;
-			if(startPart < 0){
+			parameters.chunk_selected = atoi(optarg);
+			--parameters.chunk_selected;
+			if(parameters.chunk_selected < 0){
 				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive start partition" << std::endl;
 				return(1);
 			}
 			break;
 	  case 'r':
-		minR2 = atof(optarg);
-		if(minR2 < 0){
+		parameters.R2_min = atof(optarg);
+		if(parameters.R2_min < 0){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
 			return(1);
-		} else if(minR2 > 1){
+		} else if(parameters.R2_min > 1){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
 			return(1);
 		}
 		break;
 
 	  case 'R':
-		maxR2 = atof(optarg);
-		if(maxR2 < 0){
+		parameters.R2_max = atof(optarg);
+		if(parameters.R2_max < 0){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
 		return(1);
-		} else if(maxR2 > 1){
+		} else if(parameters.R2_max > 1){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a maximum R-squared value > 1" << std::endl;
 		return(1);
 		}
 		break;
 
 	  case 'p':
-		  phased = true;
-		  forceFunction = true;
+		  parameters.force = Tomahawk::TomahawkCalcParameters::force_method::phasedFunction;
 		  break;
 
 	  case 'u':
-		  phased = false;
-		  forceFunction = true;
+		  parameters.force = Tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
 		  break;
 
 	  case 'P':
-		  minP = atof(optarg);
-		  if(minP < 0){
+		  parameters.P_threshold = atof(optarg);
+		  if(parameters.P_threshold < 0){
 			  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative cutoff P-value" << std::endl;
 			return(1);
-		  } else if(minP > 1){
+		  } else if(parameters.P_threshold > 1){
 			  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a cutoff P-value > 1" << std::endl;
 			return(1);
 		  }
 		  break;
 	  case 'a':
-		minAlleles = atoi(optarg);
-		if(minAlleles < 0){
+		parameters.minimum_alleles = atoi(optarg);
+		if(parameters.minimum_alleles < 0){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
 			return(1);
 		}
 		break;
 
 	  case 'A':
-		  maxAlleles = atoi(optarg);
-		if(maxAlleles < 0){
+		parameters.maximum_alleles = atoi(optarg);
+		if(parameters.maximum_alleles < 0){
 			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
 			return(1);
 		}
@@ -197,12 +186,12 @@ int calc(int argc, char** argv){
 
 	  case 's':
 		  SILENT = 1;
-		  detailedProgress = false;
+		  parameters.detailed_progress = false;
 		  break;
 
 	  case 'd':
 		  SILENT = 0;
-		  detailedProgress = true;
+		  parameters.detailed_progress = true;
 		  break;
 
 	  default:
@@ -228,14 +217,7 @@ int calc(int argc, char** argv){
 	}
 
 	// Parse Tomahawk
-	Tomahawk::TomahawkReader tomahawk;
-	if(!tomahawk.Open(input)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return 1;
-	}
-
-	// Parse Tomahawk data
-	if(!tomahawk.ValidateHeader()){
+	if(!tomahawk.Open(input, output)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;
 	}
@@ -259,32 +241,7 @@ int calc(int argc, char** argv){
 	//blocks.push_back(21);
 	//tomahawk.getBlocks(blocks);
 
-	tomahawk.setDetailedProgress(detailedProgress);
+	//tomahawk.setDetailedProgress(detailedProgress);
 
-	if(!tomahawk.SetPThreshold(minP))
-		return false;
-
-	if(!tomahawk.SetR2Threshold(minR2,maxR2))
-		return false;
-
-	tomahawk.SetMinimumAlleles(minAlleles);
-	if(!tomahawk.SetThreads(threads))
-		return false;
-
-	if(forceFunction)
-		tomahawk.SetPhased(phased);
-
-	tomahawk.SetOutputType(type);
-	if(!tomahawk.OpenWriter(output))
-		return false;
-
-	if(!tomahawk.SetChunkDesired(parts))
-		return false;
-
-	if(!tomahawk.SetChunkSelected(startPart))
-		return false;
-
-	tomahawk.Calculate();
-
-	return 0;
+	return(tomahawk.Calculate());
 }

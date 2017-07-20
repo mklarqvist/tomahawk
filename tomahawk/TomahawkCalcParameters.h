@@ -26,7 +26,9 @@ struct TomahawkCalcParameters{
 		minimum_alleles(CALC_DEFAULT_MINALLELES),
 		maximum_alleles(CALC_DEFAULT_MAXALLELES),
 		compression_type(writer_type::compression::binary),
-		force(force_method::none)
+		output_stream_type(writer_type::type::cout),
+		force(force_method::none),
+		detailed_progress(false)
 	{}
 
 	TomahawkCalcParameters(const self_type& other):
@@ -39,12 +41,15 @@ struct TomahawkCalcParameters{
 		minimum_alleles(other.minimum_alleles),
 		maximum_alleles(other.maximum_alleles),
 		compression_type(other.compression_type),
-		force(other.force)
+		output_stream_type(other.output_stream_type),
+		force(other.force),
+		detailed_progress(other.detailed_progress)
 	{}
 
 	~TomahawkCalcParameters(){}
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& p){
+		// Todo: extend to dump all implicit parameters and store in TWO header output
 		os << Helpers::timestamp("CALC", "PARAMETERS") << "R-squared (" << p.R2_min << '-' << p.R2_max << "), P < " << p.P_threshold << ", non-refs > " << p.minimum_alleles;
 		return(os);
 	}
@@ -58,7 +63,9 @@ struct TomahawkCalcParameters{
 	U64 minimum_alleles;
 	U64 maximum_alleles;
 	writer_type::compression compression_type;
+	writer_type::type output_stream_type;
 	force_method force;
+	bool detailed_progress;
 };
 
 }

@@ -3,13 +3,27 @@
 
 namespace Tomahawk {
 
-bool TomahawkCalc::Open(const std::string input){
+bool TomahawkCalc::Open(const std::string input, const std::string output){
+	if(!this->reader.Open(input)){
+		return false;
+	}
 
+	if(output == "-") this->parameters.output_stream_type = parameter_type::writer_type::type::cout;
+	else this->parameters.output_stream_type = parameter_type::writer_type::type::file;
+
+	if(!this->SelectWriterOutputType(this->parameters.output_stream_type))
+		return false;
+
+	if(!this->OpenWriter(output)){
+		return false;
+	}
+
+	return true;
 }
 
 bool TomahawkCalc::OpenWriter(void){
 	if(this->writer == nullptr)
-		this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
+		this->SelectWriterOutputType(writer_type::type::cout);
 
 	return(this->writer->open());
 }
@@ -17,11 +31,10 @@ bool TomahawkCalc::OpenWriter(void){
 
 bool TomahawkCalc::OpenWriter(const std::string destination){
 	if(this->writer == nullptr){
-		if(destination == "-"){
-			this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
-			return(this->writer->open());
-		}
-		this->SelectWriterOutputType(IO::GenericWriterInterace::type::file);
+		if(destination == "-")
+			return(this->OpenWriter());
+
+		this->SelectWriterOutputType(writer_type::type::file);
 	}
 
 	return(this->writer->open(destination));
@@ -78,11 +91,11 @@ bool TomahawkCalc::Calculate(){
 	return(this->Calculate(this->balancer.getLoad()));
 }
 
-bool TomahawkCalc::SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type){
+bool TomahawkCalc::SelectWriterOutputType(const writer_type::type writer_type){
 	if(this->writer != nullptr)
 		return false;
 
-	if(writer_type == IO::GenericWriterInterace::type::cout)
+	if(writer_type == writer_type::type::cout)
 		this->writer = new IO::WriterStandardOut;
 	else
 		this->writer = new IO::WriterFile;
@@ -91,7 +104,7 @@ bool TomahawkCalc::SelectWriterOutputType(const IO::GenericWriterInterace::type 
 }
 
 bool TomahawkCalc::WriteTwoHeader(void){
-	if(this->parameters.compression_type == IO::GenericWriterInterace::compression::natural)
+	if(this->parameters.compression_type == writer_type::compression::natural)
 		return(this->WriteTwoHeaderNatural());
 	else
 		return(this->WriteTwoHeaderBinary());

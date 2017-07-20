@@ -17,7 +17,7 @@ class TomahawkCalc{
 	typedef TomahawkReader reader_type;
 
 	// Used to keep track of char pointer offsets in buffer
-	// and what totempole entry is associated with that position
+	// and what Totempole entry is associated with that position
 	struct DataOffsetPair{
 		DataOffsetPair(const char* data, const TotempoleEntry& entry) : entry(entry), data(data){}
 		~DataOffsetPair(){}
@@ -30,17 +30,21 @@ public:
 	TomahawkCalc();
 	~TomahawkCalc();
 
-	bool Open(const std::string input);
+	bool Open(const std::string input, const std::string output);
+
 	bool Calculate(pair_vector& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();
-	bool SelectWriterOutputType(const writer_type::type writer_type);
-	void SetOutputType(writer_type::compression type){ this->parameters.compression_type = type; }
-	bool OpenWriter(void);
-	bool OpenWriter(const std::string destination);
-	bool ValidateParameters(void);
+
+	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
+	bool ApplyParameters(void);
+
+	bool OpenWriter(void);
+	bool OpenWriter(const std::string destination);
+	bool SelectWriterOutputType(const writer_type::type writer_type);
+
 	bool CalculateWrapper();
 	template <class T> bool Calculate();
 	bool WriteTwoHeader(void);
@@ -55,6 +59,139 @@ private:
 	reader_type reader;
 	writer_type* writer;
 };
+
+template <class T>
+bool TomahawkCalc::Calculate(){
+	const totempole_reader& totempole = this->reader.getTotempole();
+	TomahawkBlockManager<const T> controller(totempole);
+	for(U32 i = 0; i < totempole.size(); ++i)
+		controller.Add(this->blockDataOffsets_[i].data, this->blockDataOffsets_[i].entry);
+
+	if(!SILENT){
+#if SIMD_AVAILABLE == 1
+	std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+#else
+	std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+#endif
+	std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
+	}
+
+	// Build 1-bit representation
+	controller.BuildVectorized();
+
+	if(!SILENT)
+		std::cerr << "Done..." << std::endl;
+
+	const U64 variants = controller.getVariants();
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
+
+	// Todo: validate
+	U64 totalComparisons = 0;
+	for(U32 i = 0; i < this->balancer.thread_distribution.size(); ++i){
+		for(U32 j = 0; j < this->balancer.thread_distribution[i].size(); ++j){
+			//std::cerr << this->balancer.thread_distribution[i][j] << ':' << std::endl;
+			if(this->balancer.thread_distribution[i][j].staggered){
+				for(U32 from = this->balancer.thread_distribution[i][j].fromRow; from < this->balancer.thread_distribution[i][j].toRow; ++from){
+					for(U32 col = from; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
+						//std::cerr << '\t' << from << ":" << col << '\t';
+						if(from == col){
+							const U32 size = controller[from].size();
+							totalComparisons += (size*size - size)/2;
+							//std::cerr << (size*size - size)/2 << std::endl;
+						} else {
+							totalComparisons += controller[from].size() * controller[col].size();
+							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
+						}
+					}
+				}
+			} else {
+				for(U32 from = this->balancer.thread_distribution[i][j].fromRow; from < this->balancer.thread_distribution[i][j].toRow; ++from){
+					for(U32 col = this->balancer.thread_distribution[i][j].fromColumn; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
+						//std::cerr << '\t' << from << ":" << col << '\t';
+						if(from == col){
+							const U32 size = controller[from].size();
+							totalComparisons += (size*size - size)/2;
+							//std::cerr << (size*size - size)/2 << std::endl;
+						} else {
+							totalComparisons += controller[from].size() * controller[col].size();
+							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
+						}
+					}
+				}
+			}
+		}
+	}
+	this->progress.SetComparisons(totalComparisons);
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
+
+	// Setup slaves
+	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->threads];
+	std::vector<std::thread*> thread_pool;
+
+	// Setup workers
+	if(!SILENT){
+		std::cerr << this->parameters << std::endl;
+		std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->threads << " threads: ";
+	}
+
+	for(U32 i = 0; i < this->threads; ++i){
+		slaves[i] = new TomahawkCalculateSlave<T>(controller, *this->writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		if(!SILENT)
+			std::cerr << '.';
+	}
+	if(!SILENT)
+		std::cerr << std::endl;
+
+	// Start threads
+	if(!SILENT)
+		this->progress.Start();
+
+	// Setup front-end interface
+	Interface::Timer timer;
+	timer.Start();
+
+	// Write TWO output header
+	this->WriteTwoHeader();
+
+	// Begin
+	for(U32 i = 0; i < this->threads; ++i)
+		thread_pool.push_back(slaves[i]->Start());
+
+	// Join threads
+	for(U32 i = 0; i < this->threads; ++i)
+		thread_pool[i]->join();
+
+	// Stop progress bar
+	this->progress.Stop();
+
+	// Print slave statistics
+	if(!SILENT){
+		std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
+		for(U32 i = 0; i < this->threads; ++i)
+			std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
+	}
+
+	// Reduce into first slave
+	for(U32 i = 1; i < this->threads; ++i)
+		*slaves[0] += *slaves[i];
+
+	if(!SILENT){
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*this->totempole_.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*this->totempole_.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+	}
+
+	// Cleanup
+	delete [] slaves;
+
+	// Flush writer
+	this->writer->flush();
+
+	return true;
+}
 
 } /* namespace Tomahawk */
 

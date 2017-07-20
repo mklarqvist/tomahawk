@@ -121,14 +121,16 @@ bool TomahawkReader::Open(const std::string input){
 
 	this->stream_.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "could not open " << input << "..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Could not open " << input << "..." << std::endl;
 		return false;
 	}
 	this->filesize_ = this->stream_.tellg();
 	this->stream_.seekg(0);
 
-	if(this->ValidateHeader())
+	if(this->ValidateHeader()){
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
 		return false;
+	}
 
 	return true;
 }
@@ -474,7 +476,10 @@ bool TomahawkReader::outputBlocks(){
 	case 2: func__ = &TomahawkReader::outputBlock<U16>;  break;
 	case 4: func__ = &TomahawkReader::outputBlock<U32>;  break;
 	case 8: func__ = &TomahawkReader::outputBlock<U64>;  break;
-	default: exit(1); break;
+	default:
+		std::cerr << Helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
+		exit(1);
+		break;
 	}
 
 	if(!SILENT)
