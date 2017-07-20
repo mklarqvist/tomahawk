@@ -10,7 +10,7 @@ namespace Tomahawk{
 #define CALC_DEFAULT_MAXR2 1
 #define CALC_DEFAULT_MINP  1e-4
 #define CALC_DEFAULT_MINALLELES 5
-#define CALC_DEFAULT_MAXALLELES std::numeric_limits<U64>::max()
+#define CALC_DEFAULT_MAXALLELES std::numeric_limits<int64_t>::max()
 
 struct TomahawkCalcParameters{
 	typedef TomahawkCalcParameters self_type;
@@ -21,8 +21,8 @@ struct TomahawkCalcParameters{
 		n_threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 		n_chunks(1),
 		chunk_selected(0),
-		R2_min(CALC_DEFAULT_MINR2 - Constants::ALLOWED_ROUNDING_ERROR),
-		R2_max(CALC_DEFAULT_MAXR2 + Constants::ALLOWED_ROUNDING_ERROR),
+		R2_min(CALC_DEFAULT_MINR2),
+		R2_max(CALC_DEFAULT_MAXR2),
 		P_threshold(CALC_DEFAULT_MINP),
 		minimum_alleles(CALC_DEFAULT_MINALLELES),
 		maximum_alleles(CALC_DEFAULT_MAXALLELES),

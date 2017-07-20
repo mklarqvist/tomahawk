@@ -17,8 +17,10 @@ bool TomahawkCalc::Open(const std::string input, const std::string output){
 		return false;
 	}
 
-	if(output == "-") this->parameters.output_stream_type = parameter_type::writer_type::type::cout;
-	else this->parameters.output_stream_type = parameter_type::writer_type::type::file;
+	if(output == "-")
+		this->parameters.output_stream_type = parameter_type::writer_type::type::cout;
+	else
+		this->parameters.output_stream_type = parameter_type::writer_type::type::file;
 
 	if(!this->SelectWriterOutputType(this->parameters.output_stream_type))
 		return false;
@@ -30,21 +32,9 @@ bool TomahawkCalc::Open(const std::string input, const std::string output){
 	return true;
 }
 
-bool TomahawkCalc::OpenWriter(void){
-	if(this->writer == nullptr)
-		this->SelectWriterOutputType(writer_type::type::cout);
-
-	return(this->writer->open());
-}
-
-
 bool TomahawkCalc::OpenWriter(const std::string destination){
-	if(this->writer == nullptr){
-		if(destination == "-")
-			return(this->OpenWriter());
-
-		this->SelectWriterOutputType(writer_type::type::file);
-	}
+	if(destination == "-")
+		return(this->writer->open());
 
 	return(this->writer->open(destination));
 }

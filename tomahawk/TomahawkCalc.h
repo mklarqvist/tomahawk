@@ -29,7 +29,6 @@ public:
 	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
-	bool OpenWriter(void);
 	bool OpenWriter(const std::string destination);
 	bool SelectWriterOutputType(const writer_type::type writer_type);
 

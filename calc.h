@@ -69,7 +69,6 @@ int calc(int argc, char** argv){
 	std::string input;
 	std::string output = "-";
 	SILENT = 0;
-	bool detailedProgress = false;
 
 	S32 windowBases = -1, windowPosition = -1; // not implemented
 
