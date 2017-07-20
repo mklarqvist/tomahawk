@@ -87,13 +87,10 @@ public:
 	double kf_gammap(double s, double z){return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
 	double kf_gammaq(double s, double z){return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
 
-
-	__attribute__((always_inline))
 	inline double StirlingsApproximation(const double v) const{
 		return(STIRLING_CONSTANT + (v - 0.5) * log(v) - v + 1/(12*v) + 1/(360 * v * v * v));
 	}
 
-	__attribute__((always_inline))
 	inline double logN(const U32 value) const{
 		if(value < this->number)
 			return this->logN_values[value];
@@ -101,7 +98,6 @@ public:
 			return this->StirlingsApproximation(value + 1);
 	}
 
-	__attribute__((always_inline))
 	inline double fisherTest(const U32 a, const U32 b, const U32 c, const U32 d) const{
 		// Rewrite Fisher's 2x2 test in log form
 		// return e^x
