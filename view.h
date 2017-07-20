@@ -216,28 +216,14 @@ int view(int argc, char** argv){
 	}
 
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
-		const std::string index = input + "." + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
-
-		Tomahawk::TotempoleReader totempole;
-		if(!totempole.Open(index)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-			return 1;
-		}
-
-		Tomahawk::TomahawkReader tomahawk(totempole);
+		Tomahawk::TomahawkReader tomahawk;
 		if(!tomahawk.Open(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 			return 1;
 		}
 
-		if(!tomahawk.ValidateHeader()){
-			std::cerr << "failed" << std::endl;
-			return 1;
-		}
-
 		tomahawk.SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
 		tomahawk.outputBlocks();
-
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::IO::TomahawkOutputReader reader;

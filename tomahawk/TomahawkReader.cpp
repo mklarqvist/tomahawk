@@ -2,18 +2,19 @@
 
 namespace Tomahawk {
 
-TomahawkReader::TomahawkReader(const TotempoleReader& header) :
+// Remember to resize buffers to header.getLargestBlockSize()+64 after header is loaded
+TomahawkReader::TomahawkReader() :
 	samples(0),
 	version(0),
 	filesize_(0),
 	bit_width_(0),
 	threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 	writer(nullptr),
-	buffer_(header.getLargestBlockSize()+64),
-	data_(this->buffer_),
-	outputBuffer_(header.getLargestBlockSize()+64),
+	buffer_(),
+	data_(),
+	outputBuffer_(),
 	gzip_controller_(),
-	totempole_(header),
+	totempole_(),
 	balancer()
 {}
 
@@ -103,6 +104,16 @@ void TomahawkReader::setDetailedProgress(const bool yes){
 }
 
 bool TomahawkReader::Open(const std::string input){
+	const std::string index = input + '.' + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
+	if(!this->totempole_.Open(index)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+		return false;
+	}
+
+	this->buffer_.resize(this->totempole_.getLargestBlockSize() + 64);
+	this->data_.resize(this->totempole_.getLargestBlockSize() + 64);
+	this->outputBuffer_.resize(this->totempole_.getLargestBlockSize() + 64);
+
 	if(input.size() == 0){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "No filename" << std::endl;
 		return false;
@@ -115,6 +126,9 @@ bool TomahawkReader::Open(const std::string input){
 	}
 	this->filesize_ = this->stream_.tellg();
 	this->stream_.seekg(0);
+
+	if(this->ValidateHeader())
+		return false;
 
 	return true;
 }

@@ -4,28 +4,7 @@
 namespace Tomahawk {
 
 bool TomahawkCalc::Open(const std::string input){
-	// Parse Totempole index
-	std::string index = input + '.' + Constants::OUTPUT_INDEX_SUFFIX;
-	TotempoleReader totempole;
-	if(!totempole.Open(index)){
-		std::cerr << Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return false;
-	}
 
-	// Parse Tomahawk
-	TomahawkReader tomahawk(totempole);
-	if(!tomahawk.Open(input)){
-		std::cerr << Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return false;
-	}
-
-	// Parse Tomahawk data
-	if(!tomahawk.ValidateHeader()){
-		std::cerr << Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return false;
-	}
-
-	return true;
 }
 
 bool TomahawkCalc::OpenWriter(void){

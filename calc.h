@@ -227,16 +227,8 @@ int calc(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling calc..." << std::endl;
 	}
 
-	// Parse Totempole index
-	std::string index = input + '.' + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
-	Tomahawk::TotempoleReader totempole;
-	if(!totempole.Open(index)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return 1;
-	}
-
 	// Parse Tomahawk
-	Tomahawk::TomahawkReader tomahawk(totempole);
+	Tomahawk::TomahawkReader tomahawk;
 	if(!tomahawk.Open(input)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;

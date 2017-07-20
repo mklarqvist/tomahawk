@@ -36,7 +36,7 @@ class TomahawkReader {
 	};
 
 public:
-	TomahawkReader(const TotempoleReader& header);
+	TomahawkReader();
 	~TomahawkReader();
 
 	// Reader functions
@@ -103,7 +103,7 @@ private:
 
 	U32 threads;
 	Interface::ProgressBar progress;
-	const TotempoleReader& totempole_;
+	TotempoleReader totempole_;
 	Tomahawk::Balancer balancer;
 	parameter_type parameters;
 

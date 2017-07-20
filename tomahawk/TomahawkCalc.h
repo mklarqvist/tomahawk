@@ -11,7 +11,7 @@ class TomahawkCalc{
 	typedef std::pair<U32,U32> pair_type;
 	typedef std::vector<pair_type> pair_vector;
 	typedef IO::GenericWriterInterace writer_type;
-	typedef Tomahawk::Balancer balancer_type;
+	typedef Balancer balancer_type;
 	typedef TotempoleReader totempole_reader;
 	typedef Interface::ProgressBar progress_type;
 	typedef TomahawkReader reader_type;
