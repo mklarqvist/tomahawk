@@ -22,6 +22,7 @@ struct TomahawkOutputManager{
 
 	// Function pointer to write class function
 	typedef void (self_type::*outFunction)(const controller_type& a, const controller_type& b, const helper_type& helper);
+	typedef void (self_type::*flushFunction)(void);
 
 public:
 	TomahawkOutputManager(writer_type& writer,
@@ -29,6 +30,7 @@ public:
 		outCount(0),
 		progressCount(0),
 		function(type == writer_type::compression::natural ? &self_type::AddNatural : &self_type::AddBinary),
+		flush(type == writer_type::compression::natural ? &self_type::FinaliseNatural : &self_type::FinaliseBinary),
 		writer(writer),
 		buffer(2*SLAVE_FLUSH_LIMIT),
 		sprintf_buffer(new char[255])
@@ -43,11 +45,7 @@ public:
 	}
 
 	inline void Add(const controller_type& a, const controller_type& b, const helper_type& helper){ (this->*function)(a, b, helper); }
-	void Finalise(void){
-		this->writer << this->buffer;
-		this->writer.flush();
-		this->buffer.reset();
-	}
+	inline void Finalise(void){ (this->*flush)(); }
 
 	inline const U64& GetCounts(void) const{ return this->outCount; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
@@ -59,14 +57,26 @@ public:
 		return(*this);
 	}
 
-	inline void flushIfFull(void){
-		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
-			this->writer << this->buffer;
-			this->buffer.reset();
-		}
+private:
+	void FinaliseNatural(void){
+		this->writer << this->buffer;
+		this->writer.flush();
+		this->buffer.reset();
 	}
 
-private:
+	void FinaliseBinary(void){
+		if(this->buffer.size() > 0){
+			if(!this->compressor.Deflate(this->buffer)){
+				std::cerr << "failed deflate" << std::endl;
+				exit(1);
+			}
+			this->writer << compressor.buffer_;
+			this->buffer.reset();
+			this->compressor.Clear();
+		}
+		this->writer.flush();
+	}
+
 	void AddNatural(const controller_type& a, const controller_type& b, const helper_type& helper){
 		this->buffer += std::to_string(helper.controller);
 		this->buffer += '\t';
@@ -145,6 +155,7 @@ private:
 	U64 outCount;			// lines written
 	U32 progressCount;		// lines added since last flush
 	outFunction function;	// add function pointer
+	flushFunction flush;	// flush function pointer
 	writer_type& writer;	// writer interface
 	buffer_type buffer;		// internal buffer
 	GZController compressor;// compressor

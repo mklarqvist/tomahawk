@@ -113,6 +113,7 @@ bool TomahawkCalc::Calculate(){
 
 	this->progress.SetComparisons(totalComparisons);
 	this->progress.SetSamples(totempole.getSamples());
+	this->progress.SetDetailed(this->parameters.detailed_progress);
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
@@ -135,7 +136,7 @@ bool TomahawkCalc::Calculate(){
 	if(!SILENT)
 		std::cerr << std::endl;
 
-	// Start threads
+	// Start progress tracker
 	if(!SILENT)
 		this->progress.Start();
 
@@ -146,15 +147,15 @@ bool TomahawkCalc::Calculate(){
 	// Write TWO output header
 	this->WriteTwoHeader();
 
-	// Begin
+	// Start workers
 	for(U32 i = 0; i < this->parameters.n_threads; ++i)
 		thread_pool.push_back(slaves[i]->Start());
 
-	// Join threads
+	// Join workers
 	for(U32 i = 0; i < this->parameters.n_threads; ++i)
 		thread_pool[i]->join();
 
-	// Stop progress bar
+	// Stop progress tracker
 	this->progress.Stop();
 
 	// Print slave statistics
