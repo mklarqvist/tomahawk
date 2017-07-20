@@ -7,7 +7,6 @@ TomahawkReader::TomahawkReader(const TotempoleReader& header) :
 	version(0),
 	filesize_(0),
 	bit_width_(0),
-	silent(false),
 	threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 	writer(nullptr),
 	buffer_(header.getLargestBlockSize()+64),
@@ -97,7 +96,7 @@ bool TomahawkReader::OpenWriter(const std::string destination){
 
 void TomahawkReader::setDetailedProgress(const bool yes){
 	if(yes){
-		this->silent = false;
+		SILENT = 0;
 		this->progress.SetDetailed(true);
 	} else
 		this->progress.SetDetailed(false);
@@ -473,111 +472,5 @@ bool TomahawkReader::outputBlocks(){
 	return true;
 }
 
-template <typename K, typename V>
-bool comparePairs(const std::pair<K,V>& a, const std::pair<K,V>& b){ return a.first < b.first; }
 
-bool TomahawkReader::__CalculateWrapper(){
-	if(this->bit_width_ == 1) 	   return(this->__Calculate<BYTE>());
-	else if(this->bit_width_ == 2) return(this->__Calculate<U16>());
-	else if(this->bit_width_ == 4) return(this->__Calculate<U32>());
-	else if(this->bit_width_ == 8) return(this->__Calculate<U64>());
-	else {
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
-		exit(1);
-	}
-
-	//std::cerr << "Manager have: " << this->manager_.size() << std::endl;
-	//return(this->manager_.AllVersusAll());
-	return false;
-}
-
-bool TomahawkReader::Calculate(std::vector< std::pair<U32,U32> >& blocks){
-	// Todo!
-	std::sort(blocks.begin(), blocks.end(), comparePairs<U32, U32>);
-	if(!this->getBlocks(blocks)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
-		return false;
-	}
-
-	return(this->__CalculateWrapper());
-}
-
-bool TomahawkReader::Calculate(std::vector<U32>& blocks){
-	if(!this->getBlocks(blocks)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
-		return false;
-	}
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflated " << blocks.size() << " blocks..." << std::endl;
-
-	return(this->__CalculateWrapper());
-}
-
-bool TomahawkReader::Calculate(){
-	if(!this->balancer.Build(this->totempole_.getBlocks(), this->threads)){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
-		return false;
-	}
-
-	return(this->Calculate(this->balancer.getLoad()));
-}
-
-bool TomahawkReader::SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type){
-	if(this->writer != nullptr)
-		return false;
-
-	if(writer_type == IO::GenericWriterInterace::type::cout)
-		this->writer = new IO::WriterStandardOut;
-	else
-		this->writer = new IO::WriterFile;
-
-	return true;
-}
-
-bool TomahawkReader::WriteTwoHeader(void){
-	if(this->parameters.compression_type == IO::GenericWriterInterace::compression::natural)
-		return(this->WriteTwoHeaderNatural());
-	else
-		return(this->WriteTwoHeaderBinary());
-}
-
-bool TomahawkReader::WriteTwoHeaderNatural(void){
-	std::ostream& stream = this->writer->getStream();
-	stream << "FLAG\tSCORE\tcontigA\tpositionA\tcontigB\tpositionB\tp11\tp12\tp21\tp22\tD\tDprime\tRsquared\tPFisher\tChiSquaredCV\tPmodel" << std::endl;
-	return true;
-}
-
-bool TomahawkReader::WriteTwoHeaderBinary(void){
-	std::ostream& stream = this->writer->getStream();
-	// Stream needs to be ofstream for overloading to function properly
-	std::ofstream& streamRe = *reinterpret_cast<std::ofstream*>(&stream);
-
-	streamRe.write(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC, Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH);
-
-	const U64& samples = this->totempole_.getSamples();
-	Totempole::TotempoleHeader h(samples);
-	streamRe << h;
-
-	// Write out dummy variable for IO offset
-	U32 nothing = 0; // Dummy variable
-	size_t posOffset = streamRe.tellp(); // remember current IO position
-	streamRe.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
-
-	// Write the number of contigs
-	const U32 n_contigs = this->totempole_.getContigs();
-	streamRe.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
-
-	// Write contig data to TWO
-	// length | n_char | chars[0 .. n_char - 1]
-	for(U32 i = 0; i < this->totempole_.getContigs(); ++i)
-		streamRe << *this->totempole_.getContigBase(i);
-
-	U32 curPos = streamRe.tellp(); // remember current IO position
-	streamRe.seekp(posOffset); // seek to previous position
-	streamRe.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
-	streamRe.seekp(curPos); // seek back to current IO position
-
-	return(streamRe.good());
-}
 } /* namespace Tomahawk */

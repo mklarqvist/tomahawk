@@ -5,12 +5,6 @@
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
-#define CALC_DEFAULT_MINR2 0.1
-#define CALC_DEFAULT_MAXR2 1
-#define CALC_DEFAULT_MINP  1e-4
-#define CALC_DEFAULT_MINALLELES 5
-#define CALC_DEFAULT_MAXALLELES std::numeric_limits<U64>::max()
-
 void calc_usage(void){
 	programMessage();
 	std::cout <<
@@ -274,7 +268,6 @@ int calc(int argc, char** argv){
 	//tomahawk.getBlocks(blocks);
 
 	tomahawk.setDetailedProgress(detailedProgress);
-	tomahawk.SetSilent(SILENT);
 
 	if(!tomahawk.SetPThreshold(minP))
 		return false;
