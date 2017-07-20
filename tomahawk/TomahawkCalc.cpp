@@ -133,36 +133,25 @@ bool TomahawkCalc::WriteTwoHeaderNatural(void){
 
 bool TomahawkCalc::WriteTwoHeaderBinary(void){
 	std::ostream& stream = this->writer->getStream();
-	// Stream needs to be ofstream for overloading to function properly
-	std::ofstream& streamRe = *reinterpret_cast<std::ofstream*>(&stream);
 
-	streamRe.write(Constants::WRITE_HEADER_LD_MAGIC, Constants::WRITE_HEADER_LD_MAGIC_LENGTH);
+	stream.write(Constants::WRITE_HEADER_LD_MAGIC, Constants::WRITE_HEADER_LD_MAGIC_LENGTH);
+	std::ofstream& streamTemp = *reinterpret_cast<std::ofstream*>(&stream); // for overloading to function correctly
 
 	const totempole_reader& totempole = this->reader.getTotempole();
 	const U64& samples = totempole.getSamples();
 	Totempole::TotempoleHeader h(samples);
-	streamRe << h;
-
-	// Write out dummy variable for IO offset
-	U32 nothing = 0; // Dummy variable
-	size_t posOffset = streamRe.tellp(); // remember current IO position
-	streamRe.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
+	streamTemp << h;
 
 	// Write the number of contigs
 	const U32 n_contigs = totempole.getContigs();
-	streamRe.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
+	streamTemp.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
 	// Write contig data to TWO
 	// length | n_char | chars[0 .. n_char - 1]
 	for(U32 i = 0; i < totempole.getContigs(); ++i)
-		streamRe << *totempole.getContigBase(i);
+		streamTemp << *totempole.getContigBase(i);
 
-	U32 curPos = streamRe.tellp(); // remember current IO position
-	streamRe.seekp(posOffset); // seek to previous position
-	streamRe.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
-	streamRe.seekp(curPos); // seek back to current IO position
-
-	return(streamRe.good());
+	return(stream.good());
 }
 
 } /* namespace Tomahawk */

@@ -8,6 +8,7 @@
 //#define SLAVE_FLUSH_LIMIT	65536
 #define SLAVE_FLUSH_LIMIT	10000000	// 10 MB default flush limit
 //#define SLAVE_FLUSH_LIMIT	5000
+#define SLAVE_FLUSH_LIMIT_NATURAL 65536
 
 namespace Tomahawk{
 namespace IO {
@@ -46,21 +47,13 @@ public:
 
 	inline void Add(const controller_type& a, const controller_type& b, const helper_type& helper){ (this->*function)(a, b, helper); }
 	inline void Finalise(void){ (this->*flush)(); }
-
 	inline const U64& GetCounts(void) const{ return this->outCount; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
 
-	template <class K>
-	inline self_type& operator<<(const K& data){
-		this->buffer += data;
-		return(*this);
-	}
-
 private:
 	void FinaliseNatural(void){
 		this->writer << this->buffer;
-		this->writer.flush();
 		this->buffer.reset();
 	}
 
@@ -70,11 +63,11 @@ private:
 				std::cerr << "failed deflate" << std::endl;
 				exit(1);
 			}
+			std::cerr << Helpers::timestamp("DEBUG","BINARY") << this->buffer.size() << '\t' << this->compressor.buffer_.size() << '\t' << &this->writer << std::endl;
 			this->writer << compressor.buffer_;
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
-		this->writer.flush();
 	}
 
 	void AddNatural(const controller_type& a, const controller_type& b, const helper_type& helper){
@@ -122,7 +115,7 @@ private:
 		++this->outCount;
 		++this->progressCount;
 
-		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
+		if(this->buffer.size() > SLAVE_FLUSH_LIMIT_NATURAL){
 			this->writer << this->buffer;
 			this->buffer.reset();
 		}
@@ -141,7 +134,7 @@ private:
 		++this->outCount;
 		++this->progressCount;
 
-		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
+		if(this->buffer.size() > SLAVE_FLUSH_LIMIT_NATURAL){
 			if(!this->compressor.Deflate(this->buffer)){
 				std::cerr << "failed deflate" << std::endl;
 				exit(1);

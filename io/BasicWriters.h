@@ -69,7 +69,7 @@ public:
 		this->lock.unlock();
 	}
 
-	inline void operator<<(const IO::BasicBuffer& buffer){
+	void operator<<(const IO::BasicBuffer& buffer){
 		// Mutex lock; write; unlock
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
@@ -116,7 +116,7 @@ public:
 	inline void flush(void){ this->stream.flush(); }
 	inline bool close(void){ this->stream.close(); return true; }
 
-	inline void operator<<(const IO::BasicBuffer& buffer){
+	void operator<<(const IO::BasicBuffer& buffer){
 		// Mutex lock; write; unlock
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
