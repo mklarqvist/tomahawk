@@ -340,7 +340,7 @@ public:
 		return true;
 	}
 
-	size_t size(void) const{ return this->blocks.size(); }
+	inline size_t size(void) const{ return this->blocks.size(); }
 	U32 getVariants(void) const{
 		U32 variants = 0;
 

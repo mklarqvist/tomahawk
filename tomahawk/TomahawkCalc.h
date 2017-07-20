@@ -51,7 +51,7 @@ template <class T>
 bool TomahawkCalc::Calculate(){
 	const totempole_reader& totempole = this->reader.getTotempole();
 	TomahawkBlockManager<const T> controller(totempole);
-	for(U32 i = 0; i < totempole.size(); ++i)
+	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i)
 		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
 
 	if(!SILENT){
@@ -110,6 +110,7 @@ bool TomahawkCalc::Calculate(){
 			}
 		}
 	}
+
 	this->progress.SetComparisons(totalComparisons);
 	this->progress.SetSamples(totempole.getSamples());
 

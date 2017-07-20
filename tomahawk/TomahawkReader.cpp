@@ -58,7 +58,7 @@ bool TomahawkReader::Open(const std::string input){
 		return false;
 	}
 
-	return true;
+	return(this->Validate());
 }
 
 inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
@@ -286,27 +286,15 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		return false;
 	}
 
-	//std::cerr << "Done: " << blockID << std::endl;
-
 	return true;
 }
 
 bool TomahawkReader::Validate(void){
-	std::cerr << " am here" << std::endl;
-	std::cerr << this->buffer_.size() << std::endl;
-	if(this->buffer_.size() < Constants::WRITE_HEADER_MAGIC_LENGTH + sizeof(float) + sizeof(U64)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate Tomahawk header..." << std::endl;
-		return false;
-	}
+	char temp_buffer[sizeof(float)+sizeof(U64)];
+	this->stream_.read(&temp_buffer[0], sizeof(float)+sizeof(U64));
 
-	if(strncmp(this->buffer_.data, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) != 0){
-		std::cerr << std::string(&this->buffer_.data[0], Constants::WRITE_HEADER_MAGIC_LENGTH);
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal tomahawk file: failed MAGIC..." << std::endl;
-		return false;
-	}
-
-	const float* version = reinterpret_cast<const float*>(&this->buffer_[Constants::WRITE_HEADER_MAGIC_LENGTH]);
-	const U64* samples = reinterpret_cast<const U64*>(&this->buffer_[Constants::WRITE_HEADER_MAGIC_LENGTH + sizeof(float)]);
+	const float* version = reinterpret_cast<const float*>(&temp_buffer[0]);
+	const U64* samples   = reinterpret_cast<const U64*>(&temp_buffer[sizeof(float)]);
 
 	this->version = *version;
 	this->samples = *samples;

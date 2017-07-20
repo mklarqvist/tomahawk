@@ -59,6 +59,7 @@ public:
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const TotempoleReader& getTotempole(void) const{ return(this->totempole_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
+	inline const size_t DataOffsetSize(void) const{ return(this->blockDataOffsets_.size()); }
 
 private:
 	void DetermineBitWidth(void);
