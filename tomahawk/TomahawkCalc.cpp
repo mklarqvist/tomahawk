@@ -4,7 +4,7 @@
 namespace Tomahawk {
 
 TomahawkCalc::TomahawkCalc(void) :
-	threads(0),
+	parameters_validated(false),
 	writer(nullptr)
 {}
 
@@ -58,11 +58,12 @@ bool TomahawkCalc::CalculateWrapper(){
 	return false;
 }
 
-bool TomahawkCalc::Calculate(std::vector< std::pair<U32,U32> >& blocks){
-	if(!this->parameters.Validate())
+bool TomahawkCalc::Calculate(pair_vector& blocks){
+	if((this->parameters_validated == false) && (!this->parameters.Validate()))
 		return false;
 
-	// Todo!
+	this->parameters_validated = true;
+
 	std::sort(blocks.begin(), blocks.end(), comparePairs<U32, U32>);
 	if(!this->reader.getBlocks(blocks)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
@@ -73,8 +74,10 @@ bool TomahawkCalc::Calculate(std::vector< std::pair<U32,U32> >& blocks){
 }
 
 bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
-	if(!this->parameters.Validate())
+	if((this->parameters_validated == false) && (!this->parameters.Validate()))
 		return false;
+
+	this->parameters_validated = true;
 
 	if(!this->reader.getBlocks(blocks)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
@@ -88,10 +91,12 @@ bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
 }
 
 bool TomahawkCalc::Calculate(){
-	if(!this->parameters.Validate())
+	if((this->parameters_validated == false) && (!this->parameters.Validate()))
 		return false;
 
-	if(!this->balancer.Build(this->reader.getTotempole().getBlocks(), this->threads)){
+	this->parameters_validated = true;
+
+	if(!this->balancer.Build(this->reader.getTotempole().getBlocks(), this->parameters.n_threads)){
 		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 		return false;
 	}

@@ -33,7 +33,7 @@ public:
 	}
 
 	bool getSelectedLoadThreads(const U32 threads){
-		block_type selected = this->blocks[selected_chunk];
+		const block_type& selected = this->blocks[selected_chunk];
 		//std::cerr << Helpers::timestamp("DEBUG", "BALANCER") << "Thread balancing..." << std::endl;
 
 		this->thread_distribution.resize(threads);
@@ -43,14 +43,14 @@ public:
 			return true;
 		}
 
-		//std::cerr << selected << std::endl;
-
 		//
 		if(selected.isDiagonal()){
 			if(!SILENT){
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is diagonal (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
 			}
+
+
 
 			U32 loadThread = selected.getSize()/threads;
 			U32 it = 0;

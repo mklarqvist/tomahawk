@@ -39,7 +39,7 @@ private:
 	bool WriteTwoHeaderBinary(void);
 
 private:
-	U32 threads;
+	bool parameters_validated;
 	progress_type progress;
 	balancer_type balancer;
 	parameter_type parameters;
@@ -117,16 +117,16 @@ bool TomahawkCalc::Calculate(){
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
-	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->threads];
+	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->parameters.n_threads];
 	std::vector<std::thread*> thread_pool;
 
 	// Setup workers
 	if(!SILENT){
 		std::cerr << this->parameters << std::endl;
-		std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->threads << " threads: ";
+		std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->parameters.n_threads << " threads: ";
 	}
 
-	for(U32 i = 0; i < this->threads; ++i){
+	for(U32 i = 0; i < this->parameters.n_threads; ++i){
 		slaves[i] = new TomahawkCalculateSlave<T>(controller, *this->writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
@@ -146,11 +146,11 @@ bool TomahawkCalc::Calculate(){
 	this->WriteTwoHeader();
 
 	// Begin
-	for(U32 i = 0; i < this->threads; ++i)
+	for(U32 i = 0; i < this->parameters.n_threads; ++i)
 		thread_pool.push_back(slaves[i]->Start());
 
 	// Join threads
-	for(U32 i = 0; i < this->threads; ++i)
+	for(U32 i = 0; i < this->parameters.n_threads; ++i)
 		thread_pool[i]->join();
 
 	// Stop progress bar
@@ -159,12 +159,12 @@ bool TomahawkCalc::Calculate(){
 	// Print slave statistics
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
-		for(U32 i = 0; i < this->threads; ++i)
+		for(U32 i = 0; i < this->parameters.n_threads; ++i)
 			std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
 	}
 
 	// Reduce into first slave
-	for(U32 i = 1; i < this->threads; ++i)
+	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
 	if(!SILENT){
