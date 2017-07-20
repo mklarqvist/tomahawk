@@ -25,17 +25,22 @@ TomahawkReader::~TomahawkReader(){
 
 bool TomahawkReader::Open(const std::string input){
 	const std::string index = input + '.' + Tomahawk::Constants::OUTPUT_INDEX_SUFFIX;
+
+	// Parse Totempole
 	if(!this->totempole_.Open(index)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Failed build!" << std::endl;
 		return false;
 	}
 
+	// Resize buffers to accomodate the largest possible block
+	// without ever resizing
+	// this is for performance reasons
 	this->buffer_.resize(this->totempole_.getLargestBlockSize() + 64);
 	this->data_.resize(this->totempole_.getLargestBlockSize() + 64);
 	this->outputBuffer_.resize(this->totempole_.getLargestBlockSize() + 64);
 
 	if(input.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "No filename" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "No input filename..." << std::endl;
 		return false;
 	}
 
@@ -47,7 +52,8 @@ bool TomahawkReader::Open(const std::string input){
 	this->filesize_ = this->stream_.tellg();
 	this->stream_.seekg(0);
 
-	if(this->ValidateHeader()){
+	// Validate MAGIC and header
+	if(!this->ValidateHeader(this->stream_)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
 		return false;
 	}
@@ -55,25 +61,13 @@ bool TomahawkReader::Open(const std::string input){
 	return true;
 }
 
-bool TomahawkReader::ValidateHeader(void){
-	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Bad file stream..." << std::endl;
-		return false;
-	}
-
-	// Read some data
-	this->stream_.read(this->buffer_.data, Constants::TOMAHAWK_HEADER_LENGTH);
-	this->buffer_.pointer += Constants::TOMAHAWK_HEADER_LENGTH;
-
-	return this->Validate();
-}
-
 inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
 	char MAGIC[Constants::WRITE_HEADER_MAGIC_LENGTH];
 	in.read(MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
 
-	if(strncmp(MAGIC, Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH) == 0)
+	if(strncmp(&MAGIC[0], &Constants::WRITE_HEADER_MAGIC[0], Constants::WRITE_HEADER_MAGIC_LENGTH) == 0)
 		return true;
+
 	return false;
 }
 
@@ -298,6 +292,8 @@ bool TomahawkReader::getBlock(const U32 blockID){
 }
 
 bool TomahawkReader::Validate(void){
+	std::cerr << " am here" << std::endl;
+	std::cerr << this->buffer_.size() << std::endl;
 	if(this->buffer_.size() < Constants::WRITE_HEADER_MAGIC_LENGTH + sizeof(float) + sizeof(U64)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate Tomahawk header..." << std::endl;
 		return false;

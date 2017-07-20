@@ -5,13 +5,15 @@ Synopsis
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
 ### Usage
+Note that this development version is limited to `vcf` files as input.
+
 ### Installation instructions
 Compiling Tomahawk with default parameters is straightforward.
 ```bash
 git clone https://github.com/mklarqvist/Tomahawk_private
 cd Tomahawk_private
 cd build
-make -j 28
+make
 ```
 By default, Tomahawk compiles using extremely aggressive optimization flags and with
 native architecture-specific instructions
@@ -19,10 +21,11 @@ native architecture-specific instructions
   -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin`)
 and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
-computer farms/clouds with hardware different from the compiled target.
+computer farms/clouds with a hardware architecture that is different from the compiled target.
 
 ### Brief usage instructions
-Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `index`
+Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, `index`,
+and `stats`. 
 Executing `tomahawk <command>` gives a list of commands with brief descriptions
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file

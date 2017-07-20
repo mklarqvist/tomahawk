@@ -43,7 +43,6 @@ public:
 
 	// Reader functions
 	bool Open(const std::string input);
-	bool ValidateHeader(void);
 	bool getBlocks(void);
 	bool getBlocks(std::vector<U32>& blocks);
 	bool getBlocks(std::vector< std::pair<U32, U32> >& blocks);
