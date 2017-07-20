@@ -39,7 +39,7 @@ public:
 		this->thread_distribution.resize(threads);
 
 		if(threads == 1){
-			this->thread_distribution[0].push_back(block_type(0, selected.getRows(), 0, selected.getColumns()));
+			this->thread_distribution[0].push_back(block_type(0, selected.getRows(), 0, selected.getColumns(), selected.fromRow, selected.toRow, selected.fromColumn, selected.toColumn, selected.isDiagonal()));
 			return true;
 		}
 
@@ -49,8 +49,6 @@ public:
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is diagonal (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
 			}
-
-
 
 			U32 loadThread = selected.getSize()/threads;
 			U32 it = 0;

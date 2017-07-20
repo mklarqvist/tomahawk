@@ -51,7 +51,6 @@ public:
 	~WriterStandardOut(){
 		// Flush upon termination
 		this->flush();
-		this->close();
 	}
 
 	bool open(void){ return true; }

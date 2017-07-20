@@ -90,7 +90,7 @@ public:
 	inline const std::atomic<U64>& GetCounter(void) const{ return this->counter; }
 	inline const std::atomic<U64>& GetOutputCounter(void) const{ return this->outputCount; }
 
-	inline void operator()(const U64 addCounter, const U64 addOutput){
+	inline void operator()(const U64 addCounter, const U32 addOutput){
 		this->counter     += addCounter;
 		this->outputCount += addOutput;
 	}

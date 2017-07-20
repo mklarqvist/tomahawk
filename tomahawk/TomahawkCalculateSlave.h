@@ -1452,11 +1452,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 	}
 	++this->possible;
 
-	// Find largest
-	if(this->helper.countAlternatives() < this->parameters.minimum_alleles){
-		//std::cerr << "insufficient: " << max << '\t' << max2 << '\t' <<  this->parameters.minimum_alleles << std::endl;
+	// Filter by minor haplotype frequency
+	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
 		return false;
-	}
+
 
 	// Haplotype frequencies
 	this->helper.haplotypeCounts[0] = (helper[0] + helper[1]) / this->helper.totalAlleleCounts;
@@ -1489,8 +1488,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 		this->helper.setFisherTest();
 
 		// Fisher's exact test P value filter
-		if(this->helper.P > this->parameters.P_threshold)
+		if(this->helper.P > this->parameters.P_threshold){
+			//std::cerr << this->helper.P << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << std::endl;
 			return false;
+		}
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		this->helper.chiSqModel = 0;
