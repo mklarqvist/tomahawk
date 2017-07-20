@@ -8,14 +8,12 @@ TomahawkReader::TomahawkReader() :
 	version(0),
 	filesize_(0),
 	bit_width_(0),
-	threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 	writer(nullptr),
+	totempole_(),
 	buffer_(),
 	data_(),
 	outputBuffer_(),
-	gzip_controller_(),
-	totempole_(),
-	balancer()
+	gzip_controller_()
 {}
 
 TomahawkReader::~TomahawkReader(){
@@ -23,84 +21,6 @@ TomahawkReader::~TomahawkReader(){
 	this->data_.deleteAll();
 	this->outputBuffer_.deleteAll();
 	delete writer;
-}
-
-bool TomahawkReader::SetR2Threshold(const double min, const double max){
-		if(min < 0 || max > 1){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid R-squared values: " << min << '-' << max << std::endl;
-			return false;
-		}
-
-		if(min > max){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid R-squared values: " << min << '-' << max << std::endl;
-			return false;
-		}
-
-		this->parameters.R2_min = min - Constants::ALLOWED_ROUNDING_ERROR;
-		this->parameters.R2_max = max + Constants::ALLOWED_ROUNDING_ERROR;
-
-		return true;
-	}
-
-bool TomahawkReader::SetMinimumAlleles(const U64 min){
-	this->parameters.minimum_alleles = min;
-	return true;
-}
-
-bool TomahawkReader::SetThreads(const S32 threads){
-	if(threads <= 0){
-		std::cerr << Helpers::timestamp("ERROR") << "Invalid number of threads: " << threads << std::endl;
-		return false;
-	}
-	this->threads = threads;
-	return true;
-}
-
-void TomahawkReader::SetPhased(const bool phased){
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG") << "Forcing phasing of all variants: " << (phased ? "Phased..." : "Unphased...") << std::endl;
-
-	if(phased)
-		this->parameters.force = parameter_type::phasedFunction;
-	else
-		this->parameters.force = parameter_type::unphasedFunction;
-}
-
-bool TomahawkReader::SetPThreshold(const double P){
-		if(P > 1 || P < 0){
-			std::cerr << Helpers::timestamp("ERROR") << "Invalid P-value threshold: " << P << std::endl;
-			return false;
-		}
-		this->parameters.P_threshold = P;
-		return true;
-	}
-
-bool TomahawkReader::OpenWriter(void){
-	if(this->writer == nullptr)
-		this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
-
-	return(this->writer->open());
-}
-
-
-bool TomahawkReader::OpenWriter(const std::string destination){
-	if(this->writer == nullptr){
-		if(destination == "-"){
-			this->SelectWriterOutputType(IO::GenericWriterInterace::type::cout);
-			return(this->writer->open());
-		}
-		this->SelectWriterOutputType(IO::GenericWriterInterace::type::file);
-	}
-
-	return(this->writer->open(destination));
-}
-
-void TomahawkReader::setDetailedProgress(const bool yes){
-	if(yes){
-		SILENT = 0;
-		this->progress.SetDetailed(true);
-	} else
-		this->progress.SetDetailed(false);
 }
 
 bool TomahawkReader::Open(const std::string input){
@@ -394,7 +314,6 @@ bool TomahawkReader::Validate(void){
 
 	this->version = *version;
 	this->samples = *samples;
-	this->progress.SetSamples(this->samples); // push to progressbar
 
 	if(this->version != this->totempole_.getHeader().version){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "File discordance: versions do not match..." << std::endl;

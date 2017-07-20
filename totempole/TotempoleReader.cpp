@@ -1,15 +1,17 @@
-/*
- * TotempoleReader.cpp
- *
- *  Created on: 28 Feb 2017
- *      Author: klarqv01
- */
-
 #include "TotempoleReader.h"
 
 namespace Tomahawk {
 
-TotempoleReader::TotempoleReader() : filesize(0), n_contigs(0), contigs(nullptr), samples(nullptr), entries(nullptr), contigsHashTable(nullptr), sampleHashTable(nullptr){}
+TotempoleReader::TotempoleReader() :
+		filesize(0),
+		n_contigs(0),
+		contigs(nullptr),
+		samples(nullptr),
+		entries(nullptr),
+		contigsHashTable(nullptr),
+		sampleHashTable(nullptr)
+{}
+
 TotempoleReader::~TotempoleReader(){
 	delete [] this->contigs;
 	delete [] this->entries;

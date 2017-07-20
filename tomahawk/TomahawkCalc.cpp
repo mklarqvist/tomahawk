@@ -60,6 +60,9 @@ bool TomahawkCalc::CalculateWrapper(){
 }
 
 bool TomahawkCalc::Calculate(std::vector< std::pair<U32,U32> >& blocks){
+	if(!this->parameters.Validate())
+		return false;
+
 	// Todo!
 	std::sort(blocks.begin(), blocks.end(), comparePairs<U32, U32>);
 	if(!this->reader.getBlocks(blocks)){
@@ -71,6 +74,9 @@ bool TomahawkCalc::Calculate(std::vector< std::pair<U32,U32> >& blocks){
 }
 
 bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
+	if(!this->parameters.Validate())
+		return false;
+
 	if(!this->reader.getBlocks(blocks)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
 		return false;
@@ -83,6 +89,9 @@ bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
 }
 
 bool TomahawkCalc::Calculate(){
+	if(!this->parameters.Validate())
+		return false;
+
 	if(!this->balancer.Build(this->reader.getTotempole().getBlocks(), this->threads)){
 		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 		return false;

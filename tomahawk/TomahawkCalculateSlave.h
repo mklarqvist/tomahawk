@@ -33,7 +33,7 @@ namespace Tomahawk{
 #define LOW_MAF_THRESHOLD		0.01
 #define LOW_HWE_THRESHOLD		1e-6
 #define LONG_RANGE_THRESHOLD	500e3
-#define MINIMUM_ALLOWED_ALLELES	5
+#define MINIMUM_ALLOWED_ALLELES	5		// Minimum number of alleles required for math to work out in the unphased case
 #define CHI_SQ_MAX_CV			1300
 
 // SIMD trigger

@@ -48,28 +48,85 @@ struct TomahawkCalcParameters{
 
 	~TomahawkCalcParameters(){}
 
+	bool Validate(void);
+
 	friend std::ostream& operator<<(std::ostream& os, const self_type& p){
 		// Todo: extend to dump all implicit parameters and store in TWO header output
 		os << Helpers::timestamp("CALC", "PARAMETERS") << "R-squared (" << p.R2_min << '-' << p.R2_max << "), P < " << p.P_threshold << ", non-refs > " << p.minimum_alleles;
 		return(os);
 	}
 
-	U32 n_threads;
-	U32 n_chunks;
-	U32 chunk_selected;
+	S32 n_threads;
+	S32 n_chunks;
+	S32 chunk_selected;
 	double R2_min;
 	double R2_max;
 	double P_threshold;
-	U64 minimum_alleles;
-	U64 maximum_alleles;
+	int64_t minimum_alleles;
+	int64_t maximum_alleles;
 	writer_type::compression compression_type;
 	writer_type::type output_stream_type;
 	force_method force;
 	bool detailed_progress;
 };
 
+bool TomahawkCalcParameters::Validate(void){
+	if(n_threads < 0){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid number of threads..." << std::endl;
+		return false;
+	}
+
+	if(n_chunks < 0){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid number of partitions..." << std::endl;
+		return false;
+	}
+
+	if(chunk_selected < 0 || chunk_selected > n_chunks){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid selected partition..." << std::endl;
+		return false;
+	}
+
+	if(R2_min < 0 || R2_min > 1){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum R-squared cutoff..." << std::endl;
+		return false;
+	}
+
+	if(R2_max < 0 || R2_max > 1){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum R-squared cutoff..." << std::endl;
+		return false;
+	}
+
+	if(R2_min > R2_max){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum R-squared value > maximum R-squared value..." << std::endl;
+		return false;
+	}
+
+	if(P_threshold < 0 || P_threshold > 1){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid P-value cutoff..." << std::endl;
+		return false;
+	}
+
+	if(minimum_alleles < 0){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum number of alleles..." << std::endl;
+		return false;
+	}
+
+	if(maximum_alleles < 0){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum number of alleles..." << std::endl;
+		return false;
+	}
+
+	if(minimum_alleles > maximum_alleles){
+		std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum number of alleles > maximum number of alleles..." << std::endl;
+		return false;
+	}
+
+	this->R2_min -= Constants::ALLOWED_ROUNDING_ERROR;
+	this->R2_max += Constants::ALLOWED_ROUNDING_ERROR;
+
+	return true;
 }
 
-
+}
 
 #endif /* TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_ */

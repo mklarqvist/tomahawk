@@ -16,16 +16,6 @@ class TomahawkCalc{
 	typedef Interface::ProgressBar progress_type;
 	typedef TomahawkReader reader_type;
 
-	// Used to keep track of char pointer offsets in buffer
-	// and what Totempole entry is associated with that position
-	struct DataOffsetPair{
-		DataOffsetPair(const char* data, const TotempoleEntry& entry) : entry(entry), data(data){}
-		~DataOffsetPair(){}
-
-		const TotempoleEntry& entry;
-		const char* data;
-	};
-
 public:
 	TomahawkCalc();
 	~TomahawkCalc();
@@ -39,8 +29,6 @@ public:
 	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
-	bool ApplyParameters(void);
-
 	bool OpenWriter(void);
 	bool OpenWriter(const std::string destination);
 	bool SelectWriterOutputType(const writer_type::type writer_type);
@@ -124,6 +112,7 @@ bool TomahawkCalc::Calculate(){
 		}
 	}
 	this->progress.SetComparisons(totalComparisons);
+	this->progress.SetSamples(totempole.getSamples());
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
@@ -180,8 +169,8 @@ bool TomahawkCalc::Calculate(){
 		*slaves[0] += *slaves[i];
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*this->totempole_.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*this->totempole_.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*totempole.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
 	}
 
 	// Cleanup

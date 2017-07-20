@@ -1,7 +1,7 @@
 /*
 
-    Copyright (C) 2016-2017 Genome Research Ltd.
-    Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
+Copyright (C) 2016-2017 Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

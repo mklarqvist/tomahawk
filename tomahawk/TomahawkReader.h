@@ -24,14 +24,16 @@ namespace Tomahawk {
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
 	typedef TomahawkCalcParameters parameter_type;
+	typedef TotempoleEntry totempole_entry;
 
+public:
 	// Used to keep track of char pointer offsets in buffer
-	// and what totempole entry is associated with that position
+	// and what Totempole entry is associated with that position
 	struct DataOffsetPair{
-		DataOffsetPair(const char* data, const TotempoleEntry& entry) : entry(entry), data(data){}
+		DataOffsetPair(const char* data, const totempole_entry& entry) : entry(entry), data(data){}
 		~DataOffsetPair(){}
 
-		const TotempoleEntry& entry;
+		const totempole_entry& entry;
 		const char* data;
 	};
 
@@ -49,40 +51,19 @@ public:
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
 
-	// Calc functions
-	bool SetR2Threshold(const double min, const double max);
-	bool SetMinimumAlleles(const U64 min);
-	bool SetThreads(const S32 threads);
-	void SetPhased(const bool phased);
-	bool SetChunkDesired(const S32 desired){ return(this->balancer.setDesired(desired)); }
-	bool SetChunkSelected(const S32 selected){ return(this->balancer.setSelected(selected)); }
-	bool SetPThreshold(const double P);
-	void setDetailedProgress(const bool yes);
+	//bool SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type);
+	//void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
+	//bool OpenWriter(void);
+	//bool OpenWriter(const std::string destination);
 
-	bool Calculate(std::vector< std::pair<U32,U32> >& blocks);
-	bool Calculate(std::vector<U32>& blocks);
-	bool Calculate();
-	bool SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type);
-	void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
-	bool OpenWriter(void);
-	bool OpenWriter(const std::string destination);
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const TotempoleReader& getTotempole(void) const{ return(this->totempole_); }
 
 private:
-	bool WriteTwoHeader(void);
-	bool WriteTwoHeaderNatural(void);
-	bool WriteTwoHeaderBinary(void);
-
-private:
-	bool __CalculateWrapper();
 	void DetermineBitWidth(void);
 	U64 GetUncompressedSizes(std::vector<U32>& blocks);
 	U64 GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks);
 	U64 GetUncompressedSizes(void);
-
-	// Calc functions
-	template <class T> bool __Calculate();
 	template <class T> bool outputBlock(const U32 blockID);
 
 	// Reader functions
@@ -100,12 +81,7 @@ private:
 
 	//
 	IO::GenericWriterInterace* writer;
-
-	U32 threads;
-	Interface::ProgressBar progress;
 	TotempoleReader totempole_;
-	Tomahawk::Balancer balancer;
-	parameter_type parameters;
 
 	// Todo: Move out
 	IO::BasicBuffer buffer_;
