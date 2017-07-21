@@ -8,6 +8,8 @@ namespace IO{
 
 #pragma pack(1)
 struct TGZFHeader{
+	typedef TGZFHeader self_type;
+
 	BYTE ID1;
 	BYTE ID2;
 	BYTE CM;
@@ -34,7 +36,7 @@ struct TGZFHeader{
 			);
 	}
 
-	friend std::ostream& operator<<(std::ostream& os, const TGZFHeader& header){
+	friend std::ostream& operator<<(std::ostream& os, const self_type& header){
 		os << "ID1\t" << (U32)header.ID1 << '\n';
 		os << "ID2\t" << (U32)header.ID2 << '\n';
 		os << "CM\t" << (U32)header.CM << '\n';
@@ -49,6 +51,22 @@ struct TGZFHeader{
 		os << "BSIZE\t" << (U32)header.BSIZE;
 
 		return os;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& header){
+		stream.read(reinterpret_cast<char *>(&header.ID1), sizeof(BYTE));
+		stream.read(reinterpret_cast<char *>(&header.ID2), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.CM), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.FLG), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.MTIME), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&header.XFL), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.OS), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.XLEN), sizeof(U16));
+		stream.read(reinterpret_cast<char*>(&header.SI1), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.SI2), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.SLEN), sizeof(U16));
+		stream.read(reinterpret_cast<char*>(&header.BSIZE), sizeof(U32));
+		return(stream);
 	}
 };
 

@@ -6,6 +6,7 @@
 #include "../helpers.h"
 #include "../third_party/zlib/zlib.h"
 #include "BasicBuffer.h"
+#include "TGZFHeader.h"
 
 namespace Tomahawk{
 namespace IO{
@@ -21,7 +22,9 @@ public:
 	~GZController();
 
 	void Clear();
+	bool Inflate(buffer_type& input, buffer_type& output, const TGZFHeader& header) const;
 	bool Inflate(buffer_type& input, buffer_type& output) const;
+	bool __Inflate(buffer_type& input, buffer_type& output, const TGZFHeader* header) const;
 	bool Deflate(buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
 	U32 InflateSize(buffer_type& input) const;

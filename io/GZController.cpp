@@ -2,7 +2,6 @@
 #include "IOConstants.h"
 #include "GZController.h"
 #include <fstream>
-#include "TGZFHeader.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -40,6 +39,14 @@ bool GZController::Inflate(buffer_type& input, buffer_type& output) const{
 		 exit(1);
 	}
 
+	return(this->__Inflate(input, output, header));
+}
+
+bool GZController::Inflate(buffer_type& input, buffer_type& output, const TGZFHeader& header) const{
+	return(this->__Inflate(input, output, &header));
+}
+
+bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZFHeader* header) const{
 	U32* uncompressedLength = reinterpret_cast<U32*>(&input.data[input.size() - sizeof(U32)]);
 	if(output.size() + *uncompressedLength >= output.capacity())
 		output.resize((output.size() + *uncompressedLength) * 1.2);
