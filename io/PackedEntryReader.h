@@ -114,7 +114,6 @@ bool PackedEntryReader<T, Y>::nextEntry(const entry_type*& entry){
 	if(!this->available()){
 		if(!this->nextBlock())
 			return false;
-
 	}
 
 	entry = &this->entries[this->entry_head];

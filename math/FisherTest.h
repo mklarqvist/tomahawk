@@ -12,8 +12,8 @@ namespace Algorithm{
 
 #define KF_GAMMA_EPS 1e-14
 #define KF_TINY 1e-290
-#define STIRLING_CONSTANT	0.5 * log(2 * M_PI)
 #define FISHER_TINY 1e-279
+#define STIRLING_CONSTANT 0.5 * log(2 * M_PI)
 
 class FisherTest{
 
@@ -86,8 +86,8 @@ public:
 		return exp(s * log(z) - z - kf_lgamma(s) - log(f));
 	}
 
-	double kf_gammap(double s, double z) const{return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
-	double kf_gammaq(double s, double z) const{return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
+	inline double kf_gammap(double s, double z) const{return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
+	inline double kf_gammaq(double s, double z) const{return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
 
 
 	__attribute__((always_inline))
@@ -100,11 +100,12 @@ public:
 		//if(value < this->number)
 		//	return this->logN_values[value];
 		//else
-			return this->StirlingsApproximation((double)value + 1);
+		//return this->StirlingsApproximation((double)value + 1);
+		return(StirlingsApproximation((double)value+1));
 	}
 
 	__attribute__((always_inline))
-	inline double fisherTest(const S32 a, const S32 b, const S32 c, const S32 d) const{
+	inline double fisherTest(const S32& a, const S32& b, const S32& c, const S32 d) const{
 		// Rewrite Fisher's 2x2 test in log form
 		// return e^x
 		return(exp(logN(a+b) + logN(c+d) + logN(a+c) + logN(b+d) - logN(a) - logN(b) - logN(c) - logN(d) - logN(a + b + c + d)));
@@ -119,7 +120,7 @@ public:
 			return(this->chisqr(1, this->chiSquaredTest(a,b,c,d)));
 
 		double sum = 0;
-		for(U32 i = 0; i < minValue; ++i){
+		for(U32 i = 0; i <= minValue; ++i){
 			sum += this->fisherTest(a, b, c, d);
 			if(sum < FISHER_TINY) break;
 			--a, ++b, ++c, --d;

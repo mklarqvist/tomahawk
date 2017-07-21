@@ -1,5 +1,6 @@
 
 #include "TomahawkCalc.h"
+#include "../io/totempole/TotempoleMagic.h"
 
 namespace Tomahawk {
 
@@ -132,19 +133,13 @@ bool TomahawkCalc::WriteTwoHeaderNatural(void){
 }
 
 bool TomahawkCalc::WriteTwoHeaderBinary(void){
+	typedef IO::TomahawkOutputHeader<Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	std::ostream& stream = this->writer->getStream();
-
-	stream.write(Constants::WRITE_HEADER_LD_MAGIC, Constants::WRITE_HEADER_LD_MAGIC_LENGTH);
 	std::ofstream& streamTemp = *reinterpret_cast<std::ofstream*>(&stream); // for overloading to function correctly
 
 	const totempole_reader& totempole = this->reader.getTotempole();
-	const U64& samples = totempole.getSamples();
-	Totempole::TotempoleHeader h(samples);
-	streamTemp << h;
-
-	// Write the number of contigs
-	const U32 n_contigs = totempole.getContigs();
-	streamTemp.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
+	header_type head(Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
+	streamTemp << head;
 
 	// Write contig data to TWO
 	// length | n_char | chars[0 .. n_char - 1]

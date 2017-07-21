@@ -41,12 +41,17 @@ public:
 	TomahawkReader();
 	~TomahawkReader();
 
-	// Reader functions
 	bool Open(const std::string input);
+
+	// Bulk functions
+
+	// Reader functions
 	bool getBlocks(void);
 	bool getBlocks(std::vector<U32>& blocks);
 	bool getBlocks(std::vector< std::pair<U32, U32> >& blocks);
 	bool getBlock(const U32 blockID);
+
+	// Output functions
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
 
@@ -67,8 +72,6 @@ private:
 	U64 GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks);
 	U64 GetUncompressedSizes(void);
 	template <class T> bool outputBlock(const U32 blockID);
-
-	// Reader functions
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
 	bool ValidateHeader(std::ifstream& in) const;
@@ -83,7 +86,7 @@ private:
 	IO::GenericWriterInterace* writer;
 	TotempoleReader totempole_;
 
-	// Todo: Move out
+	// Todo: Why so many???
 	IO::BasicBuffer buffer_;
 	IO::BasicBuffer data_;
 	IO::BasicBuffer outputBuffer_;

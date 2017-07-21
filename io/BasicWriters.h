@@ -17,7 +17,7 @@ namespace IO{
 
 class GenericWriterInterace{
 protected:
-	typedef Support::TomahawkOutputLD helper_type;
+	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
 	typedef TotempoleReader totempole_type;
 
 public:

@@ -91,13 +91,26 @@ private:
 		this->buffer += '\t';
 		this->buffer += std::to_string(b.meta[b.metaPointer].position);
 		this->buffer += '\t';
-		this->buffer += std::to_string(helper.alleleCounts[0]);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.alleleCounts[1]);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.alleleCounts[4]);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.alleleCounts[5]);
+
+		// If data is phased output in integer form
+		if((helper.controller & 1) == 1){
+			this->buffer += std::to_string((U32)helper.alleleCounts[0]);
+			this->buffer += '\t';
+			this->buffer += std::to_string((U32)helper.alleleCounts[1]);
+			this->buffer += '\t';
+			this->buffer += std::to_string((U32)helper.alleleCounts[4]);
+			this->buffer += '\t';
+			this->buffer += std::to_string((U32)helper.alleleCounts[5]);
+		} else {
+			this->buffer += std::to_string(helper.alleleCounts[0]);
+			this->buffer += '\t';
+			this->buffer += std::to_string(helper.alleleCounts[1]);
+			this->buffer += '\t';
+			this->buffer += std::to_string(helper.alleleCounts[4]);
+			this->buffer += '\t';
+			this->buffer += std::to_string(helper.alleleCounts[5]);
+		}
+
 		this->buffer += '\t';
 		this->buffer += std::to_string(helper.D);
 		this->buffer += '\t';
