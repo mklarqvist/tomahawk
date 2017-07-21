@@ -240,7 +240,10 @@ int view(int argc, char** argv){
 		if(!reader.Open(input)){
 			return false;
 		}
-		reader.nextBlock();
+
+		while(reader.nextBlock()){
+
+		}
 
 		return 1;
 

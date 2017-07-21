@@ -86,6 +86,11 @@ public:
 			return false;
 		}
 
+		if(this->stream.tellg() == this->filesize){
+			std::cerr << "eof" << std::endl;
+			return false;
+		}
+
 		// Read header amount of data
 		// Determine length
 		// Read remainder of data
@@ -102,11 +107,11 @@ public:
 
 		buffer.resize(h->BSIZE);
 
-		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE);
+		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		buffer.pointer = h->BSIZE;
 		const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
 		const U32* crc = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32) - sizeof(U32)]);
-		std::cerr << *outsize << '\t' << *crc << std::endl;
+		//std::cerr << *outsize << '\t' << *crc << std::endl;
 		output_buffer.resize(*outsize);
 
 		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
@@ -121,7 +126,7 @@ public:
 
 		std::cerr << output_buffer.pointer << std::endl;
 
-		exit(1);
+		//exit(1);
 
 		return true;
 
