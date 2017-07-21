@@ -62,7 +62,6 @@ private:
 				std::cerr << "failed deflate" << std::endl;
 				exit(1);
 			}
-			std::cerr << Helpers::timestamp("DEBUG","BINARY") << this->buffer.size() << '\t' << this->compressor.buffer_.size() << '\t' << &this->writer << std::endl;
 			this->writer << compressor.buffer_;
 			this->buffer.reset();
 			this->compressor.Clear();

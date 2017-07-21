@@ -157,15 +157,17 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 		++tomahawk_controller;
 
 		// Keep flushing regularly
+
 		if(this->outputBuffer_.size() > 65536){
-			this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
-			//std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+			//this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+			std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
 			this->outputBuffer_.reset();
 		}
 	}
 
 	// Flush last
-	this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+	//this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+	std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
 
 	// Reset buffers
 	this->outputBuffer_.reset(); // reset

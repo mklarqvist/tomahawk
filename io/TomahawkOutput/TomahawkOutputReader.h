@@ -16,6 +16,7 @@
 #include "../../io/GZController.h"
 #include "../../io/BasicWriters.h"
 #include "../../io/totempole/TotempoleMagic.h"
+#include "../../io/TGZFHeader.h"
 
 
 namespace Tomahawk {
@@ -32,7 +33,6 @@ public:
 	~TomahawkOutputReader(){ }
 
 	// Streaming functions
-	bool nextBlock(void);
 	bool nextVariant(void);
 	bool getBlock(const U32 blockID);
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
@@ -68,12 +68,58 @@ public:
 	}
 
 	bool ParseHeader(void){
-		Totempole::TotempoleContigBase base;
+		Totempole::TotempoleContigBase* base = new Totempole::TotempoleContigBase[this->header.n_contig];
 		for(U32 i = 0; i < this->header.n_contig; ++i){
-
+			this->stream >> base[i];
+			std::cerr << base[i] << std::endl;
+			// Todo: Put data into hash table for lookups
 		}
 
+		delete [] base;
+
 		return true;
+	}
+
+	bool nextBlock(void){
+		if(!this->stream.good()){
+			std::cerr << "stream died" << std::endl;
+			return false;
+		}
+
+		// Read header amount of data
+		// Determine length
+		// Read remainder of data
+		TGZFHeader h;
+		this->stream >> h;
+		std::cerr << h << std::endl;
+		if(!h.Validate()){
+			std::cerr << "failed TGZF header" << std::endl;
+			std::cerr << h << std::endl;
+			return false;
+		}
+
+
+		buffer.resize(h.BSIZE);
+		this->stream.read(&buffer.data[0], h.BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		buffer.pointer = h.BSIZE;
+		const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.size()-sizeof(U32)]);
+		std::cerr << *outsize << std::endl;
+		output_buffer.resize(*outsize);
+
+		if(!this->gzip_controller.Inflate(buffer, output_buffer, h)){
+			std::cerr << "failed inflate" << std::endl;
+			return false;
+		}
+
+		if(this->output_buffer.size() == 0){
+			std::cerr << "empty data" << std::endl;
+			return false;
+		}
+
+		exit(1);
+
+		return true;
+
 	}
 
 	// Other
@@ -96,6 +142,7 @@ public:
 	TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header; // header
 
 	IO::BasicBuffer buffer; // internal buffer
+	IO::BasicBuffer output_buffer; // internal buffer
 	IO::GZController gzip_controller; // TGZF controller
 	filter_type filter;	// filter parameters
 	IO::GenericWriterInterace* writer; // writer interface
