@@ -18,11 +18,10 @@ struct TGZFHeader{
 	BYTE XFL;
 	BYTE OS;
 	U16 XLEN;
-
 	BYTE SI1;
 	BYTE SI2;
 	U16 SLEN;
-	U32 BSIZE;
+	U32 BSIZE;	// remainder size
 
 	inline bool Validate(void) const{
 		return(this->ID1 == Constants::GZIP_ID1

@@ -237,6 +237,13 @@ int view(int argc, char** argv){
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
 
+		if(!reader.Open(input)){
+			return false;
+		}
+		reader.nextBlock();
+
+		return 1;
+
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;
 			return 1;

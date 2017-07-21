@@ -61,7 +61,7 @@ struct BasicBuffer{
 			this->pointer = copy_to;
 		}
 
-		std::cerr << Helpers::timestamp("DEBUG") << "Resizing buffer: " << this->capacity() << " -> " << new_size << std::endl;
+		std::cerr << Helpers::timestamp("DEBUG") << "Resizing buffer: " << this->capacity() << " -> " << new_size << "\tcopyto: " << copy_to << std::endl;
 		//std::cerr << "Copy to: " << copy_to << std::endl;
 		char* target = this->data;
 		this->data = new char[new_size];

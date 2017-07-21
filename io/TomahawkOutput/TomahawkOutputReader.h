@@ -89,24 +89,27 @@ public:
 		// Read header amount of data
 		// Determine length
 		// Read remainder of data
-		TGZFHeader h;
-		this->stream >> h;
-		std::cerr << h << std::endl;
-		if(!h.Validate()){
-			std::cerr << "failed TGZF header" << std::endl;
-			std::cerr << h << std::endl;
-			return false;
+
+		buffer.resize(sizeof(TGZFHeader));
+		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const TGZFHeader* h = reinterpret_cast<const TGZFHeader*>(&buffer.data[0]);
+		std::cerr << *h << std::endl;
+		buffer.pointer =  Constants::TGZF_BLOCK_HEADER_LENGTH;
+		if(!h->Validate()){
+			std::cerr << "failed to validate" << std::endl;
+			exit(1);
 		}
 
+		buffer.resize(h->BSIZE);
 
-		buffer.resize(h.BSIZE);
-		this->stream.read(&buffer.data[0], h.BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
-		buffer.pointer = h.BSIZE;
-		const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.size()-sizeof(U32)]);
-		std::cerr << *outsize << std::endl;
+		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE);
+		buffer.pointer = h->BSIZE;
+		const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
+		const U32* crc = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32) - sizeof(U32)]);
+		std::cerr << *outsize << '\t' << *crc << std::endl;
 		output_buffer.resize(*outsize);
 
-		if(!this->gzip_controller.Inflate(buffer, output_buffer, h)){
+		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
 			std::cerr << "failed inflate" << std::endl;
 			return false;
 		}
@@ -115,6 +118,8 @@ public:
 			std::cerr << "empty data" << std::endl;
 			return false;
 		}
+
+		std::cerr << output_buffer.pointer << std::endl;
 
 		exit(1);
 

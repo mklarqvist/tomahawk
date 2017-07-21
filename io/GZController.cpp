@@ -162,13 +162,13 @@ bool GZController::Deflate(buffer_type& buffer){
 	}
 
 	// update compressedLength
-	U32 compressedLength = zs.total_out +
-					       Constants::TGZF_BLOCK_HEADER_LENGTH +
-					       Constants::TGZF_BLOCK_FOOTER_LENGTH;
+	const U32 compressedLength = zs.total_out +
+					       	     Constants::TGZF_BLOCK_HEADER_LENGTH +
+								 Constants::TGZF_BLOCK_FOOTER_LENGTH;
 
 	// store the compressed length
 	U32* test = reinterpret_cast<U32*>(&this->buffer_.data[16]);
-	*test = compressedLength - 1;
+	*test = compressedLength;
 	//std::cerr << Helpers::timestamp("DEBUG") << data.pointer << "->" << compressedLength-1 << " stored: " << *test << std::endl;
 
 	std::time_t result = std::time(nullptr);
@@ -177,15 +177,23 @@ bool GZController::Deflate(buffer_type& buffer){
 	*time = result;
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
 
+
+	//
+	memset(&buffer.data[compressedLength - 2*sizeof(U32)], 0, 2*sizeof(U32));
+
 	// store the CRC32 checksum
 	U32 crc = crc32(0, NULL, 0);
 	crc = crc32(crc, (Bytef*)buffer.data, buffer.pointer);
-	U32* c = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 8]);
+	U32* c = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 2*sizeof(U32)]);
 	*c = crc;
-	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 4]);
-	*uncompressed = buffer.pointer; // Store uncompressed length
+	U32 convert = buffer.pointer; // avoid potential problems when casting from U64 to U32 by interpretation
+	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - sizeof(U32)]);
+	*uncompressed = convert; // Store uncompressed length
 
 	this->buffer_.pointer = compressedLength;
+	std::cerr << "Writing: " << convert << '/' << *uncompressed << '\t' << compressedLength << '\t' << *test << '\t' << buffer.size() << '\t' << "At pos: " << (compressedLength - sizeof(U32)) << '\t' << buffer.pointer << '\t' << *c << '\t' << convert << std::endl;
+
+
 
 	return true;
 }
