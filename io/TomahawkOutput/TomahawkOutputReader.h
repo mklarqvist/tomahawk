@@ -46,6 +46,13 @@ public:
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
 	bool getBlocks(void);
 
+	bool AddRegions(std::vector<std::string>& positions){
+		if(positions.size() == 0)
+			return false;
+
+		return true;
+	}
+
 	bool Open(const std::string input){
 		this->stream.open(input, std::ios::binary | std::ios::in | std::ios::ate);
 		if(!this->stream.good()){
@@ -210,7 +217,7 @@ public:
 	writer_type* writer; // writer interface
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;
-	hash_table* contig_htable;
+	hash_table* contig_htable; // map input string to internal contigID
 
 	//temp
 	reader_type reader;
