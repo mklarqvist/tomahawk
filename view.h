@@ -205,6 +205,7 @@ int view(int argc, char** argv){
 	// Todo: action
 	// Parse remainder parameters
 	// Assume these parameters are contig or position values for filtering
+	std::vector<std::string> filter_regions;
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
 		std::cerr << i << '\t' << param << std::endl;
@@ -213,6 +214,8 @@ int view(int argc, char** argv){
 			std::cerr << "illegal" << std::endl;
 			return 1;
 		}
+
+		filter_regions.push_back(param);
 	}
 
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){

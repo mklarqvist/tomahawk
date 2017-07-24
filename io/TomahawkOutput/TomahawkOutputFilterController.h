@@ -180,12 +180,12 @@ public:
 		return true;
 	}
 
-	bool setFilterMGF(const float& minMGF){
-		if(minMGF < 0){
+	bool setFilterMHF(const float& minMHF){
+		if(minMHF < 0){
 			std::cerr << "impossible" << std::endl;
 			return false;
 		}
-		this->minMGF = minMGF;
+		this->minMHF = minMHF;
 		this->trigger();
 		return true;
 	}
@@ -213,7 +213,7 @@ private:
 	double minP, maxP;
 	double minChiSquared, maxChiSquared;
 	double minPmodel, maxPmodel;
-	float minMGF;
+	float minMHF;
 
 	U16 filterValueInclude;
 	U16 filterValueExclude;

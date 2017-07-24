@@ -19,7 +19,7 @@ TomahawkOutputFilterController::TomahawkOutputFilterController() :
 	minP(0), maxP(1),
 	minChiSquared(0), maxChiSquared(std::numeric_limits<double>::max()),
 	minPmodel(0), maxPmodel(1),
-	minMGF(0),
+	minMHF(0),
 	filterValueInclude(0),
 	filterValueExclude(0)
 {}
@@ -55,7 +55,7 @@ bool TomahawkOutputFilterController::filterAlleleCount(const IO::TomahawkOutputE
 	if(&target.q1 != max) total += target.q1;
 	if(&target.q2 != max) total += target.q2;
 
-	return(total > this->minMGF);
+	return(total > this->minMHF);
 }
 
 } /* namespace Tomahawk */

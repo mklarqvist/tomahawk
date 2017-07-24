@@ -45,7 +45,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 	const Tomahawk::IO::TomahawkOutputEntry*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
-			std::cout << *entry << '\n';
+			std::cout << this->contigs[entry->AcontigID].name << '\t' << this->contigs[entry->BcontigID].name << '\t' << *entry << '\n';
 	}
 
 	return true;

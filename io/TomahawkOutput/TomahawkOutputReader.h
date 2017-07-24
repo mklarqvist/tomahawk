@@ -27,10 +27,19 @@ class TomahawkOutputReader {
 	typedef TomahawkOutputEntry entry_type;
 	typedef TomahawkOutputFilterController filter_type;
 	typedef PackedEntryReader<entry_type, sizeof(entry_type)> reader_type;
+	typedef IO::GenericWriterInterace writer_type;
+	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
+	typedef Totempole::TotempoleContigBase contig_type;
+	typedef TGZFHeader tgzf_type;
+	typedef Hash::HashTable<std::string, U32> hash_table;
+	typedef IO::GZController tgzf_controller_type;
 
 public:
 	TomahawkOutputReader();
-	~TomahawkOutputReader(){ }
+	~TomahawkOutputReader(){
+		delete [] this->contigs;
+		delete contig_htable;
+	}
 
 	// Streaming functions
 	bool getBlock(const U32 blockID);
@@ -67,14 +76,27 @@ public:
 	}
 
 	bool ParseHeader(void){
-		Totempole::TotempoleContigBase* base = new Totempole::TotempoleContigBase[this->header.n_contig];
-		for(U32 i = 0; i < this->header.n_contig; ++i){
-			this->stream >> base[i];
-			std::cerr << base[i] << std::endl;
-			// Todo: Put data into hash table for lookups
-		}
+		if(this->header.n_contig == 0)
+			return false;
 
-		delete [] base;
+		if(this->header.n_contig < 1024)
+			this->contig_htable = new hash_table(1024);
+		else
+			this->contig_htable = new hash_table(this->header.n_contig * 2);
+
+		this->contigs = new contig_type[this->header.n_contig];
+		U32* ret;
+		for(U32 i = 0; i < this->header.n_contig; ++i){
+			this->stream >> this->contigs[i];
+			std::cerr << this->contigs[i] << std::endl;
+			if(!this->contig_htable->GetItem(&this->contigs[i].name, ret, this->contigs[i].name.size())){
+				// Add to hash table
+				this->contig_htable->SetItem(&this->contigs[i].name, this->contigs[i].name.size());
+			} else {
+				std::cerr << "error duplicate" << std::endl;
+				exit(1);
+			}
+		}
 
 		return true;
 	}
@@ -90,9 +112,9 @@ public:
 			return false;
 		}
 
-		buffer.resize(sizeof(TGZFHeader));
+		buffer.resize(sizeof(tgzf_type));
 		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-		const TGZFHeader* h = reinterpret_cast<const TGZFHeader*>(&buffer.data[0]);
+		const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
 		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << "failed to validate" << std::endl;
@@ -100,8 +122,10 @@ public:
 		}
 
 		buffer.resize(h->BSIZE);
-		// Recast because if resized then pointer address is incorrect
-		h = reinterpret_cast<const TGZFHeader*>(&buffer.data[0]);
+
+		// Recast because if buffer is resized then the pointer address is incorrect
+		// resulting in segfault
+		h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
 
 		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
@@ -177,14 +201,16 @@ public:
 	U32 size;
 
 	std::ifstream stream; // reader stream
-	TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header; // header
+	header_type header; // header
 
 	IO::BasicBuffer buffer; // internal buffer
 	IO::BasicBuffer output_buffer; // internal buffer
-	IO::GZController gzip_controller; // TGZF controller
+	tgzf_controller_type gzip_controller; // TGZF controller
 	filter_type filter;	// filter parameters
-	IO::GenericWriterInterace* writer; // writer interface
+	writer_type* writer; // writer interface
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
+	contig_type* contigs;
+	hash_table* contig_htable;
 
 	//temp
 	reader_type reader;
