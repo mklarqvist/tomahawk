@@ -9,7 +9,7 @@
 
 namespace Tomahawk {
 namespace IO{
-TomahawkOutputReader::TomahawkOutputReader()
+TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0)
 {}
 
 /*
@@ -20,8 +20,8 @@ std::cout << (int)(*this)[i].FLAGS << '\t' << (*this)[i].MAFMix << '\t' << (*thi
 
 
 bool TomahawkOutputReader::view(const std::string& input){
-	if(!this->reader.setup(input))
-		return false;
+	//if(!this->reader.setup(input))
+	//	return false;
 
 	if(this->filter.isAnySet()){
 		return(this->__viewFilter());
@@ -29,6 +29,9 @@ bool TomahawkOutputReader::view(const std::string& input){
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
+	std::cerr << "illegal" << std::endl;
+	exit(1);
+
 	const entry_type* entry;
 	while(this->reader.nextEntry(entry)){
 		std::cout << *entry << '\n';
@@ -39,16 +42,10 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	const entry_type* entry;
-	while(this->reader.nextEntry(entry)){
-		// Todo: make external
-		//if(entry->AcontigID != 0 || entry->BcontigID != 14)
-		//	continue;
-
+	const Tomahawk::IO::TomahawkOutputEntry*  entry;
+	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
 			std::cout << *entry << '\n';
-
-		//std::cout.write(reinterpret_cast<const char*>(entry), sizeof(entry_type));
 	}
 
 	return true;

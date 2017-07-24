@@ -33,7 +33,6 @@ public:
 	~TomahawkOutputReader(){ }
 
 	// Streaming functions
-	bool nextVariant(void);
 	bool getBlock(const U32 blockID);
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
 	bool getBlocks(void);
@@ -91,28 +90,31 @@ public:
 			return false;
 		}
 
-		// Read header amount of data
-		// Determine length
-		// Read remainder of data
-
 		buffer.resize(sizeof(TGZFHeader));
 		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
 		const TGZFHeader* h = reinterpret_cast<const TGZFHeader*>(&buffer.data[0]);
-		std::cerr << *h << std::endl;
-		buffer.pointer =  Constants::TGZF_BLOCK_HEADER_LENGTH;
+		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << "failed to validate" << std::endl;
-			exit(1);
+			return false;
 		}
 
 		buffer.resize(h->BSIZE);
+		// Recast because if resized then pointer address is incorrect
+		h = reinterpret_cast<const TGZFHeader*>(&buffer.data[0]);
 
 		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		if(!this->stream.good()){
+			std::cerr << "truncated file" << std::endl;
+			return false;
+		}
+
 		buffer.pointer = h->BSIZE;
 		const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-		const U32* crc = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32) - sizeof(U32)]);
+		//const U32* crc = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32) - sizeof(U32)]);
 		//std::cerr << *outsize << '\t' << *crc << std::endl;
 		output_buffer.resize(*outsize);
+		this->output_buffer.reset();
 
 		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
 			std::cerr << "failed inflate" << std::endl;
@@ -125,11 +127,33 @@ public:
 		}
 
 		std::cerr << output_buffer.pointer << std::endl;
+		this->buffer.reset();
 
-		//exit(1);
+		// Reset iterator position and size
+		this->position = 0;
+		this->size = this->output_buffer.size() / sizeof(TomahawkOutputEntry);
+
+		// Validity check
+		if(this->output_buffer.size() % sizeof(TomahawkOutputEntry) != 0){
+			std::cerr << "data is corrupted" << std::endl;
+			return false;
+		}
 
 		return true;
+	}
 
+	const TomahawkOutputEntry* operator[](const U32 p) const{ return(reinterpret_cast<TomahawkOutputEntry*>(&this->output_buffer.data[sizeof(TomahawkOutputEntry)*p])); }
+
+	bool nextVariant(const TomahawkOutputEntry*& entry){
+		if(this->position == this->size){
+			if(!this->nextBlock())
+				return false;
+		}
+
+		entry = (*this)[this->position];
+		++this->position;
+
+		return true;
 	}
 
 	// Other
@@ -148,6 +172,10 @@ public:
 	U64 samples; 	// has to match header
 	float version;	// has to match header
 	U64 filesize;	// input file size
+
+	U32 position;
+	U32 size;
+
 	std::ifstream stream; // reader stream
 	TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header; // header
 

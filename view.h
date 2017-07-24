@@ -241,12 +241,6 @@ int view(int argc, char** argv){
 			return false;
 		}
 
-		while(reader.nextBlock()){
-
-		}
-
-		return 1;
-
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;
 			return 1;
