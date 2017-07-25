@@ -34,19 +34,21 @@ class TomahawkOutputReader {
 	typedef TGZFHeader tgzf_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
 	typedef IO::GZController tgzf_controller_type;
-	typedef Tomahawk::Algorithm::Interval<S32, U32> interval_type;
-	typedef Tomahawk::Algorithm::IntervalTree<S32, U32> tree_type;
+	typedef Tomahawk::Algorithm::ContigInterval interval_type;
+	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
 
 public:
 	TomahawkOutputReader();
 	~TomahawkOutputReader(){
 		delete [] this->contigs;
 		delete contig_htable;
-		if(contig_tree != nullptr){
+		if(interval_tree != nullptr){
 			for(U32 i = 0; i < this->header.n_contig; ++i)
-				delete this->contig_tree[i];
+				delete this->interval_tree[i];
 		}
-		delete contig_tree;
+		delete [] interval_tree_entries;
+
+		delete interval_tree;
 		delete writer;
 
 		this->buffer.deleteAll();
@@ -62,17 +64,19 @@ public:
 		if(positions.size() == 0)
 			return false;
 
-		if(this->contig_tree == nullptr){
-			this->contig_tree = new tree_type*[this->header.n_contig];
+		if(this->interval_tree == nullptr){
+			this->interval_tree = new tree_type*[this->header.n_contig];
 			for(U32 i = 0; i < this->header.n_contig; ++i)
-				this->contig_tree[i] = nullptr;
+				this->interval_tree[i] = nullptr;
 		}
+		if(this->interval_tree_entries == nullptr)
+			this->interval_tree_entries = new std::vector<interval_type>[this->header.n_contig];
 
 		for(U32 i = 0; i < positions.size(); ++i){
 			std::cerr << i << ": " << positions[i] << std::endl;
 			// Pattern cA:pAf-pAt;cB:pBf-pBt
 			if(positions[i].find(',') != std::string::npos){
-				std::cerr << "joined" << std::endl;
+				std::cerr << "linked intervals" << std::endl;
 				std::vector<std::string> ret = Helpers::split(positions[i], ',');
 				if(ret.size() == 1){
 					std::cerr << "illegal: joined 1 split" << std::endl;
@@ -81,13 +85,25 @@ public:
 				} else if(ret.size() == 2){
 					// parse left
 					std::cerr << "parse left" << std::endl;
-					if(!__ParseRegion(ret[0]))
+					interval_type intervalLeft;
+					if(!__ParseRegion(ret[0], intervalLeft))
 						return false;
 
 					// parse right
 					std::cerr << "parse right" << std::endl;
-					if(!__ParseRegion(ret[1]))
+					interval_type intervalRight;
+					if(!__ParseRegion(ret[1], intervalRight))
 						return false;
+
+					if(intervalLeft.contigID == intervalRight.contigID){
+						std::cerr << "cannot link regions from the same contig name" << std::endl;
+						return false;
+					}
+
+					// Link the intervals together
+					intervalLeft.value = &intervalRight;
+					intervalRight.value = &intervalLeft;
+					std::cerr << intervalLeft << '\t' << intervalRight << std::endl;
 
 				} else {
 					std::cerr << "illegal: joined n split: " << ret.size() << std::endl;
@@ -95,7 +111,8 @@ public:
 				}
 			} else {
 				std::cerr << "single" << std::endl;
-				if(!__ParseRegion(positions[i]))
+				interval_type interval;
+				if(!__ParseRegion(positions[i], interval))
 					return false;
 			}
 		}
@@ -103,7 +120,7 @@ public:
 		return true;
 	}
 
-	bool __ParseRegion(const std::string& region){
+	bool __ParseRegion(const std::string& region, interval_type& interval){
 		std::vector<std::string> ret = Helpers::split(region, ':');
 		if(ret.size() == 1){
 			if(ret[0].find('-') != std::string::npos){
@@ -118,6 +135,8 @@ public:
 				std::cerr << "contig: " << region << " not in header" << std::endl;
 				return false;
 			}
+			interval(0, this->contigs[*contigID].bases, *contigID);
+
 		} else if(ret.size() == 2){
 			// is contigID:pos-pos
 			U32* contigID;
@@ -131,6 +150,7 @@ public:
 				// only one pos
 				const double pos = std::stod(retPos[0]);
 				std::cerr << "single position: " << pos << std::endl;
+				interval(pos, pos, *contigID);
 
 			} else if(retPos.size() == 2){
 				// is two positions
@@ -141,7 +161,7 @@ public:
 					std::swap(posA, posB);
 				}
 				std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
-				interval_type t(posA, posB, *contigID);
+				interval(posA, posB, *contigID);
 
 			} else {
 				std::cerr << "illegal: pos n split: " << retPos.size() << std::endl;
@@ -322,7 +342,8 @@ public:
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID
-	tree_type** contig_tree;
+	tree_type** interval_tree;
+	std::vector<interval_type>* interval_tree_entries;
 
 	//temp
 	reader_type reader;

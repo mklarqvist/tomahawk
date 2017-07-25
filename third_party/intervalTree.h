@@ -45,6 +45,25 @@ public:
     { }
 };
 
+class ContigInterval : public Interval<ContigInterval*, S32> {
+public:
+	ContigInterval() : Interval<ContigInterval*, S32>(-1, -1, nullptr), contigID(-1){}
+
+    void operator()(S32 s, S32 e, S32 id){
+    	this->start = s;
+    	this->stop  = e;
+    	this->contigID = id;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const ContigInterval& i){
+    	os << i.contigID << ":" << i.start << "-" << i.stop << ';' << i.value;
+    	return(os);
+    }
+
+public:
+    S32 contigID;
+};
+
 template <class T, typename K>
 K intervalStart(const Interval<T,K>& i) {
     return i.start;
@@ -56,9 +75,9 @@ K intervalStop(const Interval<T,K>& i) {
 }
 
 template <class T, typename K>
-  std::ostream& operator<<(std::ostream& out, Interval<T,K>& i) {
-    out << "Interval(" << i.start << ", " << i.stop << "): " << i.value;
-    return out;
+std::ostream& operator<<(std::ostream& out, const Interval<T,K>& i) {
+	out << "Interval(" << i.start << ", " << i.stop << "): " << i.value;
+	return out;
 }
 
 template <class T, typename K = std::size_t>
@@ -73,7 +92,7 @@ template <class T, typename K = std::size_t>
 class IntervalTree {
 
 public:
-    typedef Interval<T,K> interval;
+    typedef T interval;
     typedef std::vector<interval> intervalVector;
     typedef IntervalTree<T,K> intervalTree;
 
@@ -92,6 +111,7 @@ private:
     std::unique_ptr<intervalTree> copyTree(const intervalTree& orig){
         return std::unique_ptr<intervalTree>(new intervalTree(orig));
     }
+
 public:
 
     IntervalTree<T,K>(const intervalTree& other)
@@ -103,7 +123,6 @@ public:
     }
 
 public:
-
     IntervalTree<T,K>& operator=(const intervalTree& other) {
         center = other.center;
         intervals = other.intervals;
@@ -179,9 +198,29 @@ public:
     }
 
     intervalVector findOverlapping(K start, K stop) const {
-	intervalVector ov;
-	this->findOverlapping(start, stop, ov);
-	return ov;
+		intervalVector ov;
+		this->findOverlapping(start, stop, ov);
+		return ov;
+    }
+
+    bool findAny(K start, K stop) const{
+    	if (!intervals.empty() && ! (stop < intervals.front().start)) {
+			for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i) {
+				const interval& interval = *i;
+				if (interval.stop >= start && interval.start <= stop)
+					return true;
+			}
+		}
+
+    	if (left && start <= center) {
+			left->findOverlapping(start, stop);
+		}
+
+		if (right && stop >= center) {
+			right->findOverlapping(start, stop);
+		}
+
+		return false;
     }
 
     void findOverlapping(K start, K stop, intervalVector& overlapping) const {

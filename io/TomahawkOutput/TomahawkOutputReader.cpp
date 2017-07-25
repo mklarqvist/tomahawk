@@ -9,7 +9,7 @@
 
 namespace Tomahawk {
 namespace IO{
-TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0), contig_tree(nullptr), contigs(nullptr), contig_htable(nullptr), writer(nullptr)
+TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0), interval_tree(nullptr), contigs(nullptr), contig_htable(nullptr), writer(nullptr), interval_tree_entries(nullptr)
 {}
 
 /*

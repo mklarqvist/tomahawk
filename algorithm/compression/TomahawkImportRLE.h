@@ -424,7 +424,6 @@ void TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::Bas
 	position |= this->helper_.phased << 1;
 	position |= this->helper_.missingValues << 0;
 
-
 	meta += this->helper_.MGF;
 	meta += this->helper_.HWE_P;
 	meta += runsCount;
