@@ -25,7 +25,7 @@ computer farms/clouds with a hardware architecture that is different from the co
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, `index`,
-and `stats`. 
+and `stats`.
 Executing `tomahawk <command>` gives a list of commands with brief descriptions
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
@@ -34,21 +34,25 @@ commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`/`bcf`. Link
 disequilibrium data is written out in `two` and `toi` format. There is an option
 to produce human-readable tab-delimited output for smaller datasets (`-N` flag in `calc`).
 
-By default Tomahawk only operates on bi-allelic SNVs and as such filters out
+### Importing to Tomahawk
+By design Tomahawk only operates on bi-allelic SNVs and as such filters out
 indels and complex variants. Tomahawk does not support mixed phasing of genotypes
-in the same variant (e.g. `0|0`, `0/1`) and converts all genotypes to unphased
-if any unphased genotypes are found in that line.
-Importing a variant document (`vcf`/`bcf`) to Tomahawk requires the `import` command.
+in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found in a line,
+all genotypes in that line are converted to unphased. Importing a variant document (`vcf`/`bcf`)
+to Tomahawk requires the `import` command.
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
-`outPrefix.twk.twi`
+`outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
+from Hardy-Weinberg with probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2
+tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
 ```
 
+### Calculating Linkage Disequilibrium
 ```bash
 tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.two
 ```
 
+### Converting between file formats and filtering
  ```bash
  tomahawk view -i file.two
  ```

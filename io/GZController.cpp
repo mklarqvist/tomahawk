@@ -178,7 +178,6 @@ bool GZController::Deflate(buffer_type& buffer){
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
 
 
-	//
 	memset(&buffer.data[compressedLength - 2*sizeof(U32)], 0, 2*sizeof(U32));
 
 	// store the CRC32 checksum
@@ -191,9 +190,7 @@ bool GZController::Deflate(buffer_type& buffer){
 	*uncompressed = convert; // Store uncompressed length
 
 	this->buffer_.pointer = compressedLength;
-	std::cerr << "Writing: " << convert << '/' << *uncompressed << '\t' << compressedLength << '\t' << *test << '\t' << buffer.size() << '\t' << "At pos: " << (compressedLength - sizeof(U32)) << '\t' << buffer.pointer << '\t' << *c << '\t' << convert << std::endl;
-
-
+	//std::cerr << "Writing: " << convert << '/' << *uncompressed << '\t' << compressedLength << '\t' << *test << '\t' << buffer.size() << '\t' << "At pos: " << (compressedLength - sizeof(U32)) << '\t' << buffer.pointer << '\t' << *c << '\t' << convert << std::endl;
 
 	return true;
 }

@@ -211,7 +211,7 @@ int view(int argc, char** argv){
 		std::cerr << i << '\t' << param << std::endl;
 
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
-			std::cerr << "illegal" << std::endl;
+			std::cerr << "illegal parse of input string: " << param << std::endl;
 			return 1;
 		}
 
@@ -243,6 +243,8 @@ int view(int argc, char** argv){
 		if(!reader.Open(input)){
 			return false;
 		}
+
+		reader.AddRegions(filter_regions);
 
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;

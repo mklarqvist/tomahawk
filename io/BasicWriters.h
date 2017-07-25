@@ -33,11 +33,8 @@ public:
 
 	// Always the same but contents in buffer may be different
 	virtual void operator<<(const IO::BasicBuffer& buffer) =0;
-
 	virtual void write(const char* data, const U32 length) =0;
-
 	virtual std::ostream& getStream(void) =0;
-
 	virtual void flush(void) =0;
 	virtual bool close(void) =0;
 

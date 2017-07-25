@@ -71,8 +71,6 @@ private:
 	void AddNatural(const controller_type& a, const controller_type& b, const helper_type& helper){
 		this->buffer += std::to_string(helper.controller);
 		this->buffer += '\t';
-		this->buffer += std::to_string(-10*(log10(a.meta[a.metaPointer].MAF) + log10(b.meta[b.metaPointer].MAF)));
-		this->buffer += '\t';
 
 		/*
 		this->buffer += std::to_string(a.meta[a.metaPointer].MAF);
@@ -137,7 +135,6 @@ private:
 		const U32 writePosA = a.meta[a.metaPointer].position << 2 | a.meta[a.metaPointer].phased << 1 | a.meta[a.metaPointer].missing;
 		const U32 writePosB = b.meta[b.metaPointer].position << 2 | b.meta[b.metaPointer].phased << 1 | b.meta[b.metaPointer].missing;
 		this->buffer += helper.controller;
-		this->buffer += (double)(-10*(log10(a.meta[a.metaPointer].MAF) + log10(b.meta[b.metaPointer].MAF)));
 		this->buffer += a.support->contigID;
 		this->buffer += writePosA;
 		this->buffer += b.support->contigID;

@@ -113,14 +113,14 @@ public:
 
 
 	double fisherTestLess(S32 a, S32 b, S32 c, S32 d) const{
-		U32 minValue = a;
+		S32 minValue = a;
 		if(d < minValue) minValue = d;
 
 		if(minValue > 50)
 			return(this->chisqr(1, this->chiSquaredTest(a,b,c,d)));
 
 		double sum = 0;
-		for(U32 i = 0; i <= minValue; ++i){
+		for(S32 i = 0; i <= minValue; ++i){
 			sum += this->fisherTest(a, b, c, d);
 			if(sum < FISHER_TINY) break;
 			--a, ++b, ++c, --d;
@@ -130,14 +130,14 @@ public:
 	}
 
 	double fisherTestGreater(S32 a, S32 b, S32 c, S32 d) const{
-		U32 minValue = b;
+		S32 minValue = b;
 		if(c < minValue) minValue = c;
 
 		if(minValue > 50)
 			return(this->chisqr(1, this->chiSquaredTest(a,b,c,d)));
 
 		double sum = 0;
-		for(U32 i = 0; i <= minValue; ++i){
+		for(S32 i = 0; i <= minValue; ++i){
 			sum += this->fisherTest(a, b, c, d);
 			if(sum < FISHER_TINY) break;
 			++a, --b, --c, ++d;

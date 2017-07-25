@@ -534,9 +534,6 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 			const U64 c = ceil(q1);
 			const U64 d = ceil(q2);
 
-			// Toggle Fisher's exact test FLAG bit
-			this->helper.setFisherTest();
-
 			if(this->helper.D < 0)
 				this->helper.P = this->fisherController.fisherTestLess(a,b,c,d);
 			else
@@ -553,6 +550,9 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 		this->helper[1] = p2;
 		this->helper[4] = q1;
 		this->helper[5] = q2;
+
+		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
+			this->helper.setIncomplete();
 
 		return true;
 	}
@@ -1413,8 +1413,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 		else
 			this->helper.P = this->fisherController.fisherTestGreater(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
 
-		// Toggle Fisher's exact test FLAG
-		this->helper.setFisherTest();
+		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
+			this->helper.setIncomplete();
 
 		// Fisher's exact test P value filter
 		if(this->helper.P > this->parameters.P_threshold){

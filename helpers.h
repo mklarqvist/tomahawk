@@ -78,7 +78,7 @@ std::string ToPrettyString(const std::vector<T>& data){
 }
 
 bool matchPositionalStringTWO(const std::string& param);
-bool parsePositionalStringTWO(std::string& param);
+bool parsePositionalStringTWO(const std::string& param);
 
 
 }

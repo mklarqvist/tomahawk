@@ -17,6 +17,7 @@
 #include "../../io/BasicWriters.h"
 #include "../../io/totempole/TotempoleMagic.h"
 #include "../../io/TGZFHeader.h"
+#include "../../third_party/intervalTree.h"
 
 
 namespace Tomahawk {
@@ -33,12 +34,19 @@ class TomahawkOutputReader {
 	typedef TGZFHeader tgzf_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
 	typedef IO::GZController tgzf_controller_type;
+	typedef IntervalTree<U32, U32> tree_type;
 
 public:
 	TomahawkOutputReader();
 	~TomahawkOutputReader(){
 		delete [] this->contigs;
 		delete contig_htable;
+		if(contig_tree != nullptr){
+			for(U32 i = 0; i < this->header.n_contig; ++i)
+				delete this->contig_tree[i];
+		}
+		delete contig_tree;
+		delete writer;
 	}
 
 	// Streaming functions
@@ -49,6 +57,78 @@ public:
 	bool AddRegions(std::vector<std::string>& positions){
 		if(positions.size() == 0)
 			return false;
+
+		if(this->contig_tree == nullptr){
+			this->contig_tree = new tree_type*[this->header.n_contig];
+			for(U32 i = 0; i < this->header.n_contig; ++i)
+				this->contig_tree[i] = nullptr;
+		}
+
+		for(U32 i = 0; i < positions.size(); ++i){
+			std::cerr << i << ": " << positions[i] << std::endl;
+			// Pattern cA:pAf-pAt;cB:pBf-pBt
+			if(positions[i].find(',') != std::string::npos){
+				std::cerr << "joined" << std::endl;
+				std::vector<std::string> ret = Helpers::split(positions[i], ',');
+				if(ret.size() == 1){
+					std::cerr << "illegal: joined 1 split" << std::endl;
+					return false;
+
+				} else if(ret.size() == 2){
+					// parse left
+					std::cerr << "parse left" << std::endl;
+					if(!__ParseRegion(ret[0]))
+						return false;
+
+					// parse right
+					std::cerr << "parse right" << std::endl;
+					if(!__ParseRegion(ret[1]))
+						return false;
+
+				} else {
+					std::cerr << "illegal: joined n split: " << ret.size() << std::endl;
+					return false;
+				}
+			} else {
+				std::cerr << "single" << std::endl;
+				if(!__ParseRegion(positions[i]))
+					return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool __ParseRegion(const std::string& region){
+		std::vector<std::string> ret = Helpers::split(region, ':');
+		if(ret.size() == 1){
+			if(ret[0].find('-') != std::string::npos){
+				std::cerr << "no contigid defined" << std::endl;
+				return false;
+			}
+
+			// is contigID only
+			std::cerr << "contigONly" << std::endl;
+
+		} else if(ret.size() == 2) {
+			// is contigID:pos-pos
+			std::vector<std::string> retPos = Helpers::split(ret[1], '-');
+			if(retPos.size() == 1){
+				// only one pos
+				std::cerr << "single position" << std::endl;
+
+			} else if(retPos.size() == 2){
+				// is two positions
+				std::cerr << "full region" << std::endl;
+
+			} else {
+				std::cerr << "illegal: pos n split: " << retPos.size() << std::endl;
+				return false;
+			}
+		} else {
+			std::cerr << "illegal: contig n split: " << ret.size() << std::endl;
+			return false;
+		}
 
 		return true;
 	}
@@ -157,7 +237,7 @@ public:
 			return false;
 		}
 
-		std::cerr << output_buffer.pointer << std::endl;
+		// Reset buffer
 		this->buffer.reset();
 
 		// Reset iterator position and size
@@ -200,8 +280,8 @@ private:
 	bool __viewFilter(void);
 
 public:
-	U64 samples; 	// has to match header
-	float version;	// has to match header
+	//U64 samples; 	// has to match header
+	//float version;	// has to match header
 	U64 filesize;	// input file size
 
 	U32 position;
@@ -218,6 +298,7 @@ public:
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID
+	tree_type** contig_tree;
 
 	//temp
 	reader_type reader;

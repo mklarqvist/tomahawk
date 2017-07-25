@@ -170,7 +170,7 @@ bool matchPositionalStringTWO(const std::string& param){
 	)));
 }
 
-bool parsePositionalStringTWO(std::string& param){
+bool parsePositionalStringTWO(const std::string& param){
 	std::size_t found = param.find(',');
 	if(found != std::string::npos){
 		std::cerr << "found: " << found << '/' << param.size() << std::endl;

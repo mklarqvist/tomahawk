@@ -9,7 +9,7 @@
 
 namespace Tomahawk {
 namespace IO{
-TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0)
+TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0), contig_tree(nullptr), contigs(nullptr), contig_htable(nullptr), writer(nullptr)
 {}
 
 /*
@@ -45,7 +45,8 @@ bool TomahawkOutputReader::__viewFilter(void){
 	const Tomahawk::IO::TomahawkOutputEntry*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
-			std::cout << this->contigs[entry->AcontigID].name << '\t' << this->contigs[entry->BcontigID].name << '\t' << *entry << '\n';
+//			std::cout << this->contigs[entry->AcontigID].name << '\t' << this->contigs[entry->BcontigID].name << '\t' << *entry << '\n';
+			entry->write(std::cout, this->contigs);
 	}
 
 	return true;

@@ -1,6 +1,9 @@
 #ifndef TOTEMPOLECONTIG_H_
 #define TOTEMPOLECONTIG_H_
 
+#include <ostream>
+#include <fstream>
+
 namespace Tomahawk{
 namespace Totempole{
 
