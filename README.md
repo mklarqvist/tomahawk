@@ -42,19 +42,19 @@ all genotypes in that line are converted to unphased. Importing a variant docume
 to Tomahawk requires the `import` command.
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
-from Hardy-Weinberg with probability < 0.001
+from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
 ```
 
-### Calculating Linkage Disequilibrium
+### Calculating linkage disequilibrium
 ```bash
 tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.two
 ```
 
 ### Converting between file formats and filtering
  ```bash
- tomahawk view -i file.two
+ tomahawk view -i file.two -P 1e-4 -a 5 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver' 
  ```
 
  ```bash

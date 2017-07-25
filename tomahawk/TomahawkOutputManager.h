@@ -72,13 +72,6 @@ private:
 		this->buffer += std::to_string(helper.controller);
 		this->buffer += '\t';
 
-		/*
-		this->buffer += std::to_string(a.meta[a.metaPointer].MAF);
-		this->buffer += '\t';
-		this->buffer += std::to_string(b.meta[b.metaPointer].MAF);
-		this->buffer += '\t';
-*/
-
 		//  Todo: need Totempole for mapping contigID to name
 		this->buffer += std::to_string(a.support->contigID);
 		this->buffer += '\t';
@@ -111,7 +104,7 @@ private:
 		this->buffer += '\t';
 		this->buffer += std::to_string(helper.D);
 		this->buffer += '\t';
-		this->buffer += std::to_string(helper.Dprime);
+		this->buffer += std::to_string(abs(helper.Dprime));	// in the unphased case, Dprime can be negative
 		this->buffer += '\t';
 		this->buffer += std::to_string(helper.R2);
 		this->buffer += '\t';

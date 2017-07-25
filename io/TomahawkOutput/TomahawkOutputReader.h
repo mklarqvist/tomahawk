@@ -79,24 +79,22 @@ public:
 				std::cerr << "linked intervals" << std::endl;
 				std::vector<std::string> ret = Helpers::split(positions[i], ',');
 				if(ret.size() == 1){
-					std::cerr << "illegal: joined 1 split" << std::endl;
+					std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
 					return false;
 
 				} else if(ret.size() == 2){
 					// parse left
-					std::cerr << "parse left" << std::endl;
 					interval_type intervalLeft;
 					if(!__ParseRegion(ret[0], intervalLeft))
 						return false;
 
 					// parse right
-					std::cerr << "parse right" << std::endl;
 					interval_type intervalRight;
 					if(!__ParseRegion(ret[1], intervalRight))
 						return false;
 
 					if(intervalLeft.contigID == intervalRight.contigID){
-						std::cerr << "cannot link regions from the same contig name" << std::endl;
+						std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Cannot link regions from the same contig name!" << std::endl;
 						return false;
 					}
 
@@ -106,11 +104,10 @@ public:
 					std::cerr << intervalLeft << '\t' << intervalRight << std::endl;
 
 				} else {
-					std::cerr << "illegal: joined n split: " << ret.size() << std::endl;
+					std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
 					return false;
 				}
 			} else {
-				std::cerr << "single" << std::endl;
 				interval_type interval;
 				if(!__ParseRegion(positions[i], interval))
 					return false;
@@ -124,7 +121,7 @@ public:
 		std::vector<std::string> ret = Helpers::split(region, ':');
 		if(ret.size() == 1){
 			if(ret[0].find('-') != std::string::npos){
-				std::cerr << "no contigid defined" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 				return false;
 			}
 
@@ -132,7 +129,7 @@ public:
 			std::cerr << "contigONly" << std::endl;
 			U32* contigID;
 			if(!this->contig_htable->GetItem(&region[0], &region, contigID, region.size())){
-				std::cerr << "contig: " << region << " not in header" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 				return false;
 			}
 			interval(0, this->contigs[*contigID].bases, *contigID);
@@ -141,7 +138,7 @@ public:
 			// is contigID:pos-pos
 			U32* contigID;
 			if(!this->contig_htable->GetItem(&ret[0][0], &ret[0], contigID, ret[0].size())){
-				std::cerr << "contig: " << ret[0] << " not in header" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << ret[0] << " is not defined in the header!" << std::endl;
 				return false;
 			}
 
@@ -164,11 +161,11 @@ public:
 				interval(posA, posB, *contigID);
 
 			} else {
-				std::cerr << "illegal: pos n split: " << retPos.size() << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 				return false;
 			}
 		} else {
-			std::cerr << "illegal: contig n split: " << ret.size() << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 			return false;
 		}
 
@@ -217,13 +214,13 @@ public:
 		U32* ret;
 		for(U32 i = 0; i < this->header.n_contig; ++i){
 			this->stream >> this->contigs[i];
-			std::cerr << this->contigs[i] << std::endl;
+			// std::cerr << this->contigs[i] << std::endl;
 			if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
 				// Add to hash table
 				this->contig_htable->SetItem(&this->contigs[i].name[0], &this->contigs[i].name, i, this->contigs[i].name.size());
 			} else {
-				std::cerr << "error duplicate" << std::endl;
-				exit(1);
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Duplicated contig name: " << this->contigs[i].name << "!" << std::endl;
+				exit(1); // unrecoverable error
 			}
 		}
 

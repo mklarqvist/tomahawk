@@ -128,7 +128,7 @@ bool TomahawkCalc::WriteTwoHeader(void){
 
 bool TomahawkCalc::WriteTwoHeaderNatural(void){
 	std::ostream& stream = this->writer->getStream();
-	stream << "FLAG\tSCORE\tcontigA\tpositionA\tcontigB\tpositionB\tp11\tp12\tp21\tp22\tD\tDprime\tRsquared\tPFisher\tChiSquaredCV\tPmodel" << std::endl;
+	stream << "FLAG\tcontigA\tpositionA\tcontigB\tpositionB\tp11\tp12\tp21\tp22\tD\tDprime\tRsquared\tPFisher\tChiSquaredCV\tPmodel" << std::endl;
 	return true;
 }
 
