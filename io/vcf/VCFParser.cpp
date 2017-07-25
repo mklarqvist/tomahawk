@@ -167,8 +167,6 @@ bool VCFParser::GetHeaderLines(void){
 			return false;
 		}
 
-		// Todo: Parse header line
-
 		this->reader_.clear();
 	}
 
@@ -226,7 +224,7 @@ bool VCFParser::SampleLine(void){
 	//std::cerr << std::string(&this->reader_[search_position], this->reader_.size()  - search_position) << std::endl;
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "VCF") << "Found " << delimiters_found << " samples..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "VCF") << "Found " << Helpers::ToPrettyString(delimiters_found) << " samples..." << std::endl;
 
 	this->header_.setSamples(delimiters_found);
 

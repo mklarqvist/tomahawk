@@ -22,7 +22,7 @@ class VCFParser {
 
 public:
 	VCFParser(readerType reader, const std::string outputPrefix);
-	virtual ~VCFParser();
+	~VCFParser();
 	bool Build();
 
 protected:

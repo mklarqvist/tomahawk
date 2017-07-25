@@ -27,11 +27,12 @@ public:
 		rleController_(nullptr),
 		buffer_rle_(Constants::WRITE_BLOCK_SIZE*2),
 		buffer_meta_(Constants::WRITE_BLOCK_SIZE*2),
-		buffer_rle2_(Constants::WRITE_BLOCK_SIZE*2),
-		buffer_meta2_(Constants::WRITE_BLOCK_SIZE*2),
-		buffer_debug1(Constants::WRITE_BLOCK_SIZE*2),
+		//buffer_rle2_(Constants::WRITE_BLOCK_SIZE*2),
+		//buffer_meta2_(Constants::WRITE_BLOCK_SIZE*2),
+		//buffer_debug1(Constants::WRITE_BLOCK_SIZE*2),
 		vcf_header_(nullptr)
 	{}
+
 	~TomahawkImportWriter(){
 		delete this->rleController_;
 		this->buffer_rle_.deleteAll();
@@ -63,6 +64,11 @@ public:
 	}
 
 	void WriteHeaders(void){
+		if(this->vcf_header_ == nullptr){
+			std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set" << std::endl;
+			exit(1);
+		}
+
 		this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 		this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
 
@@ -192,7 +198,7 @@ public:
 	}
 
 	const U32& blocksWritten(void) const{ return this->blocksWritten_; }
-	const size_t size(void) const{ return this->buffer_rle_.size(); }
+	const U64& size(void) const{ return this->buffer_rle_.size(); }
 
 	void DetermineBaseName(const std::string& string){
 		if(string.size() == 0)
@@ -231,11 +237,11 @@ public:
 	TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry_); }
 
 private:
-	std::ofstream streamTomahawk;
-	std::ofstream streamTotempole;
-	U32 blocksWritten_;				// blocks
-	U32 variants_written_;
-	U32 largest_uncompressed_block_;
+	std::ofstream streamTomahawk;	// stream
+	std::ofstream streamTotempole;	// stream
+	U32 blocksWritten_;				// number of blocks written
+	U32 variants_written_;			// number of variants written
+	U32 largest_uncompressed_block_;// size of largest block in b
 
 
 	TotempoleEntry totempole_entry_;
@@ -244,10 +250,9 @@ private:
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 
-	IO::BasicBuffer buffer_meta2_;
-	IO::BasicBuffer buffer_rle2_;
-
-	IO::BasicBuffer buffer_debug1;
+	//IO::BasicBuffer buffer_meta2_;
+	//IO::BasicBuffer buffer_rle2_;
+	//IO::BasicBuffer buffer_debug1;
 
 	VCF::VCFHeader* vcf_header_;
 

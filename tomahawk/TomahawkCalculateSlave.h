@@ -260,7 +260,6 @@ private:
 	Support::TomahawkSlaveSIMDHelper<> helper_simd;
 	Algorithm::FisherTest fisherController;
 	const manager_type& manager;
-	IO::BasicBuffer outstreamBuffer;
 
 	// thread
 	std::thread thread;

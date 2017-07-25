@@ -12,7 +12,7 @@ GZController::GZController(const char* data, const U32 length){}
 
 GZController::GZController(const U32 largest_block_size) : buffer_(largest_block_size){}
 
-GZController::~GZController(){}
+GZController::~GZController(){ this->buffer_.deleteAll(); }
 
 void GZController::Clear(){ this->buffer_.reset(); }
 

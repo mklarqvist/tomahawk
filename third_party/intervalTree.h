@@ -29,6 +29,9 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
+namespace Tomahawk{
+namespace Algorithm{
+
 template <class T, typename K = std::size_t>
 class Interval {
 public:
@@ -230,5 +233,8 @@ public:
     ~IntervalTree(void) = default;
 
 };
+
+}
+}
 
 #endif

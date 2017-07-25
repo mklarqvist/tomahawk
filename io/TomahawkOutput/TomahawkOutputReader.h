@@ -34,7 +34,8 @@ class TomahawkOutputReader {
 	typedef TGZFHeader tgzf_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
 	typedef IO::GZController tgzf_controller_type;
-	typedef IntervalTree<U32, U32> tree_type;
+	typedef Tomahawk::Algorithm::Interval<S32, U32> interval_type;
+	typedef Tomahawk::Algorithm::IntervalTree<S32, U32> tree_type;
 
 public:
 	TomahawkOutputReader();
@@ -47,6 +48,9 @@ public:
 		}
 		delete contig_tree;
 		delete writer;
+
+		this->buffer.deleteAll();
+		this->output_buffer.deleteAll();
 	}
 
 	// Streaming functions
@@ -109,17 +113,35 @@ public:
 
 			// is contigID only
 			std::cerr << "contigONly" << std::endl;
-
-		} else if(ret.size() == 2) {
+			U32* contigID;
+			if(!this->contig_htable->GetItem(&region[0], &region, contigID, region.size())){
+				std::cerr << "contig: " << region << " not in header" << std::endl;
+				return false;
+			}
+		} else if(ret.size() == 2){
 			// is contigID:pos-pos
+			U32* contigID;
+			if(!this->contig_htable->GetItem(&ret[0][0], &ret[0], contigID, ret[0].size())){
+				std::cerr << "contig: " << ret[0] << " not in header" << std::endl;
+				return false;
+			}
+
 			std::vector<std::string> retPos = Helpers::split(ret[1], '-');
 			if(retPos.size() == 1){
 				// only one pos
-				std::cerr << "single position" << std::endl;
+				const double pos = std::stod(retPos[0]);
+				std::cerr << "single position: " << pos << std::endl;
 
 			} else if(retPos.size() == 2){
 				// is two positions
-				std::cerr << "full region" << std::endl;
+				double posA = std::stod(retPos[0]);
+				double posB = std::stod(retPos[1]);
+				if(posB < posA){
+					std::cerr << "end position > start position: swapping" << std::endl;
+					std::swap(posA, posB);
+				}
+				std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
+				interval_type t(posA, posB, *contigID);
 
 			} else {
 				std::cerr << "illegal: pos n split: " << retPos.size() << std::endl;
@@ -176,9 +198,9 @@ public:
 		for(U32 i = 0; i < this->header.n_contig; ++i){
 			this->stream >> this->contigs[i];
 			std::cerr << this->contigs[i] << std::endl;
-			if(!this->contig_htable->GetItem(&this->contigs[i].name, ret, this->contigs[i].name.size())){
+			if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
 				// Add to hash table
-				this->contig_htable->SetItem(&this->contigs[i].name, this->contigs[i].name.size());
+				this->contig_htable->SetItem(&this->contigs[i].name[0], &this->contigs[i].name, i, this->contigs[i].name.size());
 			} else {
 				std::cerr << "error duplicate" << std::endl;
 				exit(1);
@@ -189,11 +211,13 @@ public:
 	}
 
 	bool nextBlock(void){
+		// Stream died
 		if(!this->stream.good()){
 			std::cerr << "stream died" << std::endl;
 			return false;
 		}
 
+		// EOF
 		if(this->stream.tellg() == this->filesize){
 			std::cerr << "eof" << std::endl;
 			return false;

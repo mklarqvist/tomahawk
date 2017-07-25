@@ -62,6 +62,7 @@ int view(int argc, char** argv){
 		{"noHeader",	no_argument, 0, 'h' },
 		{"dropGenotypes",	optional_argument, 0, 'G' },
 		{"longHelp",	no_argument, 0, 'H' },
+		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
@@ -76,7 +77,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:hHG", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:hHGs", long_options, &long_index)) != -1){
 		//std::cerr << c << ":" << (char)c << '\t' << long_index << std::endl;
 		hits += 2;
 		switch (c){
@@ -184,6 +185,9 @@ int view(int argc, char** argv){
 		case 'F':
 			flagExclude = atoi(optarg);
 			break;
+		case 's':
+			SILENT = 1;
+			break;
 		}
 	}
 
@@ -193,8 +197,10 @@ int view(int argc, char** argv){
 		return(1);
 	}
 
-	programMessage();
-	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
+	if(!SILENT){
+		programMessage();
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
+	}
 
 	// Todo: move out
 	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
