@@ -54,11 +54,11 @@ tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.
 
 ### Converting between file formats and filtering
  ```bash
- tomahawk view -i file.two -P 1e-4 -a 5 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver' 
+ tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
  ```
 
  ```bash
- tomahawk view -i file.twk
+ tomahawk view -HG -i file.twk -o -
  ```
 
  ### License
