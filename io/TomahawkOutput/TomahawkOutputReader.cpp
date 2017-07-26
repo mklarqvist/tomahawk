@@ -23,9 +23,41 @@ bool TomahawkOutputReader::view(const std::string& input){
 	//if(!this->reader.setup(input))
 	//	return false;
 
+	return(this->__viewRegion());
+
 	if(this->filter.isAnySet()){
 		return(this->__viewFilter());
 	} else return(this->__viewOnly());
+}
+
+bool TomahawkOutputReader::__viewRegion(void){
+	if(this->interval_tree != nullptr){
+		const Tomahawk::IO::TomahawkOutputEntry*  entry;
+		std::vector<interval_type> rets;
+		while(this->nextVariant(entry)){
+			if(this->interval_tree[entry->AcontigID] == nullptr)
+				continue;
+
+			rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
+			if(rets.size() > 0){
+				std::cerr << "matches a-position: " << rets[0] << std::endl;
+				entry->write(std::cout, this->contigs);
+				continue;
+			}
+
+			if(this->interval_tree[entry->BcontigID] != nullptr){
+				rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
+
+				if(rets.size() > 0){
+					std::cerr << "matches b-position: " << rets[0] << std::endl;
+					entry->write(std::cout, this->contigs);
+					continue;
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 bool TomahawkOutputReader::__viewOnly(void){

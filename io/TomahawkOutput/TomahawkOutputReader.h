@@ -98,10 +98,17 @@ public:
 						return false;
 					}
 
+
+					// Todo: WARNING
+					// This results in illegal pointers if the vector resizes
+					// and pointers change
+					this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
+					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalRight.contigID].back();
+					this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
+
 					// Link the intervals together
-					intervalLeft.value = &intervalRight;
-					intervalRight.value = &intervalLeft;
-					std::cerr << intervalLeft << '\t' << intervalRight << std::endl;
+					std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
 
 				} else {
 					std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
@@ -111,7 +118,17 @@ public:
 				interval_type interval;
 				if(!__ParseRegion(positions[i], interval))
 					return false;
+
+				this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
 			}
+		}
+
+		for(U32 i = 0; i < this->header.n_contig; ++i){
+			if(this->interval_tree_entries[i].size() != 0){
+				std::cerr << "constructing itree for id: " << i << std::endl;
+				this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
+			} else
+				this->interval_tree[i] = nullptr;
 		}
 
 		return true;
@@ -319,6 +336,7 @@ public:
 private:
 	bool __viewOnly(void);
 	bool __viewFilter(void);
+	bool __viewRegion(void);
 
 public:
 	//U64 samples; 	// has to match header

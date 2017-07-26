@@ -46,8 +46,29 @@ public:
 };
 
 class ContigInterval : public Interval<ContigInterval*, S32> {
+	typedef ContigInterval self_type;
+
 public:
-	ContigInterval() : Interval<ContigInterval*, S32>(-1, -1, nullptr), contigID(-1){}
+	ContigInterval() : Interval<self_type*, S32>(-1, -1, nullptr), contigID(-1){}
+	~ContigInterval(){}
+
+	// Copy ctor
+	// note that we drop the pointer reference here
+	// has to be updated manually depending on context
+	ContigInterval(const self_type& other) :
+		Interval<self_type*, S32>(other.start, other.stop, nullptr),
+		contigID(other.contigID)
+	{}
+
+	ContigInterval& operator=(const ContigInterval& other) // copy assignment
+	    {
+	        this->start = other.start;
+	        this->stop = other.stop;
+	        this->contigID = other.contigID;
+	        this->value = other.value;
+
+	        return *this;
+	    }
 
     void operator()(S32 s, S32 e, S32 id){
     	this->start = s;
@@ -55,22 +76,35 @@ public:
     	this->contigID = id;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const ContigInterval& i){
+    friend std::ostream& operator<<(std::ostream& os, const self_type& i){
     	os << i.contigID << ":" << i.start << "-" << i.stop << ';' << i.value;
     	return(os);
     }
+
+    bool operator<(const self_type& other) const{
+    	if(this->contigID < other.contigID) return true;
+    	if(other.contigID < this->contigID) return false;
+
+    	if(this->start < other.start) return true;
+    	if(other.start < this->start) return false;
+
+    	if(this->stop < other.stop) return true;
+    	if(other.stop < this->stop) return false;
+
+    	return true;
+     }
 
 public:
     S32 contigID;
 };
 
-template <class T, typename K>
-K intervalStart(const Interval<T,K>& i) {
+
+
+static S32 intervalStart(const ContigInterval& i) {
     return i.start;
 }
 
-template <class T, typename K>
-K intervalStop(const Interval<T,K>& i) {
+static S32 intervalStop(const ContigInterval& i) {
     return i.stop;
 }
 
@@ -81,39 +115,30 @@ std::ostream& operator<<(std::ostream& out, const Interval<T,K>& i) {
 }
 
 template <class T, typename K = std::size_t>
-class IntervalStartSorter {
-public:
-    bool operator() (const Interval<T,K>& a, const Interval<T,K>& b) {
-        return a.start < b.start;
-    }
-};
-
-template <class T, typename K = std::size_t>
 class IntervalTree {
 
 public:
-    typedef T interval;
-    typedef std::vector<interval> intervalVector;
-    typedef IntervalTree<T,K> intervalTree;
+	typedef T interval;
+	typedef std::vector<interval> intervalVector;
+	typedef IntervalTree<interval, K> intervalTree;
 
-    intervalVector intervals;
-    std::unique_ptr<intervalTree> left;
-    std::unique_ptr<intervalTree> right;
-    K center;
+	intervalVector intervals;
+	std::unique_ptr<intervalTree> left;
+	std::unique_ptr<intervalTree> right;
+	K center;
 
-    IntervalTree<T,K>(void)
-        : left(nullptr)
-        , right(nullptr)
-        , center(0)
-    { }
+	IntervalTree<T,K>(void)
+		: left(nullptr)
+		, right(nullptr)
+		, center(0)
+	{ }
 
 private:
-    std::unique_ptr<intervalTree> copyTree(const intervalTree& orig){
-        return std::unique_ptr<intervalTree>(new intervalTree(orig));
-    }
+	std::unique_ptr<intervalTree> copyTree(const intervalTree& orig){
+		return std::unique_ptr<intervalTree>(new intervalTree(orig));
+	}
 
 public:
-
     IntervalTree<T,K>(const intervalTree& other)
     :   intervals(other.intervals),
         left(other.left ? copyTree(*other.left) : nullptr),
@@ -145,14 +170,14 @@ public:
     {
 
         --depth;
-        IntervalStartSorter<T,K> intervalStartSorter;
+        //IntervalStartSorter<T,K> intervalStartSorter;
         if (depth == 0 || (ivals.size() < minbucket && ivals.size() < maxbucket)) {
-            std::sort(ivals.begin(), ivals.end(), intervalStartSorter);
+            std::sort(ivals.begin(), ivals.end());
             intervals = ivals;
         } else {
             if (leftextent == 0 && rightextent == 0) {
                 // sort intervals by start
-              std::sort(ivals.begin(), ivals.end(), intervalStartSorter);
+              std::sort(ivals.begin(), ivals.end());
             }
 
             K leftp = 0;
@@ -166,7 +191,7 @@ public:
                 leftp = ivals.front().start;
                 std::vector<K> stops;
                 stops.resize(ivals.size());
-                transform(ivals.begin(), ivals.end(), stops.begin(), intervalStop<T,K>);
+                transform(ivals.begin(), ivals.end(), stops.begin(), intervalStop);
                 rightp = *max_element(stops.begin(), stops.end());
             }
 
