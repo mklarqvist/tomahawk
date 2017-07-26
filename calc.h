@@ -53,8 +53,8 @@ int calc(int argc, char** argv){
 		{"unphased",	no_argument, 0,  'u' },
 		{"minR2",		optional_argument, 0,  'r' },
 		{"maxR2",		optional_argument, 0,  'R' },
-		{"minalelles",	optional_argument, 0,  'a' },
-		{"maxalleles",	optional_argument, 0,  'A' },
+		{"minMHF",	optional_argument, 0,  'a' },
+		{"maxMHF",	optional_argument, 0,  'A' },
 		{"detailedProgress",		no_argument, 0,  'd' },
 		{"silent",		no_argument, 0,  's' },
 		// Not implemented

@@ -53,7 +53,12 @@ struct TomahawkCalcParameters{
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& p){
 		// Todo: extend to dump all implicit parameters and store in TWO header output
-		os << Helpers::timestamp("CALC", "PARAMETERS") << "R-squared (" << p.R2_min << '-' << p.R2_max << "), P < " << p.P_threshold << ", minor haplotype frequency > " << p.minimum_alleles;
+		os << Helpers::timestamp("CALC", "PARAMETERS") <<
+				"minR2=" << p.R2_min << " maxR2=" << p.R2_max << " "
+				"minP=" << p.P_threshold << ", "
+				"minMHF=" << p.minimum_alleles << " maxMHF=" << p.maximum_alleles << " "
+				"partStart=" << p.chunk_selected << " parts="  << p.n_chunks << " "
+				"threads=" << p.n_threads;
 		return(os);
 	}
 
