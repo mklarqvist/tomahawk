@@ -43,12 +43,16 @@ bool TomahawkOutputReader::__viewRegion(void){
 						if(rets[i].value != nullptr){
 							if((entry->BcontigID == rets[i].value->contigID) &&
 							   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
-								std::cerr << "hit linked A" << std::endl;
-								entry->write(std::cout, this->contigs);
+								//std::cerr << "hit linked A" << std::endl;
+								if(this->filter.filter(*entry))
+									entry->write(std::cout, this->contigs);
+
 								break;
 							}
 						} else {
-							entry->write(std::cout, this->contigs);
+							if(this->filter.filter(*entry))
+								entry->write(std::cout, this->contigs);
+
 							break;
 						}
 					}
@@ -64,12 +68,16 @@ bool TomahawkOutputReader::__viewRegion(void){
 						if(rets[i].value != nullptr){
 							if((entry->AcontigID == rets[i].value->contigID) &&
 							   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
-								std::cerr << "hit linked B" << std::endl;
-								entry->write(std::cout, this->contigs);
+								//std::cerr << "hit linked B" << std::endl;
+								if(this->filter.filter(*entry))
+									entry->write(std::cout, this->contigs);
+
 								break;
 							}
 						} else {
-							entry->write(std::cout, this->contigs);
+							if(this->filter.filter(*entry))
+								entry->write(std::cout, this->contigs);
+
 							break;
 						}
 					}

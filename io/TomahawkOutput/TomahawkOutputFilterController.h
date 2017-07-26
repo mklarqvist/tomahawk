@@ -180,16 +180,6 @@ public:
 		return true;
 	}
 
-	bool setFilterMHF(const float& minMHF){
-		if(minMHF < 0){
-			std::cerr << "impossible" << std::endl;
-			return false;
-		}
-		this->minMHF = minMHF;
-		this->trigger();
-		return true;
-	}
-
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
 
@@ -205,15 +195,14 @@ private:
 	U64 keepCount;
 
 	// Filters
-	U32 minP1, minP2, minQ1, minQ2;
-	U32 minMinorAlleles, maxMinorAlleles;
+	U64 minP1, minP2, minQ1, minQ2;
+	U64 minMHF, maxMHF;
 	float minD, maxD;
 	float minDprime, maxDprime;
 	double minR2, maxR2;
 	double minP, maxP;
 	double minChiSquared, maxChiSquared;
 	double minPmodel, maxPmodel;
-	float minMHF;
 
 	U16 filterValueInclude;
 	U16 filterValueExclude;
