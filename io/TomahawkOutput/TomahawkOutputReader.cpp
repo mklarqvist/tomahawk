@@ -35,22 +35,35 @@ bool TomahawkOutputReader::__viewRegion(void){
 		const Tomahawk::IO::TomahawkOutputEntry*  entry;
 		std::vector<interval_type> rets;
 		while(this->nextVariant(entry)){
-			if(this->interval_tree[entry->AcontigID] == nullptr)
-				continue;
+			// If iTree for contigA exists
+			if(this->interval_tree[entry->AcontigID] != nullptr){
+				rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
+				if(rets.size() > 0){
+					if(rets[0].value != nullptr){
+						if((entry->BcontigID == rets[0].value->contigID) &&
+						   (entry->Bposition >= rets[0].value->start && entry->Bposition <= rets[0].value->stop)){
+							std::cerr << "hit linked A" << std::endl;
+							entry->write(std::cout, this->contigs);
+						}
+					} else
+						entry->write(std::cout, this->contigs);
 
-			rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
-			if(rets.size() > 0){
-				std::cerr << "matches a-position: " << rets[0] << std::endl;
-				entry->write(std::cout, this->contigs);
-				continue;
+					continue;
+				}
 			}
 
+			// If iTree for contigB exists
 			if(this->interval_tree[entry->BcontigID] != nullptr){
 				rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
-
 				if(rets.size() > 0){
-					std::cerr << "matches b-position: " << rets[0] << std::endl;
-					entry->write(std::cout, this->contigs);
+					if(rets[0].value != nullptr){
+						if((entry->AcontigID == rets[0].value->contigID) &&
+						   (entry->Aposition >= rets[0].value->start && entry->Aposition <= rets[0].value->stop)){
+							std::cerr << "hit linked B" << std::endl;
+							entry->write(std::cout, this->contigs);
+						}
+					} else
+						entry->write(std::cout, this->contigs);
 					continue;
 				}
 			}

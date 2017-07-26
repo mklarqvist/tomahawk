@@ -51,24 +51,32 @@ class ContigInterval : public Interval<ContigInterval*, S32> {
 public:
 	ContigInterval() : Interval<self_type*, S32>(-1, -1, nullptr), contigID(-1){}
 	~ContigInterval(){}
-
-	// Copy ctor
-	// note that we drop the pointer reference here
-	// has to be updated manually depending on context
 	ContigInterval(const self_type& other) :
-		Interval<self_type*, S32>(other.start, other.stop, nullptr),
+		Interval<self_type*, S32>(other.start, other.stop, other.value),
 		contigID(other.contigID)
-	{}
+	{
+	}
 
-	ContigInterval& operator=(const ContigInterval& other) // copy assignment
-	    {
-	        this->start = other.start;
-	        this->stop = other.stop;
-	        this->contigID = other.contigID;
-	        this->value = other.value;
+	ContigInterval& operator=(const ContigInterval& other){
+		this->start = other.start;
+		this->stop = other.stop;
+		this->contigID = other.contigID;
+		this->value = other.value;
+		return *this;
+	}
 
-	        return *this;
-	    }
+	ContigInterval(ContigInterval&& other) :
+		Interval<self_type*, S32>(other.start, other.stop, other.value),
+		contigID(other.contigID)
+	{
+	}
+
+	ContigInterval& operator=(ContigInterval&& other){
+		if(this != &other)
+			this->value = other.value;
+
+		return *this;
+	}
 
     void operator()(S32 s, S32 e, S32 id){
     	this->start = s;
@@ -82,14 +90,8 @@ public:
     }
 
     bool operator<(const self_type& other) const{
-    	if(this->contigID < other.contigID) return true;
-    	if(other.contigID < this->contigID) return false;
-
     	if(this->start < other.start) return true;
     	if(other.start < this->start) return false;
-
-    	if(this->stop < other.stop) return true;
-    	if(other.stop < this->stop) return false;
 
     	return true;
      }

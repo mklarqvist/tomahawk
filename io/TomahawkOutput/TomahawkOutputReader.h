@@ -93,22 +93,23 @@ public:
 					if(!__ParseRegion(ret[1], intervalRight))
 						return false;
 
-					if(intervalLeft.contigID == intervalRight.contigID){
-						std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Cannot link regions from the same contig name!" << std::endl;
-						return false;
-					}
-
-
 					// Todo: WARNING
 					// This results in illegal pointers if the vector resizes
 					// and pointers change
 					this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
 					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
-					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalRight.contigID].back();
-					this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
+					if(intervalLeft.contigID != intervalRight.contigID){
+						this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalRight.contigID].back();
+						this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
 
-					// Link the intervals together
-					std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+						// Link the intervals together
+						std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+					} else {
+						this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2];
+						this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value = &this->interval_tree_entries[intervalLeft.contigID].back();
+
+						std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+					}
 
 				} else {
 					std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
