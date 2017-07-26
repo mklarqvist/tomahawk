@@ -39,15 +39,19 @@ bool TomahawkOutputReader::__viewRegion(void){
 			if(this->interval_tree[entry->AcontigID] != nullptr){
 				rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
 				if(rets.size() > 0){
-					if(rets[0].value != nullptr){
-						if((entry->BcontigID == rets[0].value->contigID) &&
-						   (entry->Bposition >= rets[0].value->start && entry->Bposition <= rets[0].value->stop)){
-							std::cerr << "hit linked A" << std::endl;
+					for(U32 i = 0; i < rets.size(); ++i){
+						if(rets[i].value != nullptr){
+							if((entry->BcontigID == rets[i].value->contigID) &&
+							   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
+								std::cerr << "hit linked A" << std::endl;
+								entry->write(std::cout, this->contigs);
+								break;
+							}
+						} else {
 							entry->write(std::cout, this->contigs);
+							break;
 						}
-					} else
-						entry->write(std::cout, this->contigs);
-
+					}
 					continue;
 				}
 			}
@@ -56,14 +60,19 @@ bool TomahawkOutputReader::__viewRegion(void){
 			if(this->interval_tree[entry->BcontigID] != nullptr){
 				rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
 				if(rets.size() > 0){
-					if(rets[0].value != nullptr){
-						if((entry->AcontigID == rets[0].value->contigID) &&
-						   (entry->Aposition >= rets[0].value->start && entry->Aposition <= rets[0].value->stop)){
-							std::cerr << "hit linked B" << std::endl;
+					for(U32 i = 0; i < rets.size(); ++i){
+						if(rets[i].value != nullptr){
+							if((entry->AcontigID == rets[i].value->contigID) &&
+							   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
+								std::cerr << "hit linked B" << std::endl;
+								entry->write(std::cout, this->contigs);
+								break;
+							}
+						} else {
 							entry->write(std::cout, this->contigs);
+							break;
 						}
-					} else
-						entry->write(std::cout, this->contigs);
+					}
 					continue;
 				}
 			}
