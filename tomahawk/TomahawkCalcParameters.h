@@ -59,6 +59,7 @@ struct TomahawkCalcParameters{
 				"minMHF=" << p.minimum_alleles << " maxMHF=" << p.maximum_alleles << " "
 				"partStart=" << p.chunk_selected << " parts="  << p.n_chunks << " "
 				"threads=" << p.n_threads;
+
 		return(os);
 	}
 
