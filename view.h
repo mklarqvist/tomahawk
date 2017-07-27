@@ -214,10 +214,10 @@ int view(int argc, char** argv){
 	std::vector<std::string> filter_regions;
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
-		std::cerr << i << '\t' << param << std::endl;
+		//std::cerr << i << '\t' << param << std::endl;
 
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
-			std::cerr << "illegal parse of input string: " << param << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal parse of input string: " << param << std::endl;
 			return 1;
 		}
 

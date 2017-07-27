@@ -123,10 +123,10 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 		this->interval_tree_entries = new std::vector<interval_type>[this->header.n_contig];
 
 	for(U32 i = 0; i < positions.size(); ++i){
-		std::cerr << i << ": " << positions[i] << std::endl;
+		//std::cerr << i << ": " << positions[i] << std::endl;
 		// Pattern cA:pAf-pAt;cB:pBf-pBt
 		if(positions[i].find(',') != std::string::npos){
-			std::cerr << "linked intervals" << std::endl;
+			//std::cerr << "linked intervals" << std::endl;
 			std::vector<std::string> ret = Helpers::split(positions[i], ',');
 			if(ret.size() == 1){
 				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
@@ -153,12 +153,12 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 					this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
 
 					// Link the intervals together
-					std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+					//std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
 				} else {
 					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2];
 					this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value = &this->interval_tree_entries[intervalLeft.contigID].back();
 
-					std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+					//std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
 				}
 
 			} else {
@@ -176,7 +176,7 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		if(this->interval_tree_entries[i].size() != 0){
-			std::cerr << "constructing itree for id: " << i << std::endl;
+			//std::cerr << "constructing itree for id: " << i << std::endl;
 			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
 		} else
 			this->interval_tree[i] = nullptr;
@@ -194,7 +194,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 		}
 
 		// is contigID only
-		std::cerr << "contigONly" << std::endl;
+		//std::cerr << "contigONly" << std::endl;
 		U32* contigID;
 		if(!this->contig_htable->GetItem(&region[0], &region, contigID, region.size())){
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
@@ -214,7 +214,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 		if(retPos.size() == 1){
 			// only one pos
 			const double pos = std::stod(retPos[0]);
-			std::cerr << "single position: " << pos << std::endl;
+			//std::cerr << "single position: " << pos << std::endl;
 			interval(pos, pos, *contigID);
 
 		} else if(retPos.size() == 2){
@@ -222,10 +222,10 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 			double posA = std::stod(retPos[0]);
 			double posB = std::stod(retPos[1]);
 			if(posB < posA){
-				std::cerr << "end position > start position: swapping" << std::endl;
+				//std::cerr << "end position > start position: swapping" << std::endl;
 				std::swap(posA, posB);
 			}
-			std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
+			//std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
 			interval(posA, posB, *contigID);
 
 		} else {
@@ -304,7 +304,7 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	// EOF
 	if(this->stream.tellg() == this->filesize){
-		std::cerr << "eof" << std::endl;
+		//std::cerr << "eof" << std::endl;
 		return false;
 	}
 

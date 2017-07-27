@@ -173,7 +173,6 @@ bool matchPositionalStringTWO(const std::string& param){
 bool parsePositionalStringTWO(const std::string& param){
 	std::size_t found = param.find(',');
 	if(found != std::string::npos){
-		std::cerr << "found: " << found << '/' << param.size() << std::endl;
 		std::vector<std::string> ret = Tomahawk::Helpers::split(param, ',');
 		if(ret.size() != 2){
 			std::cerr << "illegal format" << std::endl;
