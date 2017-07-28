@@ -184,7 +184,8 @@ public:
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
 
 	bool filter(const IO::TomahawkOutputEntry& target) const;
-	bool filterAlleleCount(const IO::TomahawkOutputEntry& target) const;
+	bool filterMHF(const IO::TomahawkOutputEntry& target) const;
+	bool filterHF(const IO::TomahawkOutputEntry& target) const;
 
 private:
 	template <class T, class Y> bool filter(const T& value, const Y& min, const Y& max) const;
@@ -196,6 +197,7 @@ private:
 
 	// Filters
 	U64 minP1, minP2, minQ1, minQ2;
+	U64 maxP1, maxP2, maxQ1, maxQ2;
 	U64 minMHF, maxMHF;
 	float minD, maxD;
 	float minDprime, maxDprime;

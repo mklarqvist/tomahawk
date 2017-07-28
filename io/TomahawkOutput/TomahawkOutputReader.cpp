@@ -230,8 +230,10 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 				//std::cerr << "end position > start position: swapping" << std::endl;
 				std::swap(posA, posB);
 			}
+			//std::cerr << (U64)posA << '\t' << (U64)posB << std::endl;
 			//std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
 			interval(posA, posB, *contigID);
+			//std::cerr << interval << std::endl;
 
 		} else {
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
