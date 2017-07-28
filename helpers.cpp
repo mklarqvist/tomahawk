@@ -117,12 +117,10 @@ double diffclock(clock_t clock1, clock_t clock2){
 std::string NumberThousandsSeparator(std::string number){
 	int insertPosition = number.length() - 3;
 	char EndPos = 0;
-	if(number[0] == '-'){
+	if(number[0] == '-')
 		EndPos = 1;
-	}
 
 	// Todo: fix NNNN.MMMM
-
 	while (insertPosition > EndPos) {
 	    number.insert(insertPosition, ",");
 	    insertPosition -= 3;
@@ -188,7 +186,6 @@ bool parsePositionalStringTWO(const std::string& param){
 		}
 		return true;
 	}
-
 	return(matchPositionalStringTWO(param));
 }
 

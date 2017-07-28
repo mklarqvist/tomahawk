@@ -28,59 +28,68 @@ bool TomahawkOutputReader::view(const std::string& input){
 
 bool TomahawkOutputReader::__viewRegion(void){
 	if(this->interval_tree != nullptr){
-		const Tomahawk::IO::TomahawkOutputEntry*  entry;
-		std::vector<interval_type> rets;
+		const entry_type*  entry;
+
 		while(this->nextVariant(entry)){
 			// If iTree for contigA exists
 			if(this->interval_tree[entry->AcontigID] != nullptr){
-				rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
+				std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
 				if(rets.size() > 0){
+					//std::cerr << "Ahit: " << *entry  << std::endl;
 					for(U32 i = 0; i < rets.size(); ++i){
-						if(rets[i].value != nullptr){
+						//std::cerr << i <<  '\t' << &rets[i] << ':' << rets[i] << " linked " << rets[i].value << ":" << rets[i].value << std::endl;
+						if(rets[i].value != nullptr){ // if linked
 							if((entry->BcontigID == rets[i].value->contigID) &&
 							   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
 								//std::cerr << "hit linked A" << std::endl;
-								if(this->filter.filter(*entry))
+								if(this->filter.filter(*entry)){
 									entry->write(std::cout, this->contigs);
-
-								break;
-							}
-						} else {
+									//std::cerr << "filter hit" << std::endl;
+								}
+								//std::cerr << "after linked write" << std::endl;
+								goto end;
+							} // end match
+						} else { //  not linked
 							if(this->filter.filter(*entry))
 								entry->write(std::cout, this->contigs);
 
-							break;
+							goto end;
 						}
 					}
-					continue;
+
 				}
 			}
 
 			// If iTree for contigB exists
 			if(this->interval_tree[entry->BcontigID] != nullptr){
-				rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
+				std::vector<interval_type> rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
 				if(rets.size() > 0){
+					//std::cerr << "Bhit: " << *entry << std::endl;
 					for(U32 i = 0; i < rets.size(); ++i){
 						if(rets[i].value != nullptr){
+							//std::cerr << i <<  '\t' << rets[i] << " linked " << *rets[i].value << std::endl;
 							if((entry->AcontigID == rets[i].value->contigID) &&
 							   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
 								//std::cerr << "hit linked B" << std::endl;
-								if(this->filter.filter(*entry))
+								if(this->filter.filter(*entry)){
 									entry->write(std::cout, this->contigs);
-
-								break;
+									//std::cerr << "filter hit" << std::endl;
+								}
+								//std::cerr << "after linked write" << std::endl;
+								goto end;
 							}
 						} else {
 							if(this->filter.filter(*entry))
 								entry->write(std::cout, this->contigs);
 
-							break;
+							goto end;
 						}
 					}
-					continue;
-				}
-			}
-		}
+				} // end if any hit in iTree b
+			} // end iTree b
+			end:
+			continue;
+		} // end while next variant
 	}
 
 	return true;
@@ -158,7 +167,13 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2];
 					this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value = &this->interval_tree_entries[intervalLeft.contigID].back();
 
-					//std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+					std::cerr << &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' <<
+								  this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' <<
+								 &this->interval_tree_entries[intervalRight.contigID].back() << '\t' <<
+								  this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
+
+					std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << *this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value << std::endl;
+					std::cerr << this->interval_tree_entries[intervalRight.contigID].back() << '\t' << *this->interval_tree_entries[intervalRight.contigID].back().value << std::endl;
 				}
 
 			} else {
@@ -176,7 +191,7 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		if(this->interval_tree_entries[i].size() != 0){
-			//std::cerr << "constructing itree for id: " << i << std::endl;
+			//std::cerr << "constructing itree for id: " << i << " n: " << this->interval_tree_entries[i].size() << std::endl;
 			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
 		} else
 			this->interval_tree[i] = nullptr;

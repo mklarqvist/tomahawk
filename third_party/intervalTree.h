@@ -35,14 +35,68 @@ namespace Algorithm{
 template <class T, typename K = std::size_t>
 class Interval {
 public:
-    K start;
-    K stop;
-    T value;
     Interval(K s, K e, const T& v)
         : start(s)
         , stop(e)
         , value(v)
     { }
+
+public:
+    K start;
+	K stop;
+	T value;
+};
+
+template <class T, typename K>
+class Interval<T*, K> { // Partial specialisation for pointer type
+	typedef Interval<T*, K> self_type;
+
+public:
+    Interval(K s, K e, T* v)
+        : start(s)
+        , stop(e)
+        , value(v)
+    {
+    	//std::cerr << "partial specialised ctor" << std::endl;
+    }
+
+    ~Interval(){}
+
+    Interval(const self_type& other) :
+    	start(other.start),
+		stop(other.stop),
+		value(other.value)
+    {
+    	//std::cerr << "party copy ctor: " << this << '\t' << other.value << '\t' << *this << std::endl;
+    }
+
+    self_type& operator= (const self_type& other){
+    	//std::cerr << "assign" << std::endl;
+    	self_type tmp(other);       // re-use copy-constructor
+		*this = std::move(tmp); 	// re-use move-assignment
+		return *this;
+	}
+
+    self_type& operator= (self_type&& other) noexcept{
+		this->start = other.start;
+		this->stop = other.stop;
+		this->value = other.value;
+		//std::cerr << "assign move" << std::endl;
+		return *this;
+	}
+
+    Interval(self_type&& other) noexcept :
+    	start(other.start),
+		stop(other.stop),
+		value(other.value)
+	{
+    	//std::cerr << "partial move ctor " << this << '\t' << other.value << '\t' << *this << std::endl;
+	}
+
+public:
+    K start;
+	K stop;
+	T* value;
 };
 
 class ContigInterval : public Interval<ContigInterval*, S32> {
@@ -50,32 +104,31 @@ class ContigInterval : public Interval<ContigInterval*, S32> {
 
 public:
 	ContigInterval() : Interval<self_type*, S32>(-1, -1, nullptr), contigID(-1){}
-	~ContigInterval(){}
+	~ContigInterval() noexcept{}
 	ContigInterval(const self_type& other) :
-		Interval<self_type*, S32>(other.start, other.stop, other.value),
+		Interval<self_type*, S32>(other),
 		contigID(other.contigID)
 	{
 	}
 
-	ContigInterval& operator=(const ContigInterval& other){
+	 self_type& operator= (const self_type& other){
+		self_type tmp(other);       // re-use copy-constructor
+		*this = std::move(tmp); 	// re-use move-assignment
+		return *this;
+	}
+
+	self_type& operator= (self_type&& other) noexcept{
 		this->start = other.start;
 		this->stop = other.stop;
-		this->contigID = other.contigID;
 		this->value = other.value;
+		this->contigID = other.contigID;
 		return *this;
 	}
 
-	ContigInterval(ContigInterval&& other) :
-		Interval<self_type*, S32>(other.start, other.stop, other.value),
+	ContigInterval(self_type&& other) noexcept :
+		Interval<self_type*, S32>(std::move(other)),
 		contigID(other.contigID)
 	{
-	}
-
-	ContigInterval& operator=(ContigInterval&& other){
-		if(this != &other)
-			this->value = other.value;
-
-		return *this;
 	}
 
     void operator()(S32 s, S32 e, S32 id){
@@ -99,8 +152,6 @@ public:
 public:
     S32 contigID;
 };
-
-
 
 static S32 intervalStart(const ContigInterval& i) {
     return i.start;
@@ -160,7 +211,7 @@ public:
 
     // Note: changes the order of ivals
     IntervalTree<T,K>(
-            intervalVector& ivals,
+            intervalVector ivals,
             std::size_t depth = 16,
             std::size_t minbucket = 64,
             K leftextent = 0,
