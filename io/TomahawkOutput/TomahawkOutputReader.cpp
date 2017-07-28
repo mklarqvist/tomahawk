@@ -128,6 +128,7 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 		for(U32 i = 0; i < this->header.n_contig; ++i)
 			this->interval_tree[i] = nullptr;
 	}
+
 	if(this->interval_tree_entries == nullptr)
 		this->interval_tree_entries = new std::vector<interval_type>[this->header.n_contig];
 
@@ -160,20 +161,9 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 				if(intervalLeft.contigID != intervalRight.contigID){
 					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalRight.contigID].back();
 					this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
-
-					// Link the intervals together
-					//std::cerr << this->interval_tree_entries[intervalLeft.contigID].back() << '\t' << this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
 				} else {
 					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2];
 					this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value = &this->interval_tree_entries[intervalLeft.contigID].back();
-
-					std::cerr << &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' <<
-								  this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' <<
-								 &this->interval_tree_entries[intervalRight.contigID].back() << '\t' <<
-								  this->interval_tree_entries[intervalRight.contigID].back() << std::endl;
-
-					std::cerr << this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2] << '\t' << *this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2].value << std::endl;
-					std::cerr << this->interval_tree_entries[intervalRight.contigID].back() << '\t' << *this->interval_tree_entries[intervalRight.contigID].back().value << std::endl;
 				}
 
 			} else {
