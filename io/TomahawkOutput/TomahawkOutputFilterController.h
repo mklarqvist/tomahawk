@@ -20,6 +20,8 @@ public:
 
 class TomahawkOutputFilterController {
 	typedef TomahawkOutputFilterController self_type;
+	typedef IO::TomahawkOutputEntry& entry_type;
+	typedef bool (self_type::*filterFunction)(const entry_type& entry) const;
 
 public:
 	TomahawkOutputFilterController();
@@ -208,6 +210,8 @@ private:
 
 	U16 filterValueInclude;
 	U16 filterValueExclude;
+
+	std::vector<filterFunction> filter_functions; // push filter functions to array and loop over
 
 	// Todo: filter region tree
 };

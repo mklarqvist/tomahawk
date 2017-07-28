@@ -153,6 +153,10 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 #define PHASED_REFALT_MASK(A,B,M)	_mm_and_si128(PHASED_REFALT(A, B), M)
 #define MASK_MERGE(A,B)		_mm_xor_si128(_mm_or_si128(A, B), ONE_MASK)
 
+// Todo: SSE2 legacy code
+// extract_epi_64 is available AVX and later
+// popcnt64 is AVX and later
+
 #define POPCOUNT(A, B) {									\
 	A += __builtin_popcountll(_mm_extract_epi64(B, 0));		\
 	A += __builtin_popcountll(_mm_extract_epi64(B, 1));		\
