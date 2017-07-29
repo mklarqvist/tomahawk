@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <vector>
 
 #include "../../TypeDefinitions.h"
 #include "TomahawkOutputEntry.h"
@@ -185,9 +186,9 @@ public:
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
 
-	bool filter(const IO::TomahawkOutputEntry& target) const;
-	bool filterMHF(const IO::TomahawkOutputEntry& target) const;
-	bool filterHF(const IO::TomahawkOutputEntry& target) const;
+	bool filter(const & target) const;
+	bool filterMHF(const & target) const;
+	bool filterHF(const & target) const;
 
 private:
 	template <class T, class Y> bool filter(const T& value, const Y& min, const Y& max) const;
@@ -212,8 +213,6 @@ private:
 	U16 filterValueExclude;
 
 	std::vector<filterFunction> filter_functions; // push filter functions to array and loop over
-
-	// Todo: filter region tree
 };
 
 template <class T, class Y>
