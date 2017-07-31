@@ -1,6 +1,6 @@
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
-###Synopsis
+### Synopsis
 
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
