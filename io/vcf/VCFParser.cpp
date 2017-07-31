@@ -18,16 +18,21 @@ VCFParser::~VCFParser(){}
 
 bool VCFParser::Build(){
 	if(!this->reader_.open()){
-		std::cerr << "failed to open" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to open file..." << std::endl;
 		return false;
 	}
 
 	if(!this->header_.parse(this->reader_)){
-		std::cerr << "parser failed" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to parse VCF..." << std::endl;
 		exit(1);
 	}
 	if(!this->header_.good()){
-		std::cerr << "header no good: " << this->header_.error_bit << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to parse VCF (" << this->header_.error_bit << ")..." << std::endl;
+		return false;
+	}
+
+	if(this->header_.samples == 0){
+		std::cerr << Helpers::timestamp("ERROR", "VCF") << "No samples detected..." << std::endl;
 		return false;
 	}
 
@@ -37,7 +42,7 @@ bool VCFParser::Build(){
 	}
 
 	// Parse lines
-	Tomahawk::VCF::VCFLine line(this->header_.size());
+	line_type line(this->header_.size());
 	U32* retValue = nullptr;
 	U32* prevRetValue = nullptr;
 	U32 previous_position = 0;

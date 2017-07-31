@@ -12,6 +12,7 @@ class VCFParser {
 	typedef Tomahawk::reader reader_type;
 	typedef VCFHeader header_type;
 	typedef TomahawkImportWriter writer_type;
+	typedef VCFLine line_type;
 
 public:
 	VCFParser(std::string inputFile, std::string outputPrefix);

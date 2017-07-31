@@ -10,7 +10,6 @@ VCFHeader::VCFHeader() :
 	contigsHashTable(nullptr),
 	sampleHashTable(nullptr)
 {
-	std::cerr << "ctor: " << this->contigsHashTable << '\t' << this->sampleHashTable << '\t' << this << std::endl;
 }
 
 VCFHeader::~VCFHeader(){
@@ -79,14 +78,11 @@ bool VCFHeader::checkLine(const char* data, const U32 length){
 				std::cerr << Helpers::timestamp("WARNING","VCF") << "Offending line: " << std::string(data, length+1) << std::endl;
 				contig.length = std::numeric_limits<U32>::max();
 			}
-
-			//std::cerr << "pushing back contig" << std::endl;
-
 			this->contigs.push_back(contig);
 		}
 
-		//std::cerr << "pushing non-contig: " << line << '\t' << line.size() << '/' << length << '\t' << data << std::endl;
-		this->lines.push_back(line);
+		this->lines.push_back(line); // parseable lines
+		this->literal_lines.push_back(std::string(data, length + 1));
 		return true;
 	}
 

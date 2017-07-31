@@ -72,6 +72,7 @@ public:
 	std::vector<contig_type> contigs;		// contigs
 	std::vector<std::string> sampleNames;	// sample names
 	std::vector<VCFHeaderLine> lines;		// header lines
+	std::vector<std::string> literal_lines; // vcf line literals
 	hash_table* contigsHashTable;			// hash table for contig names
 	hash_table* sampleHashTable;			// hash table for sample names
 };
