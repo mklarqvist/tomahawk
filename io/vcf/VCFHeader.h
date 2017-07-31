@@ -52,17 +52,19 @@ public:
 };
 
 struct VCFHeaderLine{
+	typedef VCFHeaderLine self_type;
+	typedef VCFHeaderLineKeyValue key_value;
+
 public:
 	VCFHeaderLine(const char* data, const U32 size) : size_(size), data_(data){}
 	~VCFHeaderLine(){}
 
-	const U32 size(void) const{ return this->pairs_.size(); }
-	const VCFHeaderLineKeyValue& operator[](const U32 p) const{ return this->pairs_[p]; }
+	inline const U32 size(void) const{ return this->pairs_.size(); }
+	inline const key_value& operator[](const U32 p) const{ return this->pairs_[p]; }
+	inline bool isValid(void) const{ return(this->size_ > 2 && (this->data_[0] == '#' && this->data_[1] == '#')); }
+	inline bool isCONTIG(void) const{ return(strncasecmp(&Constants::HEADER_CONTIG[0], this->data_, Constants::HEADER_CONTIG.size()) == 0); }
 
-	bool isValid(void) const{ return(this->size_ > 2 && (this->data_[0] == '#' && this->data_[1] == '#')); }
-	bool isCONTIG(void) const{ return(strncasecmp(&Constants::HEADER_CONTIG[0], this->data_, Constants::HEADER_CONTIG.size()) == 0); }
-
-	friend std::ostream& operator<<(std::ostream& out, const VCFHeaderLine& pair){
+	friend std::ostream& operator<<(std::ostream& out, const self_type& pair){
 		for(U32 i = 0; i < pair.pairs_.size(); ++i)
 			out << pair[i] << '\n';
 
@@ -70,26 +72,31 @@ public:
 	}
 
 	bool Parse(void){
+		// Make sure this is a valid VCF header line
+		// Rule: has to start with ##
 		if(!this->isValid()){
-			std::cerr << "Invalid line" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Invalid VCF header line..." << std::endl;
 			return false;
 		}
 
+		// Attempt to find an equal sign
 		const char* match = std::find(this->data_, &this->data_[this->size_], '=');
 		if(*match != '='){
-			std::cerr << "invalid entry no equal match" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Corrupted VCF header entry: no equal match..." << std::endl;
 			return false;
 		}
+
 		U32 matchPos = match - this->data_ + 1;
 		if(this->data_[matchPos] == '<'){
 			if(this->data_[this->size_] != '>'){
-				std::cerr << "Illegal header line: " << this->data_[this->size_] << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Corrupted VCF header entry..." << this->data_[this->size_] << std::endl;
 				return false;
 			}
 
 			++matchPos;
+			// Sweep over and assert it is valid
 			while(this->nextKey(matchPos)){
-
+				// nothing in body
 			}
 		} else {
 			//Todo: this value is just text
@@ -108,7 +115,7 @@ private:
 
 		const char* match = std::find(&this->data_[startPos], &this->data_[this->size_], '=');
 		if(*match != '='){
-			std::cerr << "invalid entry no equal match in next key" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Corrupted VCF header entry: no equal match in next key..." << std::endl;
 			return false;
 		}
 		U32 matchPos = match - this->data_;
@@ -136,9 +143,10 @@ private:
 			this->pairs_.push_back(entry);
 			return false;
 		} else if(*match != match_token){
-			std::cerr << "invalid entry no comma match" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Corrupted VCF header entry: no comma match in next key..." << std::endl;
 			return false;
 		}
+
 		matchPos = match - this->data_;
 		entry.VALUE = &this->data_[startPos];
 		entry.lVALUE = matchPos - startPos + adjust_value;
@@ -150,23 +158,47 @@ private:
 private:
 	const U32 size_;
 	const char* data_;
-	std::vector<VCFHeaderLineKeyValue> pairs_;
+	std::vector<key_value> pairs_;
 };
 
 class VCFHeader {
 	typedef Tomahawk::Hash::HashTable<std::string, U32> hashtable;
+	typedef VCFHeaderContig contig_type;
 
 public:
 	VCFHeader() : contigsHashTable_(nullptr), sampleHashTable_(nullptr){}
 	~VCFHeader(){ delete this->contigsHashTable_; }
 
-	bool valid(void) const{ return(this->version_ > 0); }
-	void setVersion(S32 version){ this->version_ = version; }
+	inline bool valid(void) const{ return(this->version_ > 0); }
+	inline void setVersion(float version){ this->version_ = version; }
+	inline const S32& getVersion(void) const{ return(this->version_); }
+	inline U32 getContigs(void) const{ return this->contigs_.size(); }
+	inline contig_type& getContig(const U32 p){ return this->contigs_[p]; }
+	inline U32 getLines(void) const{ return this->lines_.size(); }
+	inline const U64& size(void) const{ return this->samples_; }
+	inline const contig_type& operator[](const U32 p) const{ return(this->contigs_[p]); }
+
+	void setSamples(U32 samples){
+		this->samples_ = samples;
+		delete this->sampleHashTable_;
+
+		if(this->samples_ < 1024)
+			this->sampleHashTable_ = new hashtable(1024);
+		else
+			this->sampleHashTable_ = new hashtable(this->samples_ * 2);
+	}
+
+
+
+private:
+	// These functions are unsafe as they require contigHashTable to be
+	// set prior to calling
+	// no tests are made to check
 	inline void addContig(const std::string& contig, U32 value){
 		this->contigsHashTable_->SetItem(&contig[0], &contig, value, contig.size());
 	}
 
-	inline bool getContig(const std::string& contig, U32*& retValue){
+	inline bool getContig(const std::string& contig, U32*& retValue) const{
 		return(this->contigsHashTable_->GetItem(&contig[0], &contig, retValue, contig.size()));
 	}
 
@@ -175,22 +207,24 @@ public:
 		this->sampleHashTable_->SetItem(&sample[0], &sample, this->sampleNames_.size()-1, sample.size());
 	}
 
-	inline bool getSample(const std::string& sample, U32*& retValue){
+	inline bool getSample(const std::string& sample, U32*& retValue) const{
 		return(this->sampleHashTable_->GetItem(&sample[0], &sample, retValue, sample.size()));
 	}
-
-	U32 getContigs(void) const{ return this->contigs_.size(); }
-	VCFHeaderContig& getContig(const U32 p){ return this->contigs_[p]; }
-	U32 getLines(void) const{ return this->lines_.size(); }
 
 	bool checkLine(const char* data, const U32 length){
 		VCFHeaderLine line(data, length);
 		if(line.Parse()){
-			//std::cerr << line;
 			this->lines_.push_back(line);
+
+			// If the line is a contig line: make sure it is legal
+			// for our purposes
 			if(line.isCONTIG()){
-				VCFHeaderContig contig;
+				contig_type contig;
 				BYTE found = 0;
+
+				// Contig line has two values:
+				// ID: contig name
+				// length: for length is bp
 				for(U32 i = 0; i < line.size(); ++i){
 					if(strncmp(line[i].KEY, "ID", 2) == 0){
 						contig.name = std::string(line[i].VALUE, line[i].lVALUE);
@@ -203,12 +237,13 @@ public:
 					}
 				}
 
+				// Throw error if this pattern is not found
 				if(found != 2){
 					std::cerr << Helpers::timestamp("WARNING","VCF") << "Illegal contig entry line with no length defined!" << std::endl;
 					std::cerr << Helpers::timestamp("WARNING","VCF") << "Offending line: " << std::string(data, length+1) << std::endl;
-					contig.length = ~0;
-					//return false;
+					contig.length = std::numeric_limits<U32>::max();
 				}
+
 				this->contigs_.push_back(contig);
 				return true;
 			}
@@ -223,6 +258,9 @@ public:
 	bool BuildContigTable(void){
 		U32* retValue;
 
+		if(this->contigsHashTable_)
+			delete this->contigsHashTable_;
+
 		if(this->contigs_.size() < 1024)
 			this->contigsHashTable_ = new hashtable(1024);
 		else
@@ -230,11 +268,8 @@ public:
 
 		std::cerr << Helpers::timestamp("LOG", "VCF") << "Constructing lookup table for " << this->contigs_.size() << " contigs..." << std::endl;
 
-
 		for(U32 i = 0; i < this->contigs_.size(); ++i){
-			//std::cerr << i << '/' << this->contigs_.size() << std::endl;
 			if(!(*this).getContig(this->contigs_[i].name, retValue)){
-				//std::cerr << "not in here. inserting" << std::endl;
 				(*this).addContig(this->contigs_[i].name, i);
 			} else {
 				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated contig found (" << this->getContig(*retValue).name << "). Illegal..." << std::endl;
@@ -244,27 +279,14 @@ public:
 		return true;
 	}
 
-	inline void setSamples(U32 samples){
-		this->samples_ = samples;
-		delete this->sampleHashTable_;
-
-		if(this->samples_ < 1024)
-			this->sampleHashTable_ = new hashtable(1024);
-		else
-			this->sampleHashTable_ = new hashtable(this->samples_ * 2);
-	}
-	inline const U64 size(void) const{ return this->samples_; }
-
-	inline const VCFHeaderContig& operator[](const U32 p) const{ return(this->contigs_[p]); }
-
 public:
-	U64 samples_;
-	S32 version_;
-	std::vector<VCFHeaderLine> lines_;
-	std::vector<VCFHeaderContig> contigs_;
-	std::vector<std::string> sampleNames_;
-	hashtable* contigsHashTable_;
-	hashtable* sampleHashTable_;
+	U64 samples_;							// number of samples
+	float version_;							// VCF version
+	std::vector<VCFHeaderLine> lines_;		// header lines
+	std::vector<contig_type> contigs_;		// contigs
+	std::vector<std::string> sampleNames_;	// sample names
+	hashtable* contigsHashTable_;			// hash table for contig names
+	hashtable* sampleHashTable_;			// hash table for sample names
 };
 
 }

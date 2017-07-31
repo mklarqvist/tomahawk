@@ -196,7 +196,7 @@ public:
 		buffer += '\t';
 		buffer += Constants::PASS;
 		buffer += '\t';
-		buffer += std::string("HWE=");
+		buffer += std::string("HWE_P=");
 		buffer += std::to_string(this->currentMeta().HWE_P);
 		buffer += std::string(";MAF=");
 		buffer += std::to_string(this->currentMeta().MAF);
