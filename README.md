@@ -1,6 +1,6 @@
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
-Synopsis
+###Synopsis
 
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
@@ -53,10 +53,14 @@ tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.
 ```
 
 ### Converting between file formats and filtering
+Viewing LD data from the binary `two` file format and filtering out lines with a
+Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and has have
+FLAG bits `4` set and map to any of these regions
  ```bash
  tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
  ```
 
+Converting a `twk` file to `vcf`
  ```bash
  tomahawk view -HG -i file.twk -o -
  ```

@@ -158,7 +158,7 @@ public:
 		encodeComplex_(nullptr),
 		bit_width_(0),
 		shiftSize_(0),
-		helper_(header.samples_),
+		helper_(header.samples),
 		savings(0)
 	{
 	}

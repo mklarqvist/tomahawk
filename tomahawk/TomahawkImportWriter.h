@@ -72,7 +72,7 @@ public:
 		this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 		this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
 
-		const U64& samples = this->vcf_header_->samples_;
+		const U64& samples = this->vcf_header_->samples;
 		Totempole::TotempoleHeader h(samples);
 		this->streamTotempole << h;
 		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
@@ -84,16 +84,16 @@ public:
 		this->streamTotempole.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
 
 		// Write the number of contigs
-		const U32 n_contigs = this->vcf_header_->contigs_.size();
+		const U32 n_contigs = this->vcf_header_->contigs.size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
 
 		// Write contig data to Totempole
 		// length | n_char | chars[0 .. n_char - 1]
-		for(U32 i = 0; i < this->vcf_header_->contigs_.size(); ++i){
-			Totempole::TotempoleContigBase contig(this->vcf_header_->contigs_[i].length,
-											      this->vcf_header_->contigs_[i].name.size(),
-											      this->vcf_header_->contigs_[i].name);
+		for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
+			Totempole::TotempoleContigBase contig(this->vcf_header_->contigs[i].length,
+											      this->vcf_header_->contigs[i].name.size(),
+											      this->vcf_header_->contigs[i].name);
 
 			this->streamTotempole << contig;
 		}
@@ -101,9 +101,9 @@ public:
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
 		for(U32 i = 0; i < samples; ++i){
-			const U32 n_char = this->vcf_header_->sampleNames_[i].size();
+			const U32 n_char = this->vcf_header_->sampleNames[i].size();
 			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames_[i][0]), n_char);
+			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 		}
 
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position

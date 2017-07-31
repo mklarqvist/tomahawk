@@ -15,16 +15,13 @@ VCFParser::VCFParser(readerType reader, const std::string outputPrefix) : output
 VCFParser::~VCFParser(){}
 
 bool VCFParser::Build(){
-	if(!this->GetHeaderLines())
+	this->reader_ >> this->header_;
+	if(!this->header_.good()){
+		std::cerr << "header no good: " << this->header_.error_bit << std::endl;
 		return false;
+	}
 
-	if(!this->header_.BuildContigTable())
-		return false;
-
-	if(!this->SampleLine())
-		return false;
-
-	if(this->header_.samples_ == 1){
+	if(this->header_.samples == 1){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
 		return false;
 	}
@@ -91,7 +88,7 @@ bool VCFParser::Build(){
 			return false;
 		}
 
-		const float missing = line.getMissingness(this->header_.samples_);
+		const float missing = line.getMissingness(this->header_.samples);
 		if(line.position == previous_position && *retValue == *prevRetValue){
 			if(!SILENT)
 				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << this->header_[*retValue].name << ":" << line.position << "): Dropping..." << std::endl;
@@ -147,116 +144,6 @@ bool VCFParser::Build(){
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 
-	return true;
-}
-
-bool VCFParser::GetHeaderLines(void){
-	if(!this->reader_.good())
-		return false;
-
-	if(!this->ValidateVCF())
-		return false;
-
-	// Get header lines
-	while(this->reader_.getLine()){
-		if(this->reader_.buffer_[1] != '#')
-			break;
-
-		if(!this->header_.checkLine(this->reader_.buffer_, this->reader_.size()-2)){
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Failed to validate header lines" << std::endl;
-			return false;
-		}
-
-		this->reader_.clear();
-	}
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "VCF") << "Parsed " << this->header_.getLines()+1 << " header lines..." << std::endl;
-
-	return true;
-}
-
-bool VCFParser::ValidateVCF(void){
-	if(!this->reader_.good())
-		return false;
-
-	if(!this->reader_.getLine()){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not validate file..." << std::endl;
-		return false;
-	}
-
-	//std::cerr << std::string(&this->reader_[0], this->reader_.size()) << std::endl;
-	if(strncmp(&this->reader_[0], &VCF::Constants::HEADER_VCF_FORMAT[0], VCF::Constants::HEADER_VCF_FORMAT.size()) != 0){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Invalid VCF format..." << std::endl;
-		return false;
-	}
-
-	if(strncmp(&this->reader_[0], &VCF::Constants::HEADER_VCF_VERSION[0], VCF::Constants::HEADER_VCF_VERSION.size()) != 0){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Invalid VCF version < 4.x..." << std::endl;
-		return false;
-	}
-
-	this->reader_.clear();
-
-	return true;
-}
-
-bool VCFParser::SampleLine(void){
-	// At broken position is main header line
-	// Validate header
-	if(strncmp(&Tomahawk::VCF::Constants::HEADER_COLUMN[0], &this->reader_.buffer_[0], Tomahawk::VCF::Constants::HEADER_COLUMN.size()) != 0){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not validate header line" << std::endl;
-		return false;
-	}
-
-	uint32_t search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
-	uint32_t delimiters_found = 0;
-	while(true){ // while there is samples in line
-		char* found = std::find(&this->reader_[search_position], &this->reader_[this->reader_.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
-		if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER)
-			break;
-
-		//std::cerr << std::string(&this->reader_[search_position], (found - this->reader_.buffer_ + 1) - search_position) << std::endl;
-		search_position = found - this->reader_.buffer_ + 1;
-		++delimiters_found;
-	}
-	// Last one
-	//std::cerr << std::string(&this->reader_[search_position], this->reader_.size()  - search_position) << std::endl;
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "VCF") << "Found " << Helpers::ToPrettyString(delimiters_found) << " samples..." << std::endl;
-
-	this->header_.setSamples(delimiters_found);
-
-	// Parse
-	search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
-	delimiters_found = 0;
-	uint32_t* retValue;
-	char* found = 0;
-	while(found != &this->reader_[this->reader_.size()]){ // while there is samples in line
-		found = std::find(&this->reader_[search_position], &this->reader_[this->reader_.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
-		//if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER && found != &this->reader_[this->reader_.size()])
-		//	break;
-
-		std::string sampleName(&this->reader_[search_position], (found - this->reader_.buffer_ + 1) - search_position - 1);
-		if(sampleName == "FORMAT"){
-			search_position = found - this->reader_.buffer_ + 1;
-			continue;
-		}
-
-		//td::cerr << sampleName << std::endl;
-
-		if(!this->header_.getSample(sampleName, retValue))
-			this->header_.addSample(sampleName);
-		else {
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated sample name in header..." << std::endl;
-			exit(1);
-		}
-
-		search_position = found - this->reader_.buffer_ + 1;
-	}
-
-	this->reader_.clear();
 	return true;
 }
 

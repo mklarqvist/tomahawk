@@ -27,11 +27,6 @@ public:
 	~VCFParser();
 	bool Build();
 
-protected:
-	bool GetHeaderLines(void);
-	bool ValidateVCF(void);
-	bool SampleLine(void);
-
 private:
 	std::string outputPrefix;
 	readerType reader_;
