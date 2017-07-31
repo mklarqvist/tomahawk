@@ -21,7 +21,7 @@ public:
 
 class TomahawkOutputFilterController {
 	typedef TomahawkOutputFilterController self_type;
-	typedef IO::TomahawkOutputEntry& entry_type;
+	typedef IO::TomahawkOutputEntry entry_type;
 	typedef bool (self_type::*filterFunction)(const entry_type& entry) const;
 
 public:
@@ -186,9 +186,15 @@ public:
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
 
-	bool filter(const & target) const;
-	bool filterMHF(const & target) const;
-	bool filterHF(const & target) const;
+	bool filter(const entry_type& target) const;
+	bool filterMHF(const entry_type& target) const;
+	bool filterHF(const entry_type& target) const;
+	bool filterD(const entry_type& type) const;
+	bool filterDprime(const entry_type& type) const;
+	bool filterRsquared(const entry_type& type) const;
+	bool filterP(const entry_type& type) const;
+	bool filterPmodel(const entry_type& type) const;
+	bool filterFLAG(const entry_type& type) const;
 
 private:
 	template <class T, class Y> bool filter(const T& value, const Y& min, const Y& max) const;

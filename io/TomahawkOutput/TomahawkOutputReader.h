@@ -62,7 +62,7 @@ public:
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
 	bool getBlocks(void);
 	bool AddRegions(std::vector<std::string>& positions);
-	bool __ParseRegion(const std::string& region, interval_type& interval);
+
 	bool Open(const std::string input);
 	bool ParseHeader(void);
 	bool nextBlock(void);
@@ -77,6 +77,7 @@ public:
 	filter_type& getFilter(void){ return this->filter; }
 
 private:
+	bool __ParseRegion(const std::string& region, interval_type& interval);
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);

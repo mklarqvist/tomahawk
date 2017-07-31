@@ -58,10 +58,9 @@ int view(int argc, char** argv){
 		{"maxAlleles",	optional_argument, 0, 'A' },
 		{"flagInclude",	optional_argument, 0, 'f' },
 		{"flagExclude",	optional_argument, 0, 'F' },
-		{"headerOnly",	no_argument, 0, 'h' },
+		{"headerOnly",	no_argument, 0, 'H' },
 		{"noHeader",	no_argument, 0, 'h' },
 		{"dropGenotypes",	optional_argument, 0, 'G' },
-		{"longHelp",	no_argument, 0, 'H' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -187,6 +186,7 @@ int view(int argc, char** argv){
 			break;
 		case 's':
 			SILENT = 1;
+			--hits;
 			break;
 		}
 	}
