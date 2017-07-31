@@ -19,6 +19,8 @@ public:
 class VCFParser {
 	typedef VCFParser selfType;
 	typedef Tomahawk::reader& readerType;
+	typedef VCFHeader header_type;
+	typedef TomahawkImportWriter writer_type;
 
 public:
 	VCFParser(readerType reader, const std::string outputPrefix);
@@ -34,7 +36,7 @@ private:
 	std::string outputPrefix;
 	readerType reader_;
 	VCFHeader header_;
-	TomahawkImportWriter writer_;
+	writer_type writer_;
 };
 
 

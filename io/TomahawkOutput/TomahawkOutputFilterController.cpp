@@ -5,8 +5,6 @@ namespace Tomahawk {
 
 TomahawkOutputFilterController::TomahawkOutputFilterController() :
 	any_filter_user_set(false),
-	filteredCount(0),
-	keepCount(0),
 	minP1(0),
 	minP2(0),
 	minQ1(0),
@@ -29,7 +27,7 @@ TomahawkOutputFilterController::TomahawkOutputFilterController() :
 
 TomahawkOutputFilterController::~TomahawkOutputFilterController(){}
 
-bool TomahawkOutputFilterController::filter(const IO::TomahawkOutputEntry& target) const{
+bool TomahawkOutputFilterController::filter(const entry_type& target) const{
 	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0)){
 		//std::cerr << "failed bits" << std::endl;
 		return false;
@@ -50,11 +48,11 @@ bool TomahawkOutputFilterController::filter(const IO::TomahawkOutputEntry& targe
 	return true;
 }
 
-bool TomahawkOutputFilterController::filterHF(const IO::TomahawkOutputEntry& target) const{
+bool TomahawkOutputFilterController::filterHF(const entry_type& target) const{
 	return(target.p1 >= this->minP1 || target.p2 >= this->minP2 || target.q1 >= this->minQ1 || target.q2 >= this->minQ2);
 }
 
-bool TomahawkOutputFilterController::filterMHF(const IO::TomahawkOutputEntry& target) const{
+bool TomahawkOutputFilterController::filterMHF(const entry_type& target) const{
 	// find largest
 	const float* max = &target.p1;
 	if(target.p2 > *max) max = &target.p2;
@@ -69,6 +67,158 @@ bool TomahawkOutputFilterController::filterMHF(const IO::TomahawkOutputEntry& ta
 	if(&target.q2 != max) total += target.q2;
 
 	return(total > this->minMHF);
+}
+
+bool TomahawkOutputFilterController::setFilterTable(const S32& a, const S32& b, const S32& c, const S32& d){
+	if(a < 0 || b < 0 || c < 0 || d < 0){
+		std::cerr << "cannot have negative filter values" << std::endl;
+		return false;
+	}
+
+	if(a == 0 && b == 0 && c == 0 && d == 0){
+		std::cerr << "cannot filter with all cells set to 0" << std::endl;
+		return false;
+	}
+
+	this->minP1 = a;
+	this->minP2 = b;
+	this->minQ1 = c;
+	this->minQ2 = d;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterTable(const S32& all){
+	if(all < 0){
+		std::cerr << "cannot have negative filter values" << std::endl;
+		return false;
+	}
+	if(all == 0){
+		std::cerr << "cannot filter with all cells set to 0" << std::endl;
+		return false;
+	}
+	this->minP1 = all;
+	this->minP2 = all;
+	this->minQ1 = all;
+	this->minQ2 = all;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterD(const float& min, const float& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minD = min - Constants::ALLOWED_ROUNDING_ERROR;
+	this->maxD = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterDprime(const float& min, const float& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	//if(min < 0 || max < 0){
+	//	std::cerr << "has negative" << std::endl;
+	//	return false;
+	//}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minDprime = min - Constants::ALLOWED_ROUNDING_ERROR;
+	this->maxDprime = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterRsquared(const float& min, const float& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minR2 = min - Constants::ALLOWED_ROUNDING_ERROR;
+	this->maxR2 = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterP(const double& min, const double& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minP = min;
+	this->maxP = max;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterPmodel(const double& min, const double& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minPmodel = min;
+	this->maxPmodel = max;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, const double& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+
+	this->minChiSquared = min;
+	this->maxChiSquared = max;
+	this->trigger();
+	return true;
 }
 
 } /* namespace Tomahawk */

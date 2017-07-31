@@ -18,7 +18,7 @@ void view_usage(void){
 	"  -G       (twk) drop genotypes in output [null]\n"
 	"  -h/H     (twk/two) header only / no header [null]\n"
 	"  -N       output in tab-delimited text format [null]\n"
-	"  -B       output in binary TWO format (default)[null]\n"
+	"  -B       output in binary TWO/TWK format (default)[null]\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n\n"
 
 	// Two parameters
@@ -58,6 +58,8 @@ int view(int argc, char** argv){
 		{"maxAlleles",	optional_argument, 0, 'A' },
 		{"flagInclude",	optional_argument, 0, 'f' },
 		{"flagExclude",	optional_argument, 0, 'F' },
+		{"minHWE",	optional_argument, 0, 'w' },
+		{"maxHWE",	optional_argument, 0, 'W' },
 		{"headerOnly",	no_argument, 0, 'H' },
 		{"noHeader",	no_argument, 0, 'h' },
 		{"dropGenotypes",	optional_argument, 0, 'G' },
@@ -76,7 +78,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:hHGs", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:w:W:hHGs", long_options, &long_index)) != -1){
 		//std::cerr << c << ":" << (char)c << '\t' << long_index << std::endl;
 		hits += 2;
 		switch (c){
