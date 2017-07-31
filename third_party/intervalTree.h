@@ -153,11 +153,11 @@ public:
     S32 contigID;
 };
 
-static S32 intervalStart(const ContigInterval& i) {
+static inline S32 intervalStart(const ContigInterval& i) {
     return i.start;
 }
 
-static S32 intervalStop(const ContigInterval& i) {
+static inline S32 intervalStop(const ContigInterval& i) {
     return i.stop;
 }
 

@@ -8,20 +8,20 @@ namespace Tomahawk {
 namespace VCF{
 
 class VCFParser {
-	typedef VCFParser selfType;
-	typedef Tomahawk::reader& readerType;
+	typedef VCFParser self_type;
+	typedef Tomahawk::reader reader_type;
 	typedef VCFHeader header_type;
 	typedef TomahawkImportWriter writer_type;
 
 public:
-	VCFParser(readerType reader, const std::string outputPrefix);
+	VCFParser(std::string inputFile, std::string outputPrefix);
 	~VCFParser();
 	bool Build();
 
 private:
 	std::string outputPrefix;
-	readerType reader_;
-	VCFHeader header_;
+	reader_type reader_;
+	header_type header_;
 	writer_type writer_;
 };
 

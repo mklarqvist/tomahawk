@@ -1,8 +1,6 @@
 #include <string>
 
 #include "../reader.h"
-#include "VCFHeaderConstants.h"
-#include "VCFLines.h"
 #include "VCFParser.h"
 #include "../../tomahawk/TomahawkImportWriter.h"
 
@@ -11,11 +9,23 @@ namespace VCF{
 
 #define DEFAULT_MISSINGNESS_CUTOFF 0.2
 
-VCFParser::VCFParser(readerType reader, const std::string outputPrefix) : outputPrefix(outputPrefix), reader_(reader){}
+VCFParser::VCFParser(std::string inputFile, std::string outputPrefix) :
+	outputPrefix(outputPrefix),
+	reader_(inputFile)
+{}
+
 VCFParser::~VCFParser(){}
 
 bool VCFParser::Build(){
-	this->reader_ >> this->header_;
+	if(!this->reader_.open()){
+		std::cerr << "failed to open" << std::endl;
+		return false;
+	}
+
+	if(!this->header_.parse(this->reader_)){
+		std::cerr << "parser failed" << std::endl;
+		exit(1);
+	}
 	if(!this->header_.good()){
 		std::cerr << "header no good: " << this->header_.error_bit << std::endl;
 		return false;

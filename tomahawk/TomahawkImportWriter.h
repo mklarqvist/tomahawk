@@ -101,9 +101,9 @@ public:
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
 		for(U32 i = 0; i < samples; ++i){
-			const U32 n_char = this->vcf_header_->sampleNames[i].size();
-			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
+			//const U32 n_char = this->vcf_header_->sampleNames[i].size();
+			//this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
+			//this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 		}
 
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position

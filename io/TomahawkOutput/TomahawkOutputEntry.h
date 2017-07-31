@@ -68,7 +68,7 @@ struct TomahawkOutputEntry{
 // comparator functions for output entry
 namespace Support{
 
-static bool TomahawkOutputEntryCompFunc(TomahawkOutputEntry* self, TomahawkOutputEntry* other){
+static inline bool TomahawkOutputEntryCompFunc(TomahawkOutputEntry* self, TomahawkOutputEntry* other){
 	if (self->AcontigID < other->AcontigID) return true;
 	if (other->AcontigID < self->AcontigID) return false;
 
@@ -84,7 +84,7 @@ static bool TomahawkOutputEntryCompFunc(TomahawkOutputEntry* self, TomahawkOutpu
 	return false;
 }
 
-static bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry* self, const TomahawkOutputEntry* other){
+static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry* self, const TomahawkOutputEntry* other){
 	if (self->AcontigID < other->AcontigID) return true;
 	if (other->AcontigID < self->AcontigID) return false;
 

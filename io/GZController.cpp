@@ -51,7 +51,7 @@ bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZF
 	if(output.size() + *uncompressedLength >= output.capacity())
 		output.resize((output.size() + *uncompressedLength) * 1.2);
 
-	U32* crc = reinterpret_cast<U32*>(&input.data[input.size() - 2*sizeof(U32)]);
+	//U32* crc = reinterpret_cast<U32*>(&input.data[input.size() - 2*sizeof(U32)]);
 
 	// Bug fix for ZLIB when overflowing an U32
 	U64 avail_out = output.capacity() - output.size();

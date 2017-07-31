@@ -3,9 +3,41 @@
 namespace Tomahawk {
 namespace VCF{
 
-void VCFHeader::buildSampleTable(U32 samples){
-	this->samples = samples;
+VCFHeader::VCFHeader() :
+	error_bit(VCF_PASS),
+	samples(0),
+	version(0),
+	contigsHashTable(nullptr),
+	sampleHashTable(nullptr)
+{
+	std::cerr << "ctor: " << this->contigsHashTable << '\t' << this->sampleHashTable << '\t' << this << std::endl;
+}
 
+VCFHeader::~VCFHeader(){
+	delete this->contigsHashTable;
+	delete this->sampleHashTable;
+}
+
+bool VCFHeader::parse(reader& stream){
+	if(!this->__parseFirstLine(stream))
+		return false;
+
+	// Read remainder lines
+	if(!this->__parseHeaderLines(stream))
+		return false;
+
+	if(!this->buildContigTable())
+		return false;
+
+	// Read samples line
+	if(!this->__parseSampleLine(stream))
+		return false;
+
+	return true;
+}
+
+void VCFHeader::buildSampleTable(U64 samples){
+	this->samples = samples;
 	if(this->sampleHashTable != nullptr)
 		delete this->sampleHashTable;
 
@@ -18,7 +50,7 @@ void VCFHeader::buildSampleTable(U32 samples){
 bool VCFHeader::checkLine(const char* data, const U32 length){
 	VCFHeaderLine line(data, length);
 	if(line.Parse()){
-		this->lines.push_back(line);
+		//std::cerr << "Input line: " << line << std::endl;
 
 		// If the line is a contig line: make sure it is legal
 		// for our purposes
@@ -30,12 +62,12 @@ bool VCFHeader::checkLine(const char* data, const U32 length){
 			// ID: contig name
 			// length: for length is bp
 			for(U32 i = 0; i < line.size(); ++i){
-				if(strncmp(line[i].KEY, "ID", 2) == 0){
-					contig.name = std::string(line[i].VALUE, line[i].lVALUE);
+				if(strncmp(&line[i].KEY[0], "ID", 2) == 0){
+					contig.name = std::string(line[i].VALUE);
 					//std::cerr << std::string(line[i].VALUE, line[i].lVALUE) << std::endl;
 					++found;
-				} else if(strncmp(line[i].KEY, "length", 6) == 0){
-					contig.length = atoi(line[i].VALUE);
+				} else if(strncmp(&line[i].KEY[0], "length", 6) == 0){
+					contig.length = atoi(&line[i].VALUE[0]);
 					//std::cerr << contig.length << std::endl;
 					++found;
 				}
@@ -48,10 +80,13 @@ bool VCFHeader::checkLine(const char* data, const U32 length){
 				contig.length = std::numeric_limits<U32>::max();
 			}
 
+			//std::cerr << "pushing back contig" << std::endl;
+
 			this->contigs.push_back(contig);
-			return true;
 		}
 
+		//std::cerr << "pushing non-contig: " << line << '\t' << line.size() << '/' << length << '\t' << data << std::endl;
+		this->lines.push_back(line);
 		return true;
 	}
 
@@ -73,6 +108,7 @@ bool VCFHeader::buildContigTable(void){
 	std::cerr << Helpers::timestamp("LOG", "VCF") << "Constructing lookup table for " << this->contigs.size() << " contigs..." << std::endl;
 
 	for(U32 i = 0; i < this->contigs.size(); ++i){
+		//std::cerr << this->contigs[i] << std::endl;
 		if(!(*this).getContig(this->contigs[i].name, retValue)){
 			(*this).addContig(this->contigs[i].name, i);
 		} else {
@@ -145,7 +181,7 @@ bool VCFHeader::__parseSampleLine(reader& stream){
 	}
 
 	U32 search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
-	U32 delimiters_found = 0;
+	U64 delimiters_found = 0;
 	while(true){ // while there is samples in line
 		char* found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
 		if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER)
@@ -174,7 +210,7 @@ bool VCFHeader::__parseSampleLine(reader& stream){
 			continue;
 		}
 
-		//td::cerr << sampleName << std::endl;
+		//std::cerr << sampleName << std::endl;
 
 		if(!this->getSample(sampleName, retValue))
 			this->addSample(sampleName);

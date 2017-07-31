@@ -14,39 +14,39 @@
 namespace Tomahawk {
 namespace Hash {
 
-template <class KeyType, class ValueType>
+template <class T, class K>
 struct OpenHashEntry{
 public:
-	KeyType key;
-	ValueType value;
+	T key;
+	K value;
 
 	OpenHashEntry(){}
 };
 
-template <class KeyType, class ValueType>
+template <class T, class K>
 class HashTable{
 public:
-    typedef OpenHashEntry<KeyType, ValueType> Entry;
+    typedef OpenHashEntry<T, K> Entry;
 
 	HashTable(const U64 arraySize);
     ~HashTable();
 
     // Basic operations
-    void SetItem(const KeyType* key, const ValueType& value, U32 length = sizeof(KeyType));
-    void SetItem(const void* key_address, const KeyType* key, const ValueType& value, U32 length = sizeof(KeyType));
-    bool GetItem(const KeyType* key, ValueType*& entry, U32 length = sizeof(KeyType));
-    bool GetItem(const void* key_address, const KeyType* key, ValueType*& entry, U32 length = sizeof(KeyType));
+    void SetItem(const T* key, const K& value, U32 length = sizeof(T));
+    void SetItem(const void* key_address, const T* key, const K& value, U32 length = sizeof(T));
+    bool GetItem(const T* key, K*& entry, U32 length = sizeof(T));
+    bool GetItem(const void* key_address, const T* key, K*& entry, U32 length = sizeof(T));
     void clear();
     U32 size(void) const{return this->__size;}
     U32 occupied(void) const{return this->__occupied;}
 
     Entry& operator[](const U32 position){return *this->__entries[position];}
-    ValueType& at(const U32 position){return this->__entries.at(position);}
+    K& at(const U32 position){return this->__entries.at(position);}
     Entry* pat(const U32 position){return this->__entries[position];}
 
 protected:
-    void __set(U64& index, const U64& hash2, const KeyType* key, const ValueType& value);
-    bool __get(U64& index, const U64& hash2, const KeyType* key, ValueType*& entry);
+    void __set(U64& index, const U64& hash2, const T* key, const K& value);
+    bool __get(U64& index, const U64& hash2, const T* key, K*& entry);
 
 private:
     U32 __occupied;
@@ -57,8 +57,8 @@ private:
     Entry** __entries;
 };
 
-template <class KeyType, class ValueType>
-HashTable<KeyType, ValueType>::HashTable(const U64 arraySize) :
+template <class T, class K>
+HashTable<T, K>::HashTable(const U64 arraySize) :
 	__occupied(0),
 	__size(arraySize),
 	__retries(50),
@@ -69,8 +69,8 @@ HashTable<KeyType, ValueType>::HashTable(const U64 arraySize) :
 		this->__entries[i] = nullptr;
 }
 
-template <class KeyType, class ValueType>
-void HashTable<KeyType, ValueType>::__set(U64& index, const U64& hash2, const KeyType* key, const ValueType& value){
+template <class T, class K>
+void HashTable<T, K>::__set(U64& index, const U64& hash2, const T* key, const K& value){
 	U16 RETRIES_COUNTER = 0;
 	for(U32 i = 0;;++i){
 		if(RETRIES_COUNTER > this->__retries){ //Table is full! Just continue;
@@ -85,7 +85,7 @@ void HashTable<KeyType, ValueType>::__set(U64& index, const U64& hash2, const Ke
 //		std::cout << "set\t\t" << *__key << "\t" << idx << std::endl;
 
 		if(this->__entries[index] != nullptr){
-			const KeyType probedKey = this->__entries[index]->key;
+			const T probedKey = this->__entries[index]->key;
 			if (probedKey != *key){ // If the current position is occupied by other key
 					RETRIES_COUNTER++;
 					continue;
@@ -108,8 +108,8 @@ void HashTable<KeyType, ValueType>::__set(U64& index, const U64& hash2, const Ke
 	}
 }
 
-template <class KeyType, class ValueType>
-bool HashTable<KeyType, ValueType>::__get(U64& index, const U64& hash2, const KeyType* key, ValueType*& entry){
+template <class T, class K>
+bool HashTable<T, K>::__get(U64& index, const U64& hash2, const T* key, K*& entry){
 	U16 RETRIES_COUNTER = 0;
 
 	for(U32 i = 0;;++i){
@@ -121,7 +121,7 @@ bool HashTable<KeyType, ValueType>::__get(U64& index, const U64& hash2, const Ke
 
 		if(this->__entries[index] != nullptr){
 //			std::cout << "not null: testing" << std::endl;
-			const KeyType probedKey = this->__entries[index]->key;
+			const T probedKey = this->__entries[index]->key;
 			if(probedKey != *key){ // If the current position is occupied by other key
 				RETRIES_COUNTER++;
 //				std::cout << "retrying beacuse" << probedKey << "\t" << key << std::endl;
@@ -144,36 +144,36 @@ bool HashTable<KeyType, ValueType>::__get(U64& index, const U64& hash2, const Ke
 }
 
 
-template <class KeyType, class ValueType>
-inline void HashTable<KeyType, ValueType>::SetItem(const KeyType* key, const ValueType &value, U32 length){
+template <class T, class K>
+inline void HashTable<T, K>::SetItem(const T* key, const K &value, U32 length){
 	U64 idx = XXH64(key, length, 0);
 	const U64 hash2 = XXH64(key, length, 452930477);
 	this->__set(idx, hash2, key, value);
 }
 
-template <class KeyType, class ValueType>
-inline void HashTable<KeyType, ValueType>::SetItem(const void* key_adress, const KeyType* key, const ValueType &value, U32 length){
+template <class T, class K>
+inline void HashTable<T, K>::SetItem(const void* key_adress, const T* key, const K &value, U32 length){
 	U64 idx = XXH64(key_adress, length, 0);
 	const U64 hash2 = XXH64(key_adress, length, 452930477);
 	this->__set(idx, hash2, key, value);
 }
 
-template <class KeyType, class ValueType>
-inline bool HashTable<KeyType, ValueType>::GetItem(const KeyType* key, ValueType*& entry, U32 length){
+template <class T, class K>
+inline bool HashTable<T, K>::GetItem(const T* key, K*& entry, U32 length){
 	U64 idx = XXH64(key, length, 0);
 	const U64 hash2 = XXH64(key, length, 452930477);
 	return this->__get(idx, hash2, key, entry);
 }
 
-template <class KeyType, class ValueType>
-inline bool HashTable<KeyType, ValueType>::GetItem(const void* key_address, const KeyType* key, ValueType*& entry, U32 length){
+template <class T, class K>
+inline bool HashTable<T, K>::GetItem(const void* key_address, const T* key, K*& entry, U32 length){
 	U64 idx = XXH64(key_address, length, 0);
 	const U64 hash2 = XXH64(key_address, length, 452930477);
 	return this->__get(idx, hash2, key, entry);
 }
 
-template <class KeyType, class ValueType>
-HashTable<KeyType, ValueType>::~HashTable(){
+template <class T, class K>
+HashTable<T, K>::~HashTable(){
     for(U32 i = 0; i < this->__size; ++i)
     	if(this->__entries[i] != nullptr) delete this->__entries[i];
 
