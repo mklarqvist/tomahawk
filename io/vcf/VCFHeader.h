@@ -176,130 +176,6 @@ public:
 	VCFHeader() : error_bit(VCF_PASS), samples(0), version(0), contigsHashTable(nullptr), sampleHashTable(nullptr){}
 	~VCFHeader(){ delete this->contigsHashTable; }
 
-	friend reader& operator>>(reader& stream, self_type& base){
-		if(!base.__parseFirstLine(stream))
-			return stream;
-
-		// Read remainder lines
-		if(!base.__parseHeaderLines(stream))
-			return stream;
-
-		if(!base.buildContigTable())
-			return stream;
-
-		// Read samples line
-		if(!base.__parseSampleLine(stream))
-			return stream;
-
-		return(stream);
-	}
-
-	bool __parseFirstLine(reader& stream){
-		if(!stream.good()){
-			this->error_bit = STREAM_BAD;
-			return false;
-		}
-
-		if(!stream.getLine()){
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not validate file..." << std::endl;
-			this->error_bit = STREAM_BAD;
-			return false;
-		}
-
-		// Parse
-		if(strncmp(&stream[0], &VCF::Constants::HEADER_VCF_FORMAT[0], VCF::Constants::HEADER_VCF_FORMAT.size()) != 0){
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Invalid VCF format..." << std::endl;
-			this->error_bit = VCF_ERROR_LINE1;
-			return false;
-		}
-
-		if(strncmp(&stream[0], &VCF::Constants::HEADER_VCF_VERSION[0], VCF::Constants::HEADER_VCF_VERSION.size()) != 0){
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Invalid VCF version < 4.x..." << std::endl;
-			this->error_bit = VCF_ERROR_LINE1;
-			return false;
-		}
-
-		stream.clear();
-		return true;
-	}
-
-	bool __parseHeaderLines(reader& stream){
-		while(stream.getLine()){
-			if(stream.buffer_[1] != '#')
-				break;
-
-			if(!this->checkLine(stream.buffer_, stream.size() - 2)){
-				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Failed to validate header lines" << std::endl;
-				this->error_bit = VCF_ERROR_LINES;
-				return false;
-			}
-
-			stream.clear();
-		}
-
-		if(!stream.good()){
-			this->error_bit = STREAM_BAD;
-			return false;
-		}
-
-		return true;
-	}
-
-	bool __parseSampleLine(reader& stream){
-		// At broken position is main header line
-		// Validate header
-		if(strncmp(&Tomahawk::VCF::Constants::HEADER_COLUMN[0], &stream.buffer_[0], Tomahawk::VCF::Constants::HEADER_COLUMN.size()) != 0){
-			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not validate header line" << std::endl;
-			this->error_bit = VCF_ERROR_SAMPLE;
-			return false;
-		}
-
-		U32 search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
-		U32 delimiters_found = 0;
-		while(true){ // while there is samples in line
-			char* found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
-			if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER)
-				break;
-
-			//std::cerr << std::string(&stream[search_position], (found - stream.buffer_ + 1) - search_position) << std::endl;
-			search_position = found - stream.buffer_ + 1;
-			++delimiters_found;
-		}
-
-		this->buildSampleTable(delimiters_found);
-
-		// Parse
-		search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
-		delimiters_found = 0;
-		U32* retValue;
-		char* found = 0;
-		while(found != &stream[stream.size()]){ // while there are samples in line
-			found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
-			//if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER && found != &stream[stream.size()])
-			//	break;
-
-			std::string sampleName(&stream[search_position], (found - stream.buffer_ + 1) - search_position - 1);
-			if(sampleName == "FORMAT"){
-				search_position = found - stream.buffer_ + 1;
-				continue;
-			}
-
-			//td::cerr << sampleName << std::endl;
-
-			if(!this->getSample(sampleName, retValue))
-				this->addSample(sampleName);
-			else {
-				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated sample name in header..." << std::endl;
-				this->error_bit = VCF_ERROR_LINES;
-			}
-
-			search_position = found - stream.buffer_ + 1;
-		}
-
-		stream.clear();
-		return true;
-	}
-
 	inline bool good(void) const{ return(this->error_bit == VCF_PASS); }
 	inline bool valid(void) const{ return(this->version > 0); }
 	inline void setVersion(float version){ this->version = version; }
@@ -318,16 +194,22 @@ public:
 		return(this->sampleHashTable->GetItem(&sample[0], &sample, retValue, sample.size()));
 	}
 
-	void buildSampleTable(U32 samples){
-		this->samples = samples;
+	friend reader& operator>>(reader& stream, self_type& base){
+		if(!base.__parseFirstLine(stream))
+			return stream;
 
-		if(this->sampleHashTable != nullptr)
-			delete this->sampleHashTable;
+		// Read remainder lines
+		if(!base.__parseHeaderLines(stream))
+			return stream;
 
-		if(this->samples < 1024)
-			this->sampleHashTable = new hash_table(1024);
-		else
-			this->sampleHashTable = new hash_table(this->samples * 2);
+		if(!base.buildContigTable())
+			return stream;
+
+		// Read samples line
+		if(!base.__parseSampleLine(stream))
+			return stream;
+
+		return(stream);
 	}
 
 private:
@@ -343,74 +225,13 @@ private:
 		this->sampleHashTable->SetItem(&sample[0], &sample, this->sampleNames.size()-1, sample.size());
 	}
 
-	bool checkLine(const char* data, const U32 length){
-		VCFHeaderLine line(data, length);
-		if(line.Parse()){
-			this->lines.push_back(line);
-
-			// If the line is a contig line: make sure it is legal
-			// for our purposes
-			if(line.isCONTIG()){
-				contig_type contig;
-				BYTE found = 0;
-
-				// Contig line has two values:
-				// ID: contig name
-				// length: for length is bp
-				for(U32 i = 0; i < line.size(); ++i){
-					if(strncmp(line[i].KEY, "ID", 2) == 0){
-						contig.name = std::string(line[i].VALUE, line[i].lVALUE);
-						//std::cerr << std::string(line[i].VALUE, line[i].lVALUE) << std::endl;
-						++found;
-					} else if(strncmp(line[i].KEY, "length", 6) == 0){
-						contig.length = atoi(line[i].VALUE);
-						//std::cerr << contig.length << std::endl;
-						++found;
-					}
-				}
-
-				// Throw error if this pattern is not found
-				if(found != 2){
-					std::cerr << Helpers::timestamp("WARNING","VCF") << "Illegal contig entry line with no length defined!" << std::endl;
-					std::cerr << Helpers::timestamp("WARNING","VCF") << "Offending line: " << std::string(data, length+1) << std::endl;
-					contig.length = std::numeric_limits<U32>::max();
-				}
-
-				this->contigs.push_back(contig);
-				return true;
-			}
-
-			return true;
-		}
-
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to parse VCF..." << std::endl;
-		return false;
-	}
-
-	bool buildContigTable(void){
-		U32* retValue;
-
-		if(this->contigsHashTable)
-			delete this->contigsHashTable;
-
-		if(this->contigs.size() < 1024)
-			this->contigsHashTable = new hash_table(1024);
-		else
-			this->contigsHashTable = new hash_table(this->contigs.size() * 2);
-
-		std::cerr << Helpers::timestamp("LOG", "VCF") << "Constructing lookup table for " << this->contigs.size() << " contigs..." << std::endl;
-
-		for(U32 i = 0; i < this->contigs.size(); ++i){
-			if(!(*this).getContig(this->contigs[i].name, retValue)){
-				(*this).addContig(this->contigs[i].name, i);
-			} else {
-				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated contig found (" << this->getContig(*retValue).name << "). Illegal..." << std::endl;
-				this->error_bit = VCF_ERROR_LINES;
-				return false;
-			}
-		}
-		return true;
-	}
+	// Internal overload helpers
+	bool checkLine(const char* data, const U32 length);
+	bool buildContigTable(void);
+	void buildSampleTable(U32 samples);
+	bool __parseFirstLine(reader& stream);
+	bool __parseHeaderLines(reader& stream);
+	bool __parseSampleLine(reader& stream);
 
 public:
 	VCF_ERROR_TYPE error_bit;				// parse error bit
