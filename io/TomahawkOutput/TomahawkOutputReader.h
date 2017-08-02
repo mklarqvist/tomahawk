@@ -39,23 +39,9 @@ class TomahawkOutputReader {
 
 public:
 	TomahawkOutputReader();
-	~TomahawkOutputReader(){
-		delete [] this->contigs;
-		delete contig_htable;
-		if(interval_tree != nullptr){
-			for(U32 i = 0; i < this->header.n_contig; ++i)
-				delete this->interval_tree[i];
-		}
-		delete [] interval_tree_entries;
+	~TomahawkOutputReader();
 
-		delete interval_tree;
-		delete writer;
-
-		this->buffer.deleteAll();
-		this->output_buffer.deleteAll();
-	}
-
-	const TomahawkOutputEntry* operator[](const U32 p) const{ return(reinterpret_cast<TomahawkOutputEntry*>(&this->output_buffer.data[sizeof(TomahawkOutputEntry)*p])); }
+	const entry_type* operator[](const U32 p) const{ return(reinterpret_cast<const entry_type*>(&this->output_buffer.data[sizeof(entry_type)*p])); }
 
 	// Streaming functions
 	bool getBlock(const U32 blockID);
@@ -64,9 +50,8 @@ public:
 	bool AddRegions(std::vector<std::string>& positions);
 
 	bool Open(const std::string input);
-	bool ParseHeader(void);
 	bool nextBlock(void);
-	bool nextVariant(const TomahawkOutputEntry*& entry);
+	bool nextVariant(const entry_type*& entry);
 
 	// Other
 	bool view(const std::string& filename);
@@ -77,20 +62,19 @@ public:
 	filter_type& getFilter(void){ return this->filter; }
 
 private:
+	bool ParseHeader(void);
 	bool __ParseRegion(const std::string& region, interval_type& interval);
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 
 public:
-	//U64 samples; 	// has to match header
-	//float version;	// has to match header
 	U64 filesize;	// input file size
-
 	U32 position;
 	U32 size;
 
 	std::ifstream stream; // reader stream
+	reader_type reader; // reader
 	header_type header; // header
 
 	IO::BasicBuffer buffer; // internal buffer
@@ -104,8 +88,6 @@ public:
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
 
-	//temp
-	reader_type reader;
 };
 
 }

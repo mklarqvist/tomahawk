@@ -8,7 +8,6 @@ CPP_SRCS += \
 ../tomahawk/TomahawkCalc.cpp \
 ../tomahawk/TomahawkCalcParameters.cpp \
 ../tomahawk/TomahawkImportWriter.cpp \
-../tomahawk/TomahawkImporter.cpp \
 ../tomahawk/TomahawkOutputLD.cpp \
 ../tomahawk/TomahawkReader.cpp 
 
@@ -17,7 +16,6 @@ OBJS += \
 ./tomahawk/TomahawkCalc.o \
 ./tomahawk/TomahawkCalcParameters.o \
 ./tomahawk/TomahawkImportWriter.o \
-./tomahawk/TomahawkImporter.o \
 ./tomahawk/TomahawkOutputLD.o \
 ./tomahawk/TomahawkReader.o 
 
@@ -26,7 +24,6 @@ CPP_DEPS += \
 ./tomahawk/TomahawkCalc.d \
 ./tomahawk/TomahawkCalcParameters.d \
 ./tomahawk/TomahawkImportWriter.d \
-./tomahawk/TomahawkImporter.d \
 ./tomahawk/TomahawkOutputLD.d \
 ./tomahawk/TomahawkReader.d 
 

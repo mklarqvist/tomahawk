@@ -104,7 +104,7 @@ private:
 		this->buffer += '\t';
 		this->buffer += std::to_string(helper.D);
 		this->buffer += '\t';
-		this->buffer += std::to_string(fabs(helper.Dprime));	// in the unphased case, Dprime can be negative
+		this->buffer += std::to_string(helper.Dprime);
 		this->buffer += '\t';
 		this->buffer += std::to_string(helper.R2);
 		this->buffer += '\t';

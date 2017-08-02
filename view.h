@@ -248,9 +248,9 @@ int view(int argc, char** argv){
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
 
-		if(!reader.Open(input)){
+		if(!reader.Open(input))
 			return false;
-		}
+
 
 		reader.AddRegions(filter_regions);
 

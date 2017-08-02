@@ -9,14 +9,31 @@
 
 namespace Tomahawk {
 namespace IO{
-TomahawkOutputReader::TomahawkOutputReader() : position(0), size(0), interval_tree(nullptr), contigs(nullptr), contig_htable(nullptr), writer(nullptr), interval_tree_entries(nullptr)
+TomahawkOutputReader::TomahawkOutputReader() :
+		filesize(0),
+		position(0),
+		size(0),
+		writer(nullptr),
+		contigs(nullptr),
+		contig_htable(nullptr),
+		interval_tree(nullptr),
+		interval_tree_entries(nullptr)
 {}
 
-/*
-std::cout << (int)(*this)[i].FLAGS << '\t' << (*this)[i].MAFMix << '\t' << (*this)[i].AcontigID << '\t' << (*this)[i].Aposition << '\t' << (*this)[i].BcontigID << '\t' << (*this)[i].Bposition
-							<< '\t' << (*this)[i].p1 << '\t' << (*this)[i].p2 << '\t' << (*this)[i].q1 << '\t' << (*this)[i].q2 << '\t' << (*this)[i].D << '\t' << (*this)[i].Dprime
-							<< '\t' << (*this)[i].R2 << '\t' << (*this)[i].P << '\t' << (*this)[i].chiSqFisher << '\t' << (*this)[i].chiSqModel << '\n';
-*/
+TomahawkOutputReader::~TomahawkOutputReader(){
+	delete [] this->contigs;
+	delete contig_htable;
+	if(interval_tree != nullptr){
+		for(U32 i = 0; i < this->header.n_contig; ++i)
+			delete this->interval_tree[i];
+	}
+	delete interval_tree;
+	delete [] interval_tree_entries;
+	delete interval_tree;
+	delete writer;
+	this->buffer.deleteAll();
+	this->output_buffer.deleteAll();
+}
 
 
 bool TomahawkOutputReader::view(const std::string& input){
@@ -56,7 +73,6 @@ bool TomahawkOutputReader::__viewRegion(void){
 							goto end;
 						}
 					}
-
 				}
 			}
 
@@ -109,7 +125,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	const Tomahawk::IO::TomahawkOutputEntry*  entry;
+	const entry_type*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
 //			std::cout << this->contigs[entry->AcontigID].name << '\t' << this->contigs[entry->BcontigID].name << '\t' << *entry << '\n';
@@ -250,7 +266,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 bool TomahawkOutputReader::Open(const std::string input){
 	this->stream.open(input, std::ios::binary | std::ios::in | std::ios::ate);
 	if(!this->stream.good()){
-		std::cerr << "failed to open file " << input << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to open file: " << input << std::endl;
 		return false;
 	}
 
@@ -258,18 +274,18 @@ bool TomahawkOutputReader::Open(const std::string input){
 	this->stream.seekg(0);
 
 	if(!this->stream.good()){
-		std::cerr << "bad stream" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "bad stream" << std::endl;
 		return false;
 	}
 
 	this->stream >> this->header;
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC)){
-		std::cerr << "failed to validate header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to validate header" << std::endl;
 		return false;
 	}
 
 	if(!this->ParseHeader()){
-		std::cerr << "failed to parse header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to parse header" << std::endl;
 		return false;
 	}
 
@@ -305,7 +321,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 bool TomahawkOutputReader::nextBlock(void){
 	// Stream died
 	if(!this->stream.good()){
-		std::cerr << "stream died" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "stream died" << std::endl;
 		return false;
 	}
 
@@ -320,11 +336,11 @@ bool TomahawkOutputReader::nextBlock(void){
 	const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
 	buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
-		std::cerr << "failed to validate" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to validate" << std::endl;
 		return false;
 	}
 
-	buffer.resize(h->BSIZE);
+	buffer.resize(h->BSIZE); // make sure all data will fit
 
 	// Recast because if buffer is resized then the pointer address is incorrect
 	// resulting in segfault
@@ -332,24 +348,22 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!this->stream.good()){
-		std::cerr << "truncated file" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "truncated file" << std::endl;
 		return false;
 	}
 
 	buffer.pointer = h->BSIZE;
-	const U32* outsize = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-	//const U32* crc = reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32) - sizeof(U32)]);
-	//std::cerr << *outsize << '\t' << *crc << std::endl;
-	output_buffer.resize(*outsize);
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
+	output_buffer.resize(uncompressed_size);
 	this->output_buffer.reset();
 
 	if(!this->gzip_controller.Inflate(buffer, output_buffer)){
-		std::cerr << "failed inflate" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed inflate" << std::endl;
 		return false;
 	}
 
 	if(this->output_buffer.size() == 0){
-		std::cerr << "empty data" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "empty data" << std::endl;
 		return false;
 	}
 
@@ -358,18 +372,18 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	// Reset iterator position and size
 	this->position = 0;
-	this->size = this->output_buffer.size() / sizeof(TomahawkOutputEntry);
+	this->size = this->output_buffer.size() / sizeof(entry_type);
 
 	// Validity check
-	if(this->output_buffer.size() % sizeof(TomahawkOutputEntry) != 0){
-		std::cerr << "data is corrupted" << std::endl;
+	if(this->output_buffer.size() % sizeof(entry_type) != 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "data is corrupted" << std::endl;
 		return false;
 	}
 
 	return true;
 }
 
-bool TomahawkOutputReader::nextVariant(const TomahawkOutputEntry*& entry){
+bool TomahawkOutputReader::nextVariant(const entry_type*& entry){
 	if(this->position == this->size){
 		if(!this->nextBlock())
 			return false;

@@ -14,6 +14,8 @@
 namespace Tomahawk {
 namespace Hash {
 
+#define HASH_CONSTANT1 452930477
+
 template <class T, class K>
 struct OpenHashEntry{
 public:
@@ -147,35 +149,36 @@ bool HashTable<T, K>::__get(U64& index, const U64& hash2, const T* key, K*& entr
 template <class T, class K>
 inline void HashTable<T, K>::SetItem(const T* key, const K &value, U32 length){
 	U64 idx = XXH64(key, length, 0);
-	const U64 hash2 = XXH64(key, length, 452930477);
+	const U64 hash2 = XXH64(key, length, HASH_CONSTANT1);
 	this->__set(idx, hash2, key, value);
 }
 
 template <class T, class K>
 inline void HashTable<T, K>::SetItem(const void* key_adress, const T* key, const K &value, U32 length){
 	U64 idx = XXH64(key_adress, length, 0);
-	const U64 hash2 = XXH64(key_adress, length, 452930477);
+	const U64 hash2 = XXH64(key_adress, length, HASH_CONSTANT1);
 	this->__set(idx, hash2, key, value);
 }
 
 template <class T, class K>
 inline bool HashTable<T, K>::GetItem(const T* key, K*& entry, U32 length){
 	U64 idx = XXH64(key, length, 0);
-	const U64 hash2 = XXH64(key, length, 452930477);
+	const U64 hash2 = XXH64(key, length, HASH_CONSTANT1);
 	return this->__get(idx, hash2, key, entry);
 }
 
 template <class T, class K>
 inline bool HashTable<T, K>::GetItem(const void* key_address, const T* key, K*& entry, U32 length){
 	U64 idx = XXH64(key_address, length, 0);
-	const U64 hash2 = XXH64(key_address, length, 452930477);
+	const U64 hash2 = XXH64(key_address, length, HASH_CONSTANT1);
 	return this->__get(idx, hash2, key, entry);
 }
 
 template <class T, class K>
 HashTable<T, K>::~HashTable(){
     for(U32 i = 0; i < this->__size; ++i)
-    	if(this->__entries[i] != nullptr) delete this->__entries[i];
+    	if(this->__entries[i] != nullptr)
+    		delete this->__entries[i];
 
     delete[] this->__entries;
 }
