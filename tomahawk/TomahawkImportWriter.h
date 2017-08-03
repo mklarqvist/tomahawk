@@ -8,6 +8,7 @@
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
 #include "../io/BasicBuffer.h"
+#include "../io/BasicWriters.h"
 #include "../io/GZController.h"
 #include "../totempole/TotempoleEntry.h"
 #include "TomahawkEntryMeta.h"
@@ -17,6 +18,43 @@
 #include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {
+
+class TomahawkImportWriterTemp {
+	typedef TomahawkImportWriterTemp self_type;
+	typedef Tomahawk::IO::WriterFile writer_type;
+	typedef IO::BasicBuffer buffer_type;
+	typedef IO::GZController tgzf_type;
+	typedef VCF::VCFHeader header_type;
+	typedef TotempoleEntry totempole_type;
+
+public:
+	void add(buffer_type& rle, buffer_type& meta, totempole_type& totempole_entry){
+		totempole_entry.byte_offset = this->totempole_output.getStream().tellp(); // IO offset in Tomahawk output
+		this->tgzf_controller.Deflate(meta, rle); // Deflate block
+		this->tomahawk_output.getNativeStream() << this->tgzf_controller; // Write tomahawk output
+		this->tgzf_controller.Clear();
+
+		// Keep track of largest block observed
+		if(meta.size() > this->largest_uncompressed_block)
+			this->largest_uncompressed_block = meta.size();
+
+		totempole_entry.uncompressed_size = meta.size(); // Store uncompressed size
+		this->totempole_output.getNativeStream() << totempole_entry; // Write totempole output
+		++this->blocksWritten; // update number of blocks written
+		this->variants_written += totempole_entry.variants; // update number of variants written
+	}
+
+private:
+	bool writeHeaders(header_type& header);
+
+private:
+	U32 blocksWritten;				// number of blocks written
+	U32 variants_written;			// number of variants written
+	U32 largest_uncompressed_block;// size of largest block in b
+	writer_type tomahawk_output;
+	writer_type totempole_output;
+	tgzf_type tgzf_controller;
+};
 
 class TomahawkImportWriter {
 public:
@@ -208,9 +246,9 @@ public:
 		if(data.size() == 1){
 			this->baseName = string;
 		} else {
-			std::transform(data[data.size()-1].begin(), data[data.size()-1].end(), data[data.size()-1].begin(), ::tolower);
+			std::transform(data.back().begin(), data.back().end(), data.back().begin(), ::tolower);
 			// Data already terminates in the correct output suffix
-			if(data[data.size()-1] == Constants::OUTPUT_SUFFIX){
+			if(data.back() == Constants::OUTPUT_SUFFIX){
 				this->baseName = string.substr(0, string.find_last_of('.'));
 				return;
 			}
@@ -243,16 +281,11 @@ private:
 	U32 variants_written_;			// number of variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
 
-
 	TotempoleEntry totempole_entry_;
-	IO::GZController gzip_controller_;
-	Algorithm::TomahawkImportRLE* rleController_;
+	IO::GZController gzip_controller_;				// todo: writer should have no knowledge of this
+	Algorithm::TomahawkImportRLE* rleController_;	// todo: writer should have no knowledge of this
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
-
-	//IO::BasicBuffer buffer_meta2_;
-	//IO::BasicBuffer buffer_rle2_;
-	//IO::BasicBuffer buffer_debug1;
 
 	VCF::VCFHeader* vcf_header_;
 

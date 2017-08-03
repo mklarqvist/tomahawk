@@ -8,17 +8,14 @@
 #include "../helpers.h"
 #include "../algorithm/spinlock.h"
 #include "../io/BasicBuffer.h"
-#include "../tomahawk/TomahawkOutputLD.h"
-#include "../totempole/TotempoleReader.h"
 #include "../tomahawk/MagicConstants.h"
 
 namespace Tomahawk {
 namespace IO{
 
-class GenericWriterInterace{
+class GenericWriterInterace {
 protected:
-	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
-	typedef TotempoleReader totempole_type;
+	typedef IO::BasicBuffer buffer_type;
 
 public:
 	enum type {cout, file};
@@ -32,7 +29,8 @@ public:
 	virtual bool open(const std::string output) =0;
 
 	// Always the same but contents in buffer may be different
-	virtual void operator<<(const IO::BasicBuffer& buffer) =0;
+	virtual void operator<<(const buffer_type& buffer) =0;
+
 	virtual void write(const char* data, const U32 length) =0;
 	virtual std::ostream& getStream(void) =0;
 	virtual void flush(void) =0;
@@ -65,7 +63,7 @@ public:
 		this->lock.unlock();
 	}
 
-	void operator<<(const IO::BasicBuffer& buffer){
+	void operator<<(const buffer_type& buffer){
 		// Mutex lock; write; unlock
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
@@ -109,10 +107,11 @@ public:
 	}
 
 	inline std::ostream& getStream(void){ return(this->stream); }
+	inline std::ofstream& getNativeStream(void){ return(this->stream); }
 	inline void flush(void){ this->stream.flush(); }
 	inline bool close(void){ this->stream.close(); return true; }
 
-	void operator<<(const IO::BasicBuffer& buffer){
+	void operator<<(const buffer_type& buffer){
 		// Mutex lock; write; unlock
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention

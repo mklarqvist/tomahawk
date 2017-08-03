@@ -4,6 +4,7 @@
 
 #include "../../helpers.h"
 #include "../../tomahawk/MagicConstants.h"
+#include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
 
@@ -52,18 +53,13 @@ bool TomahawkOutputReader::__viewRegion(void){
 			if(this->interval_tree[entry->AcontigID] != nullptr){
 				std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
 				if(rets.size() > 0){
-					//std::cerr << "Ahit: " << *entry  << std::endl;
 					for(U32 i = 0; i < rets.size(); ++i){
-						//std::cerr << i <<  '\t' << &rets[i] << ':' << rets[i] << " linked " << rets[i].value << ":" << rets[i].value << std::endl;
 						if(rets[i].value != nullptr){ // if linked
 							if((entry->BcontigID == rets[i].value->contigID) &&
 							   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
-								//std::cerr << "hit linked A" << std::endl;
-								if(this->filter.filter(*entry)){
+								if(this->filter.filter(*entry))
 									entry->write(std::cout, this->contigs);
-									//std::cerr << "filter hit" << std::endl;
-								}
-								//std::cerr << "after linked write" << std::endl;
+
 								goto end;
 							} // end match
 						} else { //  not linked
@@ -80,21 +76,16 @@ bool TomahawkOutputReader::__viewRegion(void){
 			if(this->interval_tree[entry->BcontigID] != nullptr){
 				std::vector<interval_type> rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
 				if(rets.size() > 0){
-					//std::cerr << "Bhit: " << *entry << std::endl;
 					for(U32 i = 0; i < rets.size(); ++i){
-						if(rets[i].value != nullptr){
-							//std::cerr << i <<  '\t' << rets[i] << " linked " << *rets[i].value << std::endl;
+						if(rets[i].value != nullptr){ // if linked
 							if((entry->AcontigID == rets[i].value->contigID) &&
 							   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
-								//std::cerr << "hit linked B" << std::endl;
 								if(this->filter.filter(*entry)){
 									entry->write(std::cout, this->contigs);
-									//std::cerr << "filter hit" << std::endl;
 								}
-								//std::cerr << "after linked write" << std::endl;
 								goto end;
-							}
-						} else {
+							} // end match
+						} else { // not linked
 							if(this->filter.filter(*entry))
 								entry->write(std::cout, this->contigs);
 
@@ -175,7 +166,7 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
 				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
 				if(intervalLeft.contigID != intervalRight.contigID){
-					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalRight.contigID].back();
+					this->interval_tree_entries[intervalLeft.contigID].back().value  = &this->interval_tree_entries[intervalRight.contigID].back();
 					this->interval_tree_entries[intervalRight.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID].back();
 				} else {
 					this->interval_tree_entries[intervalLeft.contigID].back().value = &this->interval_tree_entries[intervalLeft.contigID][this->interval_tree_entries[intervalLeft.contigID].size() - 2];

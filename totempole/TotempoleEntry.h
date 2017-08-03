@@ -3,10 +3,6 @@
 
 namespace Tomahawk{
 
-namespace Constants{
-	const U32 TOTEMPOLE_ENTRY_SIZE = sizeof(U64) + 3 * sizeof(U32) + sizeof(U16) + sizeof(U32);
-}
-
 #pragma pack(1)
 struct TotempoleEntry{
 	typedef TotempoleEntry self_type;
@@ -18,12 +14,12 @@ public:
 	inline bool isValid(void) const{ return(this->byte_offset != 0); }
 	inline void operator++(void){ ++this->variants; }
 
-	friend std::ostream& operator<<(std::ostream& stream, const TotempoleEntry& entry){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.byte_offset << '\t' << entry.contigID << '\t' << entry.minPosition << '-' << entry.maxPosition << '\t' << entry.variants << '\t' << entry.uncompressed_size;
 		return stream;
 	}
 
-	friend std::ofstream& operator<<(std::ofstream& stream, const TotempoleEntry& entry){
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.contigID),    sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&entry.minPosition), sizeof(U32));
