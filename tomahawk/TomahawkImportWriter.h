@@ -44,6 +44,55 @@ public:
 		this->variants_written += totempole_entry.variants; // update number of variants written
 	}
 
+	void WriteHeaders(const header_type& header){
+		std::ofstream& totempole = this->totempole_output.getNativeStream();
+		std::ofstream& tomahawk  = this->tomahawk_output.getNativeStream();
+
+		// Write MAGIC
+		this->totempole_output.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
+		this->tomahawk_output.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
+
+		// Write samples
+		const U64& samples = header.samples;
+		Totempole::TotempoleHeader h(samples);
+		totempole << h;
+		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
+		tomahawk << *hB;
+
+		// Write out dummy variable for IO offset
+		U32 nothing = 0; // Dummy variable
+		size_t posOffset = totempole.tellp(); // remember current IO position
+		this->totempole_output.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
+
+		// Write the number of contigs
+		const U32 n_contigs = header.contigs.size();
+		this->totempole_output.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
+
+
+		// Write contig data to Totempole
+		// length | n_char | chars[0 .. n_char - 1]
+		for(U32 i = 0; i < header.contigs.size(); ++i){
+			Totempole::TotempoleContigBase contig(header.contigs[i].length,
+												  header.contigs[i].name.size(),
+												  header.contigs[i].name);
+
+			totempole << contig;
+		}
+
+		// Write sample names
+		// n_char | chars[0..n_char - 1]
+		for(U32 i = 0; i < samples; ++i){
+			const U32 n_char = header.sampleNames[i].size();
+			this->totempole_output.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
+			this->totempole_output.write(reinterpret_cast<const char*>(&header.sampleNames[i][0]), n_char);
+		}
+
+		U32 curPos = totempole.tellp(); // remember current IO position
+		totempole.seekp(posOffset); // seek to previous position
+		totempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
+		totempole.seekp(curPos); // seek back to current IO position
+	}
+
 private:
 	bool writeHeaders(header_type& header);
 
