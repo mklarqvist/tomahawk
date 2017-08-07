@@ -504,7 +504,6 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
 		return false;
 
-
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
 		if(this->helper.D >= 0){
 			this->helper.Dmax = p * (1.0-q) < q * (1.0-p)
@@ -518,9 +517,9 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 		this->helper.Dprime = this->helper.D / this->helper.Dmax;
 
 		 if(this->helper.D < 0)
-			this->helper.P = this->fisherController.fisherTestLess(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+			this->helper.P = this->fisherController.fisherTestLess(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
 		else
-			this->helper.P = this->fisherController.fisherTestGreater(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+			this->helper.P = this->fisherController.fisherTestGreater(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
 
 		if(this->helper[0] < 1 || this->helper[1] < 1 || this->helper[4] < 1 || this->helper[5] < 1)
 			this->helper.setIncomplete();
@@ -528,6 +527,8 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 		// Fisher's exact test P value filter
 		if(this->helper.P > this->parameters.P_threshold)
 			return false;
+
+		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
 
 		return true;
 	}
@@ -563,6 +564,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 		++this->no_uncertainty;
 
 		// Use standard phased LD math
+		this->helper.chiSqFisher = 0;
 		return(this->CalculateLDPhasedMath());
 	}
 
@@ -1361,10 +1363,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 
 
 	// Haplotype frequencies
-	this->helper.haplotypeCounts[0] = (helper[0] + helper[1]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[1] = (helper[4] + helper[5]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[2] = (helper[0] + helper[4]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[3] = (helper[1] + helper[5]) / this->helper.totalAlleleCounts;
+	this->helper.haplotypeCounts[0] = (this->helper[0] + this->helper[1]) / this->helper.totalAlleleCounts;
+	this->helper.haplotypeCounts[1] = (this->helper[4] + this->helper[5]) / this->helper.totalAlleleCounts;
+	this->helper.haplotypeCounts[2] = (this->helper[0] + this->helper[4]) / this->helper.totalAlleleCounts;
+	this->helper.haplotypeCounts[3] = (this->helper[1] + this->helper[5]) / this->helper.totalAlleleCounts;
 
 	this->helper.D = this->helper[0]/this->helper.totalAlleleCounts * this->helper[5]/this->helper.totalAlleleCounts - this->helper[1]/this->helper.totalAlleleCounts * this->helper[4]/this->helper.totalAlleleCounts;
 	this->helper.R2 = this->helper.D*this->helper.D / (((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1)));
