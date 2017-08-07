@@ -66,7 +66,6 @@ bool VCFParser::Build(){
 
 	this->reader_.clear();
 	this->writer_.setHeader(this->header_);
-	// Todo
 	if(!this->writer_.Open(this->outputPrefix))
 		return false;
 

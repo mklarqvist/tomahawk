@@ -492,8 +492,18 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 	this->helper.haplotypeCounts[2] = q - this->helper.haplotypeCounts[0];
 	this->helper.haplotypeCounts[3] = 1 - (this->helper.haplotypeCounts[0] + this->helper.haplotypeCounts[1] + this->helper.haplotypeCounts[2]);
 
+	// For writing output
+	this->helper[0] = this->helper.haplotypeCounts[0] * this->helper.totalAlleleCounts;
+	this->helper[1] = this->helper.haplotypeCounts[1] * this->helper.totalAlleleCounts;
+	this->helper[4] = this->helper.haplotypeCounts[2] * this->helper.totalAlleleCounts;
+	this->helper[5] = this->helper.haplotypeCounts[3] * this->helper.totalAlleleCounts;
+
 	this->helper.D = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
 	this->helper.R2 = this->helper.D*this->helper.D / (p * (1 - p) * q * (1 - q));
+
+	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
+		return false;
+
 
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
 		if(this->helper.D >= 0){
@@ -507,61 +517,20 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 		}
 		this->helper.Dprime = this->helper.D / this->helper.Dmax;
 
-		// Calculate p, q here
-		// estimate p,q
-		const double e1111 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[0],2);
-		const double e1112 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[1];
-		const double e1122 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[1],2);
-		const double e1211 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[2];
-		const double e1212 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2] + 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3];
-		const double e1222 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[3];
-		const double e2211 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[2],2);
-		const double e2212 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[2] * this->helper.haplotypeCounts[3];
-		const double e2222 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[3],2);
-		const double total = e1111 + e1112 + e1122 + e1211 + e1212 + e1222 + e2211 + e2212 + e2222;
+		 if(this->helper.D < 0)
+			this->helper.P = this->fisherController.fisherTestLess(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		else
+			this->helper.P = this->fisherController.fisherTestGreater(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
 
-		const double p1 = 2*e1111 + e1112   + e1211   + e1212;
-		const double p2 = e1112   + 2*e1122 + e1212   + e1222;
-		const double q1 = e1211   + e1212   + 2*e2211 + e2212;
-		const double q2 = e1212   + e1222   + e2212   + 2*e2222;
-
-		std::cerr << p1 << '\t' << p2 << '\t' << q1 << '\t' << q2 << '\t' <<  total << '\t' << 2*total << '\t' << this->samples << std::endl;
-
-		if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
-			return false;
-
-		// Calculate P: Fisher's exact test
-		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(p1,p2,q1,q2);
-
-		if(this->helper.chiSqFisher > CHI_SQ_MAX_CV){ // Rough lower limit for CV that is possible to calculate
-			const U64 a = ceil(p1);
-			const U64 b = ceil(p2);
-			const U64 c = ceil(q1);
-			const U64 d = ceil(q2);
-
-			if(this->helper.D < 0)
-				this->helper.P = this->fisherController.fisherTestLess(a,b,c,d);
-			else
-				this->helper.P = this->fisherController.fisherTestGreater(a,b,c,d);
-		} else
-			this->helper.P = this->fisherController.chisqr(1, this->helper.chiSqFisher);
+		if(this->helper[0] < 1 || this->helper[1] < 1 || this->helper[4] < 1 || this->helper[5] < 1)
+			this->helper.setIncomplete();
 
 		// Fisher's exact test P value filter
 		if(this->helper.P > this->parameters.P_threshold)
 			return false;
 
-		// For writing output
-		this->helper[0] = p1;
-		this->helper[1] = p2;
-		this->helper[4] = q1;
-		this->helper[5] = q2;
-
-		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
-			this->helper.setIncomplete();
-
 		return true;
 	}
-
 	return false;
 }
 

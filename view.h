@@ -7,7 +7,7 @@
 
 void view_usage(void){
 	programMessage();
-	std::cout <<
+	std::cerr <<
 	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " view [options] <in.twk>|<in.two>\n"
 	"\n"
 	"Options:\n"

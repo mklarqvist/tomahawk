@@ -6,7 +6,7 @@
 
 void calc_usage(void){
 	programMessage();
-	std::cout <<
+	std::cerr <<
 	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] <in.twk>\n"
 	"\n"
 	"Options:\n"
@@ -86,7 +86,7 @@ int calc(int argc, char** argv){
 		case 't':
 			parameters.n_threads = atoi(optarg);
 			if(parameters.n_threads <= 0){
-				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive number of worker threads" << std::endl;
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive number of worker threads" << std::endl;
 				return(1);
 			}
 			break;
@@ -99,7 +99,7 @@ int calc(int argc, char** argv){
 		case 'c':
 			parameters.n_chunks = atoi(optarg);
 			if(parameters.n_chunks <= 0){
-				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative or zero amount of partitions" << std::endl;
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative or zero amount of partitions" << std::endl;
 				return(1);
 			}
 			break;
@@ -107,17 +107,17 @@ int calc(int argc, char** argv){
 			parameters.chunk_selected = atoi(optarg);
 			--parameters.chunk_selected;
 			if(parameters.chunk_selected < 0){
-				std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive start partition" << std::endl;
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive start partition" << std::endl;
 				return(1);
 			}
 			break;
 	  case 'r':
 		parameters.R2_min = atof(optarg);
 		if(parameters.R2_min < 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
 			return(1);
 		} else if(parameters.R2_min > 1){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
 			return(1);
 		}
 		break;
@@ -125,10 +125,10 @@ int calc(int argc, char** argv){
 	  case 'R':
 		parameters.R2_max = atof(optarg);
 		if(parameters.R2_max < 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
 		return(1);
 		} else if(parameters.R2_max > 1){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a maximum R-squared value > 1" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a maximum R-squared value > 1" << std::endl;
 		return(1);
 		}
 		break;
@@ -144,17 +144,17 @@ int calc(int argc, char** argv){
 	  case 'P':
 		  parameters.P_threshold = atof(optarg);
 		  if(parameters.P_threshold < 0){
-			  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative cutoff P-value" << std::endl;
+			  std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a negative cutoff P-value" << std::endl;
 			return(1);
 		  } else if(parameters.P_threshold > 1){
-			  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a cutoff P-value > 1" << std::endl;
+			  std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a cutoff P-value > 1" << std::endl;
 			return(1);
 		  }
 		  break;
 	  case 'a':
 		parameters.minimum_alleles = atoi(optarg);
 		if(parameters.minimum_alleles < 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
 			return(1);
 		}
 		break;
@@ -162,7 +162,7 @@ int calc(int argc, char** argv){
 	  case 'A':
 		parameters.maximum_alleles = atoi(optarg);
 		if(parameters.maximum_alleles < 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
 			return(1);
 		}
 		break;
@@ -170,7 +170,7 @@ int calc(int argc, char** argv){
 	  case 'w':
 		  windowBases = atoi(optarg);
 		if(windowBases <= 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
 		}
 		break;
@@ -178,7 +178,7 @@ int calc(int argc, char** argv){
 	  case 'W':
 		  windowPosition = atoi(optarg);
 		if(windowPosition <= 0){
-			std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
 		}
 		break;
@@ -194,18 +194,18 @@ int calc(int argc, char** argv){
 		  break;
 
 	  default:
-		  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
+		  std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
 		  return(1);
 		}
 	}
 
 	if(input.length() == 0){
-		std::cout << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
 		return(1);
 	}
 
 	if(output.length() == 0){
-		std::cout << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
 		return(1);
 	}
 
@@ -239,8 +239,6 @@ int calc(int argc, char** argv){
 	//blocks.push_back(20);
 	//blocks.push_back(21);
 	//tomahawk.getBlocks(blocks);
-
-	//tomahawk.setDetailedProgress(detailedProgress);
 
 	return(tomahawk.Calculate());
 }

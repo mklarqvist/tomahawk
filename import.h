@@ -3,7 +3,7 @@
 
 void import_usage(void){
 	programMessage();
-	std::cout <<
+	std::cerr <<
 	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.vcf|in.bcf> -o <out_prefix> \n"
 	"\n"
 	"Options:\n"
@@ -52,18 +52,18 @@ int import(int argc, char** argv){
 		  break;
 
 	  default:
-		  std::cout << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
+		  std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
 		  return(1);
 		}
 	}
 
 	if(input.length() == 0){
-		std::cout << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
 		return(1);
 	}
 
 	if(output.length() == 0){
-		std::cout << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
 		return(1);
 	}
 
