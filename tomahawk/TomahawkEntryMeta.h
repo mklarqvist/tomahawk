@@ -3,41 +3,40 @@
 
 namespace Tomahawk{
 // Size of meta entry BEFORE run entries
-#define TOMAHAWHK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + sizeof(double) + sizeof(double))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + sizeof(float) + sizeof(float))
 
 #pragma pack(1)
 template <class T>
 struct TomahawkEntryMeta{
+	typedef TomahawkEntryMeta self_type;
+
 public:
 	TomahawkEntryMeta() : position(0), missing(0), phased(0), ref_alt(0), runs(0), MAF(0), HWE_P(0){}
 	~TomahawkEntryMeta(){}
 
 	inline bool isValid(void) const{ return(this->runs > 0); }
 
-	friend std::ofstream& operator<<(std::ofstream& os, const TomahawkEntryMeta& entry){
+	friend std::ofstream& operator<<(std::ofstream& os, const self_type& entry){
 		const U32 writePos = ( entry.position << 30 ) | ( entry.phased << 1 ) | entry.missing;
 		os.write(reinterpret_cast<const char*>(&writePos), sizeof(U32));
 		os.write(reinterpret_cast<const char*>(&entry.ref_alt), sizeof(BYTE));
 		os.write(reinterpret_cast<const char*>(&entry.runs), sizeof(U32));
-		os.write(reinterpret_cast<const char*>(&entry.MAF), sizeof(double));
-		os.write(reinterpret_cast<const char*>(&entry.HWE_P), sizeof(double));
-
-		//os << writePos << entry.ref_alt << entry.runs << entry.MAF << entry.HWE_P;
+		os.write(reinterpret_cast<const char*>(&entry.MAF), sizeof(float));
+		os.write(reinterpret_cast<const char*>(&entry.HWE_P), sizeof(float));
 		return os;
 	}
 
-	friend std::ostream& operator<<(std::ostream& out, const TomahawkEntryMeta& entry){
+	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
 		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MAF << '\t' << entry.HWE_P;
 		return(out);
 	}
 
 public:
-	// Todo: change doubles to float
 	// memory aligned to 16 byte boundaries
 	const U32 missing: 1, phased: 1, position: 30;
 	const BYTE ref_alt;
-	const double MAF;
-	const double HWE_P;
+	const float MAF;
+	const float HWE_P;
 	T runs;
 };
 

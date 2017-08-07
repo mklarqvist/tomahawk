@@ -12,8 +12,6 @@ const double ALLOWED_ROUNDING_ERROR = 0.001;
 
 const std::string PROGRAM_NAME = "tomahawk";
 const float PROGRAM_VERSION = 0.1;
-//const U32 READ_BLOCK_SIZE = 1000000;
-//const U32 READ_BLOCK_SIZE_PADDING = 50000;
 const U32 WRITE_BLOCK_SIZE = 1000000; // Byte size when a block is compressed and flushed to disk
 const U32 WRITE_BLOCK_SIZE_PADDING = 65536; // Internal use to avoid resizing in most cases
 
@@ -33,15 +31,8 @@ const U16 WRITE_HEADER_MAGIC_INDEX_LENGTH = 10;
 const U16 WRITE_HEADER_LD_MAGIC_LENGTH = 16;
 const U16 WRITE_HEADER_LD_SORT_MAGIC_LENGTH = 22;
 
-// MAGIC | version | sample count | controller byte | number of blocks | offset
-const U32 TOMAHAWK_HEADER_LENGTH = WRITE_HEADER_MAGIC_LENGTH + sizeof(float) + sizeof(U64);
-const U32 TOTEMPOLE_HEADER_LENGTH = WRITE_HEADER_MAGIC_INDEX_LENGTH + sizeof(float) + sizeof(U64) + sizeof(BYTE) + sizeof(U32) + sizeof(U32);
-const U32 TOMAHAWK_LINE_HEADER_LENGTH = sizeof(U32) + sizeof(BYTE) + sizeof(U32);
-const U32 TOMAHAWK_BLOCK_HEADER_LENGTH = sizeof(U32) + sizeof(U16) + sizeof(U32);
-
-//
-const BYTE TOMAHAWK_ALLELE_PACK_WIDTH = 2;
-const BYTE TOMAHAWK_SNP_PACK_WIDTH = TOMAHAWK_ALLELE_PACK_WIDTH * 2;
+const BYTE TOMAHAWK_ALLELE_PACK_WIDTH = 2; // bit / allele
+const BYTE TOMAHAWK_SNP_PACK_WIDTH = TOMAHAWK_ALLELE_PACK_WIDTH * 2; // bits / genotype
 
 // Encoding for alleles
 const char TOMAHAWK_ALLELE_LOOKUP[4] = {2, 3, 0, 1};
@@ -64,9 +55,6 @@ const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) 
 // EOF
 //const char* const TOMAHAWK_EOF_MARKER = "We will be known forever by the tracks we leave" - Santee Sioux Native Americans from Dakota;
 //const U32 TOMAHAWK_EOF_MARKER_LENGTH = 31;
-
-const U32 TOMHAWK_SITES_IN_BLOCK = 64;
-
 
 
 const BYTE eof_length = 6;

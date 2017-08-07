@@ -116,7 +116,7 @@ public:
 		runsPointer(0),
 		support(&support),
 		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
-		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWHK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
+		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
 		packed(new TomahawkBlockPacked)
 	{
 

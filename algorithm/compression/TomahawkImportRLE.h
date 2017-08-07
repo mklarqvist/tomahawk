@@ -137,9 +137,9 @@ struct TomahawkImportRLEHelper{
 
 	U64 countsGenotypes[16];
 	U64 countsAlleles[3];
-	double MAF;
-	double MGF;
-	double HWE_P;
+	float MAF;
+	float MGF;
+	float HWE_P;
 	bool missingValues;
 	bool phased;
 	const U64 expectedSamples;
