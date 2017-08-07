@@ -114,9 +114,6 @@ public:
 		rleController_(nullptr),
 		buffer_rle_(Constants::WRITE_BLOCK_SIZE*2),
 		buffer_meta_(Constants::WRITE_BLOCK_SIZE*2),
-		//buffer_rle2_(Constants::WRITE_BLOCK_SIZE*2),
-		//buffer_meta2_(Constants::WRITE_BLOCK_SIZE*2),
-		//buffer_debug1(Constants::WRITE_BLOCK_SIZE*2),
 		vcf_header_(nullptr)
 	{}
 
@@ -188,9 +185,9 @@ public:
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
 		for(U32 i = 0; i < samples; ++i){
-			//const U32 n_char = this->vcf_header_->sampleNames[i].size();
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-			//this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
+			const U32 n_char = this->vcf_header_->sampleNames[i].size();
+			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
+			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 		}
 
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position
@@ -225,7 +222,7 @@ public:
 
 	void setHeader(VCF::VCFHeader& header){
 		this->vcf_header_ = &header;
-		this->rleController_ = new Algorithm::TomahawkImportRLE(header);
+		this->rleController_ = new Algorithm::TomahawkImportRLE(header.samples);
 		this->rleController_->DetermineBitWidth();
 	}
 

@@ -518,12 +518,14 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 		const double e2211 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[2],2);
 		const double e2212 = 2 * this->helper.totalAlleleCounts * this->helper.haplotypeCounts[2] * this->helper.haplotypeCounts[3];
 		const double e2222 = this->helper.totalAlleleCounts * pow(this->helper.haplotypeCounts[3],2);
-		// const double total = e1111 + e1112 + e1122 + e1211 + e1212 + e1222 + e2211 + e2212 + e2222;
+		const double total = e1111 + e1112 + e1122 + e1211 + e1212 + e1222 + e2211 + e2212 + e2222;
 
-		const double p1 = 2*e1111 + e1112 + e1211 + e1212/4;
-		const double p2 = e1112 + 2*e1122 + e1212/4 + e1222;
-		const double q1 = e1211 + e1212/4 + 2*e2211 + e2212;
-		const double q2 = e1212/4 + e1222 + e2212 + 2*e2222;
+		const double p1 = 2*e1111 + e1112   + e1211   + e1212;
+		const double p2 = e1112   + 2*e1122 + e1212   + e1222;
+		const double q1 = e1211   + e1212   + 2*e2211 + e2212;
+		const double q2 = e1212   + e1222   + e2212   + 2*e2222;
+
+		std::cerr << p1 << '\t' << p2 << '\t' << q1 << '\t' << q2 << '\t' <<  total << '\t' << 2*total << '\t' << this->samples << std::endl;
 
 		if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
 			return false;

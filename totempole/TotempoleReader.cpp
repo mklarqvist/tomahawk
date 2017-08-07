@@ -63,7 +63,6 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not validate Totempole header..." << std::endl;
 		return false;
 	}
-
 	// Load header data
 	reader >> this->header;
 #if DEBUG_MODE == 1

@@ -14,7 +14,9 @@ VCFParser::VCFParser(std::string inputFile, std::string outputPrefix) :
 	reader_(inputFile)
 {}
 
-VCFParser::~VCFParser(){}
+VCFParser::~VCFParser(){
+	delete this->rle_controller;
+}
 
 bool VCFParser::Extend(){
 	// reader open
@@ -54,6 +56,10 @@ bool VCFParser::Build(){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
 		return false;
 	}
+
+	// Spawn RLE controller
+	this->rle_controller = new rle_controller_type(this->header_.samples);
+	this->rle_controller->DetermineBitWidth();
 
 	// Parse lines
 	line_type line(this->header_.size());

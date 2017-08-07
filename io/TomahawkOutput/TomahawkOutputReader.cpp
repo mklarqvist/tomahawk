@@ -36,7 +36,6 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	this->output_buffer.deleteAll();
 }
 
-
 bool TomahawkOutputReader::view(const std::string& input){
 	if(this->interval_tree != nullptr)
 		return(this->__viewRegion());

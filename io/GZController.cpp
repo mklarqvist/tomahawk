@@ -1,7 +1,9 @@
+#include <fstream>
+#include <limits>
+
 #include "../third_party/zlib/zlib.h"
 #include "IOConstants.h"
 #include "GZController.h"
-#include <fstream>
 
 namespace Tomahawk {
 namespace IO {
@@ -49,14 +51,14 @@ bool GZController::Inflate(buffer_type& input, buffer_type& output, const TGZFHe
 bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZFHeader* header) const{
 	U32* uncompressedLength = reinterpret_cast<U32*>(&input.data[input.size() - sizeof(U32)]);
 	if(output.size() + *uncompressedLength >= output.capacity())
-		output.resize((output.size() + *uncompressedLength) * 1.2);
+		output.resize((output.size() + *uncompressedLength) + 65536);
 
 	//U32* crc = reinterpret_cast<U32*>(&input.data[input.size() - 2*sizeof(U32)]);
 
 	// Bug fix for ZLIB when overflowing an U32
 	U64 avail_out = output.capacity() - output.size();
-	if(avail_out > ~(U32)0)
-		avail_out = ~(U32)0;
+	if(avail_out > std::numeric_limits<U32>::max())
+		avail_out = std::numeric_limits<U32>::max();
 
 
 	z_stream zs;

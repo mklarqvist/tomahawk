@@ -114,9 +114,9 @@ struct TomahawkImportRLEHelper{
 		// Q is therefore: 2*{5} + {1} + {4} / 2*{0,1,4,5}
 		const double p = ((double)2*this->countsGenotypes[0]+this->countsGenotypes[1]+this->countsGenotypes[4])/(2*totalValidGenotypes);
 		const double q = ((double)this->countsGenotypes[1]+this->countsGenotypes[4]+2*this->countsGenotypes[5])/(2*totalValidGenotypes);
-		const double pp = p*p*totalValidGenotypes;
-		const double pq = 2*p*q*totalValidGenotypes;
-		const double qq = q*q*totalValidGenotypes;
+		const double pp = p*p*totalValidGenotypes; // p^2
+		const double pq = 2*p*q*totalValidGenotypes; // 2pq
+		const double qq = q*q*totalValidGenotypes; // q^2
 		double ppCV = pow(this->countsGenotypes[0] - pp,2)/pp;
 		double pqCV = pow((this->countsGenotypes[1] + this->countsGenotypes[4]) - pq,2)/pq;
 		double qqCV = pow(this->countsGenotypes[5] - qq,2)/qq;
@@ -152,13 +152,13 @@ class TomahawkImportRLE{
 	typedef TomahawkImportRLEHelper helper_type;
 
 public:
-	TomahawkImportRLE(VCF::VCFHeader& header) :
-		VCFheader_(header),
+	TomahawkImportRLE(const U64 samples) :
+		n_samples(samples),
 		encode_(nullptr),
 		encodeComplex_(nullptr),
 		bit_width_(0),
 		shiftSize_(0),
-		helper_(header.samples),
+		helper_(samples),
 		savings(0)
 	{
 	}
@@ -167,35 +167,35 @@ public:
 	}
 
 	void DetermineBitWidth(void){
-		if(this->VCFheader_.size() <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
+		if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<BYTE>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<BYTE>;
 			this->shiftSize_ = sizeof(BYTE)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(BYTE);
-		} else if(this->VCFheader_.size() <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
+		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U16>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U16>;
 			this->shiftSize_ = sizeof(U16)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U16);
-		} else if(this->VCFheader_.size() <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
+		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U32>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U32>;
 			this->shiftSize_ = sizeof(U32)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U32);
 		} else {
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->VCFheader_.size() << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U64>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U64>;
@@ -218,7 +218,7 @@ private:
 	template <class T> void RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs);
 
 private:
-	VCF::VCFHeader& VCFheader_;
+	U64 n_samples;
 	rleFunction encode_;			// encoding function
 	rleFunction encodeComplex_;		// encoding function
 	BYTE bit_width_;
@@ -273,7 +273,7 @@ void TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 	//U32 startOffset = runs.pointer;
 
 	// Encode
-	for(U32 i = 1; i < this->VCFheader_.size(); ++i){
+	for(U32 i = 1; i < this->n_samples; ++i){
 		curType =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
 		curType ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpB - 46] << 0;
 
@@ -310,8 +310,8 @@ void TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 	this->helper_.countsAlleles[type & 3]  += run_length;
 	++runsCount;
 
-	if(total_samples != this->VCFheader_.size()){
-		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->VCFheader_.size() << std::endl;
+	if(total_samples != this->n_samples){
+		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->n_samples << std::endl;
 		exit(1);
 	}
 
@@ -379,7 +379,7 @@ void TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::Bas
 	T runsCount = 0;
 
 	// Encode
-	for(U32 i = 1; i < this->VCFheader_.size(); ++i){
+	for(U32 i = 1; i < this->n_samples; ++i){
 		curType =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[i]->snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
 		curType ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[i]->snpB - 46] << 0;
 
@@ -410,8 +410,8 @@ void TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::Bas
 
 	total_samples += run_length;
 
-	if(total_samples != this->VCFheader_.size()){
-		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->VCFheader_.size() << std::endl;
+	if(total_samples != this->n_samples){
+		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->n_samples << std::endl;
 		exit(1);
 	}
 

@@ -14,9 +14,11 @@ TomahawkCalc::~TomahawkCalc(){
 }
 
 bool TomahawkCalc::Open(const std::string input, const std::string output){
+	std::cerr << "before open" << std::endl;
 	if(!this->reader.Open(input)){
 		return false;
 	}
+	std::cerr << "passed open" << std::endl;
 
 	if(output == "-")
 		this->parameters.output_stream_type = parameter_type::writer_type::type::cout;
