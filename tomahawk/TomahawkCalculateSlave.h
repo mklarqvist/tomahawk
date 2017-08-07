@@ -493,10 +493,10 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 	this->helper.haplotypeCounts[3] = 1 - (this->helper.haplotypeCounts[0] + this->helper.haplotypeCounts[1] + this->helper.haplotypeCounts[2]);
 
 	// For writing output
-	this->helper[0] = this->helper.haplotypeCounts[0] * this->helper.totalAlleleCounts;
-	this->helper[1] = this->helper.haplotypeCounts[1] * this->helper.totalAlleleCounts;
-	this->helper[4] = this->helper.haplotypeCounts[2] * this->helper.totalAlleleCounts;
-	this->helper[5] = this->helper.haplotypeCounts[3] * this->helper.totalAlleleCounts;
+	this->helper[0] = this->helper.haplotypeCounts[0] * 2*this->helper.totalAlleleCounts;
+	this->helper[1] = this->helper.haplotypeCounts[1] * 2*this->helper.totalAlleleCounts;
+	this->helper[4] = this->helper.haplotypeCounts[2] * 2*this->helper.totalAlleleCounts;
+	this->helper[5] = this->helper.haplotypeCounts[3] * 2*this->helper.totalAlleleCounts;
 
 	this->helper.D = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
 	this->helper.R2 = this->helper.D*this->helper.D / (p * (1 - p) * q * (1 - q));
