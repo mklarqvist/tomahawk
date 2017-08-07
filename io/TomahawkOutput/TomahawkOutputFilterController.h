@@ -32,6 +32,7 @@ public:
 	bool setFilterChiSquared(const double& min, const double& max);
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
+	bool setFilterJointHF(const int64_t& min, const int64_t& max);
 
 	bool filter(const entry_type& target) const;
 
@@ -40,7 +41,7 @@ private:
 
 	template <class T, class Y> bool filter(const T& value, const Y& min, const Y& max) const;
 
-	bool filterMHF(const entry_type& target) const;
+	bool filterJointHF(const entry_type& target) const;
 	bool filterHF(const entry_type& target) const;
 	bool filterD(const entry_type& type) const;
 	bool filterDprime(const entry_type& type) const;

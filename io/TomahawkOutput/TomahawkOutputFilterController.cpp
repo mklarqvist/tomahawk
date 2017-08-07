@@ -37,7 +37,7 @@ bool TomahawkOutputFilterController::filter(const entry_type& target) const{
 	if(!this->filter(target.P, this->minP, this->maxP)) return false;
 	if(!this->filter(target.Dprime, this->minDprime, this->maxDprime)) return false;
 	if(!this->filter(target.chiSqModel, this->minChiSquared, this->maxChiSquared)) return false;
-	if(!this->filterMHF(target)) return false;
+	if(!this->filterJointHF(target)) return false;
 	//if(!this->filterHF(target)) return false;
 
 	if(!this->filter(target.p1, this->minP1, this->maxP1)) return false;
@@ -52,7 +52,7 @@ bool TomahawkOutputFilterController::filterHF(const entry_type& target) const{
 	return(target.p1 >= this->minP1 || target.p2 >= this->minP2 || target.q1 >= this->minQ1 || target.q2 >= this->minQ2);
 }
 
-bool TomahawkOutputFilterController::filterMHF(const entry_type& target) const{
+bool TomahawkOutputFilterController::filterJointHF(const entry_type& target) const{
 	// find largest
 	const float* max = &target.p1;
 	if(target.p2 > *max) max = &target.p2;
@@ -217,6 +217,23 @@ bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, cons
 
 	this->minChiSquared = min;
 	this->maxChiSquared = max;
+	this->trigger();
+	return true;
+}
+
+bool TomahawkOutputFilterController::setFilterJointHF(const int64_t& min, const int64_t& max){
+	if(min < 0){
+		std::cerr << "min < 0" << std::endl;
+		return false;
+	}
+
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+
+	this->minMHF = min;
+	this->maxMHF = max;
 	this->trigger();
 	return true;
 }

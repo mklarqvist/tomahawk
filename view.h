@@ -72,7 +72,7 @@ int view(int argc, char** argv){
 	double minR2 = 0, maxR2 = 1;
 	double minP = 0, maxP = 1;
 	float minDprime = -1, maxDprime = 1;
-	S32 minAlleles = 0, maxAlleles = std::numeric_limits<S32>::max();
+	int64_t minAlleles = 0, maxAlleles = std::numeric_limits<int64_t>::max();
 	U16 flagInclude = 0, flagExclude = 0;
 
 	int c = 0;
@@ -244,7 +244,7 @@ int view(int argc, char** argv){
 		if(!filter.setFilterRsquared(minR2, maxR2)) return false;
 		filter.setFilterInclude(flagInclude);
 		filter.setFilterExclude(flagExclude);
-		//if(!filter.setFilterMGF(minAlleles)) return false;
+		if(!filter.setFilterJointHF(minAlleles, maxAlleles)) return false;
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
 
