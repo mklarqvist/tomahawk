@@ -126,8 +126,8 @@ public:
 	bool Open(const std::string output){
 		this->filename = output;
 		this->DetermineBasePath();
-		this->streamTomahawk.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::binary);
-		this->streamTotempole.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::binary);
+		this->streamTomahawk.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
+		this->streamTotempole.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::out | std::ios::binary);
 
 		// Check streams
 		if(!this->streamTomahawk.good()){
@@ -163,24 +163,13 @@ public:
 			return false;
 		}
 
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << output << "..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Extending: " << output << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Extending: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "..." << std::endl;
 
-		std::fstream* temp = reinterpret_cast<std::fstream*>(&this->streamTomahawk);
-
-		U64 tempsize = temp->tellg();
-		std::cerr << tempsize << std::endl;
-		char eof[Tomahawk::Constants::eof_length*sizeof(U64)];
-		std::cerr << "before seek" << std::endl;
-		temp->seekg(tempsize - Tomahawk::Constants::eof_length*sizeof(U64));
-		std::cerr << "after seek" << std::endl;
-		std::cerr << temp->tellg() << '/' << tempsize << std::endl;
-
-		std::cerr << "Before read" << std::endl;
-		temp->read(&eof[0], Tomahawk::Constants::eof_length*sizeof(U64));
-		std::cerr << "read" << std::endl;
-		std::cerr << eof << std::endl;
-
+		U64 tempsize = this->streamTomahawk.tellp();
+		this->streamTomahawk.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
+		tempsize = this->streamTotempole.tellp();
+		this->streamTotempole.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
 
 		return true;
 	}
@@ -358,7 +347,7 @@ public:
 	U32 GetVariantsWritten(void) const{ return this->variants_written_; }
 	TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry_); }
 
-private:
+public:
 	std::ofstream streamTomahawk;	// stream
 	std::ofstream streamTotempole;	// stream
 	U32 blocksWritten_;				// number of blocks written

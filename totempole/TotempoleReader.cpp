@@ -108,11 +108,13 @@ bool TotempoleReader::Open(const std::string filename){
 
 	// Populate Totempole entries
 	this->entries = new entry_type[this->getBlocks()];
+	std::cerr << "blocks: " << this->getBlocks() << std::endl;
 	for(U32 i = 0; i < this->getBlocks(); ++i){
 		this->stream >> this->entries[i];
 #if DEBUG_MODE == 1
 		std::cerr << i << '\t' << this->header.blocks << '\t' << this->entries[i] << std::endl;
 #endif
+		std::cerr << i << '\t' << this->header.blocks << '\t' << this->entries[i] << std::endl;
 	}
 
 	this->BuildUpdateContigs();
@@ -149,6 +151,7 @@ bool TotempoleReader::Open(const std::string filename){
 bool TotempoleReader::ValidateEOF(std::ifstream& in){
 	char temp_buffer[Constants::eof_length*sizeof(U64)];
 	in.read(&temp_buffer[0], Constants::eof_length*sizeof(U64));
+	std::cerr << temp_buffer << std::endl;
 	for(U32 i = 0; i < Constants::eof_length; ++i){
 		const U64* eof = reinterpret_cast<const U64*>(&temp_buffer[sizeof(U64)*i]);
 

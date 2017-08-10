@@ -81,6 +81,7 @@ bool VCFParser::Extend(std::string extendFile){
 	this->sort_order_helper.prevcontigID = &prev;
 
 	this->writer_.setHeader(this->header_);
+	this->writer_.blocksWritten_ = totempole.getHeader().blocks;
 	if(!this->writer_.OpenExtend(extendFile))
 		return false;
 
@@ -91,6 +92,28 @@ bool VCFParser::Extend(std::string extendFile){
 			return false;
 		}
 	} // end while there are vcf lines
+
+	// This only happens if there are no valid entries in the file
+	if(this->sort_order_helper.contigID == nullptr){
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		return false;
+	}
+
+	++this->header_.getContig(*this->sort_order_helper.contigID);
+	this->writer_.flush();
+	//		return false;
+
+	this->writer_.WriteFinal();
+
+	if(this->writer_.GetVariantsWritten() == 0){
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		return false;
+	}
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
+														 << " blocks..." << std::endl;
 
 
 	// Garbage
