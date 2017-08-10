@@ -9,6 +9,7 @@
 #include "VCFHeaderContig.h"
 #include "VCFHeaderLine.h"
 #include "../../algorithm/OpenHashTable.h"
+#include "../../totempole/TotempoleReader.h"
 
 namespace Tomahawk {
 namespace VCF{
@@ -17,12 +18,31 @@ class VCFHeader {
 	typedef VCFHeader self_type;
 	typedef Tomahawk::Hash::HashTable<std::string, U32> hash_table;
 	typedef VCFHeaderContig contig_type;
+	typedef TotempoleReader totempole_type;
 
 	enum VCF_ERROR_TYPE {VCF_PASS, VCF_ERROR_LINE1, VCF_ERROR_LINES, VCF_ERROR_SAMPLE, STREAM_BAD};
 
 public:
 	VCFHeader();
 	~VCFHeader();
+	void operator=(const totempole_type& other){
+		this->samples = other.getHeader().samples;
+		this->version = other.getHeader().version;
+		this->contigsHashTable = other.getContigHTablePointer();
+		this->sampleHashTable = other.getSampleHTablePointer();
+
+		this->contigs = std::vector<contig_type>(other.n_contigs);
+		for(U32 i = 0; i < other.n_contigs; ++i){
+			this->contigs[i].name = other.contigs[i].name;
+			this->contigs[i].length = other.contigs[i].bases;
+			this->contigs[i].tomahawkBlocks = other.contigs[i].blocksEnd-other.contigs[i].blocksStart;
+		}
+	}
+
+	void unsetBorrowedPointers(void){
+		this->contigsHashTable = nullptr;
+		this->sampleHashTable = nullptr;
+	}
 
 	inline bool good(void) const{ return(this->error_bit == VCF_PASS); }
 	inline bool valid(void) const{ return(this->version > 0); }

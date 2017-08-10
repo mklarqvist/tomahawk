@@ -28,7 +28,7 @@ public:
 	VCFParser(std::string inputFile, std::string outputPrefix);
 	~VCFParser();
 	bool Build();
-	bool Extend();
+	bool Extend(std::string extendFile);
 
 private:
 	bool parseLine(line_type& line);

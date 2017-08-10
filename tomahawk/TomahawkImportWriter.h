@@ -147,6 +147,44 @@ public:
 		return true;
 	}
 
+	bool OpenExtend(const std::string output){
+		this->filename = output;
+		this->DetermineBasePath();
+		this->streamTomahawk.open(output, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+		this->streamTotempole.open(output + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+
+		// Check streams
+		if(!this->streamTomahawk.good()){
+			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << output << "!" << std::endl;
+			return false;
+		}
+		if(!this->streamTotempole.good()){
+			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "!" << std::endl;
+			return false;
+		}
+
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << output << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "..." << std::endl;
+
+		std::fstream* temp = reinterpret_cast<std::fstream*>(&this->streamTomahawk);
+
+		U64 tempsize = temp->tellg();
+		std::cerr << tempsize << std::endl;
+		char eof[Tomahawk::Constants::eof_length*sizeof(U64)];
+		std::cerr << "before seek" << std::endl;
+		temp->seekg(tempsize - Tomahawk::Constants::eof_length*sizeof(U64));
+		std::cerr << "after seek" << std::endl;
+		std::cerr << temp->tellg() << '/' << tempsize << std::endl;
+
+		std::cerr << "Before read" << std::endl;
+		temp->read(&eof[0], Tomahawk::Constants::eof_length*sizeof(U64));
+		std::cerr << "read" << std::endl;
+		std::cerr << eof << std::endl;
+
+
+		return true;
+	}
+
 	void WriteHeaders(void){
 		if(this->vcf_header_ == nullptr){
 			std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set" << std::endl;

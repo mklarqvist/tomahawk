@@ -22,9 +22,14 @@ VCFParser::~VCFParser(){
 	delete this->rle_controller;
 }
 
-bool VCFParser::Extend(){
+bool VCFParser::Extend(std::string extendFile){
 	if(this->inputFile.size() == 0){
 		std::cerr << "no input file" << std::endl;
+		return false;
+	}
+
+	if(extendFile.size() == 0){
+		std::cerr << "no input extendfile" << std::endl;
 		return false;
 	}
 
@@ -34,29 +39,63 @@ bool VCFParser::Extend(){
 	}
 
 	TomahawkReader tReader;
-	if(!tReader.Open(this->inputFile)){
+	if(!tReader.Open(extendFile)){
 		std::cerr << "failed to read file" << std::endl;
 		return false;
 	}
 
 	const TotempoleReader& totempole = tReader.getTotempole();
 	std::cerr << totempole.back() << std::endl;
+	this->header_ = totempole;
+
+	// Parse lines
+	line_type line(totempole.getHeader().samples);
 
 	// Spawn RLE controller
 	this->rle_controller = new rle_controller_type(this->header_.samples);
 	this->rle_controller->DetermineBitWidth();
 
-	// reader open
-	// header read
-	// header validate
-	// twi open
-	// twi read
-	// twi header validate
-	// seek eof
-	// check eof
+	std::fstream test(extendFile, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+	uint64_t test_size = test.tellg();
+	std::cerr << "test size is " << test_size << std::endl;
+	test.seekg(test_size - Tomahawk::Constants::eof_length*sizeof(U64));
+	char eof[Tomahawk::Constants::eof_length];
+	test.read(eof, Tomahawk::Constants::eof_length*sizeof(U64));
+	std::cerr << eof << std::endl;
+	test.close();
+
 	// read last block
 	// get last contigID and last position
-	return false;
+
+	this->reader_.clear();
+	// seek reader until line does not start with '#'
+	std::string templine;
+	while(getline(this->reader_.stream_, templine)){
+		if(templine[0] != '#')
+			break;
+	}
+
+	U32 prev = totempole.back().contigID;
+	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
+	this->sort_order_helper.previous_position = totempole.back().maxPosition;
+	this->sort_order_helper.prevcontigID = &prev;
+
+	this->writer_.setHeader(this->header_);
+	if(!this->writer_.OpenExtend(extendFile))
+		return false;
+
+	// While there are lines
+	while(this->reader_.getLine()){
+		// Parse them
+		if(!this->parseLine(line)){
+			return false;
+		}
+	} // end while there are vcf lines
+
+
+	// Garbage
+	this->header_.unsetBorrowedPointers();
+	return true;
 }
 
 bool VCFParser::Build(){
@@ -165,13 +204,13 @@ bool VCFParser::parseLine(line_type& line){
 	}
 
 	// Switch in chromosome detected
-	if(this->sort_order_helper.prevcontigID != this->sort_order_helper.contigID){
+	if(*this->sort_order_helper.prevcontigID != *this->sort_order_helper.contigID){
 		if(*this->sort_order_helper.contigID < *this->sort_order_helper.prevcontigID){
 			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Contigs are not sorted (" << this->header_[*this->sort_order_helper.prevcontigID].name << " > " << this->header_[*this->sort_order_helper.contigID].name << ")..." << std::endl;
 			exit(1);
 		}
 
-		//std::cerr << Helpers::timestamp("DEBUG", "VCF") << "Switch detected: " << this->header_.getContig(*prevcontigID).name << "->" << this->header_.getContig(*contigID).name << "..." << std::endl;
+		std::cerr << Helpers::timestamp("DEBUG", "VCF") << "Switch detected: " << this->header_.getContig(*this->sort_order_helper.prevcontigID).name << "->" << this->header_.getContig(*this->sort_order_helper.contigID).name << "..." << std::endl;
 		this->sort_order_helper.previous_position = 0;
 
 		// Get new contig value from header

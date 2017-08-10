@@ -49,8 +49,17 @@ public:
 	inline const U32& size(void) const{ return this->n_contigs; }
 	inline const entry_type& operator[](const U32 p) const{ return this->entries[p]; }
 	inline const contig_type& getContig(const U32 contigID) const{ return this->contigs[contigID]; }
+	inline bool getContig(const std::string& string, U32*& contigID) const{
+		if(this->contigsHashTable->GetItem(&string[0], &string, contigID, string.size()))
+			return true;
+
+		return false;
+	}
 	inline const header_type& getHeader(void) const{ return(this->header); }
 	inline const contig_base_type* getContigBase(const U32 contigID) const{ return(reinterpret_cast<const contig_base_type*>(&this->contigs[contigID])); }
+
+	hash_table* getContigHTablePointer(void) const{ return(this->contigsHashTable); }
+	hash_table* getSampleHTablePointer(void) const{ return(this->sampleHashTable); }
 
 private:
 	bool Validate(std::ifstream& in) const;
@@ -58,7 +67,7 @@ private:
 	bool ValidateEOF(std::ifstream& in);
 	bool BuildHashTables(void);
 
-private:
+public:
 	std::ifstream stream;	// filestream
 	std::string filename;	// filename
 	U32 filesize;			// filesize
@@ -68,7 +77,7 @@ private:
 	std::string* samples;	// sample names
 	entry_type* entries;	// totempole entries data
 	hash_table* contigsHashTable;	// contig name hash table
-	hash_table* sampleHashTable;		// smaple name hash table
+	hash_table* sampleHashTable;	// smaple name hash table
 };
 
 } /* namespace Tomahawk */

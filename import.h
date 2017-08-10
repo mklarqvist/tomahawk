@@ -26,16 +26,19 @@ int import(int argc, char** argv){
 	int option_index = 0;
 	static struct option long_options[] = {
 		{"input",		required_argument, 0,  'i' },
-		{"output",		required_argument, 0,  'o' },
+		{"output",		optional_argument, 0,  'o' },
+		{"extend",		optional_argument, 0,  'e' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
 	std::string input;
 	std::string output;
+	std::string extend;
+	bool extension_mode = false;
 	SILENT = 0;
 
-	while ((c = getopt_long(argc, argv, "i:o:s?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:e:s?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -46,7 +49,10 @@ int import(int argc, char** argv){
 		case 'o':
 			output = std::string(optarg);
 			break;
-
+		case 'e':
+			extension_mode = true;
+			extend = std::string(optarg);
+			break;
 	  case 's':
 		  SILENT = 1;
 		  break;
@@ -62,8 +68,13 @@ int import(int argc, char** argv){
 		return(1);
 	}
 
-	if(output.length() == 0){
+	if(!extension_mode && output.length() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
+		return(1);
+	}
+
+	if(extension_mode && extend.size() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No file to extend provided..." << std::endl;
 		return(1);
 	}
 
@@ -74,9 +85,16 @@ int import(int argc, char** argv){
 	}
 
 	Tomahawk::VCF::VCFParser importer(input, output);
-	if(!importer.Build()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
-		return 1;
+	if(!extension_mode){
+		if(!importer.Build()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+			return 1;
+		}
+	} else {
+		if(!importer.Extend(extend)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed extension!" << std::endl;
+			return 1;
+		}
 	}
 
 	return 0;
