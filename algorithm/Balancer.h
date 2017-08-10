@@ -47,7 +47,7 @@ public:
 		if(selected.isDiagonal()){
 			if(!SILENT){
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is diagonal (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << Helpers::ToPrettyString(selected.getSize()) << " and per thread: " << Helpers::ToPrettyString(selected.getSize()/threads) << std::endl;
 			}
 
 			U32 loadThread = selected.getSize()/threads;
@@ -106,7 +106,7 @@ public:
 		else {
 			if(!SILENT){
 				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Case is square (chunk " << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << selected.getSize() << " and per thread: " << selected.getSize()/threads << std::endl;
+				std::cerr << Helpers::timestamp("LOG", "BALANCER") << "Total comparisons: " << Helpers::ToPrettyString(selected.getSize()) << " and per thread: " << Helpers::ToPrettyString(selected.getSize()/threads) << std::endl;
 			}
 
 			U32 loadThread = selected.getSize()/threads;

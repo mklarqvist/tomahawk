@@ -54,8 +54,6 @@ bool TomahawkCalc::CalculateWrapper(){
 		exit(1);
 	}
 
-	//std::cerr << "Manager have: " << this->manager_.size() << std::endl;
-	//return(this->manager_.AllVersusAll());
 	return false;
 }
 

@@ -10,8 +10,11 @@ namespace VCF{
 #define DEFAULT_MISSINGNESS_CUTOFF 0.2
 
 VCFParser::VCFParser(std::string inputFile, std::string outputPrefix) :
+	block_flush_limit(65536),
+	inputFile(inputFile),
 	outputPrefix(outputPrefix),
-	reader_(inputFile)
+	reader_(inputFile),
+	rle_controller(nullptr)
 {}
 
 VCFParser::~VCFParser(){
@@ -19,6 +22,28 @@ VCFParser::~VCFParser(){
 }
 
 bool VCFParser::Extend(){
+	if(this->inputFile.size() == 0){
+		std::cerr << "no input file" << std::endl;
+		return false;
+	}
+
+	if(!this->reader_.open()){
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to open file..." << std::endl;
+		return false;
+	}
+
+	TomahawkReader tReader;
+	if(!tReader.Open(this->inputFile)){
+		std::cerr << "failed to read file" << std::endl;
+		return false;
+	}
+
+	TotempoleReader& totempole = tReader.getTotempole();
+
+	// Spawn RLE controller
+	this->rle_controller = new rle_controller_type(this->header_.samples);
+	this->rle_controller->DetermineBitWidth();
+
 	// reader open
 	// header read
 	// header validate

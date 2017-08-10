@@ -38,14 +38,14 @@ bool TotempoleReader::Open(const std::string filename){
 
 	this->filename = filename;
 
-	std::ifstream reader(this->filename, std::ios::in | std::ios::binary | std::ios::ate);
-	if(!reader.good()){
+	this->stream(this->filename, std::ios::in | std::ios::binary | std::ios::ate);
+	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "IO") << "Could not open: " << this->filename << "..." << std::endl;
 		return false;
 	}
 
-	this->filesize = reader.tellg();
-	reader.seekg(0);
+	this->filesize = this->stream.tellg();
+	this->stream.seekg(0);
 
 	if(this->filesize <= 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "IO") << "File size is 0..." << std::endl;
@@ -59,7 +59,7 @@ bool TotempoleReader::Open(const std::string filename){
 	}
 
 	// Reader header and validate
-	if(!this->Validate(reader)){
+	if(!this->Validate(this->stream)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not validate Totempole header..." << std::endl;
 		return false;
 	}
@@ -71,7 +71,7 @@ bool TotempoleReader::Open(const std::string filename){
 
 
 	// Get number of contigs
-	reader.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
+	this->stream.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
 #if DEBUG_MODE == 1
 	std::cerr << this->n_contigs << std::endl;
 #endif
@@ -87,18 +87,18 @@ bool TotempoleReader::Open(const std::string filename){
 	char temp_buffer[65536];
 	this->samples = new std::string[this->getSamples()];
 	for(U32 i = 0; i < this->getSamples(); ++i){
-		reader.read(&temp_buffer[0], sizeof(U32));
+		this->stream.read(&temp_buffer[0], sizeof(U32));
 		const U32 length = *reinterpret_cast<const U32*>(&temp_buffer[0]);
-		reader.read(&temp_buffer[sizeof(U32)], length);
+		this->stream.read(&temp_buffer[sizeof(U32)], length);
 		this->samples[i] = std::string(&temp_buffer[sizeof(U32)], length);
 #if DEBUG_MODE == 1
 		std::cerr << i << '\t' << samples[i] << std::endl;
 #endif
 	}
 
-	if(reader.tellg() != this->header.offset){
+	if(this->stream.tellg() != this->header.offset){
 		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Corrupt file" << std::endl;
-		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << reader.tellg() << '/' << this->header.offset << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << this->stream.tellg() << '/' << this->header.offset << std::endl;
 		return false;
 	}
 
@@ -107,7 +107,7 @@ bool TotempoleReader::Open(const std::string filename){
 #endif
 
 	// Populate Totempole entries
-	this->entries = new TotempoleEntry[this->getBlocks()];
+	this->entries = new entry_type[this->getBlocks()];
 	for(U32 i = 0; i < this->getBlocks(); ++i){
 		reader >> this->entries[i];
 #if DEBUG_MODE == 1
@@ -122,7 +122,7 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << this->contigs[i] << std::endl;
 #endif
 
-	if(!this->ValidateEOF(reader))
+	if(!this->ValidateEOF(this->stream))
 		return false;
 
 	if(!SILENT){
@@ -183,9 +183,9 @@ void TotempoleReader::BuildUpdateContigs(void){
 
 bool TotempoleReader::BuildHashTables(void){
 	if(this->size() < 1024)
-		this->contigsHashTable = new hashtable(1024);
+		this->contigsHashTable = new hash_table(1024);
 	else
-		this->contigsHashTable = new hashtable(this->size() * 2);
+		this->contigsHashTable = new hash_table(this->size() * 2);
 
 	U32* retValue = 0;
 	for(U32 i = 0; i < this->size(); ++i){
@@ -197,9 +197,9 @@ bool TotempoleReader::BuildHashTables(void){
 	}
 
 	if(this->getSamples() < 1024)
-		this->sampleHashTable = new hashtable(1024);
+		this->sampleHashTable = new hash_table(1024);
 	else
-		this->sampleHashTable = new hashtable(this->getSamples() * 2);
+		this->sampleHashTable = new hash_table(this->getSamples() * 2);
 
 	retValue = 0;
 	for(U32 i = 0; i < this->getSamples(); ++i){

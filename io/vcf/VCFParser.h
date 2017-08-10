@@ -36,6 +36,7 @@ private:
 
 private:
 	U32 block_flush_limit;
+	std::string inputFile;
 	std::string outputPrefix;
 	reader_type reader_;
 	header_type header_;

@@ -31,14 +31,16 @@ class TotempoleReader {
 	typedef Totempole::TotempoleHeader header_type;
 	typedef Totempole::TotempoleContigBase contig_base_type;
 	typedef Totempole::TotempoleContig contig_type;
-	typedef TotempoleEntry  entry_type;
-	typedef Tomahawk::Hash::HashTable<std::string, U32> hashtable;
+	typedef TotempoleEntry entry_type;
+	typedef Tomahawk::Hash::HashTable<std::string, U32> hash_table;
 
 public:
 	TotempoleReader();
 	~TotempoleReader();
 	bool Open(const std::string filename);
 	std::vector<U32> findOverlaps(const Interval& interval) const;
+	const entry_type& front(void) const{ return(this->entries[0]); }
+	const entry_type& back(void) const{ return(this->entries[this->getBlocks() - 1]); };
 
 	inline const U32& getLargestBlockSize(void) const{ return this->header.largest_uncompressed; }
 	inline const U32& getBlocks(void) const{ return this->header.blocks; }
@@ -57,6 +59,7 @@ private:
 	bool BuildHashTables(void);
 
 private:
+	std::ifstream stream;	// filestream
 	std::string filename;	// filename
 	U32 filesize;			// filesize
 	U32 n_contigs;			// number of contigs
@@ -64,8 +67,8 @@ private:
 	contig_type* contigs;	// contig data
 	std::string* samples;	// sample names
 	entry_type* entries;	// totempole entries data
-	hashtable* contigsHashTable;	// contig name hash table
-	hashtable* sampleHashTable;		// smaple name hash table
+	hash_table* contigsHashTable;	// contig name hash table
+	hash_table* sampleHashTable;		// smaple name hash table
 };
 
 } /* namespace Tomahawk */
