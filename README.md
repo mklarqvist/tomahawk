@@ -47,6 +47,12 @@ from Hardy-Weinberg equilibrium with a probability < 0.001
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
 ```
 
+### Import-extend
+If you have split up your `vcf` files into multiple disjoint `vcf` files (such as per chromosome) it is possible to iteratively import and extend a `twk` file:
+```bash
+tomahawk import -i file.vcf -e extend.twk -m 0.2 -H 1e-3 -M 0.1
+```
+
 ### Calculating linkage disequilibrium
 ```bash
 tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.two
