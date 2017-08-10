@@ -55,18 +55,6 @@ bool VCFParser::Extend(std::string extendFile){
 	this->rle_controller = new rle_controller_type(this->header_.samples);
 	this->rle_controller->DetermineBitWidth();
 
-	std::fstream test(extendFile, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
-	uint64_t test_size = test.tellg();
-	std::cerr << "test size is " << test_size << std::endl;
-	test.seekg(test_size - Tomahawk::Constants::eof_length*sizeof(U64));
-	char eof[Tomahawk::Constants::eof_length];
-	test.read(eof, Tomahawk::Constants::eof_length*sizeof(U64));
-	std::cerr << eof << std::endl;
-	test.close();
-
-	// read last block
-	// get last contigID and last position
-
 	this->reader_.clear();
 	// seek reader until line does not start with '#'
 	std::string templine;
@@ -82,6 +70,7 @@ bool VCFParser::Extend(std::string extendFile){
 
 	this->writer_.setHeader(this->header_);
 	this->writer_.blocksWritten_ = totempole.getHeader().blocks;
+	this->writer_.largest_uncompressed_block_ = totempole.getHeader().largest_uncompressed;
 	if(!this->writer_.OpenExtend(extendFile))
 		return false;
 
