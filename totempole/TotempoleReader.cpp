@@ -38,7 +38,7 @@ bool TotempoleReader::Open(const std::string filename){
 
 	this->filename = filename;
 
-	this->stream(this->filename, std::ios::in | std::ios::binary | std::ios::ate);
+	this->stream.open(this->filename, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "IO") << "Could not open: " << this->filename << "..." << std::endl;
 		return false;
@@ -64,7 +64,7 @@ bool TotempoleReader::Open(const std::string filename){
 		return false;
 	}
 	// Load header data
-	reader >> this->header;
+	this->stream >> this->header;
 #if DEBUG_MODE == 1
 	std::cerr << this->header << std::endl;
 #endif
@@ -78,7 +78,7 @@ bool TotempoleReader::Open(const std::string filename){
 	this->contigs = new contig_type[this->size()];
 	for(U32 i = 0; i < this->size(); ++i){
 		contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(&this->contigs[i]);
-		reader >> *contig_base;
+		this->stream >> *contig_base;
 #if DEBUG_MODE == 1
 		std::cerr << *contig_base << std::endl;
 #endif
@@ -109,7 +109,7 @@ bool TotempoleReader::Open(const std::string filename){
 	// Populate Totempole entries
 	this->entries = new entry_type[this->getBlocks()];
 	for(U32 i = 0; i < this->getBlocks(); ++i){
-		reader >> this->entries[i];
+		this->stream >> this->entries[i];
 #if DEBUG_MODE == 1
 		std::cerr << i << '\t' << this->header.blocks << '\t' << this->entries[i] << std::endl;
 #endif

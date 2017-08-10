@@ -3,6 +3,7 @@
 #include "../reader.h"
 #include "VCFParser.h"
 #include "../../tomahawk/TomahawkImportWriter.h"
+#include "../../tomahawk/TomahawkReader.h"
 
 namespace Tomahawk {
 namespace VCF{
@@ -38,7 +39,8 @@ bool VCFParser::Extend(){
 		return false;
 	}
 
-	TotempoleReader& totempole = tReader.getTotempole();
+	const TotempoleReader& totempole = tReader.getTotempole();
+	std::cerr << totempole.back() << std::endl;
 
 	// Spawn RLE controller
 	this->rle_controller = new rle_controller_type(this->header_.samples);
