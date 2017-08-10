@@ -12,8 +12,8 @@
 #include "../helpers.h"
 #include "TotempoleEntry.h"
 #include "../algorithm/OpenHashTable.h"
-#include "../io/totempole/TotempoleContig.h"
-#include "../io/totempole/TotempoleHeader.h"
+#include "../totempole/TotempoleContig.h"
+#include "../totempole/TotempoleHeader.h"
 
 namespace Tomahawk {
 

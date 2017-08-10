@@ -1,7 +1,7 @@
 #ifndef TOMAHAWKOUTPUTENTRY_H_
 #define TOMAHAWKOUTPUTENTRY_H_
 
-#include "../../io/totempole/TotempoleContig.h"
+#include "../../totempole/TotempoleContig.h"
 
 namespace Tomahawk{
 namespace IO{

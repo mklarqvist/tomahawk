@@ -15,7 +15,7 @@
 #include "../../io/BasicBuffer.h"
 #include "../../io/GZController.h"
 #include "../../io/BasicWriters.h"
-#include "../../io/totempole/TotempoleMagic.h"
+#include "../../totempole/TotempoleMagic.h"
 #include "../../io/TGZFHeader.h"
 #include "../../third_party/intervalTree.h"
 
