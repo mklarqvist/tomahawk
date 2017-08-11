@@ -15,6 +15,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
+		writer_output_type(WRITER_TYPE::natural),
 		writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
@@ -45,8 +46,11 @@ bool TomahawkOutputReader::view(const std::string& input){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	this->writer = new TomahawkOutputWriter();
+	if(this->writer_output_type == WRITER_TYPE::natural)
+		this->writer = new TomahawkOutputWriterNatural();
+	else this->writer = new TomahawkOutputWriter();
 	this->writer->open();
+	this->__writeOutputHeaders();
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
@@ -57,9 +61,28 @@ bool TomahawkOutputReader::__viewRegion(void){
 	}
 
 	this->writer->flush();
+	this->__writeOutputEOF();
 	this->writer->close();
 
 	return true;
+}
+
+bool TomahawkOutputReader::__writeOutputHeaders(void){
+	if(this->writer_output_type == WRITER_TYPE::binary){
+		return true;
+	} else {
+		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
+		this->writer->write(&header[0], header.length());
+		return true;
+	}
+}
+
+bool TomahawkOutputReader::__writeOutputEOF(void){
+	if(this->writer_output_type == WRITER_TYPE::binary){
+		return true;
+	} else {
+		return true;
+	}
 }
 
 bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
@@ -73,14 +96,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 					   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry))
 							//entry->write(std::cout, this->contigs);
-							*this->writer << (void*)entry;
+							*this->writer << entry;
 
 						return true;
 					} // end match
 				} else { //  not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						*this->writer << (void*)entry;
+						*this->writer << entry;
 
 					return true;
 				}
@@ -98,14 +121,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 					   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry)){
 							//entry->write(std::cout, this->contigs);
-							*this->writer << (void*)entry;
+							*this->writer << entry;
 						}
 						return true;
 					} // end match
 				} else { // not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						*this->writer << (void*)entry;
+						*this->writer << entry;
 
 					return true;
 				}

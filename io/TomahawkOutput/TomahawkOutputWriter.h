@@ -2,6 +2,7 @@
 #define TOMAHAWKOUTPUTWRITER_H_
 
 #include "../BasicWriters.h"
+#include "../../totempole/TotempoleMagic.h"
 
 namespace Tomahawk{
 namespace IO {
@@ -11,6 +12,10 @@ class TomahawkOutputWriterInterface {
 	typedef GenericWriterInterace stream_type;
 	typedef IO::WriterStandardOut cout_type;
 	typedef IO::WriterFile file_type;
+
+protected:
+	typedef TomahawkOutputEntry entry_type;
+	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 
 public:
 	TomahawkOutputWriterInterface() : stream(nullptr){}
@@ -38,9 +43,13 @@ public:
 
 	virtual inline void flush(void){ this->stream->flush(); }
 	virtual inline bool close(void){ this->stream->close(); return true; }
-	virtual void operator<<(const void* entry) =0;
-	virtual void write(const void* entry, const void* support) =0;
+	virtual void operator<<(const entry_type* const entryentry) =0;
+	virtual void write(const entry_type* const entry, const void* support) =0;
 	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
+
+	template<class T> void write(const T& data){
+		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << data;
+	}
 
 protected:
 	std::string outFile;
@@ -52,7 +61,6 @@ class TomahawkOutputWriter : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriter self_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef IO::GZController tgzf_controller_type;
-	typedef TomahawkOutputEntry entry_type;
 
 public:
 	TomahawkOutputWriter() : flush_limit(524288){}
@@ -73,9 +81,9 @@ public:
 	inline void flush(void){ this->stream->flush(); }
 	inline bool close(void){ this->stream->close(); return true; }
 
-	void write(const void* entry, const void* support){}
+	void write(const entry_type* const entry, const void* support){}
 
-	void operator<<(const void* entry){
+	void operator<<(const entry_type* const entry){
 		this->buffer.Add(reinterpret_cast<const char*>(entry), sizeof(entry_type));
 		if(this->buffer.size() > this->flush_limit){
 			this->controller.Deflate(this->buffer);
@@ -94,9 +102,6 @@ private:
 // case binary
 class TomahawkOutputWriterNatural : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriterNatural self_type;
-	typedef IO::BasicBuffer buffer_type;
-	typedef IO::GZController tgzf_controller_type;
-	typedef TomahawkOutputEntry entry_type;
 
 public:
 	TomahawkOutputWriterNatural(){}
@@ -106,17 +111,16 @@ public:
 		this->close();
 	}
 
-	void write(const void* entry, const void* support){
-		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *reinterpret_cast<const entry_type*>(entry);
+	void write(const entry_type* const entry, const void* support){
+		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *entry;
 		this->stream->getStream() << '\n';
 	}
 
-	void operator<<(const void* entry){
-		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *reinterpret_cast<const entry_type*>(entry);
+	void operator<<(const entry_type* const entry){
+		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *entry;
 		this->stream->getStream() << '\n';
 	}
 };
-
 
 }
 }

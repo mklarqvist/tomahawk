@@ -37,6 +37,8 @@ class TomahawkOutputReader {
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
 
+	enum WRITER_TYPE {binary, natural};
+
 public:
 	TomahawkOutputReader();
 	~TomahawkOutputReader();
@@ -69,6 +71,9 @@ private:
 	bool __viewRegion(void);
 	bool __checkRegion(const entry_type* const entry);
 
+	bool __writeOutputHeaders(void);
+	bool __writeOutputEOF(void);
+
 public:
 	U64 filesize;	// input file size
 	U32 position;
@@ -82,6 +87,7 @@ public:
 	IO::BasicBuffer output_buffer; // internal buffer
 	tgzf_controller_type gzip_controller; // TGZF controller
 	filter_type filter;	// filter parameters
+	WRITER_TYPE writer_output_type;
 	writer_type* writer; // writer interface
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;
