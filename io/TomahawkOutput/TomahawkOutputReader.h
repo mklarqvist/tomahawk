@@ -28,7 +28,7 @@ class TomahawkOutputReader {
 	typedef TomahawkOutputEntry entry_type;
 	typedef TomahawkOutputFilterController filter_type;
 	typedef PackedEntryReader<entry_type, sizeof(entry_type)> reader_type;
-	typedef Tomahawk::IO::TomahawkOutputWriter writer_type;
+	typedef Tomahawk::IO::TomahawkOutputWriterInterface writer_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 	typedef TGZFHeader tgzf_type;
@@ -82,7 +82,7 @@ public:
 	IO::BasicBuffer output_buffer; // internal buffer
 	tgzf_controller_type gzip_controller; // TGZF controller
 	filter_type filter;	// filter parameters
-	writer_type writer; // writer interface
+	writer_type* writer; // writer interface
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID

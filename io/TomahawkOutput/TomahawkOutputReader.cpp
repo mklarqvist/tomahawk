@@ -15,6 +15,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
+		writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
 		interval_tree(nullptr),
@@ -33,10 +34,10 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	delete interval_tree;
 	this->buffer.deleteAll();
 	this->output_buffer.deleteAll();
+	delete this->writer;
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
-	this->writer.open();
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else
@@ -44,6 +45,9 @@ bool TomahawkOutputReader::view(const std::string& input){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
+	this->writer = new TomahawkOutputWriter();
+	this->writer->open();
+
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
 
@@ -51,6 +55,9 @@ bool TomahawkOutputReader::__viewRegion(void){
 			this->__checkRegion(entry);
 		} // end while next variant
 	}
+
+	this->writer->flush();
+	this->writer->close();
 
 	return true;
 }
@@ -66,14 +73,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 					   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry))
 							//entry->write(std::cout, this->contigs);
-							this->writer << (void*)entry;
+							*this->writer << (void*)entry;
 
 						return true;
 					} // end match
 				} else { //  not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						this->writer << (void*)entry;
+						*this->writer << (void*)entry;
 
 					return true;
 				}
@@ -91,14 +98,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 					   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry)){
 							//entry->write(std::cout, this->contigs);
-							this->writer << (void*)entry;
+							*this->writer << (void*)entry;
 						}
 						return true;
 					} // end match
 				} else { // not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						this->writer << (void*)entry;
+						*this->writer << (void*)entry;
 
 					return true;
 				}
