@@ -16,6 +16,7 @@ namespace IO{
 class GenericWriterInterace {
 protected:
 	typedef IO::BasicBuffer buffer_type;
+	typedef Algorithm::SpinLock lock_type;
 
 public:
 	enum type {cout, file};
@@ -30,6 +31,7 @@ public:
 
 	// Always the same but contents in buffer may be different
 	virtual void operator<<(const buffer_type& buffer) =0;
+	virtual void operator<<(void* entry) =0;
 
 	virtual void write(const char* data, const U32 length) =0;
 	virtual std::ostream& getStream(void) =0;
@@ -37,7 +39,7 @@ public:
 	virtual bool close(void) =0;
 
 protected:
-	Algorithm::SpinLock lock;
+	lock_type lock;
 };
 
 class WriterStandardOut : public GenericWriterInterace{
@@ -62,6 +64,8 @@ public:
 		std::cout.write(&data[0], length);
 		this->lock.unlock();
 	}
+
+	void operator<<(void* entry){}
 
 	void operator<<(const buffer_type& buffer){
 		// Mutex lock; write; unlock
@@ -120,6 +124,7 @@ public:
 		this->lock.unlock();
 	}
 
+	void operator<<(void* entry){}
 	void write(const char* data, const U32 length){
 		this->lock.lock();
 		this->stream.write(&data[0], length);
@@ -130,7 +135,6 @@ private:
 	std::string outFile;
 	std::ofstream stream;
 };
-////////////
 
 } /* namespace IO */
 } /* namespace Tomahawk */

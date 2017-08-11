@@ -7,6 +7,7 @@
 #include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
+#include "../../io/TomahawkOutputWriter.h"
 
 namespace Tomahawk {
 namespace IO{
@@ -37,10 +38,12 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
-	if(this->interval_tree != nullptr)
+	this->writer = new IO::TomahawkOutputWriter(65536*4);
+
+	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else
-		return(this->__viewFilter());
+		return(this->__viewFilter()); // Otherwise normal filter function
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
@@ -65,13 +68,15 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
 					if((entry->BcontigID == rets[i].value->contigID) &&
 					   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry))
-							entry->write(std::cout, this->contigs);
+							//entry->write(std::cout, this->contigs);
+							*this->writer << (void*)entry;
 
 						return true;
 					} // end match
 				} else { //  not linked
 					if(this->filter.filter(*entry))
-						entry->write(std::cout, this->contigs);
+						//entry->write(std::cout, this->contigs);
+						*this->writer << (void*)entry;
 
 					return true;
 				}
@@ -88,13 +93,15 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
 					if((entry->AcontigID == rets[i].value->contigID) &&
 					   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry)){
-							entry->write(std::cout, this->contigs);
+							//entry->write(std::cout, this->contigs);
+							*this->writer << (void*)entry;
 						}
 						return true;
 					} // end match
 				} else { // not linked
 					if(this->filter.filter(*entry))
-						entry->write(std::cout, this->contigs);
+						//entry->write(std::cout, this->contigs);
+						*this->writer << (void*)entry;
 
 					return true;
 				}
@@ -106,6 +113,7 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
+	// Todo: view when no filter parameters are set -> conversion only, e.g. two -> vcf
 	std::cerr << "illegal" << std::endl;
 	exit(1);
 

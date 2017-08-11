@@ -1,6 +1,7 @@
 #ifndef TOMAHAWKOUTPUTENTRY_H_
 #define TOMAHAWKOUTPUTENTRY_H_
 
+#include "../../io/BasicBuffer.h"
 #include "../../totempole/TotempoleContig.h"
 
 namespace Tomahawk{
@@ -48,6 +49,11 @@ struct TomahawkOutputEntry{
 				<< '\t' << this->R2 << '\t' << this->P << '\t' << this->chiSqFisher << '\t' << this->chiSqModel << '\n';
 
 		return(os);
+	}
+
+	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& b, const self_type& entry){
+		b.Add(reinterpret_cast<const char*>(&entry), sizeof(self_type));
+		return(b);
 	}
 
 	U16 FLAGS;

@@ -88,7 +88,6 @@ public:
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
-
 };
 
 }

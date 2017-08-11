@@ -53,8 +53,8 @@ struct TGZFHeader{
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& header){
-		stream.read(reinterpret_cast<char *>(&header.ID1), sizeof(BYTE));
-		stream.read(reinterpret_cast<char *>(&header.ID2), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.ID1), sizeof(BYTE));
+		stream.read(reinterpret_cast<char*>(&header.ID2), sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.CM), sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.FLG), sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.MTIME), sizeof(U32));

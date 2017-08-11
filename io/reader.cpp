@@ -134,4 +134,4 @@ bool reader::getLine(std::string& data){ // Read until finding a new line into s
 }
 
 
-} /* namespace Maelstrom */
+}

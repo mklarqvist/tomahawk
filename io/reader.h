@@ -118,6 +118,6 @@ public:
 	pointer buffer_;		// Buffer
 };
 
-} /* namespace Maelstrom */
+}
 
 #endif /* READER_H_ */
