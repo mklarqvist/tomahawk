@@ -15,6 +15,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
+		output_header(true),
 		writer_output_type(WRITER_TYPE::binary),
 		writer(nullptr),
 		contigs(nullptr),
@@ -45,14 +46,19 @@ bool TomahawkOutputReader::view(const std::string& input){
 		return(this->__viewFilter()); // Otherwise normal filter function
 }
 
-bool TomahawkOutputReader::__viewRegion(void){
+void TomahawkOutputReader::__openWriter(void){
 	if(this->writer_output_type == WRITER_TYPE::natural){
 		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
 	}
 	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
 
 	this->writer->open();
-	this->writer->writeHeader();
+	if(this->output_header)
+		this->writer->writeHeader();
+}
+
+bool TomahawkOutputReader::__viewRegion(void){
+	this->__openWriter();
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
@@ -133,11 +139,11 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
+	this->__openWriter();
 	const entry_type*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
-//			std::cout << this->contigs[entry->AcontigID].name << '\t' << this->contigs[entry->BcontigID].name << '\t' << *entry << '\n';
-			entry->write(std::cout, this->contigs);
+			*this->writer << entry;
 	}
 
 	return true;

@@ -60,6 +60,20 @@ public:
 	bool index(const std::string& filename);
 	bool summary(const std::string& input);
 
+	//
+	bool setWriterType(const int type){
+		if(type == 0)
+			this->writer_output_type = WRITER_TYPE::binary;
+		else if(type == 1)
+			this->writer_output_type = WRITER_TYPE::natural;
+		else {
+			std::cerr << "unknown writer type: " << type << std::endl;
+			return false;
+		}
+		return true;
+	}
+	void setWriteHeader(const bool write){ this->output_header = write; }
+
 	// Read entire file into memory
 	filter_type& getFilter(void){ return this->filter; }
 
@@ -70,6 +84,7 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 	bool __checkRegion(const entry_type* const entry);
+	void __openWriter(void);
 
 public:
 	U64 filesize;	// input file size
@@ -79,6 +94,7 @@ public:
 	std::ifstream stream; // reader stream
 	reader_type reader; // reader
 	header_type header; // header
+	bool output_header;
 
 	IO::BasicBuffer buffer; // internal buffer
 	IO::BasicBuffer output_buffer; // internal buffer

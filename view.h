@@ -12,14 +12,16 @@ void view_usage(void){
 	"\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout)\n\n"
-
-	"Twk parameters\n"
-	"  -G       (twk) drop genotypes in output [null]\n"
+	"  -o FILE  output file (- for stdout)\n"
 	"  -h/H     (twk/two) header only / no header [null]\n"
-	"  -N       output in tab-delimited text format [null]\n"
-	"  -B       output in binary TWO/TWK format (default)[null]\n"
+	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
+	"  -N       output in tab-delimited text format (see -O) [null]\n"
+	"  -B       output in binary TWO/TWK format (see -O, default)[null]\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n\n"
+
+	// Twk parameters
+	"Twk parameters\n"
+	"  -G       drop genotypes in output [null]\n\n"
 
 	// Two parameters
 	"Two parameters\n"
@@ -74,11 +76,13 @@ int view(int argc, char** argv){
 	float minDprime = -1, maxDprime = 1;
 	int64_t minAlleles = 0, maxAlleles = std::numeric_limits<int64_t>::max();
 	U16 flagInclude = 0, flagExclude = 0;
+	bool outputHeader = true;
+	int outputType = 0;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:w:W:hHGs", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:w:W:O:hHGsNB", long_options, &long_index)) != -1){
 		//std::cerr << c << ":" << (char)c << '\t' << long_index << std::endl;
 		hits += 2;
 		switch (c){
@@ -190,6 +194,21 @@ int view(int argc, char** argv){
 			SILENT = 1;
 			--hits;
 			break;
+		case 'h':
+			outputHeader = true;
+			break;
+		case 'H':
+			outputHeader = false;
+			break;
+		case 'N':
+			outputType = 1;
+			break;
+		case 'B':
+			outputType = 0;
+			break;
+		case 'O':
+			outputType = atoi(optarg);
+			break;
 		}
 	}
 
@@ -245,6 +264,11 @@ int view(int argc, char** argv){
 		if(!filter.setFilterJointHF(minAlleles, maxAlleles)) return false;
 		if(!filter.setFilterP(minP, maxP)) return false;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
+		reader.setWriteHeader(outputHeader);
+		if(!reader.setWriterType(outputType)){
+			std::cerr << "failed set output type" << std::endl;
+			return false;
+		}
 
 		if(!reader.Open(input))
 			return false;
