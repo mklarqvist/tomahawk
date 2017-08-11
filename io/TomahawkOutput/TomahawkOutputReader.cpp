@@ -7,7 +7,7 @@
 #include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
-#include "../../io/TomahawkOutputWriter.h"
+#include "../../io/TomahawkOutput/TomahawkOutputWriter.h"
 
 namespace Tomahawk {
 namespace IO{
@@ -15,7 +15,6 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
-		writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
 		interval_tree(nullptr),
@@ -29,17 +28,15 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 		for(U32 i = 0; i < this->header.n_contig; ++i)
 			delete this->interval_tree[i];
 	}
-	delete interval_tree;
+	//delete interval_tree;
 	delete [] interval_tree_entries;
 	delete interval_tree;
-	delete writer;
 	this->buffer.deleteAll();
 	this->output_buffer.deleteAll();
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
-	this->writer = new IO::TomahawkOutputWriter(65536*4);
-
+	this->writer.open();
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else
@@ -58,7 +55,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 	return true;
 }
 
-bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
+bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 	// If iTree for contigA exists
 	if(this->interval_tree[entry->AcontigID] != nullptr){
 		std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
@@ -69,14 +66,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
 					   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry))
 							//entry->write(std::cout, this->contigs);
-							*this->writer << (void*)entry;
+							this->writer << (void*)entry;
 
 						return true;
 					} // end match
 				} else { //  not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						*this->writer << (void*)entry;
+						this->writer << (void*)entry;
 
 					return true;
 				}
@@ -94,14 +91,14 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
 					   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
 						if(this->filter.filter(*entry)){
 							//entry->write(std::cout, this->contigs);
-							*this->writer << (void*)entry;
+							this->writer << (void*)entry;
 						}
 						return true;
 					} // end match
 				} else { // not linked
 					if(this->filter.filter(*entry))
 						//entry->write(std::cout, this->contigs);
-						*this->writer << (void*)entry;
+						this->writer << (void*)entry;
 
 					return true;
 				}
@@ -276,18 +273,18 @@ bool TomahawkOutputReader::Open(const std::string input){
 	this->stream.seekg(0);
 
 	if(!this->stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "bad stream" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Bad stream!" << std::endl;
 		return false;
 	}
 
 	this->stream >> this->header;
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to validate header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 		return false;
 	}
 
 	if(!this->ParseHeader()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to parse header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to parse header!" << std::endl;
 		return false;
 	}
 
@@ -323,7 +320,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 bool TomahawkOutputReader::nextBlock(void){
 	// Stream died
 	if(!this->stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "stream died" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
 		return false;
 	}
 
@@ -338,7 +335,7 @@ bool TomahawkOutputReader::nextBlock(void){
 	const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
 	buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed to validate" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
 		return false;
 	}
 
@@ -350,7 +347,7 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!this->stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "truncated file" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 		return false;
 	}
 
@@ -360,12 +357,12 @@ bool TomahawkOutputReader::nextBlock(void){
 	this->output_buffer.reset();
 
 	if(!this->gzip_controller.Inflate(buffer, output_buffer)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "failed inflate" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 		return false;
 	}
 
 	if(this->output_buffer.size() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "empty data" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 		return false;
 	}
 
@@ -378,7 +375,7 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	// Validity check
 	if(this->output_buffer.size() % sizeof(entry_type) != 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "data is corrupted" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 		return false;
 	}
 
