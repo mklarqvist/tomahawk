@@ -67,6 +67,7 @@ private:
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
+	bool __checkRegion(const entry_type* const entry) const;
 
 public:
 	U64 filesize;	// input file size

@@ -48,57 +48,61 @@ bool TomahawkOutputReader::__viewRegion(void){
 		const entry_type*  entry;
 
 		while(this->nextVariant(entry)){
-			// If iTree for contigA exists
-			if(this->interval_tree[entry->AcontigID] != nullptr){
-				std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
-				if(rets.size() > 0){
-					for(U32 i = 0; i < rets.size(); ++i){
-						if(rets[i].value != nullptr){ // if linked
-							if((entry->BcontigID == rets[i].value->contigID) &&
-							   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
-								if(this->filter.filter(*entry))
-									entry->write(std::cout, this->contigs);
-
-								goto end;
-							} // end match
-						} else { //  not linked
-							if(this->filter.filter(*entry))
-								entry->write(std::cout, this->contigs);
-
-							goto end;
-						}
-					}
-				}
-			}
-
-			// If iTree for contigB exists
-			if(this->interval_tree[entry->BcontigID] != nullptr){
-				std::vector<interval_type> rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
-				if(rets.size() > 0){
-					for(U32 i = 0; i < rets.size(); ++i){
-						if(rets[i].value != nullptr){ // if linked
-							if((entry->AcontigID == rets[i].value->contigID) &&
-							   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
-								if(this->filter.filter(*entry)){
-									entry->write(std::cout, this->contigs);
-								}
-								goto end;
-							} // end match
-						} else { // not linked
-							if(this->filter.filter(*entry))
-								entry->write(std::cout, this->contigs);
-
-							goto end;
-						}
-					}
-				} // end if any hit in iTree b
-			} // end iTree b
-			end:
-			continue;
+			this->__checkRegion(entry);
 		} // end while next variant
 	}
 
 	return true;
+}
+
+bool TomahawkOutputReader::__checkRegion(const entry_type* const entry) const{
+	// If iTree for contigA exists
+	if(this->interval_tree[entry->AcontigID] != nullptr){
+		std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
+		if(rets.size() > 0){
+			for(U32 i = 0; i < rets.size(); ++i){
+				if(rets[i].value != nullptr){ // if linked
+					if((entry->BcontigID == rets[i].value->contigID) &&
+					   (entry->Bposition >= rets[i].value->start && entry->Bposition <= rets[i].value->stop)){
+						if(this->filter.filter(*entry))
+							entry->write(std::cout, this->contigs);
+
+						return true;
+					} // end match
+				} else { //  not linked
+					if(this->filter.filter(*entry))
+						entry->write(std::cout, this->contigs);
+
+					return true;
+				}
+			}
+		}
+	}
+
+	// If iTree for contigB exists
+	if(this->interval_tree[entry->BcontigID] != nullptr){
+		std::vector<interval_type> rets = this->interval_tree[entry->BcontigID]->findOverlapping(entry->Bposition, entry->Bposition);
+		if(rets.size() > 0){
+			for(U32 i = 0; i < rets.size(); ++i){
+				if(rets[i].value != nullptr){ // if linked
+					if((entry->AcontigID == rets[i].value->contigID) &&
+					   (entry->Aposition >= rets[i].value->start && entry->Aposition <= rets[i].value->stop)){
+						if(this->filter.filter(*entry)){
+							entry->write(std::cout, this->contigs);
+						}
+						return true;
+					} // end match
+				} else { // not linked
+					if(this->filter.filter(*entry))
+						entry->write(std::cout, this->contigs);
+
+					return true;
+				}
+			}
+		} // end if any hit in iTree b
+	} // end iTree b
+
+	return false;
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
@@ -409,7 +413,6 @@ bool TomahawkOutputReader::index(const std::string& input){
 	U64 BIDSteps = 0;
 
 	double AposStepsR = 0;
-
 	U64 outputEntries = 0;
 
 	while(this->reader.nextEntry(entry)){

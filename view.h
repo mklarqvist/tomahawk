@@ -207,8 +207,7 @@ int view(int argc, char** argv){
 	// Todo: move out
 	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
 	std::string& end = inputFile_parts[inputFile_parts.size() - 1];
-	std::transform(end.begin(), end.end(), end.begin(), ::tolower);
-	// std::cerr << end << std::endl;
+	std::transform(end.begin(), end.end(), end.begin(), ::tolower); // transform chars to lower case
 
 	// Todo: action
 	// Parse remainder parameters
@@ -216,7 +215,6 @@ int view(int argc, char** argv){
 	std::vector<std::string> filter_regions;
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
-		//std::cerr << i << '\t' << param << std::endl;
 
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal parse of input string: " << param << std::endl;
@@ -250,7 +248,6 @@ int view(int argc, char** argv){
 
 		if(!reader.Open(input))
 			return false;
-
 
 		reader.AddRegions(filter_regions);
 
