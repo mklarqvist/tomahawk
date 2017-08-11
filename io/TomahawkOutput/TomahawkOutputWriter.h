@@ -16,9 +16,14 @@ class TomahawkOutputWriterInterface {
 protected:
 	typedef TomahawkOutputEntry entry_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
+	typedef Totempole::TotempoleContigBase contig_type;
 
 public:
-	TomahawkOutputWriterInterface() : stream(nullptr){}
+	TomahawkOutputWriterInterface(const contig_type* contigs, const header_type* header) :
+		stream(nullptr),
+		header(header),
+		contigs(contigs)
+	{}
 	virtual ~TomahawkOutputWriterInterface(){ delete this->stream; }
 
 	bool open(void){
@@ -58,6 +63,8 @@ public:
 protected:
 	std::string outFile;
 	stream_type* stream;
+	const header_type* header;
+	const contig_type* contigs;
 };
 
 // case binary
@@ -67,8 +74,9 @@ class TomahawkOutputWriter : public TomahawkOutputWriterInterface {
 	typedef IO::GZController tgzf_controller_type;
 
 public:
-	TomahawkOutputWriter() : flush_limit(524288){}
-	TomahawkOutputWriter(const U32 flush_limit) :
+	TomahawkOutputWriter(const contig_type* contigs, const header_type* header) : TomahawkOutputWriterInterface(contigs, header), flush_limit(524288){}
+	TomahawkOutputWriter(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
+		TomahawkOutputWriterInterface(contigs, header),
 		flush_limit(flush_limit),
 		buffer(flush_limit + 524288)
 	{
@@ -83,7 +91,13 @@ public:
 		this->buffer.deleteAll();
 	}
 
-	inline void flush(void){ this->stream->flush(); }
+	inline void flush(void){
+		this->controller.Deflate(this->buffer);
+		this->stream->write(&this->controller.buffer_[0], this->controller.buffer_.size());
+		this->controller.Clear();
+		this->buffer.reset();
+		this->stream->flush();
+	}
 	inline bool close(void){ this->stream->close(); return true; }
 
 	void operator<<(const entry_type* const entry){
@@ -96,8 +110,15 @@ public:
 		}
 	}
 
-	void writeHeader(void){	};
-	void writeEOF(void){};
+	void writeHeader(void){
+		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *this->header;
+		for(U32 i = 0; i < this->header->n_contig; ++i)
+			*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << this->contigs[i];
+
+	};
+	void writeEOF(void){
+		//this->stream->write(reinterpret_cast<const char*>(&Tomahawk::Constants::eof[0]), Tomahawk::Constants::eof_length*sizeof(U64));
+	};
 
 private:
 	U32 flush_limit;
@@ -108,10 +129,9 @@ private:
 // case binary
 class TomahawkOutputWriterNatural : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriterNatural self_type;
-	typedef Totempole::TotempoleContigBase contig_type;
 
 public:
-	TomahawkOutputWriterNatural() : contigs(nullptr){}
+	TomahawkOutputWriterNatural(const contig_type* contigs, const header_type* header) : TomahawkOutputWriterInterface(contigs, header){}
 	~TomahawkOutputWriterNatural(){
 		// Flush upon termination
 		this->flush();
@@ -123,15 +143,12 @@ public:
 		entry->write(*reinterpret_cast<std::ofstream*>(&this->stream->getStream()), this->contigs);
 	}
 
-	void setContigs(const contig_type* const contigs){ this->contigs = contigs; }
 	void writeHeader(void){
 		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
 		this->stream->getStream() << header;
 	};
 	void writeEOF(void){};
 
-private:
-	const contig_type* contigs;
 };
 
 }

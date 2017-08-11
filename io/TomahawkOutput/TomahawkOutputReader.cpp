@@ -15,7 +15,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
-		writer_output_type(WRITER_TYPE::natural),
+		writer_output_type(WRITER_TYPE::binary),
 		writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
@@ -47,11 +47,9 @@ bool TomahawkOutputReader::view(const std::string& input){
 
 bool TomahawkOutputReader::__viewRegion(void){
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		this->writer = new TomahawkOutputWriterNatural();
-		TomahawkOutputWriterNatural* temp = reinterpret_cast<TomahawkOutputWriterNatural*>(this->writer);
-		temp->setContigs(this->contigs);
+		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
 	}
-	else this->writer = new TomahawkOutputWriter();
+	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
 
 	this->writer->open();
 	this->writer->writeHeader();
