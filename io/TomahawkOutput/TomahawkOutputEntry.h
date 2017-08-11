@@ -6,8 +6,6 @@
 namespace Tomahawk{
 namespace IO{
 
-#define OUTPUT_ENTRY_SIZE	(sizeof(U16) + 4*sizeof(U32) + 7*sizeof(float) + 3*sizeof(double))
-
 #pragma pack(1)
 struct TomahawkOutputEntry{
 	typedef TomahawkOutputEntry self_type;

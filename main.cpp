@@ -34,6 +34,11 @@ DEALINGS IN THE SOFTWARE.  */
 #include "index.h"
 
 int main(int argc, char** argv){
+	if(Tomahawk::Helpers::isBigEndian()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Tomahawk does not support big endian systems..." << std::endl;
+		return(1);
+	}
+
 	if(argc == 1){
 		programMessage();
 		programHelp();

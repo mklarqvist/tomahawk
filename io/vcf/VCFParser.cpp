@@ -24,12 +24,12 @@ VCFParser::~VCFParser(){
 
 bool VCFParser::Extend(std::string extendFile){
 	if(this->inputFile.size() == 0){
-		std::cerr << "no input file" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "No input file provided..." << std::endl;
 		return false;
 	}
 
 	if(extendFile.size() == 0){
-		std::cerr << "no input extendfile" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","VCF") << "No file to extend provided..." << std::endl;
 		return false;
 	}
 
@@ -40,12 +40,11 @@ bool VCFParser::Extend(std::string extendFile){
 
 	TomahawkReader tReader;
 	if(!tReader.Open(extendFile)){
-		std::cerr << "failed to read file" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TOMAHAWK") <<  "Failed to read file..." << std::endl;
 		return false;
 	}
 
 	const TotempoleReader& totempole = tReader.getTotempole();
-	std::cerr << totempole.back() << std::endl;
 	this->header_ = totempole;
 
 	// Parse lines
@@ -62,9 +61,9 @@ bool VCFParser::Extend(std::string extendFile){
 		if(templine[0] != '#')
 			break;
 	}
+	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
 
 	U32 prev = totempole.back().contigID;
-	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
 	this->sort_order_helper.previous_position = totempole.back().maxPosition;
 	this->sort_order_helper.prevcontigID = &prev;
 
@@ -90,7 +89,6 @@ bool VCFParser::Extend(std::string extendFile){
 
 	++this->header_.getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
-	//		return false;
 
 	this->writer_.WriteFinal();
 
@@ -103,7 +101,6 @@ bool VCFParser::Extend(std::string extendFile){
 		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
-
 
 	// Garbage
 	this->header_.unsetBorrowedPointers();

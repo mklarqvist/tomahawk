@@ -34,6 +34,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 namespace Tomahawk{
 namespace Helpers{
 
+static int isBigEndian(void){
+    union {
+        uint32_t i;
+        uint8_t  c[4];
+    } val = {0x01020304};
+
+    return val.c[0] == 1;
+}
+
 std::vector<std::string> &split(std::string &s, char delim, std::vector<std::string> &elems);
 std::vector<std::string> split(std::string &s, char delim);
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
