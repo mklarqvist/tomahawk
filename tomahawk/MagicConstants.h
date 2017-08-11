@@ -11,7 +11,7 @@ namespace Constants{
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
 const std::string PROGRAM_NAME = "tomahawk";
-const float PROGRAM_VERSION = 0.1;
+const float PROGRAM_VERSION = 0.3;
 const U32 WRITE_BLOCK_SIZE = 1000000; // Byte size when a block is compressed and flushed to disk
 const U32 WRITE_BLOCK_SIZE_PADDING = 65536; // Internal use to avoid resizing in most cases
 
