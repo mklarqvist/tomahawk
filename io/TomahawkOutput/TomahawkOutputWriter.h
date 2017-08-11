@@ -26,6 +26,7 @@ public:
 		if(this->stream->open()){
 			return false;
 		}
+
 		return true;
 	}
 
@@ -38,18 +39,21 @@ public:
 		if(this->stream->open(output)){
 			return false;
 		}
+
 		return true;
 	}
 
 	virtual inline void flush(void){ this->stream->flush(); }
 	virtual inline bool close(void){ this->stream->close(); return true; }
 	virtual void operator<<(const entry_type* const entryentry) =0;
-	virtual void write(const entry_type* const entry, const void* support) =0;
 	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
 
 	template<class T> void write(const T& data){
 		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << data;
 	}
+
+	virtual void writeHeader(void) =0;
+	virtual void writeEOF(void) =0;
 
 protected:
 	std::string outFile;
@@ -74,14 +78,13 @@ public:
 	~TomahawkOutputWriter(){
 		// Flush upon termination
 		this->flush();
+		this->writeEOF();
 		this->close();
 		this->buffer.deleteAll();
 	}
 
 	inline void flush(void){ this->stream->flush(); }
 	inline bool close(void){ this->stream->close(); return true; }
-
-	void write(const entry_type* const entry, const void* support){}
 
 	void operator<<(const entry_type* const entry){
 		this->buffer.Add(reinterpret_cast<const char*>(entry), sizeof(entry_type));
@@ -93,6 +96,9 @@ public:
 		}
 	}
 
+	void writeHeader(void){	};
+	void writeEOF(void){};
+
 private:
 	U32 flush_limit;
 	buffer_type buffer;
@@ -102,24 +108,30 @@ private:
 // case binary
 class TomahawkOutputWriterNatural : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriterNatural self_type;
+	typedef Totempole::TotempoleContigBase contig_type;
 
 public:
-	TomahawkOutputWriterNatural(){}
+	TomahawkOutputWriterNatural() : contigs(nullptr){}
 	~TomahawkOutputWriterNatural(){
 		// Flush upon termination
 		this->flush();
+		this->writeEOF();
 		this->close();
 	}
 
-	void write(const entry_type* const entry, const void* support){
-		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *entry;
-		this->stream->getStream() << '\n';
+	void operator<<(const entry_type* const entry){
+		entry->write(*reinterpret_cast<std::ofstream*>(&this->stream->getStream()), this->contigs);
 	}
 
-	void operator<<(const entry_type* const entry){
-		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *entry;
-		this->stream->getStream() << '\n';
-	}
+	void setContigs(const contig_type* const contigs){ this->contigs = contigs; }
+	void writeHeader(void){
+		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
+		this->stream->getStream() << header;
+	};
+	void writeEOF(void){};
+
+private:
+	const contig_type* contigs;
 };
 
 }

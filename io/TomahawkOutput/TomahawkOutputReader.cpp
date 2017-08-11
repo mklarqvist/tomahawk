@@ -46,11 +46,15 @@ bool TomahawkOutputReader::view(const std::string& input){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	if(this->writer_output_type == WRITER_TYPE::natural)
+	if(this->writer_output_type == WRITER_TYPE::natural){
 		this->writer = new TomahawkOutputWriterNatural();
+		TomahawkOutputWriterNatural* temp = reinterpret_cast<TomahawkOutputWriterNatural*>(this->writer);
+		temp->setContigs(this->contigs);
+	}
 	else this->writer = new TomahawkOutputWriter();
+
 	this->writer->open();
-	this->__writeOutputHeaders();
+	this->writer->writeHeader();
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
@@ -60,31 +64,8 @@ bool TomahawkOutputReader::__viewRegion(void){
 		} // end while next variant
 	}
 
-	this->writer->flush();
-	this->__writeOutputEOF();
-	this->writer->close();
-
 	return true;
 }
-
-bool TomahawkOutputReader::__writeOutputHeaders(void){
-	if(this->writer_output_type == WRITER_TYPE::binary){
-		return true;
-	} else {
-		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
-		this->writer->write(&header[0], header.length());
-		return true;
-	}
-}
-
-bool TomahawkOutputReader::__writeOutputEOF(void){
-	if(this->writer_output_type == WRITER_TYPE::binary){
-		return true;
-	} else {
-		return true;
-	}
-}
-
 bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 	// If iTree for contigA exists
 	if(this->interval_tree[entry->AcontigID] != nullptr){

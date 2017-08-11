@@ -71,9 +71,6 @@ private:
 	bool __viewRegion(void);
 	bool __checkRegion(const entry_type* const entry);
 
-	bool __writeOutputHeaders(void);
-	bool __writeOutputEOF(void);
-
 public:
 	U64 filesize;	// input file size
 	U32 position;
