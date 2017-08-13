@@ -71,7 +71,7 @@ protected:
 class TomahawkOutputWriter : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriter self_type;
 	typedef IO::BasicBuffer buffer_type;
-	typedef IO::GZController tgzf_controller_type;
+	typedef IO::TGZFController tgzf_controller_type;
 
 public:
 	TomahawkOutputWriter(const contig_type* contigs, const header_type* header) : TomahawkOutputWriterInterface(contigs, header), flush_limit(524288){}
@@ -80,7 +80,7 @@ public:
 		flush_limit(flush_limit),
 		buffer(flush_limit + 524288)
 	{
-		this->controller.buffer_.resize(this->buffer);
+		this->controller.buffer.resize(this->buffer);
 	}
 
 	~TomahawkOutputWriter(){
@@ -94,7 +94,7 @@ public:
 	inline void flush(void){
 		if(this->buffer.size() > 0){
 			this->controller.Deflate(this->buffer);
-			this->stream->write(&this->controller.buffer_[0], this->controller.buffer_.size());
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
 			this->controller.Clear();
 			this->buffer.reset();
 		}
@@ -106,7 +106,7 @@ public:
 		this->buffer.Add(reinterpret_cast<const char*>(entry), sizeof(entry_type));
 		if(this->buffer.size() > this->flush_limit){
 			this->controller.Deflate(this->buffer);
-			this->stream->write(&this->controller.buffer_[0], this->controller.buffer_.size());
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
 			this->controller.Clear();
 			this->buffer.reset();
 		}
@@ -119,9 +119,8 @@ public:
 
 	};
 
-	void writeEOF(void){
-		//this->stream->write(reinterpret_cast<const char*>(&Tomahawk::Constants::eof[0]), Tomahawk::Constants::eof_length*sizeof(U64));
-	};
+	// There is no EOF
+	void writeEOF(void){};
 
 private:
 	U32 flush_limit;
@@ -150,6 +149,8 @@ public:
 		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
 		this->stream->getStream() << header;
 	};
+
+	// There is no EOF
 	void writeEOF(void){};
 
 };

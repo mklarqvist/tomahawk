@@ -3,7 +3,7 @@
 
 #include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
-#include "../io/GZController.h"
+#include "../io/TGZFController.h"
 
 #define SLAVE_FLUSH_LIMIT	10000000	// 10 MB default flush limit
 #define SLAVE_FLUSH_LIMIT_NATURAL 65536
@@ -18,7 +18,7 @@ struct TomahawkOutputManager{
 	typedef TomahawkOutputManager<T> self_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
-	typedef GZController tgzf_controller;
+	typedef TGZFController tgzf_controller;
 
 	// Function pointer to write class function
 	typedef void (self_type::*outFunction)(const controller_type& a, const controller_type& b, const helper_type& helper);
@@ -62,7 +62,7 @@ private:
 				std::cerr << "failed deflate" << std::endl;
 				exit(1);
 			}
-			this->writer << compressor.buffer_;
+			this->writer << compressor.buffer;
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
@@ -141,7 +141,7 @@ private:
 				std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed deflate..." << std::endl;
 				exit(1);
 			}
-			this->writer << compressor.buffer_;
+			this->writer << compressor.buffer;
 			this->buffer.reset();
 			this->compressor.Clear();
 		}

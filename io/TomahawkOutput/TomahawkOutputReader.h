@@ -13,10 +13,10 @@
 #include "../../io/PackedEntryReader.h"
 #include "TomahawkOutputFilterController.h"
 #include "../../io/BasicBuffer.h"
-#include "../../io/GZController.h"
+#include "../../io/TGZFController.h"
 #include "../../io/TomahawkOutput/TomahawkOutputWriter.h"
 #include "../../totempole/TotempoleMagic.h"
-#include "../../io/TGZFHeader.h"
+#include "../../io/GZFHeader.h"
 #include "../../third_party/intervalTree.h"
 
 
@@ -33,7 +33,7 @@ class TomahawkOutputReader {
 	typedef Totempole::TotempoleContigBase contig_type;
 	typedef TGZFHeader tgzf_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
-	typedef IO::GZController tgzf_controller_type;
+	typedef IO::TGZFController tgzf_controller_type;
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
 

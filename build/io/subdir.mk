@@ -4,21 +4,24 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../io/BGZFController.cpp \
 ../io/BasicBuffer.cpp \
 ../io/BasicWriters.cpp \
-../io/GZController.cpp \
+../io/TGZFController.cpp \
 ../io/reader.cpp 
 
 OBJS += \
+./io/BGZFController.o \
 ./io/BasicBuffer.o \
 ./io/BasicWriters.o \
-./io/GZController.o \
+./io/TGZFController.o \
 ./io/reader.o 
 
 CPP_DEPS += \
+./io/BGZFController.d \
 ./io/BasicBuffer.d \
 ./io/BasicWriters.d \
-./io/GZController.d \
+./io/TGZFController.d \
 ./io/reader.d 
 
 

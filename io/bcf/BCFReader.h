@@ -3,7 +3,7 @@
 #define BCFREADER_H_
 
 #include "../BasicBuffer.h"
-#include "../GZController.h"
+#include "../BGZFController.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -26,7 +26,7 @@ struct BCFEntryBody{
 class BCFReader{
 	typedef BCFReader self_type;
 	typedef IO::BasicBuffer buffer_type;
-	typedef IO::GZController tgzf_controller_type;
+	typedef IO::BGZFController bgzf_controller_type;
 	typedef BGZFHeader bgzf_type;
 
 public:
@@ -75,14 +75,10 @@ public:
 		output_buffer.resize(uncompressed_size);
 		this->output_buffer.reset();
 
-		std::cerr << "before inflate" << std::endl;
-
-		if(!this->tgzf_controller.Inflate(buffer, output_buffer)){
+		if(!this->bgzf_controller.Inflate(buffer, output_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed inflate!" << std::endl;
 			return false;
 		}
-
-		std::cerr << "after inflate" << std::endl;
 
 		if(this->output_buffer.size() == 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Empty data!" << std::endl;
@@ -91,8 +87,6 @@ public:
 
 		// Reset buffer
 		this->buffer.reset();
-
-		std::cerr << "passed next block" << std::endl;
 
 		return true;
 	}
@@ -103,13 +97,11 @@ public:
 			return false;
 		}
 
-		char BCF_MAGIC[5 + sizeof(U32)];
-		this->stream.read(&BCF_MAGIC[0], 5 + sizeof(U32));
-		const U32& l_text = *reinterpret_cast<const U32* const>(&BCF_MAGIC[5]);
-		char* VCF_text = new char[l_text];
-		this->stream.read(&VCF_text[0], l_text);
+		std::cerr << "in parse header" << std::endl;
 
-		delete [] VCF_text;
+		std::cerr << std::string(&this->output_buffer[0], 5) << std::endl;
+		const U32& l_text = *reinterpret_cast<const U32* const>(&this->output_buffer[5]);
+		std::cerr << "length: " << l_text << std::endl;
 		return true;
 	}
 
@@ -146,13 +138,11 @@ private:
 	U64 filesize;
 	buffer_type buffer;
 	buffer_type output_buffer;
-	tgzf_controller_type tgzf_controller;
-
+	bgzf_controller_type bgzf_controller;
 };
 
 
 }
-
 }
 
 

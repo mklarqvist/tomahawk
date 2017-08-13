@@ -7,7 +7,7 @@
 #include <bitset>
 
 #include "MagicConstants.h"
-#include "../io/GZController.h"
+#include "../io/TGZFController.h"
 #include "TomahawkEntryMeta.h"
 #include "../totempole/TotempoleReader.h"
 #include "../io/IOConstants.h"
@@ -90,7 +90,7 @@ private:
 	IO::BasicBuffer buffer_;
 	IO::BasicBuffer data_;
 	IO::BasicBuffer outputBuffer_;
-	IO::GZController gzip_controller_;
+	IO::TGZFController gzip_controller_;
 
 	std::vector<DataOffsetPair> blockDataOffsets_;
 };

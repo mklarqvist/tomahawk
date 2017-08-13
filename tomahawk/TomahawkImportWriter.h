@@ -9,7 +9,7 @@
 #include "../io/vcf/VCFHeader.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
-#include "../io/GZController.h"
+#include "../io/TGZFController.h"
 #include "../totempole/TotempoleEntry.h"
 #include "TomahawkEntryMeta.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
@@ -23,7 +23,7 @@ class TomahawkImportWriterTemp {
 	typedef TomahawkImportWriterTemp self_type;
 	typedef Tomahawk::IO::WriterFile writer_type;
 	typedef IO::BasicBuffer buffer_type;
-	typedef IO::GZController tgzf_type;
+	typedef IO::TGZFController tgzf_type;
 	typedef VCF::VCFHeader header_type;
 	typedef TotempoleEntry totempole_type;
 
@@ -355,7 +355,7 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 
 	TotempoleEntry totempole_entry_;
-	IO::GZController gzip_controller_;				// todo: writer should have no knowledge of this
+	IO::TGZFController gzip_controller_;				// todo: writer should have no knowledge of this
 	Algorithm::TomahawkImportRLE* rleController_;	// todo: writer should have no knowledge of this
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
