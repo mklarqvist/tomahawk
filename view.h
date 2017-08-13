@@ -4,6 +4,7 @@
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
 #include "io/TomahawkOutput/TomahawkOutputReader.h"
+#include "io/bcf/BCFReader.h"
 
 void view_usage(void){
 	programMessage();
@@ -222,6 +223,11 @@ int view(int argc, char** argv){
 		programMessage();
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
 	}
+
+	Tomahawk::IO::BCFReader bcfreader;
+	bcfreader.open(input);
+
+	exit(1);
 
 	// Todo: move out
 	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');

@@ -7,8 +7,13 @@ namespace Tomahawk{
 namespace IO{
 
 #pragma pack(1)
-struct TGZFHeader{
-	typedef TGZFHeader self_type;
+struct __headerBase{
+private:
+	typedef __headerBase self_type;
+
+public:
+	__headerBase(); // disallow ctor and dtor
+	~__headerBase();
 
 	BYTE ID1;
 	BYTE ID2;
@@ -21,19 +26,6 @@ struct TGZFHeader{
 	BYTE SI1;
 	BYTE SI2;
 	U16 SLEN;
-	U32 BSIZE;	// remainder size
-
-	inline bool Validate(void) const{
-		return(this->ID1 == Constants::GZIP_ID1
-				&& this->ID2 == Constants::GZIP_ID2
-				&& this->CM == Constants::CM_DEFLATE
-				&& this->FLG == Constants::FLG_FEXTRA
-				&& this->XLEN == Constants::TGZF_XLEN
-				&& this->SI1 == Constants::TGZF_ID1
-				&& this->SI2 == Constants::TGZF_ID2
-				&& this->SLEN == Constants::TGZF_LEN
-			);
-	}
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& header){
 		os << "ID1\t" << (U32)header.ID1 << '\n';
@@ -46,8 +38,7 @@ struct TGZFHeader{
 		os << "XLEN\t" << (U16)header.XLEN << '\n';
 		os << "SI1\t" << (U32)header.SI1 << '\n';
 		os << "SI2\t" << (U32)header.SI2 << '\n';
-		os << "SLEN\t" << (U16)header.SLEN << '\n';
-		os << "BSIZE\t" << (U32)header.BSIZE;
+		os << "SLEN\t" << (U16)header.SLEN;
 
 		return os;
 	}
@@ -64,7 +55,78 @@ struct TGZFHeader{
 		stream.read(reinterpret_cast<char*>(&header.SI1), sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.SI2), sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.SLEN), sizeof(U16));
+		return(stream);
+	}
+};
+
+#pragma pack(1)
+struct TGZFHeader : public __headerBase{
+private:
+	typedef TGZFHeader self_type;
+	typedef __headerBase parent_type;
+
+public:
+	U32 BSIZE;	// remainder size
+
+	inline bool Validate(void) const{
+		return(this->ID1 == Constants::GZIP_ID1
+				&& this->ID2 == Constants::GZIP_ID2
+				&& this->CM == Constants::CM_DEFLATE
+				&& this->FLG == Constants::FLG_FEXTRA
+				&& this->XLEN == Constants::TGZF_XLEN
+				&& this->SI1 == Constants::TGZF_ID1
+				&& this->SI2 == Constants::TGZF_ID2
+				&& this->SLEN == Constants::TGZF_LEN
+			);
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const self_type& header){
+		const parent_type& b = *reinterpret_cast<const parent_type* const>(&header);
+		os << b << '\n';
+		os << "BSIZE\t" << (U32)header.BSIZE;
+		return os;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& header){
+		parent_type& b = *reinterpret_cast<parent_type*>(&header);
+		stream >> b;
 		stream.read(reinterpret_cast<char*>(&header.BSIZE), sizeof(U32));
+		return(stream);
+	}
+};
+
+#pragma pack(1)
+struct BGZFHeader : public __headerBase{
+private:
+	typedef BGZFHeader self_type;
+	typedef __headerBase parent_type;
+
+public:
+	U16 BSIZE;	// remainder size
+
+	inline bool Validate(void) const{
+		return(this->ID1 == Constants::GZIP_ID1
+				&& this->ID2 == Constants::GZIP_ID2
+				&& this->CM == Constants::CM_DEFLATE
+				&& this->FLG == Constants::FLG_FEXTRA
+				&& this->XLEN == Constants::BGZF_XLEN
+				&& this->SI1 == Constants::BGZF_ID1
+				&& this->SI2 == Constants::BGZF_ID2
+				&& this->SLEN == Constants::BGZF_LEN
+			);
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const self_type& header){
+		const parent_type& b = *reinterpret_cast<const parent_type* const>(&header);
+		os << b << '\n';
+		os << "BSIZE\t" << (U16)header.BSIZE;
+		return os;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& header){
+		parent_type& b = *reinterpret_cast<parent_type*>(&header);
+		stream >> b;
+		stream.read(reinterpret_cast<char*>(&header.BSIZE), sizeof(U16));
 		return(stream);
 	}
 };

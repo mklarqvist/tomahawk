@@ -92,10 +92,12 @@ public:
 	}
 
 	inline void flush(void){
-		this->controller.Deflate(this->buffer);
-		this->stream->write(&this->controller.buffer_[0], this->controller.buffer_.size());
-		this->controller.Clear();
-		this->buffer.reset();
+		if(this->buffer.size() > 0){
+			this->controller.Deflate(this->buffer);
+			this->stream->write(&this->controller.buffer_[0], this->controller.buffer_.size());
+			this->controller.Clear();
+			this->buffer.reset();
+		}
 		this->stream->flush();
 	}
 	inline bool close(void){ this->stream->close(); return true; }
@@ -116,6 +118,7 @@ public:
 			*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << this->contigs[i];
 
 	};
+
 	void writeEOF(void){
 		//this->stream->write(reinterpret_cast<const char*>(&Tomahawk::Constants::eof[0]), Tomahawk::Constants::eof_length*sizeof(U64));
 	};

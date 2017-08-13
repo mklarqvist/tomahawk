@@ -14,6 +14,7 @@ namespace IO{
 class GZController{
 	typedef GZController self_type;
 	typedef IO::BasicBuffer buffer_type;
+	typedef TGZFHeader header_type;
 
 public:
 	GZController();
@@ -22,9 +23,9 @@ public:
 	~GZController();
 
 	void Clear();
-	bool Inflate(buffer_type& input, buffer_type& output, const TGZFHeader& header) const;
+	bool Inflate(buffer_type& input, buffer_type& output, const header_type& header) const;
 	bool Inflate(buffer_type& input, buffer_type& output) const;
-	bool __Inflate(buffer_type& input, buffer_type& output, const TGZFHeader* header) const;
+	bool __Inflate(buffer_type& input, buffer_type& output, const header_type& header) const;
 	bool Deflate(buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
 	U32 InflateSize(buffer_type& input) const;

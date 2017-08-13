@@ -19,39 +19,39 @@ GZController::~GZController(){ this->buffer_.deleteAll(); }
 void GZController::Clear(){ this->buffer_.reset(); }
 
 U32 GZController::InflateSize(buffer_type& input) const{
-	const TGZFHeader* header = reinterpret_cast<const TGZFHeader*>(&input.data[0]);
-	if(!header->Validate()){
+	const header_type& header = *reinterpret_cast<const header_type* const>(&input.data[0]);
+	if(!header.Validate()){
 		 std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid TGZF header" << std::endl;
-		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << "Output length: " << header->BSIZE << std::endl;
+		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << "Output length: " << header.BSIZE << std::endl;
 		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << std::endl;
-		 std::cerr << *header << std::endl;
+		 std::cerr << header << std::endl;
 		 exit(1);
 	}
 
-	return header->BSIZE;
+	return header.BSIZE;
 }
 
 bool GZController::Inflate(buffer_type& input, buffer_type& output) const{
-	const TGZFHeader* header = reinterpret_cast<const TGZFHeader*>(&input[0]);
-	if(!header->Validate()){
+	const header_type& header = *reinterpret_cast<const header_type* const>(&input[0]);
+	if(!header.Validate()){
 		 std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid TGZF header" << std::endl;
-		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << "Output length: " << header->BSIZE << std::endl;
+		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << "Output length: " << header.BSIZE << std::endl;
 		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << std::endl;
-		 std::cerr << *header << std::endl;
+		 std::cerr << header << std::endl;
 		 exit(1);
 	}
 
 	return(this->__Inflate(input, output, header));
 }
 
-bool GZController::Inflate(buffer_type& input, buffer_type& output, const TGZFHeader& header) const{
-	return(this->__Inflate(input, output, &header));
+bool GZController::Inflate(buffer_type& input, buffer_type& output, const header_type& header) const{
+	return(this->__Inflate(input, output, header));
 }
 
-bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZFHeader* header) const{
-	U32* uncompressedLength = reinterpret_cast<U32*>(&input.data[input.size() - sizeof(U32)]);
-	if(output.size() + *uncompressedLength >= output.capacity())
-		output.resize((output.size() + *uncompressedLength) + 65536);
+bool GZController::__Inflate(buffer_type& input, buffer_type& output, const header_type& header) const{
+	const U32& uncompressedLength = *reinterpret_cast<const U32*>(&input.data[input.size() - sizeof(U32)]);
+	if(output.size() + uncompressedLength >= output.capacity())
+		output.resize((output.size() + uncompressedLength) + 65536);
 
 	//U32* crc = reinterpret_cast<U32*>(&input.data[input.size() - 2*sizeof(U32)]);
 
@@ -60,12 +60,11 @@ bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZF
 	if(avail_out > std::numeric_limits<U32>::max())
 		avail_out = std::numeric_limits<U32>::max();
 
-
 	z_stream zs;
 	zs.zalloc    = NULL;
 	zs.zfree     = NULL;
 	zs.next_in   = (Bytef*)&input.data[Constants::TGZF_BLOCK_HEADER_LENGTH];
-	zs.avail_in  = (header->BSIZE + 1) - 16;
+	zs.avail_in  = (header.BSIZE + 1) - 16;
 	zs.next_out  = (Bytef*)&output.data[output.pointer];
 	zs.avail_out = (U32)avail_out;
 
@@ -73,7 +72,7 @@ bool GZController::__Inflate(buffer_type& input, buffer_type& output, const TGZF
 
 	if(status != Z_OK){
 		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Zlib inflateInit failed: " << (int)status << std::endl;
-		 exit(1);
+		exit(1);
 	}
 
 	// decompress
@@ -105,15 +104,15 @@ bool GZController::Deflate(buffer_type& buffer){
 
 	memset(this->buffer_.data, 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
 
-	this->buffer_.data[0]  = Constants::GZIP_ID1;
-	this->buffer_.data[1]  = Constants::GZIP_ID2;
-	this->buffer_.data[2]  = Constants::CM_DEFLATE;
-	this->buffer_.data[3]  = Constants::FLG_FEXTRA;
-	this->buffer_.data[9]  = Constants::OS_UNKNOWN;
-	this->buffer_.data[10] = Constants::TGZF_XLEN;
-	this->buffer_.data[12] = Constants::TGZF_ID1;
-	this->buffer_.data[13] = Constants::TGZF_ID2;
-	this->buffer_.data[14] = Constants::TGZF_LEN;
+	this->buffer_[0]  = Constants::GZIP_ID1;
+	this->buffer_[1]  = Constants::GZIP_ID2;
+	this->buffer_[2]  = Constants::CM_DEFLATE;
+	this->buffer_[3]  = Constants::FLG_FEXTRA;
+	this->buffer_[9]  = Constants::OS_UNKNOWN;
+	this->buffer_[10] = Constants::TGZF_XLEN;
+	this->buffer_[12] = Constants::TGZF_ID1;
+	this->buffer_[13] = Constants::TGZF_ID2;
+	this->buffer_[14] = Constants::TGZF_LEN;
 	//buffer 16->20 is set below
 
 	// set compression level
@@ -126,7 +125,7 @@ bool GZController::Deflate(buffer_type& buffer){
     zs.zfree     = NULL;
     zs.next_in   = (Bytef*)buffer.data;
     zs.avail_in  = buffer.pointer;
-    zs.next_out  = (Bytef*)&this->buffer_.data[Constants::TGZF_BLOCK_HEADER_LENGTH];
+    zs.next_out  = (Bytef*)&this->buffer_[Constants::TGZF_BLOCK_HEADER_LENGTH];
     zs.avail_out = this->buffer_.width -
                    Constants::TGZF_BLOCK_HEADER_LENGTH -
                    Constants::TGZF_BLOCK_FOOTER_LENGTH;
@@ -169,13 +168,13 @@ bool GZController::Deflate(buffer_type& buffer){
 								 Constants::TGZF_BLOCK_FOOTER_LENGTH;
 
 	// store the compressed length
-	U32* test = reinterpret_cast<U32*>(&this->buffer_.data[16]);
+	U32* test = reinterpret_cast<U32*>(&this->buffer_[16]);
 	*test = compressedLength;
 	//std::cerr << Helpers::timestamp("DEBUG") << data.pointer << "->" << compressedLength-1 << " stored: " << *test << std::endl;
 
 	std::time_t result = std::time(nullptr);
 	std::asctime(std::localtime(&result));
-	U32* time = reinterpret_cast<U32*>(&this->buffer_.data[4]);
+	U32* time = reinterpret_cast<U32*>(&this->buffer_[4]);
 	*time = result;
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
 
@@ -185,10 +184,10 @@ bool GZController::Deflate(buffer_type& buffer){
 	// store the CRC32 checksum
 	U32 crc = crc32(0, NULL, 0);
 	crc = crc32(crc, (Bytef*)buffer.data, buffer.pointer);
-	U32* c = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - 2*sizeof(U32)]);
+	U32* c = reinterpret_cast<U32*>(&this->buffer_[compressedLength - 2*sizeof(U32)]);
 	*c = crc;
 	U32 convert = buffer.pointer; // avoid potential problems when casting from U64 to U32 by interpretation
-	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer_.data[compressedLength - sizeof(U32)]);
+	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer_[compressedLength - sizeof(U32)]);
 	*uncompressed = convert; // Store uncompressed length
 
 	this->buffer_.pointer = compressedLength;
