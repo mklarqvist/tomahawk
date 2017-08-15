@@ -226,6 +226,17 @@ int view(int argc, char** argv){
 
 	Tomahawk::IO::BCFReader bcfreader;
 	bcfreader.open(input);
+	exit(1);
+
+	U32 blockID = 0;
+	//for(U32 i = 0; i < 20; ++i){
+		while(bcfreader.nextBlock()){
+			//std::cerr << "failed to get block" << std::endl;
+			//return false;
+			std::cerr << blockID++ << '\t' << bcfreader.output_buffer.size() << std::endl;
+		}
+		//std::cerr << std::string(&bcfreader.output_buffer.data[0], bcfreader.output_buffer.size()) << std::endl;
+	//}
 
 	exit(1);
 

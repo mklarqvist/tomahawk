@@ -1,4 +1,3 @@
-
 #ifndef BCFREADER_H_
 #define BCFREADER_H_
 
@@ -10,8 +9,25 @@ namespace IO {
 
 #pragma pack(1)
 struct BCFEntryBody{
+	typedef BCFEntryBody self_type;
+
 	BCFEntryBody(); // disallow ctor and dtor
 	~BCFEntryBody();
+
+	friend std::ostream& operator<<(std::ostream& os, const self_type& header){
+		os << "l_shared\t" << (U32)header.l_shared << '\n';
+		os << "l_indiv\t" << (U32)header.l_indiv << '\n';
+		os << "CHROM\t" << (U32)header.CHROM << '\n';
+		os << "POS\t" << (U32)header.POS << '\n';
+		os << "rlen\t" << (S32)header.rlen << '\n';
+		os << "QUAL\t" << (U32)header.QUAL << '\n';
+		os << "n_allele\t" << (U32)header.n_allele << '\n';
+		os << "n_info\t" << (U16)header.n_info << '\n';
+		os << "n_fmt\t" << (U32)header.n_fmt << '\n';
+		os << "n_sample\t" << (U32)header.n_sample;
+
+		return os;
+	}
 
 	U32 l_shared;
 	U32 l_indiv;
@@ -19,8 +35,13 @@ struct BCFEntryBody{
 	S32 POS;
 	S32 rlen;
 	float QUAL;
-	U32 n_allele: 16, n_info: 16;
-	U32 n_fmt: 24, n_sample: 8;
+	U32 n_info: 16, n_allele: 16;
+	U32 n_sample: 8, n_fmt: 24;
+};
+
+#pragma pack(1)
+struct BCFAtomicBase{
+	BYTE low: 4, high: 4;
 };
 
 class BCFReader{
@@ -30,7 +51,7 @@ class BCFReader{
 	typedef BGZFHeader bgzf_type;
 
 public:
-	BCFReader(){}
+	BCFReader() : filesize(0){}
 	BCFReader(const std::string file);
 	~BCFReader(){}
 
@@ -47,11 +68,10 @@ public:
 			return false;
 		}
 
-		std::cerr << this->stream.tellg() << std::endl;
 		buffer.resize(sizeof(bgzf_type));
-		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&buffer.data[0], Constants::BGZF_BLOCK_HEADER_LENGTH);
 		const bgzf_type* h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
-		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		buffer.pointer = Constants::BGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
 			std::cerr << *h << std::endl;
@@ -64,13 +84,13 @@ public:
 		// resulting in segfault
 		h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
 
-		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&buffer.data[Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - Constants::BGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
 			return false;
 		}
 
-		buffer.pointer = h->BSIZE;
+		buffer.pointer = h->BSIZE + 1;
 		const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
 		output_buffer.resize(uncompressed_size);
 		this->output_buffer.reset();
@@ -80,10 +100,9 @@ public:
 			return false;
 		}
 
-		if(this->output_buffer.size() == 0){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Empty data!" << std::endl;
+		// BGZF EOF marker
+		if(this->output_buffer.size() == 0)
 			return false;
-		}
 
 		// Reset buffer
 		this->buffer.reset();
@@ -97,11 +116,56 @@ public:
 			return false;
 		}
 
-		std::cerr << "in parse header" << std::endl;
+		if(strncmp(&this->output_buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
+			std::cerr << (int)this->output_buffer[3] << '\t' << (int)this->output_buffer[4] << std::endl;
+			std::cerr << "failed to validate" << std::endl;
+			return false;
+		}
 
-		std::cerr << std::string(&this->output_buffer[0], 5) << std::endl;
-		const U32& l_text = *reinterpret_cast<const U32* const>(&this->output_buffer[5]);
-		std::cerr << "length: " << l_text << std::endl;
+		const U32 l_text = *reinterpret_cast<const U32* const>(&this->output_buffer[5]) + 4;
+		this->header_buffer.resize(l_text);
+
+		if(l_text - 5 < this->output_buffer.size()){
+			this->header_buffer.Add(&this->output_buffer[5], l_text);
+			return true;
+		}
+
+		U32 head_read = this->output_buffer.size() - 5;
+		this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
+
+		U32 p = 0;
+		while(this->nextBlock()){
+			if(head_read + this->output_buffer.size() >= l_text){
+				std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
+				this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
+				p = l_text - head_read;
+				break;
+			}
+			head_read += this->output_buffer.size();
+			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
+		}
+
+		//std::cerr << this->header_buffer;
+		//std::cerr << "next" << std::endl;
+		const BCFEntryBody& b = *reinterpret_cast<const BCFEntryBody* const>(&this->output_buffer[p]);
+		std::cerr << b << std::endl;
+		p += sizeof(BCFEntryBody);
+		std::cerr << (int)this->output_buffer[p] << std::endl;
+		const BCFAtomicBase& s = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p]);
+		std::cerr << (int)s.high << '\t' << (int)s.low << std::endl;
+		p += 1;
+		for(U32 i = 0; i < s.high; ++i)
+			std::cerr << i << ' ' << this->output_buffer[p+i] << std::endl;
+		std::cerr << std::endl;
+
+		p+= s.high;
+		const BCFAtomicBase& s2 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p]);
+		std::cerr << "Typed allele1: " << (int)s2.high << '\t' << (int)s2.low << std::endl;
+
+		const BCFAtomicBase& s3 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p+2]);
+		std::cerr << "Typed allele1: " << (int)s3.high << '\t' << (int)s3.low << std::endl;
+		p += 3;
+
 		return true;
 	}
 
@@ -133,14 +197,14 @@ public:
 		return true;
 	}
 
-private:
+public:
 	std::ifstream stream;
 	U64 filesize;
 	buffer_type buffer;
 	buffer_type output_buffer;
+	buffer_type header_buffer;
 	bgzf_controller_type bgzf_controller;
 };
-
 
 }
 }

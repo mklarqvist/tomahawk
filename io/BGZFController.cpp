@@ -87,8 +87,8 @@ bool BGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 		exit(1);
 	}
 
-	if(zs.total_out == 0)
-		std::cerr << Helpers::timestamp("LOG", "BGZF") << "Detected empty BGZF block" << std::endl;
+	//if(zs.total_out == 0)
+	//	std::cerr << Helpers::timestamp("LOG", "BGZF") << "Detected empty BGZF block" << std::endl;
 
 	output.pointer += zs.total_out;
 
