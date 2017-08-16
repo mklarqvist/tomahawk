@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "../third_party/zlib/zlib.h"
 #include "IOConstants.h"
 #include "BGZFController.h"

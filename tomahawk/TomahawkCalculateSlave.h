@@ -25,9 +25,82 @@
 // Method 4: Unphased regular and unphased vectorized
 // Method 5:
 // Method 6: All algorithms comparison
-#define SLAVE_DEBUG_MODE	1
+#define SLAVE_DEBUG_MODE	6
 
 namespace Tomahawk{
+
+#if SLAVE_DEBUG_MODE == 6
+
+struct __methodCompare{
+	typedef __methodCompare self_type;
+	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
+
+	__methodCompare(){}
+	~__methodCompare(){}
+
+	float phased[3][4];
+	float unphased[3][9];
+
+	friend std::ostream& operator<<(std::ostream& os, const self_type& m){
+		// P, PV, PVM, U, UV, UVM
+		os << "P\t" << m.phased[0][0] << '\t' << m.phased[0][1] << '\t' << m.phased[0][2] << '\t' << m.phased[0][3] << std::endl;
+		os << "PV\t" << m.phased[1][0] << '\t' << m.phased[1][1] << '\t' << m.phased[1][2] << '\t' << m.phased[1][3] << std::endl;
+		os << "PVM\t" << m.phased[2][0] << '\t' << m.phased[2][1] << '\t' << m.phased[2][2] << '\t' << m.phased[2][3] << std::endl;
+		os << "U\t";
+		for(U32 i = 0; i < 8; ++i) os << m.unphased[0][i] << '\t'; os << m.unphased[0][8] << std::endl;;
+		os << "UV\t";
+		for(U32 i = 0; i < 8; ++i) os << m.unphased[1][i] << '\t'; os << m.unphased[1][8] << std::endl;;
+		os << "UVM\t";
+		for(U32 i = 0; i < 8; ++i) os << m.unphased[2][i] << '\t'; os << m.unphased[2][8] << std::endl;;
+
+		return(os);
+	}
+
+	void addPhased(const U32 p, const helper_type& helper){
+		this->phased[p][0] = helper[0];
+		this->phased[p][1] = helper[1];
+		this->phased[p][2] = helper[4];
+		this->phased[p][3] = helper[5];
+	}
+
+	void addUnphased(const U32 p, const helper_type& helper){
+		this->unphased[p][0] = helper[0];
+		this->unphased[p][1] = helper[1] + helper[4];
+		this->unphased[p][2] = helper[5];
+		this->unphased[p][3] = helper[16] + helper[64];
+		this->unphased[p][4] = helper[17] + helper[20] + helper[65] + helper[68];
+		this->unphased[p][5] = helper[21] + helper[69];
+		this->unphased[p][6] = helper[80];
+		this->unphased[p][7] = helper[81] + helper[84];
+		this->unphased[p][8] = helper[85];
+	}
+
+	bool validate(void) const{
+		for(U32 i = 0; i < 4; ++i){
+			if(this->phased[0][i] != this->phased[1][i] ||
+			   this->phased[0][i] != this->phased[2][i] ||
+			   this->phased[1][i] != this->phased[2][i])
+			{
+				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->phased[0][i] << '\t' << this->phased[1][i] << '\t' << this->phased[2][i] << std::endl;
+				return false;
+			}
+		}
+
+		for(U32 i = 0; i < 9; ++i){
+			if(this->unphased[0][i] != this->unphased[1][i] ||
+			   this->unphased[0][i] != this->unphased[2][i] ||
+			   this->unphased[1][i] != this->unphased[2][i])
+			{
+				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->unphased[0][i] << '\t' << this->unphased[1][i] << '\t' << this->unphased[2][i] << std::endl;
+				return false;
+			}
+		}
+
+		return true;
+	}
+};
+
+#endif
 
 // Parameter flags
 #define LOW_MAF_THRESHOLD		0.01
@@ -447,10 +520,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 				  << this->helper.alleleCounts[16] + this->helper.alleleCounts[64] << '\t' << this->helper.alleleCounts[17] + this->helper.alleleCounts[20] + this->helper.alleleCounts[65] + this->helper.alleleCounts[68] << '\t' << this->helper.alleleCounts[21] + this->helper.alleleCounts[69] << '\t'
 				  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81]+this->helper.alleleCounts[84] << '\t' << this->helper.alleleCounts[85] << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "U\t"
+	/*std::cerr << "U\t"
 			<< this->helper.alleleCounts[0] << '\t' << this->helper.alleleCounts[1] + this->helper.alleleCounts[4] << '\t' << this->helper.alleleCounts[5] << '\t'
 		  << this->helper.alleleCounts[16] + this->helper.alleleCounts[64] << '\t' << this->helper.alleleCounts[17] + this->helper.alleleCounts[20] + this->helper.alleleCounts[65] + this->helper.alleleCounts[68] << '\t' << this->helper.alleleCounts[21] + this->helper.alleleCounts[69] << '\t'
-		  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81]+this->helper.alleleCounts[84] << '\t' << this->helper.alleleCounts[85] << std::endl;
+		  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81]+this->helper.alleleCounts[84] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
 #endif
 
 	this->setFLAGs(a, b);
@@ -834,10 +907,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
 			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "UVC\t"
+	/*std::cerr << "UVC\t"
 			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
 			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
+			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
 #endif
 
 	this->setFLAGs(a, b);
@@ -984,10 +1057,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
 			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "UVM\t"
+	/*std::cerr << "UVM\t"
 			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
 			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
+			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
 #endif
 
 	/*
@@ -1124,11 +1197,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	auto ticks_per_iter = Cycle(t1-t0);
 	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << "\t" << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << "\t" << ticks_per_iter.count() << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "PVM\t"
+	/*std::cerr << "PVM\t"
 			  << this->helper[0] << '\t'
 			  << this->helper[1] << '\t'
 			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;
+			  << this->helper[5] << std::endl;*/
 #endif
 
 	/*
@@ -1159,10 +1232,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 
 #if SIMD_AVAILABLE == 1
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
-	const U32 tailSmallest = datA.tailZero < datB.tailZero ? datA.tailZero : datB.tailZero;
+	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
 	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus = (datA.tailZero != tailSmallest ? datA.tailZero : datB.tailZero);
+	const U32 tailBonus  = datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero;
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
@@ -1241,11 +1314,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 	auto ticks_per_iter = Cycle(t1-t0);
 	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << "\t" << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << "\t" << ticks_per_iter.count() << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "PVC\t"
+	/*std::cerr << "PVC\t"
 			  << this->helper[0] << '\t'
 			  << this->helper[1] << '\t'
 			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;
+			  << this->helper[5] << std::endl;*/
 #endif
 
 	this->setFLAGs(a, b);
@@ -1326,11 +1399,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 	auto ticks_per_iter = Cycle(t1-t0);
 	std::cerr << "T\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << '\t' << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << '\t' << ticks_per_iter.count() << std::endl;
 #elif SLAVE_DEBUG_MODE == 6
-	std::cerr << "P\t"
+	/*std::cerr << "P\t"
 			  << this->helper[0] << '\t'
 			  << this->helper[1] << '\t'
 			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;
+			  << this->helper[5] << std::endl;*/
 #endif
 
 #if SLAVE_DEBUG_MODE == 5
@@ -1523,14 +1596,27 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 	this->CalculateLDUnphased(block1, block2);
 	this->CalculateLDUnphasedVectorized(block1, block2);
 	#elif SLAVE_DEBUG_MODE == 6
-	// Todo: add comprehensive
 	// Every method after one another
+	// P, PV, PVM, U, UV, UVM
+	__methodCompare m;
 	this->CalculateLDPhased(block1, block2);
+	m.addPhased(0, this->helper);
 	this->CalculateLDPhasedVectorized(block1, block2);
+	m.addPhased(1, this->helper);
 	this->CalculateLDPhasedVectorizedNoMissing(block1, block2);
+	m.addPhased(2, this->helper);
 	this->CalculateLDUnphased(block1, block2);
+	m.addUnphased(0, this->helper);
 	this->CalculateLDUnphasedVectorized(block1, block2);
+	m.addUnphased(1, this->helper);
 	this->CalculateLDUnphasedVectorizedNoMissing(block1, block2);
+	m.addUnphased(2, this->helper);
+
+	if(!m.validate()){
+		std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Failed validation..." << std::endl;
+		std::cerr << m << std::endl;
+		//exit(1);
+	}
 	#endif
 }
 

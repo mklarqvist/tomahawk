@@ -84,7 +84,6 @@ int view(int argc, char** argv){
 	int long_index = 0;
 	int hits = 0;
 	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:w:W:O:hHGsNB", long_options, &long_index)) != -1){
-		//std::cerr << c << ":" << (char)c << '\t' << long_index << std::endl;
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -177,6 +176,7 @@ int view(int argc, char** argv){
 				return(1);
 			}
 			break;
+
 		case 'A':
 			maxAlleles = atoi(optarg);
 			if(maxAlleles < 0){
@@ -197,15 +197,19 @@ int view(int argc, char** argv){
 			break;
 		case 'h':
 			outputHeader = true;
+			--hits;
 			break;
 		case 'H':
 			outputHeader = false;
+			--hits;
 			break;
 		case 'N':
 			outputType = 1;
+			--hits;
 			break;
 		case 'B':
 			outputType = 0;
+			--hits;
 			break;
 		case 'O':
 			outputType = atoi(optarg);
@@ -224,6 +228,7 @@ int view(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
 	}
 
+	/*
 	Tomahawk::IO::BCFReader bcfreader;
 	bcfreader.open(input);
 	exit(1);
@@ -239,6 +244,7 @@ int view(int argc, char** argv){
 	//}
 
 	exit(1);
+*/
 
 	// Todo: move out
 	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
@@ -251,6 +257,8 @@ int view(int argc, char** argv){
 	std::vector<std::string> filter_regions;
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
+
+		std::cerr << param << std::endl;
 
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal parse of input string: " << param << std::endl;
