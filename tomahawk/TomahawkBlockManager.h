@@ -306,7 +306,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 			if(this->data[i]->data[j] != 0)
 				break;
 		}
-		this->data[i]->tailZero = ((byteAlignedEnd - (j - 1))*4)/GENOTYPE_TRIP_COUNT;
+		this->data[i]->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
 
 		//if(/this->data[i]->frontZero > samples)
 		//std::cerr << this->data[i]->frontZero << '\t' << this->data[i]->tailZero << '\t' << std::endl;
