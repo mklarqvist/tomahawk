@@ -293,7 +293,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 
 		// Search from left->right
 		for(; j < byteAlignedEnd; ++j){
-			if(this->data[i]->data[j] != 0)
+			if(this->data[i]->data[j] != 0 || this->data[i]->mask[j] != 0)
 				break;
 		}
 
@@ -303,7 +303,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 
 		j = byteAlignedEnd - 1;
 		for(; j > 0; --j){
-			if(this->data[i]->data[j] != 0)
+			if(this->data[i]->data[j] != 0 || this->data[i]->mask[j] != 0)
 				break;
 		}
 		this->data[i]->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;

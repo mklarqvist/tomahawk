@@ -23,8 +23,8 @@
 // Method 2: Phased Vectorized No-Missing
 // Method 3:
 // Method 4: Unphased regular and unphased vectorized
-// Method 5:
-// Method 6: All algorithms comparison
+// Method 5: Compare phased and unphased
+// Method 6: All algorithms comparison (debug)
 #define SLAVE_DEBUG_MODE	6
 
 namespace Tomahawk{
