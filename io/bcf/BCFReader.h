@@ -8,6 +8,16 @@ namespace Tomahawk {
 namespace IO {
 
 #pragma pack(1)
+struct BCFAtomicBase{
+	BYTE low: 4, high: 4;
+};
+
+#pragma pack(1)
+struct BCFAtomicInteger{
+	BYTE low: 4, high: 28;
+};
+
+#pragma pack(1)
 struct BCFEntryBody{
 	typedef BCFEntryBody self_type;
 
@@ -39,14 +49,26 @@ struct BCFEntryBody{
 	U32 n_sample: 8, n_fmt: 24;
 };
 
+struct BCFTypeString{
+	typedef BCFAtomicBase base_type;
+
+	U32 length;
+	char* data; // reinterpret me as char*
+};
+
 struct BCFEntry{
 	typedef IO::BasicBuffer buffer_type;
 	typedef BCFEntryBody body_type;
+	typedef BCFTypeString string_type;
+	typedef BCFAtomicBase base_type;
+	typedef BCFAtomicInteger base_integer_type;
 
 	BCFEntry(void):
-		size(0),
-		data(new char[262144]),
-		body(reinterpret_cast<const body_type*>(this->data))
+		pointer(0),
+		limit(262144),
+		data(new char[this->limit]),
+		body(reinterpret_cast<const body_type*>(this->data)),
+		alleles(new string_type[100])
 	{
 
 	}
@@ -55,28 +77,91 @@ struct BCFEntry{
 	void resize(const U32 size){
 		char* temp = this->data;
 		this->data = new char[size];
-		memcpy(this->data, temp, this->size);
+		memcpy(this->data, temp, this->pointer);
 		std::swap(temp, this->data);
 		delete [] temp;
 		this->body = reinterpret_cast<const body_type*>(this->data);
+
+		if(size > this->limit)
+			this->limit = size;
 	}
 
 	void add(const char* const data, const U32 length){
-		memcpy(&this->data[this->size], data, length);
-		this->size += length;
+		if(this->pointer + length > this-> capacity())
+			this->resize(this->pointer + length + 65536);
+
+		memcpy(&this->data[this->pointer], data, length);
+		this->pointer += length;
 	}
 
-	void reset(void){ this->size = 0; }
+	inline void reset(void){ this->pointer = 0; }
+	inline const U32& size(void) const{ return(this->pointer); }
+	inline const U32& capacity(void) const{ return(this->limit); }
 	U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
 
-	U32 size;
+	bool parse(void){
+		U32 internal_pos = sizeof(body_type);
+
+		// Parse ID
+		const base_type& ID_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
+		++internal_pos;
+		const char* ID = &this->data[internal_pos];
+		U32 l_ID = ID_base.high;
+		if(ID_base.high == 0){
+			// has no name
+			l_ID = 0;
+		} else if(ID_base.high == 15){
+			// next byte is the length array
+			std::cerr << "in array" << std::endl;
+			const base_integer_type& length = *reinterpret_cast<const base_integer_type* const>(&this->data[internal_pos]);
+			internal_pos += sizeof(U32);
+			l_ID = length.high;
+			assert(length.low == 7);
+		}
+		assert(ID_base.low == 7);
+
+		//if(l_ID == 0) std::cerr << '.' << std::endl;
+		//else std::cerr << std::string(ID, l_ID) << std::endl;
+		internal_pos += l_ID;
+
+		// Parse REF-ALT
+		for(U32 i = 0; i < this->body->n_allele; ++i){
+			const base_type& alelle_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
+			this->alleles[i].length = alelle_base.high;
+			++internal_pos;
+			//std::cerr << i << '/' << this->body->n_allele << '\t' << (int)alelle_base.low << '\t' << (int)alelle_base.high << std::endl;
+
+			if(alelle_base.low == 15){
+				std::cerr << "in array" << std::endl;
+				// next byte is the length array
+				const base_integer_type& length = *reinterpret_cast<const base_integer_type* const>(&this->data[internal_pos]);
+				internal_pos += sizeof(U32);
+				this->alleles[i].length = length.high;
+				assert(length.low == 7);
+			}
+			assert(alelle_base.low == 7);
+
+			//std::cerr<< "Length: " << this->alleles[i].length << std::endl;
+			this->alleles[i].data = &this->data[internal_pos];
+			//std::cerr << std::string(this->alleles[i].data, this->alleles[i].length) << std::endl;
+			internal_pos += this->alleles[i].length;
+		}
+
+		return true;
+	}
+
+
+public:
+	U32 pointer;
+	U32 limit;
+
 	char* data; // hard copy data to buffer, interpret internally
 	const body_type* body;
-};
+	string_type* alleles;
 
-#pragma pack(1)
-struct BCFAtomicBase{
-	BYTE low: 4, high: 4;
+
+	// pointer to pointer of ref alleles and their lengths
+
 };
 
 class BCFReader{
@@ -146,8 +231,8 @@ public:
 		return true;
 	}
 
-	bool nextVariant(void){
-		BCFEntry entry;
+	bool nextVariant(BCFEntry& entry){
+		//BCFEntry entry;
 		if(this->current_pointer + 8 > this->output_buffer.size()){
 			const U32 partial = this->output_buffer.size() - this->current_pointer;
 			entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
