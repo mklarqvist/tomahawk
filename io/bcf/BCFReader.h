@@ -39,6 +39,41 @@ struct BCFEntryBody{
 	U32 n_sample: 8, n_fmt: 24;
 };
 
+struct BCFEntry{
+	typedef IO::BasicBuffer buffer_type;
+	typedef BCFEntryBody body_type;
+
+	BCFEntry(void):
+		size(0),
+		data(new char[262144]),
+		body(reinterpret_cast<const body_type*>(this->data))
+	{
+
+	}
+
+	~BCFEntry(void){ delete [] this->data; }
+	void resize(const U32 size){
+		char* temp = this->data;
+		this->data = new char[size];
+		memcpy(this->data, temp, this->size);
+		std::swap(temp, this->data);
+		delete [] temp;
+		this->body = reinterpret_cast<const body_type*>(this->data);
+	}
+
+	void add(const char* const data, const U32 length){
+		memcpy(&this->data[this->size], data, length);
+		this->size += length;
+	}
+
+	void reset(void){ this->size = 0; }
+	U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
+
+	U32 size;
+	char* data; // hard copy data to buffer, interpret internally
+	const body_type* body;
+};
+
 #pragma pack(1)
 struct BCFAtomicBase{
 	BYTE low: 4, high: 4;
@@ -51,7 +86,7 @@ class BCFReader{
 	typedef BGZFHeader bgzf_type;
 
 public:
-	BCFReader() : filesize(0){}
+	BCFReader() : filesize(0), current_pointer(0){}
 	BCFReader(const std::string file);
 	~BCFReader(){}
 
@@ -106,6 +141,50 @@ public:
 
 		// Reset buffer
 		this->buffer.reset();
+		this->current_pointer = 0;
+
+		return true;
+	}
+
+	bool nextVariant(void){
+		BCFEntry entry;
+		if(this->current_pointer + 8 > this->output_buffer.size()){
+			const U32 partial = this->output_buffer.size() - this->current_pointer;
+			entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
+			if(!this->nextBlock()){
+				std::cerr << "failed to get next block" << std::endl;
+				return false;
+			}
+
+			entry.add(&this->output_buffer[0], 8 - partial);
+			this->current_pointer = 8 - partial;
+		} else {
+			entry.add(&this->output_buffer[this->current_pointer], 8);
+			this->current_pointer += 8;
+		}
+
+		U64 remainder = entry.sizeBody();
+		//std::cerr << *entry.body << std::endl;
+		while(remainder > 0){
+			if(this->current_pointer + remainder > this->output_buffer.size()){
+				//std::cerr << "partial: " << this->current_pointer + remainder << '/' << this->output_buffer.size() << '\t' << this->output_buffer.size() - this->current_pointer << '\t' << this->current_pointer << std::endl;
+				entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
+				remainder -= this->output_buffer.size() - this->current_pointer;
+				if(!this->nextBlock()){
+					std::cerr << "failed to get next block" << std::endl;
+					return false;
+				}
+			} else {
+				entry.add(&this->output_buffer[this->current_pointer], remainder);
+				this->current_pointer += remainder;
+				remainder = 0;
+				break;
+			}
+			//std::cerr << "remaidner now: " << remainder << std::endl;
+		}
+		//std::cerr << "loaded all: " << remainder << std::endl;
+		std::cerr << entry.body->CHROM << ":" << entry.body->POS << std::endl;
+
 
 		return true;
 	}
@@ -133,38 +212,42 @@ public:
 		U32 head_read = this->output_buffer.size() - 5;
 		this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
 
-		U32 p = 0;
+		//U32 p = 0;
 		while(this->nextBlock()){
 			if(head_read + this->output_buffer.size() >= l_text){
 				std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
 				this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
-				p = l_text - head_read;
+				this->current_pointer = l_text - head_read;
 				break;
 			}
 			head_read += this->output_buffer.size();
 			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 		}
 
+		//std::cerr << this->nextVariant() << std::endl;
+
+		/*
 		//std::cerr << this->header_buffer;
 		//std::cerr << "next" << std::endl;
-		const BCFEntryBody& b = *reinterpret_cast<const BCFEntryBody* const>(&this->output_buffer[p]);
+		const BCFEntryBody& b = *reinterpret_cast<const BCFEntryBody* const>(&this->output_buffer[this->current_pointer]);
 		std::cerr << b << std::endl;
-		p += sizeof(BCFEntryBody);
-		std::cerr << (int)this->output_buffer[p] << std::endl;
-		const BCFAtomicBase& s = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p]);
+		this->current_pointer += sizeof(BCFEntryBody);
+		std::cerr << (int)this->output_buffer[this->current_pointer] << std::endl;
+		const BCFAtomicBase& s = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer]);
 		std::cerr << (int)s.high << '\t' << (int)s.low << std::endl;
-		p += 1;
+		this->current_pointer += 1;
 		for(U32 i = 0; i < s.high; ++i)
-			std::cerr << i << ' ' << this->output_buffer[p+i] << std::endl;
+			std::cerr << i << ' ' << this->output_buffer[this->current_pointer+i] << std::endl;
 		std::cerr << std::endl;
 
-		p+= s.high;
-		const BCFAtomicBase& s2 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p]);
+		this->current_pointer+= s.high;
+		const BCFAtomicBase& s2 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer]);
 		std::cerr << "Typed allele1: " << (int)s2.high << '\t' << (int)s2.low << std::endl;
 
-		const BCFAtomicBase& s3 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[p+2]);
+		const BCFAtomicBase& s3 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer+2]);
 		std::cerr << "Typed allele1: " << (int)s3.high << '\t' << (int)s3.low << std::endl;
-		p += 3;
+		this->current_pointer += 3;
+		*/
 
 		return true;
 	}
@@ -200,6 +283,7 @@ public:
 public:
 	std::ifstream stream;
 	U64 filesize;
+	U32 current_pointer;
 	buffer_type buffer;
 	buffer_type output_buffer;
 	buffer_type header_buffer;
