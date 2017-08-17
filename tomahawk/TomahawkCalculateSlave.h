@@ -21,11 +21,11 @@
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
-// Method 3:
+// Method 3: Count comparisons for algorithm 1
 // Method 4: Unphased regular and unphased vectorized
 // Method 5: Compare phased and unphased
 // Method 6: All algorithms comparison (debug)
-#define SLAVE_DEBUG_MODE	6
+#define SLAVE_DEBUG_MODE	1
 
 namespace Tomahawk{
 
@@ -465,7 +465,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 	U32 pointerA = 0;
 	U32 pointerB = 0;
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -512,18 +512,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 					^ ((b[pointerB].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)));
 	}
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "T\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t'
-				<< this->helper.alleleCounts[0] << '\t' << this->helper.alleleCounts[1] + this->helper.alleleCounts[4] << '\t' << this->helper.alleleCounts[5] << '\t'
-				  << this->helper.alleleCounts[16] + this->helper.alleleCounts[64] << '\t' << this->helper.alleleCounts[17] + this->helper.alleleCounts[20] + this->helper.alleleCounts[65] + this->helper.alleleCounts[68] << '\t' << this->helper.alleleCounts[21] + this->helper.alleleCounts[69] << '\t'
-				  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81]+this->helper.alleleCounts[84] << '\t' << this->helper.alleleCounts[85] << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "U\t"
-			<< this->helper.alleleCounts[0] << '\t' << this->helper.alleleCounts[1] + this->helper.alleleCounts[4] << '\t' << this->helper.alleleCounts[5] << '\t'
-		  << this->helper.alleleCounts[16] + this->helper.alleleCounts[64] << '\t' << this->helper.alleleCounts[17] + this->helper.alleleCounts[20] + this->helper.alleleCounts[65] + this->helper.alleleCounts[68] << '\t' << this->helper.alleleCounts[21] + this->helper.alleleCounts[69] << '\t'
-		  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81]+this->helper.alleleCounts[84] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
+	std::cout << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t';
 #endif
 
 	this->setFLAGs(a, b);
@@ -814,7 +806,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 	VECTOR_TYPE __intermediate;
 
 // Debug timings
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -899,18 +891,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 	//this->helper[17] = this->helper_simd.counters[4];
 	this->helper[17] = this->samples - (this->helper[0] +  this->helper[1] + this->helper[5] + this->helper[16] + this->helper[21] + this->helper[80] + this->helper[81] + this->helper[85]);
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t'
-			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
-			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "UVC\t"
-			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
-			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
+	std::cout << ticks_per_iter.count() << '\n';
 #endif
 
 	this->setFLAGs(a, b);
@@ -962,7 +946,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 	VECTOR_TYPE __intermediate, mask;
 
 // Debug timings
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -1049,18 +1033,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 	this->helper[81] = this->helper_simd.counters[7];
 	this->helper[85] = this->helper_simd.counters[8];
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t'
-			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
-			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "UVM\t"
-			  << this->helper.alleleCounts[0]  << '\t' << this->helper.alleleCounts[1]  << '\t' << this->helper.alleleCounts[5]  << '\t'
-			  << this->helper.alleleCounts[16] << '\t' << this->helper.alleleCounts[17] << '\t' << this->helper.alleleCounts[21] << '\t'
-			  << this->helper.alleleCounts[80] << '\t' << this->helper.alleleCounts[81] << '\t' << this->helper.alleleCounts[85] << std::endl;*/
+	std::cout << ticks_per_iter.count() << '\n';
 #endif
 
 	/*
@@ -1109,7 +1085,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	VECTOR_TYPE __intermediate, masks;
 
 // Debug timings
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -1192,16 +1168,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	this->helper[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + this->helper_simd.counters[0] - this->phased_unbalanced_adjustment;
 
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << "\t" << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << "\t" << ticks_per_iter.count() << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "PVM\t"
-			  << this->helper[0] << '\t'
-			  << this->helper[1] << '\t'
-			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;*/
+	std::cout << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
 
 	/*
@@ -1243,7 +1213,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 	VECTOR_TYPE __intermediate;
 
 // Debug timings
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -1309,16 +1279,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 	this->helper_simd.counters[2] = 0;
 	this->helper_simd.counters[3] = 0;
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << "\t" << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << "\t" << ticks_per_iter.count() << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "PVC\t"
-			  << this->helper[0] << '\t'
-			  << this->helper[1] << '\t'
-			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;*/
+	std::cout << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << "\t" << ticks_per_iter.count() << '\n';
 #endif
 
 	this->setFLAGs(a, b);
@@ -1332,7 +1296,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 		return false;
 
 	this->helper.resetPhased();
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
@@ -1349,7 +1313,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 	U32 pointerB = 0;
 	U32 add;
 
-#if SLAVE_DEBUG_MODE == 5
+#if SLAVE_DEBUG_MODE == 3
 	U64 iterations = 0;
 #endif
 
@@ -1389,25 +1353,19 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 		currentMixR = ((  a[pointerA].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)
 					   ^ (b[pointerB].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
 
-	#if SLAVE_DEBUG_MODE == 5
+	#if SLAVE_DEBUG_MODE == 3
 		++iterations;
 	#endif
 	}
 
-#if SLAVE_DEBUG_MODE == 4
+#if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cerr << "T\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << '\t' << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << '\t' << ticks_per_iter.count() << std::endl;
-#elif SLAVE_DEBUG_MODE == 6
-	/*std::cerr << "P\t"
-			  << this->helper[0] << '\t'
-			  << this->helper[1] << '\t'
-			  << this->helper[4] << '\t'
-			  << this->helper[5] << std::endl;*/
+	std::cout << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
 
-#if SLAVE_DEBUG_MODE == 5
-	std::cerr << a.currentMeta().runs << '\t' << b.currentMeta().runs << '\t' << iterations << std::endl;
+#if SLAVE_DEBUG_MODE == 3
+	std::cout << a.currentMeta().runs << '\t' << b.currentMeta().runs << '\t' << iterations << std::endl;
 #endif
 
 	this->setFLAGs(a, b);
@@ -1589,13 +1547,16 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 		this->output_manager.Add(block1, block2, this->helper);
 	}
 	#elif SLAVE_DEBUG_MODE == 3
-		return;
+		this->CalculateLDPhased(block1, block2);
 
-	#elif SLAVE_DEBUG_MODE == 4 | SLAVE_DEBUG_MODE == 5
+	#elif SLAVE_DEBUG_MODE == 4
 	// DEBUG
 	this->CalculateLDUnphased(block1, block2);
 	this->CalculateLDUnphasedVectorized(block1, block2);
-	#elif SLAVE_DEBUG_MODE == 6
+#elif SLAVE_DEBUG_MODE == 5
+	this->CalculateLDPhased(block1, block2);
+	this->CalculateLDPhasedVectorized(block1, block2);
+#elif SLAVE_DEBUG_MODE == 6
 	// Every method after one another
 	// P, PV, PVM, U, UV, UVM
 	__methodCompare m;
