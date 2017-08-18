@@ -9,6 +9,8 @@
 namespace Tomahawk {
 namespace BCF {
 
+#define BCF_UNPACK_GENOTYPE(A) ((A >> 1) - 1)
+
 #pragma pack(1)
 struct BCFAtomicBase{
 	BYTE low: 4, high: 4;
@@ -171,11 +173,41 @@ struct BCFEntry{
 
 	void __parseGenotypes(void){
 		U32 internal_pos = this->p_genotypes;
-		for(U32 i = 0; i < 32470 * 2; i+=2){
+		U32 length = 1;
+		U32 sumLength = 0;
+		U32 runs = 0;
+
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		BYTE packed = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
+
+		for(U32 i = 2; i < 32470 * 2; i+=2){
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+			const BYTE packed_internal = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
+			if(packed != packed_internal){
+				//std::cerr << "did not match: " << length << std::endl;
+				//if(length > 1000)
+				//	std::cerr << length << std::endl;
+
+				sumLength += length;
+				length = 1;
+				packed = packed_internal;
+				++runs;
+				continue;
+			}
+			++length;
+
 			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
 		}
+
+		// final
+		//if(length > 1000)
+		//	std::cerr << length << std::endl;
+		++runs;
+		sumLength += length;
+		assert(sumLength == 32470);
+		//std::cerr << "#runs: " << runs << std::endl;
 
 #if BCF_ASSERT == 1
 		assert(internal_pos == this->size());
@@ -205,6 +237,9 @@ struct BCFEntry{
 
 		this->genotypes = &this->data[internal_pos];
 		this->p_genotypes = internal_pos;
+
+		this->__parseGenotypes();
+
 		return true;
 	}
 
@@ -320,6 +355,7 @@ public:
 				break;
 			}
 		}
+
 		// Temp
 		std::cerr << this->header.getContig(entry.body->CHROM).name << ":" << entry.body->POS << std::endl;
 		entry.parse();
