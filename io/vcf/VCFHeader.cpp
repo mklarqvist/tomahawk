@@ -306,7 +306,6 @@ bool VCFHeader::__parseSampleLine(const char* const data, U32& offset, const U32
 
 
 	this->buildSampleTable(delimiters_found);
-	std::cerr << "completed" << std::endl;
 
 	return true;
 }

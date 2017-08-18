@@ -8,6 +8,7 @@
 #include <stdint.h>
 typedef int8_t		SBYTE;
 typedef uint8_t		BYTE;
+typedef int16_t		S16
 typedef uint16_t	U16;
 typedef uint32_t	U32;
 typedef int32_t		S32;
@@ -17,6 +18,7 @@ typedef uint64_t	ULL;
 typedef char				SBYTE;
 typedef unsigned char		BYTE;
 typedef unsigned short		U16;
+typedef short				S16;
 typedef unsigned int		U32;
 typedef signed int			S32;
 typedef unsigned long long	U64;

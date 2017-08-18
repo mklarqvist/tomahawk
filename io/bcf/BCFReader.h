@@ -213,6 +213,8 @@ class BCFReader{
 	typedef IO::BasicBuffer buffer_type;
 	typedef IO::BGZFController bgzf_controller_type;
 	typedef BGZFHeader bgzf_type;
+	typedef VCF::VCFHeader header_type;
+	typedef VCF::VCFHeaderContig contig_type;
 
 public:
 	BCFReader() : filesize(0), current_pointer(0){}
@@ -312,7 +314,7 @@ public:
 			//std::cerr << "remaidner now: " << remainder << std::endl;
 		}
 		//std::cerr << "loaded all: " << remainder << std::endl;
-		//std::cerr << entry.body->CHROM << ":" << entry.body->POS << std::endl;
+		std::cerr << this->header.getContig(entry.body->CHROM).name << ":" << entry.body->POS << std::endl;
 		entry.parse();
 
 		return true;
@@ -353,8 +355,8 @@ public:
 			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 		}
 
-		VCF::VCFHeader header;
-		if(!header.parse(&this->header_buffer[0], this->header_buffer.size())){
+
+		if(!this->header.parse(&this->header_buffer[0], this->header_buffer.size())){
 			std::cerr << "failed to parse header" << std::endl;
 			return false;
 		}
@@ -398,6 +400,7 @@ public:
 	buffer_type output_buffer;
 	buffer_type header_buffer;
 	bgzf_controller_type bgzf_controller;
+	header_type header;
 };
 
 }
