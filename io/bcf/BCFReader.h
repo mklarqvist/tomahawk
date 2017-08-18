@@ -14,7 +14,7 @@ struct BCFAtomicBase{
 
 #pragma pack(1)
 struct BCFAtomicInteger{
-	BYTE low: 4, high: 28;
+	S32 low: 4, high: 28;
 };
 
 #pragma pack(1)
@@ -147,6 +147,40 @@ struct BCFEntry{
 			internal_pos += this->alleles[i].length;
 		}
 
+		//std::cerr << "n_fmt: " << this->body->n_fmt << std::endl;
+
+		internal_pos = this->body->l_shared + sizeof(U32)*2;
+		const base_type& fmt_key = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
+		//std::cerr << "fmt_key: " << (int)fmt_key.high << '\t' << (int)fmt_key.low << std::endl;
+		++internal_pos;
+
+		const int8_t& fmt_key_value = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
+		//std::cerr << "fmt_key_value: " << (int)fmt_key_value << std::endl;
+
+		switch(fmt_key.low){
+		case(1): case(7): ++internal_pos; break;
+		case(2): internal_pos += 2; break;
+		case(3): case(5): internal_pos += 4; break;
+		}
+
+		const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
+		++internal_pos;
+		//std::cerr << "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
+
+		for(U32 i = 0; i < 32470 * fmt_type.high; i+=fmt_type.high){
+
+			const int8_t& fmt_type_value1 = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
+			++internal_pos;
+			const int8_t& fmt_type_value2 = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
+			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
+			++internal_pos;
+		}
+		//std::cerr << std::endl;
+		//std::cerr << "Data size: " << this->size() << std::endl;
+		//std::cerr << *this->body << std::endl;
+
+		assert(internal_pos == this->size());
+
 		return true;
 	}
 
@@ -268,8 +302,8 @@ public:
 			//std::cerr << "remaidner now: " << remainder << std::endl;
 		}
 		//std::cerr << "loaded all: " << remainder << std::endl;
-		std::cerr << entry.body->CHROM << ":" << entry.body->POS << std::endl;
-
+		//std::cerr << entry.body->CHROM << ":" << entry.body->POS << std::endl;
+		entry.parse();
 
 		return true;
 	}
