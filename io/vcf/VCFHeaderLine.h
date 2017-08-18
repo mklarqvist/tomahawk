@@ -75,7 +75,6 @@ public:
 		} else {
 			//Todo: this value is just text
 		}
-
 		return true;
 	}
 

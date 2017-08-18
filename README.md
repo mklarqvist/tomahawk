@@ -4,9 +4,6 @@
 
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
-### Usage
-Note that this development version is limited to `vcf` files as input.
-
 ### Installation instructions
 Compiling Tomahawk with default parameters is straightforward.
 ```bash
@@ -30,7 +27,7 @@ Executing `tomahawk <command>` gives a list of commands with brief descriptions
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
 format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
-commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`/`bcf`. Linkage
+commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
 disequilibrium data is written out in `two` and `toi` format. There is an option
 to produce human-readable tab-delimited output for smaller datasets (`-N` flag in `calc`).
 
@@ -48,7 +45,7 @@ tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
 ```
 
 ### Import-extend
-If you have split up your `vcf` files into multiple disjoint `vcf` files (such as per chromosome) it is possible to iteratively import and extend a `twk` file:
+If you have split up your `vcf`/`bcf` files into multiple disjoint files (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
 tomahawk import -i file.vcf -e extend.twk -m 0.2 -H 1e-3 -M 0.1
 ```

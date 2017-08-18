@@ -1,6 +1,8 @@
 #ifndef BCFREADER_H_
 #define BCFREADER_H_
 
+#include <cassert>
+
 #define BCF_ASSERT 1
 
 #include "../BasicBuffer.h"
@@ -171,9 +173,10 @@ struct BCFEntry{
 		}
 	}
 
+	template <class T>
 	void __parseGenotypes(void){
 		U32 internal_pos = this->p_genotypes;
-		U32 length = 1;
+		T length = 1;
 #if BCF_ASSERT == 1
 		U32 sumLength = 0;
 #endif
@@ -230,7 +233,7 @@ struct BCFEntry{
 		this->p_genotypes = internal_pos;
 
 		// Todo: move out
-		this->__parseGenotypes();
+		this->__parseGenotypes<U32>();
 		// Todo: move to RLE parser
 
 		return true;
