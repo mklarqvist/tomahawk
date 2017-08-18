@@ -5,7 +5,7 @@
 #include "../BGZFController.h"
 
 namespace Tomahawk {
-namespace IO {
+namespace BCF {
 
 #pragma pack(1)
 struct BCFAtomicBase{
@@ -212,7 +212,7 @@ class BCFReader{
 	typedef BCFReader self_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef IO::BGZFController bgzf_controller_type;
-	typedef BGZFHeader bgzf_type;
+	typedef IO::BGZFHeader bgzf_type;
 	typedef VCF::VCFHeader header_type;
 	typedef VCF::VCFHeaderContig contig_type;
 
@@ -229,15 +229,13 @@ public:
 		}
 
 		// EOF
-		if(this->stream.tellg() == this->filesize){
-			//std::cerr << "eof" << std::endl;
+		if(this->stream.tellg() == this->filesize)
 			return false;
-		}
 
 		buffer.resize(sizeof(bgzf_type));
-		this->stream.read(&buffer.data[0], Constants::BGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&buffer.data[0], IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
 		const bgzf_type* h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
-		buffer.pointer = Constants::BGZF_BLOCK_HEADER_LENGTH;
+		buffer.pointer = IO::Constants::BGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
 			std::cerr << *h << std::endl;
@@ -250,7 +248,7 @@ public:
 		// resulting in segfault
 		h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
 
-		this->stream.read(&buffer.data[Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - Constants::BGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&buffer.data[IO::Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
 			return false;
@@ -278,7 +276,6 @@ public:
 	}
 
 	bool nextVariant(BCFEntry& entry){
-		//BCFEntry entry;
 		if(this->current_pointer + 8 > this->output_buffer.size()){
 			const U32 partial = this->output_buffer.size() - this->current_pointer;
 			entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
@@ -295,10 +292,8 @@ public:
 		}
 
 		U64 remainder = entry.sizeBody();
-		//std::cerr << *entry.body << std::endl;
 		while(remainder > 0){
 			if(this->current_pointer + remainder > this->output_buffer.size()){
-				//std::cerr << "partial: " << this->current_pointer + remainder << '/' << this->output_buffer.size() << '\t' << this->output_buffer.size() - this->current_pointer << '\t' << this->current_pointer << std::endl;
 				entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
 				remainder -= this->output_buffer.size() - this->current_pointer;
 				if(!this->nextBlock()){
@@ -311,9 +306,8 @@ public:
 				remainder = 0;
 				break;
 			}
-			//std::cerr << "remaidner now: " << remainder << std::endl;
 		}
-		//std::cerr << "loaded all: " << remainder << std::endl;
+		// Temp
 		std::cerr << this->header.getContig(entry.body->CHROM).name << ":" << entry.body->POS << std::endl;
 		entry.parse();
 
@@ -405,7 +399,5 @@ public:
 
 }
 }
-
-
 
 #endif /* BCFREADER_H_ */
