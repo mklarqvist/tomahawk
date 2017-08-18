@@ -84,7 +84,7 @@ struct BCFEntry{
 		l_ID(0),
 		p_genotypes(0),
 		data(new char[this->limit]),
-		body(reinterpret_cast<const body_type*>(this->data)),
+		body(reinterpret_cast<body_type*>(this->data)),
 		alleles(new string_type[100]),
 		ID(nullptr),
 		genotypes(nullptr)
@@ -99,7 +99,7 @@ struct BCFEntry{
 		memcpy(this->data, temp, this->pointer);
 		std::swap(temp, this->data);
 		delete [] temp;
-		this->body = reinterpret_cast<const body_type*>(this->data);
+		this->body = reinterpret_cast<body_type*>(this->data);
 
 		if(size > this->limit)
 			this->limit = size;
@@ -246,7 +246,7 @@ public:
 	U32 p_genotypes; // position genotype data begin
 
 	char* data; // hard copy data to buffer, interpret internally
-	const body_type* body; // BCF2 body
+	body_type* body; // BCF2 body
 	string_type* alleles; // pointer to pointer of ref alleles and their lengths
 	char* ID;
 	SBYTE* genotypes;

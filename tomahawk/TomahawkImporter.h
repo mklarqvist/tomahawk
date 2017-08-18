@@ -17,11 +17,12 @@ class TomahawkImporter {
 	typedef Algorithm::TomahawkImportRLE rle_controller_type;
 	typedef TotempoleEntry totempole_entry_type;
 	typedef BCF::BCFReader bcf_reader_type;
+	typedef BCF::BCFEntry bcf_entry_type;
 
 	struct __InternalHelper{
 		__InternalHelper(): contigID(nullptr), prevcontigID(nullptr), previous_position(0){}
-		U32* contigID;			// current contigID
-		U32* prevcontigID;		// previous contigID
+		S32* contigID;			// current contigID
+		S32* prevcontigID;		// previous contigID
 		U32 previous_position;	// current position
 	} sort_order_helper;
 
@@ -38,7 +39,7 @@ private:
 	bool ExtendBCF();
 
 	bool parseVCFLine(line_type& line);
-	bool parseBCFLine(void);
+	bool parseBCFLine(bcf_entry_type& line);
 	bool checkSize(void) const{ return(this->meta_buffer.size() + this->rle_buffer.size() >= this->block_flush_limit); }
 
 private:

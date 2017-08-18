@@ -111,7 +111,7 @@ bool VCFHeader::checkLine(const char* data, const U32 length){
 }
 
 bool VCFHeader::buildContigTable(void){
-	U32* retValue;
+	S32* retValue;
 
 	if(this->contigsHashTable)
 		delete this->contigsHashTable;
@@ -252,7 +252,7 @@ bool VCFHeader::__parseSampleLine(reader& stream){
 	// Parse
 	search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
 	delimiters_found = 0;
-	U32* retValue;
+	S32* retValue;
 	char* found = 0;
 	while(found != &stream[stream.size()]){ // while there are samples in line
 		found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
@@ -292,20 +292,47 @@ bool VCFHeader::__parseSampleLine(const char* const data, U32& offset, const U32
 
 	offset += Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
 	U64 delimiters_found = 0;
+	U32 offset_original = offset;
 
 	while(true){ // while there is samples in line
 		const char* const found = std::strchr(&data[offset], Tomahawk::VCF::Constants::VCF_DELIMITER);
 		//std::cerr << (void*)found << '\t' << (void*)&data[length] << std::endl;
-		if(found == 0 || (*found != Tomahawk::VCF::Constants::VCF_DELIMITER))
+		if(found == 0 || (*found != Tomahawk::VCF::Constants::VCF_DELIMITER)){
+			std::string sampleName(&data[offset], (&data[length - 1] - &data[offset]) - 1); // -2 because offset is +1 and newline is +1
+			//std::cerr << sampleName << std::endl;
 			break;
-
+		}
 		offset += found - &data[offset] + 1;
 		++delimiters_found;
-		//std::cerr <<delimiters_found << '\t' << offset << '\t' << length << std::endl;
 	}
 
-
 	this->buildSampleTable(delimiters_found);
+
+	offset = offset_original;
+	S32* retValue;
+	while(true){ // while there is samples in line
+		const char* const found = std::strchr(&data[offset], Tomahawk::VCF::Constants::VCF_DELIMITER);
+		if(found == 0 || (*found != Tomahawk::VCF::Constants::VCF_DELIMITER)){
+			std::string sampleName(&data[offset], (&data[length - 1] - &data[offset]) - 1); // -2 because offset is +1 and newline is +1
+			if(!this->getSample(sampleName, retValue))
+				this->addSample(sampleName);
+			else {
+				std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated sample name in header..." << std::endl;
+				this->error_bit = VCF_ERROR_LINES;
+			}
+			break;
+		}
+
+
+		std::string sampleName(&data[offset], (found - &data[offset] + 1));
+		if(!this->getSample(sampleName, retValue))
+			this->addSample(sampleName);
+		else {
+			std::cerr << Helpers::timestamp("ERROR", "VCF") << "Duplicated sample name in header..." << std::endl;
+			this->error_bit = VCF_ERROR_LINES;
+		}
+		offset += found - &data[offset] + 1;
+	}
 
 	return true;
 }

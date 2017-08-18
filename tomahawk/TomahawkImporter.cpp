@@ -64,7 +64,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	}
 	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
 
-	U32 prev = totempole.back().contigID;
+	S32 prev = totempole.back().contigID;
 	this->sort_order_helper.previous_position = totempole.back().maxPosition;
 	this->sort_order_helper.prevcontigID = &prev;
 
@@ -109,7 +109,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 }
 
 bool TomahawkImporter::Build(){
-	if(!this->BuildVCF()){
+	if(!this->BuildBCF()){
 		std::cerr << "failed build" << std::endl;
 		return false;
 	}
@@ -123,12 +123,7 @@ bool TomahawkImporter::BuildBCF(void){
 		return false;
 	}
 
-	if(!reader.parseHeader()){
-		std::cerr << "failed to parse header" << std::endl;
-		return false;
-	}
-
-	*this->header_ = reader.header;
+	this->header_ = &reader.header;
 	if(this->header_->samples == 0){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "No samples detected..." << std::endl;
 		return false;
@@ -143,65 +138,27 @@ bool TomahawkImporter::BuildBCF(void){
 	this->rle_controller = new rle_controller_type(this->header_->samples);
 	this->rle_controller->DetermineBitWidth();
 
+	this->writer_.setHeader(reader.header);
+	if(!this->writer_.Open(this->outputPrefix)){
+		std::cerr << "Writer faile" << std::endl;
+		return false;
+	}
+
+	// Get a line
+	bcf_entry_type entry;
+
+	///
 	// Parse lines
-	line_type line(this->header_->size());
-
-	this->reader_.clear();
-	this->writer_.setHeader(*this->header_);
-	if(!this->writer_.Open(this->outputPrefix))
-		return false;
-
-	if(!this->reader_.getLine()){
-		std::cerr << "failed to get line" << std::endl;
-		return false;
-	}
-	// Parse a VCF line
-	if(!line.Parse(&this->reader_[0], this->reader_.size())){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not parse..." << std::endl;
-		return false;
-	}
-
-	this->sort_order_helper.previous_position = line.position;
-	// Try to get contig information from header
-	if(!this->header_->getContig(std::string(line.CHROM, line.lCHROM), this->sort_order_helper.contigID)){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Contig does not exist in header..." << std::endl;
-		return false;
-	}
-	this->sort_order_helper.prevcontigID = this->sort_order_helper.contigID;
-	if(!this->parseVCFLine(line)){
-		std::cerr << "faiaeld parse" << std::endl;
-		return false;
-	}
-
-	// While there are lines
-	while(this->reader_.getLine()){
-		// Parse them
-		if(!this->parseVCFLine(line)){
-			return false;
+	while(reader.nextVariant(entry)){
+		if(!entry.isSimple()){
+			std::cerr << "not simple" << std::endl;
+			entry.reset();
+			continue;
 		}
-	} // end while there are vcf lines
 
-	// This only happens if there are no valid entries in the file
-	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
-		return false;
+		entry.reset();
 	}
 
-	++this->header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush();
-	//		return false;
-
-	this->writer_.WriteFinal();
-
-	if(this->writer_.GetVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
-		return false;
-	}
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
-														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
-														 << " blocks..." << std::endl;
 
 	return true;
 }
@@ -297,6 +254,15 @@ bool TomahawkImporter::BuildVCF(void){
 														 << " blocks..." << std::endl;
 
 	delete [] this->header_;
+
+	return true;
+}
+
+bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
+	if(!line.parse()){
+		std::cerr << "failed to parse line" << std::endl;
+		return false;
+	}
 
 	return true;
 }

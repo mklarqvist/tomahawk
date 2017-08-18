@@ -187,7 +187,7 @@ bool TotempoleReader::BuildHashTables(void){
 	else
 		this->contigsHashTable = new hash_table(this->size() * 2);
 
-	U32* retValue = 0;
+	S32* retValue = 0;
 	for(U32 i = 0; i < this->size(); ++i){
 		if(this->contigsHashTable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, retValue, this->contigs[i].name.size())){
 			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated contig! Impossible!" << std::endl;

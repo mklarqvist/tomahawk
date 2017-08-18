@@ -16,7 +16,7 @@ namespace VCF{
 
 class VCFHeader {
 	typedef VCFHeader self_type;
-	typedef Tomahawk::Hash::HashTable<std::string, U32> hash_table;
+	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef VCFHeaderContig contig_type;
 	typedef TotempoleReader totempole_type;
 
@@ -54,11 +54,11 @@ public:
 	inline U32 getLines(void) const{ return this->lines.size(); }
 	inline const U64& size(void) const{ return this->samples; }
 
-	inline bool getContig(const std::string& contig, U32*& retValue) const{
+	inline bool getContig(const std::string& contig, S32*& retValue) const{
 		return(this->contigsHashTable->GetItem(&contig[0], &contig, retValue, contig.size()));
 	}
 
-	inline bool getSample(const std::string& sample, U32*& retValue) const{
+	inline bool getSample(const std::string& sample, S32*& retValue) const{
 		return(this->sampleHashTable->GetItem(&sample[0], &sample, retValue, sample.size()));
 	}
 
