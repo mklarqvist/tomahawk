@@ -63,6 +63,7 @@ public:
 	}
 
 	bool parse(reader& stream);
+	bool parse(const char* const data, const U32& length);
 
 private:
 	// These functions are unsafe as they require contigHashTable to be
@@ -84,6 +85,10 @@ private:
 	bool __parseFirstLine(reader& stream);
 	bool __parseHeaderLines(reader& stream);
 	bool __parseSampleLine(reader& stream);
+
+	bool __parseFirstLine(const char* const data, U32& offset);
+	bool __parseHeaderLines(const char* const data, U32& offset);
+	bool __parseSampleLine(const char* const data, U32& offset, const U32& length);
 
 public:
 	VCF_ERROR_TYPE error_bit;				// parse error bit

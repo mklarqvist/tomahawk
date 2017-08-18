@@ -233,12 +233,22 @@ int view(int argc, char** argv){
 	bcfreader.open(input);
 	//exit(1);
 
-	U32 blockID = 0;
+	//U32 blockID = 0;
+	Tomahawk::IO::BCFEntry entry;
 	//for(U32 i = 0; i < 20; ++i){
-		while(bcfreader.nextVariant()){
-			//std::cerr << "failed to get block" << std::endl;
-			//return false;
-			//std::cerr << blockID++ << '\t' << bcfreader.output_buffer.size() << std::endl;
+	//for(U32 i = 0; i < 100; ++i){
+		//bcfreader.nextVariant(entry);
+	while(bcfreader.nextVariant(entry)){
+		//std::cerr << "failed to get block" << std::endl;
+		//return false;
+		//std::cerr << blockID++ << '\t' << bcfreader.output_buffer.size() << std::endl;
+		if(!entry.isSimple()){
+			std::cerr << "not simple" << std::endl;
+			entry.reset();
+			continue;
+		}
+
+		entry.reset();
 		}
 		//std::cerr << std::string(&bcfreader.output_buffer.data[0], bcfreader.output_buffer.size()) << std::endl;
 	//}

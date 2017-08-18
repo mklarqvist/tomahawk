@@ -13,7 +13,17 @@ struct BCFAtomicBase{
 };
 
 #pragma pack(1)
-struct BCFAtomicInteger{
+struct BCFAtomicSBYTE{
+	SBYTE low: 4, high: 4;
+};
+
+#pragma pack(1)
+struct BCFAtomicS16{
+	S16 low: 4, high: 12;
+};
+
+#pragma pack(1)
+struct BCFAtomicS32{
 	S32 low: 4, high: 28;
 };
 
@@ -61,14 +71,17 @@ struct BCFEntry{
 	typedef BCFEntryBody body_type;
 	typedef BCFTypeString string_type;
 	typedef BCFAtomicBase base_type;
-	typedef BCFAtomicInteger base_integer_type;
 
 	BCFEntry(void):
 		pointer(0),
 		limit(262144),
+		l_ID(0),
+		p_genotypes(0),
 		data(new char[this->limit]),
 		body(reinterpret_cast<const body_type*>(this->data)),
-		alleles(new string_type[100])
+		alleles(new string_type[100]),
+		ID(nullptr),
+		genotypes(nullptr)
 	{
 
 	}
@@ -99,63 +112,74 @@ struct BCFEntry{
 	inline const U32& capacity(void) const{ return(this->limit); }
 	U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
 
-	bool parse(void){
-		U32 internal_pos = sizeof(body_type);
+	inline const bool isSimple(void) const{
+		return((this->body->n_allele == 2) && (this->alleles[0].length == 1 && this->alleles[1].length == 1));
+	}
 
+	void __parseID(U32& internal_pos){
 		// Parse ID
 		const base_type& ID_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
 		++internal_pos;
-		const char* ID = &this->data[internal_pos];
-		U32 l_ID = ID_base.high;
+		this->ID = &this->data[internal_pos];
+		this->l_ID = ID_base.high;
 		if(ID_base.high == 0){
 			// has no name
-			l_ID = 0;
+			this->l_ID = 0;
 		} else if(ID_base.high == 15){
 			// next byte is the length array
 			std::cerr << "in array" << std::endl;
-			const base_integer_type& length = *reinterpret_cast<const base_integer_type* const>(&this->data[internal_pos]);
+			const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
 			internal_pos += sizeof(U32);
-			l_ID = length.high;
+			this->l_ID = length.high;
 			assert(length.low == 7);
 		}
 		assert(ID_base.low == 7);
+		internal_pos += this->l_ID;
+	}
 
-		//if(l_ID == 0) std::cerr << '.' << std::endl;
-		//else std::cerr << std::string(ID, l_ID) << std::endl;
-		internal_pos += l_ID;
-
+	void __parseRefAlt(U32& internal_pos){
 		// Parse REF-ALT
 		for(U32 i = 0; i < this->body->n_allele; ++i){
 			const base_type& alelle_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
 			this->alleles[i].length = alelle_base.high;
 			++internal_pos;
-			//std::cerr << i << '/' << this->body->n_allele << '\t' << (int)alelle_base.low << '\t' << (int)alelle_base.high << std::endl;
 
 			if(alelle_base.low == 15){
 				std::cerr << "in array" << std::endl;
 				// next byte is the length array
-				const base_integer_type& length = *reinterpret_cast<const base_integer_type* const>(&this->data[internal_pos]);
+				const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
 				internal_pos += sizeof(U32);
 				this->alleles[i].length = length.high;
 				assert(length.low == 7);
 			}
 			assert(alelle_base.low == 7);
 
-			//std::cerr<< "Length: " << this->alleles[i].length << std::endl;
 			this->alleles[i].data = &this->data[internal_pos];
-			//std::cerr << std::string(this->alleles[i].data, this->alleles[i].length) << std::endl;
 			internal_pos += this->alleles[i].length;
 		}
+	}
 
-		//std::cerr << "n_fmt: " << this->body->n_fmt << std::endl;
+	void __parseGenotypes(void){
+		U32 internal_pos = this->p_genotypes;
+		for(U32 i = 0; i < 32470 * 2; i+=2){
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
+		}
+		assert(internal_pos == this->size());
+	}
+
+	bool parse(void){
+		U32 internal_pos = sizeof(body_type);
+		this->__parseID(internal_pos);
+		this->__parseRefAlt(internal_pos);
+
+//		if(this->l_ID == 0) std::cerr << '.' << std::endl;
+//		else std::cerr << std::string(this->ID, this->l_ID) << std::endl;
 
 		internal_pos = this->body->l_shared + sizeof(U32)*2;
-		const base_type& fmt_key = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
-		//std::cerr << "fmt_key: " << (int)fmt_key.high << '\t' << (int)fmt_key.low << std::endl;
-		++internal_pos;
-
-		const int8_t& fmt_key_value = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
-		//std::cerr << "fmt_key_value: " << (int)fmt_key_value << std::endl;
+		const base_type& fmt_key = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
+		const SBYTE& fmt_key_value = *reinterpret_cast<SBYTE*>(&this->data[internal_pos]);
 
 		switch(fmt_key.low){
 		case(1): case(7): ++internal_pos; break;
@@ -163,39 +187,25 @@ struct BCFEntry{
 		case(3): case(5): internal_pos += 4; break;
 		}
 
-		const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
-		++internal_pos;
-		//std::cerr << "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
+		const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
+		//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
 
-		for(U32 i = 0; i < 32470 * fmt_type.high; i+=fmt_type.high){
-
-			const int8_t& fmt_type_value1 = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
-			++internal_pos;
-			const int8_t& fmt_type_value2 = *reinterpret_cast<int8_t*>(&this->data[internal_pos]);
-			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
-			++internal_pos;
-		}
-		//std::cerr << std::endl;
-		//std::cerr << "Data size: " << this->size() << std::endl;
-		//std::cerr << *this->body << std::endl;
-
-		assert(internal_pos == this->size());
-
+		this->genotypes = &this->data[internal_pos];
+		this->p_genotypes = internal_pos;
 		return true;
 	}
 
-
 public:
-	U32 pointer;
-	U32 limit;
+	U32 pointer; // byte width
+	U32 limit;   // capacity
+	U32 l_ID;
+	U32 p_genotypes; // position genotype data begin
 
 	char* data; // hard copy data to buffer, interpret internally
-	const body_type* body;
-	string_type* alleles;
-
-
-	// pointer to pointer of ref alleles and their lengths
-
+	const body_type* body; // BCF2 body
+	string_type* alleles; // pointer to pointer of ref alleles and their lengths
+	char* ID;
+	SBYTE* genotypes;
 };
 
 class BCFReader{
@@ -343,30 +353,11 @@ public:
 			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 		}
 
-		//std::cerr << this->nextVariant() << std::endl;
-
-		/*
-		//std::cerr << this->header_buffer;
-		//std::cerr << "next" << std::endl;
-		const BCFEntryBody& b = *reinterpret_cast<const BCFEntryBody* const>(&this->output_buffer[this->current_pointer]);
-		std::cerr << b << std::endl;
-		this->current_pointer += sizeof(BCFEntryBody);
-		std::cerr << (int)this->output_buffer[this->current_pointer] << std::endl;
-		const BCFAtomicBase& s = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer]);
-		std::cerr << (int)s.high << '\t' << (int)s.low << std::endl;
-		this->current_pointer += 1;
-		for(U32 i = 0; i < s.high; ++i)
-			std::cerr << i << ' ' << this->output_buffer[this->current_pointer+i] << std::endl;
-		std::cerr << std::endl;
-
-		this->current_pointer+= s.high;
-		const BCFAtomicBase& s2 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer]);
-		std::cerr << "Typed allele1: " << (int)s2.high << '\t' << (int)s2.low << std::endl;
-
-		const BCFAtomicBase& s3 = *reinterpret_cast<const BCFAtomicBase* const>(&this->output_buffer[this->current_pointer+2]);
-		std::cerr << "Typed allele1: " << (int)s3.high << '\t' << (int)s3.low << std::endl;
-		this->current_pointer += 3;
-		*/
+		VCF::VCFHeader header;
+		if(!header.parse(&this->header_buffer[0], this->header_buffer.size())){
+			std::cerr << "failed to parse header" << std::endl;
+			return false;
+		}
 
 		return true;
 	}

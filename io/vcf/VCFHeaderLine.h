@@ -59,7 +59,6 @@ public:
 			return false;
 		}
 
-
 		U32 matchPos = match - this->data_ + 1;
 		if(this->data_[matchPos] == '<'){
 			if(this->data_[this->size_] != '>'){
