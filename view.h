@@ -229,12 +229,12 @@ int view(int argc, char** argv){
 	}
 
 
-	Tomahawk::IO::BCFReader bcfreader;
+	Tomahawk::BCF::BCFReader bcfreader;
 	bcfreader.open(input);
 	//exit(1);
 
 	//U32 blockID = 0;
-	Tomahawk::IO::BCFEntry entry;
+	Tomahawk::BCF::BCFEntry entry;
 	//for(U32 i = 0; i < 20; ++i){
 	//for(U32 i = 0; i < 100; ++i){
 		//bcfreader.nextVariant(entry);

@@ -1,5 +1,5 @@
+#include "tomahawk/TomahawkImporter.h"
 #include "utility.h"
-#include "io/vcf/VCFParser.h"
 
 void import_usage(void){
 	programMessage();
@@ -84,7 +84,7 @@ int import(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling import..." << std::endl;
 	}
 
-	Tomahawk::VCF::VCFParser importer(input, output);
+	Tomahawk::TomahawkImporter importer(input, output);
 	if(!extension_mode){
 		if(!importer.Build()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;

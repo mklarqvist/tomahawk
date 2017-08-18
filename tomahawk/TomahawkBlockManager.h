@@ -257,6 +257,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 	// Todo: put all variants in same buffer
 	controller.reset();
 	TomahawkBlock<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkBlock<T, Support::TomahawkRunPacked<T>>*>(&controller);
+	//std::cerr << samples << '\t' << c.support->variants << '\t' << ceil((double)samples/4) << std::endl;
 
 	this->width = c.support->variants;
 	//const BYTE overlow_uneven_refs = this->width % 8;

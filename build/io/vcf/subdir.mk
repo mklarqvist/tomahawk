@@ -4,16 +4,13 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../io/vcf/VCFHeader.cpp \
-../io/vcf/VCFParser.cpp 
+../io/vcf/VCFHeader.cpp 
 
 OBJS += \
-./io/vcf/VCFHeader.o \
-./io/vcf/VCFParser.o 
+./io/vcf/VCFHeader.o 
 
 CPP_DEPS += \
-./io/vcf/VCFHeader.d \
-./io/vcf/VCFParser.d 
+./io/vcf/VCFHeader.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

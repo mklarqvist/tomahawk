@@ -1,16 +1,16 @@
+#include "TomahawkImporter.h"
+
 #include <string>
 
-#include "../reader.h"
-#include "VCFParser.h"
-#include "../../tomahawk/TomahawkImportWriter.h"
-#include "../../tomahawk/TomahawkReader.h"
+#include "../io/reader.h"
+#include "TomahawkImportWriter.h"
+#include "TomahawkReader.h"
 
 namespace Tomahawk {
-namespace VCF{
 
 #define DEFAULT_MISSINGNESS_CUTOFF 0.2
 
-VCFParser::VCFParser(std::string inputFile, std::string outputPrefix) :
+TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPrefix) :
 	block_flush_limit(65536),
 	inputFile(inputFile),
 	outputPrefix(outputPrefix),
@@ -18,11 +18,11 @@ VCFParser::VCFParser(std::string inputFile, std::string outputPrefix) :
 	rle_controller(nullptr)
 {}
 
-VCFParser::~VCFParser(){
+TomahawkImporter::~TomahawkImporter(){
 	delete this->rle_controller;
 }
 
-bool VCFParser::Extend(std::string extendFile){
+bool TomahawkImporter::Extend(std::string extendFile){
 	if(this->inputFile.size() == 0){
 		std::cerr << Helpers::timestamp("ERROR","VCF") << "No input file provided..." << std::endl;
 		return false;
@@ -107,7 +107,7 @@ bool VCFParser::Extend(std::string extendFile){
 	return true;
 }
 
-bool VCFParser::Build(){
+bool TomahawkImporter::Build(){
 	if(!this->reader_.open()){
 		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to open file..." << std::endl;
 		return false;
@@ -199,7 +199,7 @@ bool VCFParser::Build(){
 	return true;
 }
 
-bool VCFParser::parseLine(line_type& line){
+bool TomahawkImporter::parseLine(line_type& line){
 	// Parse a VCF line
 	if(!line.Parse(&this->reader_[0], this->reader_.size())){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not parse..." << std::endl;
@@ -278,5 +278,4 @@ bool VCFParser::parseLine(line_type& line){
 	return true;
 }
 
-}
 } /* namespace Tomahawk */

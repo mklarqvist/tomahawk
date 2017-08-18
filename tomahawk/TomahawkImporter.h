@@ -1,18 +1,17 @@
 #ifndef VCFPARSER_H_
 #define VCFPARSER_H_
 
-#include "VCFHeader.h"
-#include "../../tomahawk/TomahawkImportWriter.h"
+#include "../io/vcf/VCFHeader.h"
+#include "TomahawkImportWriter.h"
 
 namespace Tomahawk {
-namespace VCF{
 
-class VCFParser {
-	typedef VCFParser self_type;
+class TomahawkImporter {
+	typedef TomahawkImporter self_type;
 	typedef reader reader_type;
-	typedef VCFHeader header_type;
+	typedef VCF::VCFHeader header_type;
 	typedef TomahawkImportWriter writer_type;
-	typedef VCFLine line_type;
+	typedef VCF::VCFLine line_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef Algorithm::TomahawkImportRLE rle_controller_type;
 	typedef TotempoleEntry totempole_entry_type;
@@ -25,8 +24,8 @@ class VCFParser {
 	} sort_order_helper;
 
 public:
-	VCFParser(std::string inputFile, std::string outputPrefix);
-	~VCFParser();
+	TomahawkImporter(std::string inputFile, std::string outputPrefix);
+	~TomahawkImporter();
 	bool Build();
 	bool Extend(std::string extendFile);
 
@@ -49,7 +48,6 @@ private:
 };
 
 
-} /* namespace VCF */
 } /* namespace Tomahawk */
 
 #endif /* VCFPARSER_H_ */
