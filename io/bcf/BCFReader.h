@@ -174,9 +174,10 @@ struct BCFEntry{
 	void __parseGenotypes(void){
 		U32 internal_pos = this->p_genotypes;
 		U32 length = 1;
+#if BCF_ASSERT == 1
 		U32 sumLength = 0;
+#endif
 		U32 runs = 0;
-
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		BYTE packed = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
@@ -186,30 +187,20 @@ struct BCFEntry{
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 			const BYTE packed_internal = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
 			if(packed != packed_internal){
-				//std::cerr << "did not match: " << length << std::endl;
-				//if(length > 1000)
-				//	std::cerr << length << std::endl;
-
+#if BCF_ASSERT == 1
 				sumLength += length;
+#endif
 				length = 1;
 				packed = packed_internal;
 				++runs;
 				continue;
 			}
 			++length;
-
-			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
 		}
-
-		// final
-		//if(length > 1000)
-		//	std::cerr << length << std::endl;
 		++runs;
+#if BCF_ASSERT == 1
 		sumLength += length;
 		assert(sumLength == 32470);
-		//std::cerr << "#runs: " << runs << std::endl;
-
-#if BCF_ASSERT == 1
 		assert(internal_pos == this->size());
 #endif
 	}
@@ -238,7 +229,9 @@ struct BCFEntry{
 		this->genotypes = &this->data[internal_pos];
 		this->p_genotypes = internal_pos;
 
+		// Todo: move out
 		this->__parseGenotypes();
+		// Todo: move to RLE parser
 
 		return true;
 	}
