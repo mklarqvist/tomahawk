@@ -1,6 +1,8 @@
 #ifndef BCFREADER_H_
 #define BCFREADER_H_
 
+#define BCF_ASSERT 1
+
 #include "../BasicBuffer.h"
 #include "../BGZFController.h"
 
@@ -131,9 +133,13 @@ struct BCFEntry{
 			const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
 			internal_pos += sizeof(U32);
 			this->l_ID = length.high;
+#if BCF_ASSERT == 1
 			assert(length.low == 7);
+#endif
 		}
+#if BCF_ASSERT == 1
 		assert(ID_base.low == 7);
+#endif
 		internal_pos += this->l_ID;
 	}
 
@@ -150,9 +156,13 @@ struct BCFEntry{
 				const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
 				internal_pos += sizeof(U32);
 				this->alleles[i].length = length.high;
+#if BCF_ASSERT == 1
 				assert(length.low == 7);
+#endif
 			}
+#if BCF_ASSERT == 1
 			assert(alelle_base.low == 7);
+#endif
 
 			this->alleles[i].data = &this->data[internal_pos];
 			internal_pos += this->alleles[i].length;
@@ -166,7 +176,10 @@ struct BCFEntry{
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 			//std::cerr << (int)((fmt_type_value1>>1) - 1) << ((fmt_type_value2 & 1) == 1 ? '|' : '/') << (int)((fmt_type_value2>>1) - 1) << '\t';
 		}
+
+#if BCF_ASSERT == 1
 		assert(internal_pos == this->size());
+#endif
 	}
 
 	bool parse(void){
