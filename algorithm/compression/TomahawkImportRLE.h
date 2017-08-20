@@ -241,8 +241,10 @@ public:
 			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
 			if(packed != packed_internal){
 				__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-				__dump ^= (length & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+				__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 				runs += __dump;
+
+				//std::cerr << length << '|' << (int)packed << std::endl;
 
 				this->helper_[packed] += length;
 				this->helper_.countsAlleles[packed >> 2] += length;
@@ -257,7 +259,7 @@ public:
 			++length;
 		}
 		__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-		__dump ^= (length & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+		__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 		runs += __dump;
 		++n_runs;
 
