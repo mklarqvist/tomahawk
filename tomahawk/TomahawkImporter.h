@@ -20,10 +20,10 @@ class TomahawkImporter {
 	typedef BCF::BCFEntry bcf_entry_type;
 
 	struct __InternalHelper{
-		__InternalHelper(): contigID(nullptr), prevcontigID(nullptr), previous_position(0){}
+		__InternalHelper(): contigID(nullptr), prevcontigID(-1), previous_position(-1){}
 		S32* contigID;			// current contigID
-		S32* prevcontigID;		// previous contigID
-		U32 previous_position;	// current position
+		S32 prevcontigID;		// previous contigID
+		S32 previous_position;	// current position
 	} sort_order_helper;
 
 public:

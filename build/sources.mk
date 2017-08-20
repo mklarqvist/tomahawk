@@ -27,6 +27,7 @@ algorithm/compression \
 . \
 io \
 io/TomahawkOutput \
+io/bcf \
 io/vcf \
 math \
 third_party \

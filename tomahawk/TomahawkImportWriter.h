@@ -282,6 +282,17 @@ public:
 		this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_);
 	}
 
+	inline void operator+=(const BCF::BCFEntry& line){
+		if(this->totempole_entry_.minPosition == 0)
+			this->totempole_entry_.minPosition = line.body->POS + 1;
+
+		this->totempole_entry_.maxPosition = line.body->POS + 1;
+		++this->totempole_entry_;
+		this->buffer_meta_ += (U32)line.body->POS + 1;
+		this->buffer_meta_ += line.ref_alt;
+		this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_);
+	}
+
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
 		this->totempole_entry_.reset();
 		this->totempole_entry_.contigID = contig;

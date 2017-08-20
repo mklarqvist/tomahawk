@@ -14,6 +14,7 @@ RM := rm
 -include third_party/subdir.mk
 -include math/subdir.mk
 -include io/vcf/subdir.mk
+-include io/bcf/subdir.mk
 -include io/TomahawkOutput/subdir.mk
 -include io/subdir.mk
 -include algorithm/compression/subdir.mk

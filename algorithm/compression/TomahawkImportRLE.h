@@ -5,6 +5,7 @@
 #include <bitset>
 
 #include "../../math/FisherTest.h"
+#include "../../io/bcf/BCFReader.h"
 #include "RunLengthEncoding.h"
 
 namespace Tomahawk{
@@ -149,6 +150,8 @@ struct TomahawkImportRLEHelper{
 class TomahawkImportRLE{
 	typedef TomahawkImportRLE self_type;
 	typedef void (Tomahawk::Algorithm::TomahawkImportRLE::*rleFunction)(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+	typedef void (Tomahawk::Algorithm::TomahawkImportRLE::*bcfFunction)(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+
 	typedef TomahawkImportRLEHelper helper_type;
 
 public:
@@ -156,6 +159,7 @@ public:
 		n_samples(samples),
 		encode_(nullptr),
 		encodeComplex_(nullptr),
+		encodeBCF(nullptr),
 		bit_width_(0),
 		shiftSize_(0),
 		helper_(samples),
@@ -172,6 +176,7 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<BYTE>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<BYTE>;
+			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<BYTE>;
 			this->shiftSize_ = sizeof(BYTE)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(BYTE);
 		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
@@ -180,6 +185,7 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U16>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U16>;
+			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U16>;
 			this->shiftSize_ = sizeof(U16)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U16);
 		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
@@ -189,6 +195,7 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U32>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U32>;
+			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U32>;
 			this->shiftSize_ = sizeof(U32)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U32);
 		} else {
@@ -199,6 +206,7 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
 			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U64>;
 			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U64>;
+			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U64>;
 			this->shiftSize_ = sizeof(U64)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U64);
 		}
@@ -211,6 +219,71 @@ public:
 			(*this.*encodeComplex_)(line, meta, runs);
 	}
 
+	void RunLengthEncode(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+		return((*this.*encodeBCF)(line, meta, runs));
+	}
+
+	template <class T>
+	void RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+		U32 internal_pos = line.p_genotypes;
+		T length = 1;
+		U64 sumLength = 0;
+		T __dump = 0;
+		T n_runs = 0;
+
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
+
+		for(U32 i = 2; i < this->n_samples * 2; i+=2){
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
+			if(packed != packed_internal){
+				__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
+				__dump ^= (length & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+				runs += __dump;
+
+				this->helper_[packed] += length;
+				this->helper_.countsAlleles[packed >> 2] += length;
+				this->helper_.countsAlleles[packed & 3]  += length;
+
+				sumLength += length;
+				length = 1;
+				packed = packed_internal;
+				++n_runs;
+				continue;
+			}
+			++length;
+		}
+		__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
+		__dump ^= (length & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+		runs += __dump;
+		++n_runs;
+
+		this->helper_[packed] += length;
+		this->helper_.countsAlleles[packed >> 2] += length;
+		this->helper_.countsAlleles[packed & 3]  += length;
+
+		sumLength += length;
+		assert(sumLength == this->n_samples);
+		assert(internal_pos == line.size());
+
+		this->helper_.calculateMGF();
+		this->helper_.calculateHardyWeinberg();
+
+		// Position
+		U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
+		position <<= 2;
+		position |= this->helper_.phased << 1;
+		position |= this->helper_.missingValues << 0;
+		meta += this->helper_.MGF;
+		meta += this->helper_.HWE_P;
+		meta += n_runs;
+
+		this->helper_.reset();
+	}
+
 	inline const BYTE& getBitWidth(void) const{ return this->bit_width_; }
 
 private:
@@ -221,6 +294,7 @@ private:
 	U64 n_samples;
 	rleFunction encode_;			// encoding function
 	rleFunction encodeComplex_;		// encoding function
+	bcfFunction encodeBCF;
 	BYTE bit_width_;
 	BYTE shiftSize_;				// bit shift size
 	helper_type helper_;
