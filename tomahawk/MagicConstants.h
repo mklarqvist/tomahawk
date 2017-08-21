@@ -47,10 +47,11 @@ const BYTE REF_ALT_C = 3;
 const BYTE REF_ALT_N = 4;
 
 // Upper bounds
-const U32 UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
-const U32 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
-const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
-const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1);
+// change to constants
+const BYTE UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 00001111 = 2^4
+const U16 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)12 = 2^12
+const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)28 = 2^28
+const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)60 = 2^60
 
 // EOF
 //const char* const TOMAHAWK_EOF_MARKER = "We will be known forever by the tracks we leave" - Santee Sioux Native Americans from Dakota;

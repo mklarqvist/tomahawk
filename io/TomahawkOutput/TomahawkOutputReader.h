@@ -67,7 +67,7 @@ public:
 		else if(type == 1)
 			this->writer_output_type = WRITER_TYPE::natural;
 		else {
-			std::cerr << "unknown writer type: " << type << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR","READER") << "Unknown writer type: " << type << std::endl;
 			return false;
 		}
 		return true;

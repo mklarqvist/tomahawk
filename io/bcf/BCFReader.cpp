@@ -1,8 +1,8 @@
-#include "../vcf/VCFHeader.h"
-#include "BCFReader.h"
-
 #ifndef IO_BCF_BCFREADER_CPP_
 #define IO_BCF_BCFREADER_CPP_
+
+#include "../vcf/VCFHeader.h"
+#include "BCFReader.h"
 
 namespace Tomahawk{
 namespace BCF{
@@ -70,7 +70,7 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 		const U32 partial = this->output_buffer.size() - this->current_pointer;
 		entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
 		if(!this->nextBlock()){
-			std::cerr << "failed to get next block" << std::endl;
+			//std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block" << std::endl;
 			return false;
 		}
 
@@ -87,7 +87,7 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 			entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
 			remainder -= this->output_buffer.size() - this->current_pointer;
 			if(!this->nextBlock()){
-				std::cerr << "failed to get next block" << std::endl;
+				//std::cerr << "failed to get next block" << std::endl;
 				return false;
 			}
 		} else {
@@ -107,13 +107,12 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 
 bool BCFReader::parseHeader(void){
 	if(this->output_buffer.size() == 0){
-		std::cerr << "no buffer" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "No buffer!" << std::endl;
 		return false;
 	}
 
 	if(strncmp(&this->output_buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
-		std::cerr << (int)this->output_buffer[3] << '\t' << (int)this->output_buffer[4] << std::endl;
-		std::cerr << "failed to validate" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to validate MAGIC" << std::endl;
 		return false;
 	}
 
@@ -131,7 +130,7 @@ bool BCFReader::parseHeader(void){
 	//U32 p = 0;
 	while(this->nextBlock()){
 		if(head_read + this->output_buffer.size() >= l_text){
-			std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
+			//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
 			this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
 			this->current_pointer = l_text - head_read;
 			break;
@@ -142,7 +141,7 @@ bool BCFReader::parseHeader(void){
 
 
 	if(!this->header.parse(&this->header_buffer[0], this->header_buffer.size())){
-		std::cerr << "failed to parse header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to parse header!" << std::endl;
 		return false;
 	}
 
@@ -165,12 +164,12 @@ bool BCFReader::open(const std::string input){
 	}
 
 	if(!this->nextBlock()){
-		std::cerr << "failed ot get first block" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed ot get first block!" << std::endl;
 		return false;
 	}
 
 	if(!this->parseHeader()){
-		std::cerr << "failed to parse bcf header" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to parse header!" << std::endl;
 		return false;
 	}
 
@@ -179,7 +178,5 @@ bool BCFReader::open(const std::string input){
 
 }
 }
-
-
 
 #endif /* IO_BCF_BCFREADER_CPP_ */

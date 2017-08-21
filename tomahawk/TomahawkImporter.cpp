@@ -21,6 +21,7 @@ TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPref
 
 TomahawkImporter::~TomahawkImporter(){
 	delete this->rle_controller;
+	// do not delete header: it might be a borrowed pointer
 }
 
 bool TomahawkImporter::Extend(std::string extendFile){
@@ -46,7 +47,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	}
 
 	const TotempoleReader& totempole = tReader.getTotempole();
-	*this->header_ = totempole;
+	*this->header_ = totempole; // Convert data in totempole to VCF header
 
 	// Parse lines
 	line_type line(totempole.getHeader().samples);
@@ -290,7 +291,7 @@ bool TomahawkImporter::BuildVCF(void){
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 
-	delete [] this->header_;
+	delete this->header_;
 
 	return true;
 }

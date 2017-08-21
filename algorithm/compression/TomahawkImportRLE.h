@@ -174,18 +174,18 @@ public:
 		if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
-			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<BYTE>;
-			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<BYTE>;
-			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<BYTE>;
+			this->encode_ = &self_type::RunLengthEncodeSimple<BYTE>;
+			this->encodeComplex_ = &self_type::RunLengthEncodeComplex<BYTE>;
+			this->encodeBCF = &self_type::RunLengthEncodeBCF<BYTE>;
 			this->shiftSize_ = sizeof(BYTE)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(BYTE);
 		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
-			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U16>;
-			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U16>;
-			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U16>;
+			this->encode_ = &self_type::RunLengthEncodeSimple<U16>;
+			this->encodeComplex_ = &self_type::RunLengthEncodeComplex<U16>;
+			this->encodeBCF = &self_type::RunLengthEncodeBCF<U16>;
 			this->shiftSize_ = sizeof(U16)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U16);
 		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
@@ -193,9 +193,9 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
-			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U32>;
-			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U32>;
-			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U32>;
+			this->encode_ = &self_type::RunLengthEncodeSimple<U32>;
+			this->encodeComplex_ = &self_type::RunLengthEncodeComplex<U32>;
+			this->encodeBCF = &self_type::RunLengthEncodeBCF<U32>;
 			this->shiftSize_ = sizeof(U32)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U32);
 		} else {
@@ -204,9 +204,9 @@ public:
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
-			this->encode_ = &TomahawkImportRLE::RunLengthEncodeSimple<U64>;
-			this->encodeComplex_ = &TomahawkImportRLE::RunLengthEncodeComplex<U64>;
-			this->encodeBCF = &TomahawkImportRLE::RunLengthEncodeBCF<U64>;
+			this->encode_ = &self_type::RunLengthEncodeSimple<U64>;
+			this->encodeComplex_ = &self_type::RunLengthEncodeComplex<U64>;
+			this->encodeBCF = &self_type::RunLengthEncodeBCF<U64>;
 			this->shiftSize_ = sizeof(U64)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width_ = sizeof(U64);
 		}
@@ -219,7 +219,7 @@ public:
 			(*this.*encodeComplex_)(line, meta, runs);
 	}
 
-	void RunLengthEncode(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+	inline void RunLengthEncode(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
 		return((*this.*encodeBCF)(line, meta, runs));
 	}
 
