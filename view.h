@@ -228,34 +228,6 @@ int view(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
 	}
 
-
-	Tomahawk::BCF::BCFReader bcfreader;
-	bcfreader.open(input);
-	//exit(1);
-
-	//U32 blockID = 0;
-	Tomahawk::BCF::BCFEntry entry;
-	//for(U32 i = 0; i < 20; ++i){
-	//for(U32 i = 0; i < 100; ++i){
-		//bcfreader.nextVariant(entry);
-	while(bcfreader.nextVariant(entry)){
-		//std::cerr << "failed to get block" << std::endl;
-		//return false;
-		//std::cerr << blockID++ << '\t' << bcfreader.output_buffer.size() << std::endl;
-		if(!entry.isSimple()){
-			std::cerr << "not simple" << std::endl;
-			entry.reset();
-			continue;
-		}
-
-		entry.reset();
-		}
-		//std::cerr << std::string(&bcfreader.output_buffer.data[0], bcfreader.output_buffer.size()) << std::endl;
-	//}
-
-	exit(1);
-
-
 	// Todo: move out
 	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
 	std::string& end = inputFile_parts[inputFile_parts.size() - 1];
