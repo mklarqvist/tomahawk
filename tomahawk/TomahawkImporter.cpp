@@ -113,7 +113,7 @@ bool TomahawkImporter::Build(){
 	// else check vcf
 
 	if(!this->BuildBCF()){
-		std::cerr << "failed build" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
 		return false;
 	}
 	return true;
@@ -122,18 +122,18 @@ bool TomahawkImporter::Build(){
 bool TomahawkImporter::BuildBCF(void){
 	bcf_reader_type reader;
 	if(!reader.open(this->inputFile)){
-		std::cerr << "failed to open" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "BCF")  << "Failed to open BCF file..." << std::endl;
 		return false;
 	}
 
 	this->header_ = &reader.header;
 	if(this->header_->samples == 0){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "No samples detected..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "BCF") << "No samples detected in header..." << std::endl;
 		return false;
 	}
 
 	if(this->header_->samples == 1){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
 		return false;
 	}
 
@@ -143,14 +143,14 @@ bool TomahawkImporter::BuildBCF(void){
 
 	this->writer_.setHeader(reader.header);
 	if(!this->writer_.Open(this->outputPrefix)){
-		std::cerr << "Writer faile" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Failed to open writer..." << std::endl;
 		return false;
 	}
 
 	// Get a line
 	bcf_entry_type entry;
 	if(!reader.nextVariant(entry)){
-		std::cerr << "failed to get first" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to get first variant..." << std::endl;
 		return false;
 	}
 
@@ -159,7 +159,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.contigID = &contigID;
 	this->sort_order_helper.prevcontigID = *this->sort_order_helper.contigID;
 	if(!this->parseBCFLine(entry)){
-		std::cerr << "failed parse line" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
 		return false;
 	}
 	entry.reset();
@@ -168,7 +168,7 @@ bool TomahawkImporter::BuildBCF(void){
 	// Parse lines
 	while(reader.nextVariant(entry)){
 		if(!this->parseBCFLine(entry)){
-			std::cerr << "failed parse line" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
 			return false;
 		}
 

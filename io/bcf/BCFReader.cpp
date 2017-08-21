@@ -121,22 +121,23 @@ bool BCFReader::parseHeader(void){
 
 	if(l_text - 5 < this->output_buffer.size()){
 		this->header_buffer.Add(&this->output_buffer[5], l_text);
-		return true;
-	}
+		this->current_pointer = l_text;
+		std::cerr << "data smaller than next block" << std::endl;
+	} else {
+		U32 head_read = this->output_buffer.size() - 5;
+		this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
 
-	U32 head_read = this->output_buffer.size() - 5;
-	this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
-
-	//U32 p = 0;
-	while(this->nextBlock()){
-		if(head_read + this->output_buffer.size() >= l_text){
-			//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
-			this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
-			this->current_pointer = l_text - head_read;
-			break;
+		//U32 p = 0;
+		while(this->nextBlock()){
+			if(head_read + this->output_buffer.size() >= l_text){
+				//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
+				this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
+				this->current_pointer = l_text - head_read;
+				break;
+			}
+			head_read += this->output_buffer.size();
+			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 		}
-		head_read += this->output_buffer.size();
-		this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 	}
 
 
