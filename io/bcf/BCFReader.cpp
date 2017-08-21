@@ -66,6 +66,11 @@ bool BCFReader::nextBlock(void){
 }
 
 bool BCFReader::nextVariant(BCFEntry& entry){
+	if(this->current_pointer == this->output_buffer.size()){
+		if(!this->nextBlock())
+			return false;
+	}
+
 	if(this->current_pointer + 8 > this->output_buffer.size()){
 		const U32 partial = this->output_buffer.size() - this->current_pointer;
 		entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);

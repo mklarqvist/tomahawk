@@ -46,18 +46,21 @@ public:
 	void __run(void){
 		U32 i = 0;
 
-		std::cerr << Helpers::timestamp("PROGRESS") << "Time elapsed\tVariants\tGenotypes\tOutput\tProgress" << std::endl;
+		std::cerr << Helpers::timestamp("PROGRESS") << "Time elapsed\tVariants\tGenotypes\tOutput\tProgress\tEst. Time left" << std::endl;
 		while(this->Run){
 			if(this->Detailed)
 				this->GetElapsedTime();
 
 			++i;
 			if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
+				const double ComparisonsPerSecond = (double)this->counter/this->timer.Elapsed().count();
+
 				std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedPretty() << "\t"
 						<< Helpers::ToPrettyString(this->counter) << "\t"
 						<< Helpers::ToPrettyString(this->counter*this->samples) << "\t"
-						<< Helpers::ToPrettyString(this->outputCount) << '\t' <<
-						(double)this->counter.load()/this->totalComparisons*100 << '%' << std::endl;
+						<< Helpers::ToPrettyString(this->outputCount) << '\t'
+						<< (double)this->counter.load()/this->totalComparisons*100 << '%' << '\t'
+						<< Helpers::secondsToTimestring(this->totalComparisons/ComparisonsPerSecond) << std::endl;
 				i = 0;
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(119));

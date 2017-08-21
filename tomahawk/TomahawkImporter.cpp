@@ -354,6 +354,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			if(!SILENT)
 				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
+			this->sort_order_helper.previous_included = false;
 			goto next;
 		}
 

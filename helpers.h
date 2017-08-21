@@ -89,6 +89,21 @@ std::string ToPrettyString(const std::vector<T>& data){
 bool matchPositionalStringTWO(const std::string& param);
 bool parsePositionalStringTWO(const std::string& param);
 
+static inline std::string secondsToTimestring(const double& value){
+	U32 internalVal = value;
+	std::string retVal;
+	const U32 hours = internalVal / 3600;
+	if(hours > 0) retVal += std::to_string(hours) + "h";
+	internalVal %= 3600;
+	const U32 min = internalVal / 60;
+	if(min > 0) retVal += std::to_string(min) + "m";
+	internalVal %= 60;
+	const U32 sec = internalVal;
+	retVal += std::to_string(sec) + "s";
+
+	return(retVal);
+}
+
 
 }
 }
