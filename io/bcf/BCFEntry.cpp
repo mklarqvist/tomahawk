@@ -46,19 +46,23 @@ void BCFEntry::add(const char* const data, const U32 length){
 
 void BCFEntry::__parseID(U32& internal_pos){
 	// Parse ID
-	const base_type& ID_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos]);
-	++internal_pos;
+	const base_type& ID_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
 	this->ID = &this->data[internal_pos];
 	this->l_ID = ID_base.high;
-	if(ID_base.high == 0){
-		// has no name
+	if(ID_base.high == 0){ // has no name
 		this->l_ID = 0;
 	} else if(ID_base.high == 15){
 		// next byte is the length array
-		std::cerr << "in array" << std::endl;
-		const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
-		internal_pos += sizeof(U32);
-		this->l_ID = length.high;
+		const base_type& length = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
+
+		S32 finalLength = 0;
+		switch(length.low){
+		case(1): finalLength = *reinterpret_cast<const SBYTE* const>(&this->data[internal_pos++]); break;
+		case(2): finalLength = *reinterpret_cast<const S16* const>(&this->data[internal_pos+=2]); break;
+		case(3): finalLength = *reinterpret_cast<const S32* const>(&this->data[internal_pos+=4]); break;
+		}
+		this->l_ID = finalLength;
+		this->ID = &this->data[internal_pos];
 #if BCF_ASSERT == 1
 		assert(length.low == 7);
 #endif
@@ -78,6 +82,8 @@ void BCFEntry::__parseRefAlt(U32& internal_pos){
 
 		if(alelle_base.low == 15){
 			std::cerr << "in array" << std::endl;
+			this->alleles[i].length = 100; // do not care, not biallelic
+			continue;
 			// next byte is the length array
 			const BCFAtomicS32& length = *reinterpret_cast<const BCFAtomicS32* const>(&this->data[internal_pos]);
 			internal_pos += sizeof(U32);
@@ -123,6 +129,8 @@ bool BCFEntry::parse(void){
 	// Todo: move out
 	//this->__parseGenotypes<U32>();
 	// Todo: move to RLE parser
+
+	//std::cerr << "is simple: " << this->isSimple() << std::endl;
 
 	return true;
 }

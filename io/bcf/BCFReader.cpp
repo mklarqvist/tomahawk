@@ -70,7 +70,7 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 		const U32 partial = this->output_buffer.size() - this->current_pointer;
 		entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
 		if(!this->nextBlock()){
-			//std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block in partial" << std::endl;
 			return false;
 		}
 
@@ -121,8 +121,7 @@ bool BCFReader::parseHeader(void){
 
 	if(l_text - 5 < this->output_buffer.size()){
 		this->header_buffer.Add(&this->output_buffer[5], l_text);
-		this->current_pointer = l_text;
-		std::cerr << "data smaller than next block" << std::endl;
+		this->current_pointer = l_text + 5;
 	} else {
 		U32 head_read = this->output_buffer.size() - 5;
 		this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
@@ -139,7 +138,6 @@ bool BCFReader::parseHeader(void){
 			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
 		}
 	}
-
 
 	if(!this->header.parse(&this->header_buffer[0], this->header_buffer.size())){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to parse header!" << std::endl;

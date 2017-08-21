@@ -180,21 +180,14 @@ public:
 			exit(1);
 		}
 
-		std::cerr << "before magic" << std::endl;
-
 		this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 		this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
-
-		std::cerr << "after magic" << std::endl;
-		std::cerr << this->vcf_header_->samples << std::endl;
 
 		const U64& samples = this->vcf_header_->samples;
 		Totempole::TotempoleHeader h(samples);
 		this->streamTotempole << h;
 		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 		this->streamTomahawk << *hB;
-
-		std::cerr << "after header" << std::endl;
 
 		// Write out dummy variable for IO offset
 		U32 nothing = 0; // Dummy variable
@@ -204,8 +197,6 @@ public:
 		// Write the number of contigs
 		const U32 n_contigs = this->vcf_header_->contigs.size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
-
-		std::cerr << "afte contigs base" << std::endl;
 
 		// Write contig data to Totempole
 		// length | n_char | chars[0 .. n_char - 1]
@@ -217,9 +208,6 @@ public:
 			this->streamTotempole << contig;
 		}
 
-		std::cerr << "after all contigs " << std::endl;
-		std::cerr << this->vcf_header_->sampleNames.size() << '/' << samples << std::endl;
-
 		// Write sample names
 		// n_char | chars[0..n_char - 1]
 		for(U32 i = 0; i < samples; ++i){
@@ -227,8 +215,6 @@ public:
 			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
 			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 		}
-
-		std::cerr << "after sample names" << std::endl;
 
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position
 		this->streamTotempole.seekp(posOffset); // seek to previous position
