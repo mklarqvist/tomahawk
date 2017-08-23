@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "view.h"
 #include "sort.h"
 #include "index.h"
+#include "concat.h"
 
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){
@@ -56,8 +57,12 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "sort", 4) == 0){
 		return(sort(argc, argv));
+
 	} else if(strncmp(&argv[1][0], "index", 5) == 0){
 		return(index(argc, argv));
+
+	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
+		return(concat(argc, argv));
 
 	} else {
 		programMessage();

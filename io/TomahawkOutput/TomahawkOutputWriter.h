@@ -12,6 +12,7 @@ class TomahawkOutputWriterInterface {
 	typedef GenericWriterInterace stream_type;
 	typedef IO::WriterStandardOut cout_type;
 	typedef IO::WriterFile file_type;
+	typedef IO::BasicBuffer buffer_type;
 
 protected:
 	typedef TomahawkOutputEntry entry_type;
@@ -28,9 +29,8 @@ public:
 
 	bool open(void){
 		this->stream = new cout_type();
-		if(this->stream->open()){
+		if(!this->stream->open())
 			return false;
-		}
 
 		return true;
 	}
@@ -41,9 +41,8 @@ public:
 
 		this->outFile = output;
 		this->stream = new file_type();
-		if(this->stream->open(output)){
+		if(!this->stream->open(output))
 			return false;
-		}
 
 		return true;
 	}
@@ -52,8 +51,11 @@ public:
 	virtual inline bool close(void){ this->stream->close(); return true; }
 	virtual void operator<<(const entry_type* const entryentry) =0;
 	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
+	virtual inline void write(buffer_type& buffer){ this->stream->write(&buffer.data[0], buffer.size()); }
+	inline stream_type* getStream(void){ return(this->stream); }
 
-	template<class T> void write(const T& data){
+	template<class T>
+	void write(const T& data){
 		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << data;
 	}
 
@@ -110,6 +112,12 @@ public:
 			this->controller.Clear();
 			this->buffer.reset();
 		}
+	}
+
+	inline void write(buffer_type& buffer){
+		this->controller.Deflate(buffer);
+		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+		this->controller.Clear();
 	}
 
 	void writeHeader(void){

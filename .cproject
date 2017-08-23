@@ -24,13 +24,13 @@
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.773076487" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option id="gnu.c.compiler.option.optimization.level.1087624297" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.dialect.std.752679132" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c99" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.optimization.flags.836919954" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin " valueType="string"/>
+								<option id="gnu.c.compiler.option.optimization.flags.836919954" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1499953447" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1935814002" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler">
 								<option id="gnu.cpp.compiler.option.optimization.level.1128454132" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.633226275" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.c++11" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.optimization.flags.590057917" name="Other optimization flags" superClass="gnu.cpp.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin " valueType="string"/>
+								<option id="gnu.cpp.compiler.option.optimization.flags.590057917" name="Other optimization flags" superClass="gnu.cpp.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.121357835" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.328562883" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker"/>
@@ -49,9 +49,16 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="io/totempole"/>
+						<entry excluding="bcf|algorithm|build|interface|io|support|third_party|tomahawk|math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="algorithm"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="build"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="interface"/>
+						<entry excluding="bcf|TomahawkOutput/bcf|totempole" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="io"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="io/bcf"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="math"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="support"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="third_party"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="tomahawk"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="totempole"/>
 					</sourceEntries>
 				</configuration>

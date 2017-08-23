@@ -94,6 +94,7 @@ public:
 	VCF_ERROR_TYPE error_bit;				// parse error bit
 	U64 samples;							// number of samples
 	float version;							// VCF version
+	std::string literal;					// string copy of header data
 	std::vector<contig_type> contigs;		// contigs
 	std::vector<std::string> sampleNames;	// sample names
 	std::vector<VCFHeaderLine> lines;		// header lines

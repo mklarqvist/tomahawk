@@ -8,6 +8,7 @@
 #include <regex>
 
 #include "../../TypeDefinitions.h"
+#include "../../algorithm/OpenHashTable.h"
 #include "../../tomahawk/MagicConstants.h"
 #include "TomahawkOutputEntry.h"
 #include "../../io/PackedEntryReader.h"
@@ -18,7 +19,6 @@
 #include "../../totempole/TotempoleMagic.h"
 #include "../../io/GZFHeader.h"
 #include "../../third_party/intervalTree.h"
-
 
 namespace Tomahawk {
 namespace IO {
@@ -37,6 +37,7 @@ class TomahawkOutputReader {
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
 
+public:
 	enum WRITER_TYPE {binary, natural};
 
 public:
@@ -54,6 +55,8 @@ public:
 	bool Open(const std::string input);
 	bool nextBlock(void);
 	bool nextVariant(const entry_type*& entry);
+	bool nextVariantLimited(const entry_type*& entry);
+	bool nextBlockUntil(const U32 limit);
 
 	// Other
 	bool view(const std::string& filename);
@@ -74,8 +77,9 @@ public:
 	}
 	void setWriteHeader(const bool write){ this->output_header = write; }
 
-	// Read entire file into memory
 	filter_type& getFilter(void){ return this->filter; }
+	bool OpenWriter(void);
+	bool OpenWriter(const std::string output_file);
 
 private:
 	bool ParseHeader(void);
@@ -84,7 +88,6 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 	bool __checkRegion(const entry_type* const entry);
-	void __openWriter(void);
 
 public:
 	U64 filesize;	// input file size

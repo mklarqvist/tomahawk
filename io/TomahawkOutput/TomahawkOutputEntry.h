@@ -16,6 +16,7 @@ struct TomahawkOutputEntry{
 	~TomahawkOutputEntry();	// has no dtor
 
 	// Comparator function
+	// Called from sort helper only
 	bool operator<(const self_type& other) const{
 		if (this->AcontigID < other.AcontigID) return true;
 		if (other.AcontigID < this->AcontigID) return false;
@@ -67,6 +68,38 @@ struct TomahawkOutputEntry{
 	double P;
 	double chiSqFisher;
 	double chiSqModel;
+};
+
+
+// Sort reinterpreted casts of data
+#pragma pack(1)
+struct TomahawkOutputEntrySort{
+	typedef TomahawkOutputEntrySort self_type;
+	typedef TomahawkOutputEntry parent_type;
+
+	TomahawkOutputEntrySort(){}
+	TomahawkOutputEntrySort(const self_type& other){
+		memcpy(this->data, other.data, sizeof(parent_type));
+	}
+	TomahawkOutputEntrySort(self_type&& other) noexcept{ std::swap(this->data, other.data); }
+	TomahawkOutputEntrySort& operator=(const self_type& other){
+		self_type tmp(other);	// re-use copy-constructor
+		*this = std::move(tmp); // re-use move-assignment
+		return *this;
+	}
+	TomahawkOutputEntrySort& operator=(self_type&& other) noexcept{
+		std::swap(this->data, other.data);
+		return *this;
+	}
+	~TomahawkOutputEntrySort(){ }
+
+	bool operator<(const self_type& other) const{
+		const parent_type& self_parent  = *reinterpret_cast<const parent_type* const>(&this->data[0]);
+		const parent_type& other_parent = *reinterpret_cast<const parent_type* const>(&other.data[0]);
+		return(self_parent < other_parent);
+	}
+
+	BYTE data[sizeof(parent_type)]; // reinterpret me as entry
 };
 
 // comparator functions for output entry

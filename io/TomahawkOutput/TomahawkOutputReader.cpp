@@ -46,7 +46,7 @@ bool TomahawkOutputReader::view(const std::string& input){
 		return(this->__viewFilter()); // Otherwise normal filter function
 }
 
-void TomahawkOutputReader::__openWriter(void){
+bool TomahawkOutputReader::OpenWriter(void){
 	if(this->writer_output_type == WRITER_TYPE::natural){
 		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
 	}
@@ -55,10 +55,29 @@ void TomahawkOutputReader::__openWriter(void){
 	this->writer->open();
 	if(this->output_header)
 		this->writer->writeHeader();
+
+	return true;
+}
+
+bool TomahawkOutputReader::OpenWriter(const std::string output_file){
+	if(this->writer_output_type == WRITER_TYPE::natural){
+		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
+	}
+	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
+
+	if(!this->writer->open(output_file)){
+		std::cerr << Helpers::timestamp("ERROR","WRITER") << "Failed to open output file: " << output_file << std::endl;
+		return false;
+	}
+
+	if(this->output_header)
+		this->writer->writeHeader();
+
+	return true;
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	this->__openWriter();
+	this->OpenWriter();
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
@@ -139,7 +158,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	this->__openWriter();
+	this->OpenWriter();
 	const entry_type*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
@@ -397,10 +416,97 @@ bool TomahawkOutputReader::nextBlock(void){
 	return true;
 }
 
+bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
+	// Check if resize required
+	if(this->output_buffer.capacity() < limit + 500536){
+		this->output_buffer.resize(limit + 500536);
+		//std::cerr << "resizing out buffer: " << limit+500536 << std::endl;
+	}
+
+	this->position = 0;
+	this->output_buffer.reset();
+
+	while(this->output_buffer.size() < limit){
+		//std::cerr << this->stream.tellg() << '/' << this->filesize << std::endl;
+
+		// Stream died
+		if(!this->stream.good()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
+			return false;
+		}
+
+		// EOF
+		if(this->stream.tellg() == this->filesize){
+			//std::cerr << "eof" << std::endl;
+			return false;
+		}
+
+		buffer.resize(sizeof(tgzf_type));
+		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		if(!h->Validate()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
+			return false;
+		}
+
+		buffer.resize(h->BSIZE); // make sure all data will fit
+
+		// Recast because if buffer is resized then the pointer address is incorrect
+		// resulting in segfault
+		h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+
+		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		if(!this->stream.good()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
+			return false;
+		}
+
+		buffer.pointer = h->BSIZE;
+
+		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
+			return false;
+		}
+
+		if(this->output_buffer.size() == 0){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
+			return false;
+		}
+
+		// Reset buffer
+		this->buffer.reset();
+
+		// Reset iterator position and size
+		this->size = this->output_buffer.size() / sizeof(entry_type);
+
+		// Validity check
+		if(this->output_buffer.size() % sizeof(entry_type) != 0){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
+			return false;
+		}
+	}
+
+	//std::cerr << "Loaded: " << this->output_buffer.size() << " pos " << this->stream.tellg() << std::endl;
+
+	return true;
+}
+
 bool TomahawkOutputReader::nextVariant(const entry_type*& entry){
 	if(this->position == this->size){
 		if(!this->nextBlock())
 			return false;
+	}
+
+	entry = (*this)[this->position];
+	++this->position;
+
+	return true;
+}
+
+bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
+	if(this->position == this->size){
+		return false;
 	}
 
 	entry = (*this)[this->position];

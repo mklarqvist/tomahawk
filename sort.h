@@ -36,7 +36,7 @@ int sort(int argc, char** argv){
 	if(files[1] == Tomahawk::Constants::OUTPUT_SUFFIX){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","SORT") << "Twk files are guaranteed sorted..." << std::endl;
 	} else if(files[1] == Tomahawk::Constants::OUTPUT_LD_SUFFIX) {
-		Tomahawk::Algorithm::Output::TomahawkOutputSorter<Tomahawk::IO::TomahawkOutputEntry> reader;
+		Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
 
 		if(!merge){
 			if(!reader.sort(inputFile)){
@@ -45,7 +45,7 @@ int sort(int argc, char** argv){
 			}
 		} else {
 			std::cerr << "is merge" << std::endl;
-			if(!reader.kwayMerge(inputFile)){
+			if(!reader.sortMerge(inputFile)){
 				std::cerr << "failed merge" << std::endl;
 				return 1;
 			}

@@ -3,6 +3,7 @@
 
 #include <queue>
 
+#include "../../io/TomahawkOutput/TomahawkOutputReader.h"
 #include "TomahawkOutputSortSupport.h"
 
 namespace Tomahawk{
@@ -33,132 +34,35 @@ public:
     bool (*compFunc)(const entry_type* a, const entry_type* b);
 };
 
-// This class extends the PackedEntryReader class
-// as it requires minor changes to how setup
-// and retrieving next block is handled
-// because of IO bounds (start and end positions)
-template <class T, int Y = sizeof(T)>
-class TomahawkOutputSortReader : public Tomahawk::IO::PackedEntryReader<T, Y> {
-public:
-	typedef T entry_type;
-
-public:
-	TomahawkOutputSortReader();
-	~TomahawkOutputSortReader();
-
-	bool setup(const std::string file, const U64 start_offset, const U64 upper_bounds, const U64 chunk_size);
-	bool nextBlock(void);
-
-	inline U64& getBounds(void) const{ return this->stream_bounds; }
-
-private:
-	bool open(const std::string& file, const U64 start_offset);
-
-private:
-	U64 stream_bounds; // where stream should terminate
-};
-
-template <class T, int Y>
-TomahawkOutputSortReader<T, Y>::TomahawkOutputSortReader(void)
-	: stream_bounds(0)
-{}
-
-template <class T, int Y>
-TomahawkOutputSortReader<T, Y>::~TomahawkOutputSortReader(void){}
-
-template <class T, int Y>
-bool TomahawkOutputSortReader<T, Y>::setup(const std::string file, const U64 start_offset, const U64 upper_bounds, const U64 chunk_size){
-	if(!this->open(file, start_offset)){
-		std::cerr << "failed to open " << file << " at " << start_offset << std::endl;
-		return false;
-	}
-
-	this->stream_bounds = upper_bounds;
-	this->read_block_size = chunk_size;
-
-	this->reset();
-	delete [] this->buffer;
-	this->buffer = new char[this->read_block_size];
-
-	return true;
-}
-
-template <class T, int Y>
-bool TomahawkOutputSortReader<T, Y>::open(const std::string& file, const U64 start_offset){
-	this->stream.open(file, std::ios::binary | std::ios::in);
-	if(!this->good()) return false;
-	this->stream.seekg(start_offset);
-	if(!this->good()) return false;
-
-	return true;
-}
-
-
-template <class T, int Y>
-bool TomahawkOutputSortReader<T, Y>::nextBlock(void){
-	if(!this->good()){
-		std::cerr << "no good" << std::endl;
-		return false;
-	}
-
-	// Ignore if unset
-	// comparison does not happen if tellg() == -1, return above
-	if(this->stream.tellg() == this->stream_bounds){
-		//std::cerr << "at bounds: " << this->stream.tellg() << '/' << this->stream_bounds << std::endl;
-		return false;
-	}
-
-	if(this->stream.tellg() >= this->stream_bounds){
-		std::cerr << "out of bounds: " << this->stream.tellg() << '/' << this->stream_bounds << std::endl;
-		return false;
-	}
-
-	this->reset();
-	const U64 testBounds = (U64)this->stream.tellg() + this->read_block_size;
-	size_t readBlockSize = this->read_block_size;
-	if(testBounds > this->stream_bounds) readBlockSize = this->stream_bounds - this->stream.tellg();
-
-	this->stream.read(this->buffer, readBlockSize);
-	const U32 entries_read = this->stream.gcount() / Y;
-	if(this->stream.gcount() % Y != 0){
-		std::cerr << "block is staggered" << std::endl;
-		return false;
-	}
-
-	this->entry_tail = entries_read;
-	this->entries = reinterpret_cast<entry_type*>(this->buffer);
-
-	return true;
-}
-
 // Sorter
-template <class T, int Y = sizeof(T)>
 class TomahawkOutputSorter{
-	typedef T entry_type;
-	typedef TomahawkOutputSorter<entry_type, Y> self_type;
-	typedef IO::PackedEntryReader<entry_type, Y> packed_reader;
-	typedef TomahawkOutputSortReader<entry_type, Y> sort_reader;
+	typedef IO::TomahawkOutputEntry entry_type;
+	typedef TomahawkOutputSorter self_type;
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
-	typedef std::priority_queue< queue_entry > queue_type;
-
+	typedef std::priority_queue< queue_entry > queue_type; // prio queue
+	typedef IO::TomahawkOutputReader two_reader_type;
 	typedef IO::PartialSortIndexHeader partial_header_type;
 	typedef IO::PartialSortIndexHeaderEntry partial_header_entry_type;
 
 public:
-	TomahawkOutputSorter();
-	~TomahawkOutputSorter();
+	TomahawkOutputSorter(){}
+	~TomahawkOutputSorter(){}
 
 	bool sort(const std::string& input);
 	bool sort(const std::string& input, const std::string& destinationPrefix);
-	bool kwayMerge(const std::string& input);
+	bool sortMerge(const std::string& input);
 
 private:
 	bool sort(const std::string& input, const std::string& outFile, const std::string& indexOut);
 
 	// Type S requires function write(char*, length)
-	template <class S> bool sort(packed_reader& reader, S& outstream, S& indexstream);
-	template <class S> bool sortInplace(S& outstream);
-	template <class S> bool kwayMerge(sort_reader* reader, const U32 count, S& outstream);
+	template <class S> bool sort(S& outstream, S& indexstream);
+	//template <class S> bool sortInplace(S& outstream);
+	template <class S> bool sortMerge(const U32 count, S& outstream);
+
+private:
+	two_reader_type reader;
+
 };
 
 #pragma pack(1)
@@ -182,72 +86,11 @@ public:
 	U64 to;
 };
 
-template <class T, int Y>
-TomahawkOutputSorter<T,Y>::TomahawkOutputSorter(){}
 
-template <class T, int Y>
-TomahawkOutputSorter<T,Y>::~TomahawkOutputSorter(){}
 
-template <class T, int Y>
-bool TomahawkOutputSorter<T,Y>::sort(const std::string& input){
-	std::vector<std::string> paths = Tomahawk::Helpers::splitLastOf(input, '/', true);
-	std::vector<std::string> files = Tomahawk::Helpers::splitLastOf(paths[1], '.');
-
-	// Todo: if failed to read from file suffix: try to look into file header MAGIC
-	if(files[1].size() == 0){
-		std::cerr << "could not determine file type from suffix" << std::endl;
-		return false;
-	}
-
-	std::transform(files[1].begin(), files[1].end(), files[1].begin(), ::tolower);
-
-	// Setup filenames
-	std::string outFile = files[0] + "__partial_sort." + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
-	std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
-	std::cerr << Helpers::timestamp("LOG","SORT") << "Setting filename to: " << outFile << std::endl;
-	std::cerr << Helpers::timestamp("LOG","SORT") << "Setting index filename to: " << outIndex << std::endl;
-	outFile = paths[0] + outFile;
-	outIndex = paths[0] + outIndex;
-
-	return(this->sort(input, outFile, outIndex));
-}
-
-template <class T, int Y>
-bool TomahawkOutputSorter<T,Y>::sort(const std::string& input, const std::string& destinationPrefix){
-	std::string outFile = destinationPrefix + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
-	std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
-	return(this->sort(input, outFile, outIndex));
-}
-
-template <class T, int Y>
-bool TomahawkOutputSorter<T,Y>::sort(const std::string& input, const std::string& outFile, const std::string& indexOut){
-	U64 blockSize = 1e9; // 1GB blocks
-	blockSize -= blockSize % Y;
-
-	IO::PackedEntryReader<T, Y> reader;
-	if(!reader.setup(input, blockSize))
-		return false;
-
-	std::ofstream outFileStream(outFile, std::ios::out | std::ios::binary);
-	if(!outFileStream.good()){
-		std::cerr << "Faield to open outfile" << std::endl;
-		return false;
-	}
-
-	std::ofstream outIndexStream(indexOut, std::ios::out | std::ios::binary);
-	if(!outIndexStream.good()){
-		std::cerr << "Faield to open outindex" << std::endl;
-		return false;
-	}
-	outIndexStream.write(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH);
-	outIndexStream.write((char*)&Tomahawk::Constants::PROGRAM_VERSION, sizeof(float));
-
-	return(this->sort(reader, outFileStream, outIndexStream));
-}
-
-template <class T, int Y>
 template <class S>
-bool TomahawkOutputSorter<T,Y>::sort(packed_reader& reader, S& outstream, S& indexstream){
+bool TomahawkOutputSorter::sort(S& outstream, S& indexstream){
+	/*
 	const U32 entries = reader.block_size()/Y;
 	std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting " << reader.filesize() << " in blocks of " << reader.block_size() << "..." << std::endl;
 
@@ -278,62 +121,12 @@ bool TomahawkOutputSorter<T,Y>::sort(packed_reader& reader, S& outstream, S& ind
 	delete [] pointers;
 
 	return true;
+	*/
 }
 
-template <class T, int Y>
-bool TomahawkOutputSorter<T,Y>::kwayMerge(const std::string& inputFile){
-	std::cerr << "attempting to open: " << inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX << std::endl;
-	std::ifstream indexStream(inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX, std::ios::binary | std::ios::in | std::ios::ate);
-	if(!indexStream.good()){
-		std::cerr << "bad index stream" << std::endl;
-		return false;
-	}
-	const U64 filesize_index = indexStream.tellg();
-	indexStream.seekg(0);
-
-	// parse header
-	partial_header_type head;
-	indexStream >> head;
-	if(!head.validate()){
-		std::cerr << "Failed to validate header" << std::endl;
-		return false;
-	}
-	std::cerr << std::string(&head.header[0], Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH) << '\t' << head.version << std::endl;
-	std::cerr << "position now: " << indexStream.tellg() << '/' << filesize_index << std::endl;
-	std::cerr << "entries: " << (filesize_index - indexStream.tellg())/(2*sizeof(U64)) << std::endl;
-
-	char* indexHeaderEntries = new char[filesize_index - indexStream.tellg()];
-	const U32 indexEntryEnd = (filesize_index - indexStream.tellg())/(2*sizeof(U64));
-	indexStream.read(indexHeaderEntries, filesize_index - indexStream.tellg());
-	const partial_header_entry_type* const entries = reinterpret_cast<const partial_header_entry_type* const>(&indexHeaderEntries[0]);
-
-	sort_reader* sortEntries = new sort_reader[indexEntryEnd];
-
-	std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << indexEntryEnd << " file handles..." << std::endl;
-	for(U32 i = 0; i < indexEntryEnd; ++i){
-		//std::cerr << entries[i] << std::endl;
-
-		if(!sortEntries[i].setup(inputFile, entries[i].from, entries[i].to, 1000000 - (1000000 % sizeof(entry_type)))){
-			std::cerr << "failed setup" << std::endl;
-		}
-	}
-
-	//
-	if(!this->kwayMerge(sortEntries, indexEntryEnd, std::cout)){
-		delete [] sortEntries;
-		delete [] indexHeaderEntries;
-		return false;
-	}
-
-	delete [] sortEntries;
-	delete [] indexHeaderEntries;
-
-	return true;
-}
-
-template <class T, int Y>
 template <class S>
-bool TomahawkOutputSorter<T,Y>::kwayMerge(sort_reader* reader, const U32 count, S& outstream){
+bool TomahawkOutputSorter::sortMerge(const U32 count, S& outstream){
+	/*
 	// queue
 	queue_type outQueue;
 
@@ -362,13 +155,12 @@ bool TomahawkOutputSorter<T,Y>::kwayMerge(sort_reader* reader, const U32 count, 
 	}
 
 	return true;
+	*/
 }
 
 
 }
 }
 }
-
-
 
 #endif /* TOMAHAWKOUTPUTSORT_H_ */

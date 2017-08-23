@@ -231,11 +231,15 @@ public:
 		T __dump = 0;
 		T n_runs = 0;
 
+		assert(this->n_samples >= 2);
+
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
 
-		for(U32 i = 2; i < this->n_samples * 2; i+=2){
+		this->helper_.phased = fmt_type_value2 & 1; // MSB contains phasing information
+
+		for(U32 i = 2; i < this->n_samples * 2; i += 2){
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);

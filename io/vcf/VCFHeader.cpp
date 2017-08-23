@@ -29,6 +29,14 @@ bool VCFHeader::parse(reader& stream){
 	if(!this->buildContigTable())
 		return false;
 
+	// Copy string literal to header
+	U32 curPos = stream.tellg();
+	U32 headerLength = curPos - stream.size();
+	this->literal.resize(headerLength);
+	stream.stream_.seekg(0);
+	stream.stream_.read(&this->literal[0], headerLength);
+	stream.stream_.seekg(curPos);
+
 	// Read samples line
 	if(!this->__parseSampleLine(stream))
 		return false;
@@ -69,8 +77,6 @@ void VCFHeader::buildSampleTable(U64 samples){
 bool VCFHeader::checkLine(const char* data, const U32 length){
 	VCFHeaderLine line(data, length);
 	if(line.Parse()){
-		//std::cerr << "Input line: " << line << std::endl;
-
 		// If the line is a contig line: make sure it is legal
 		// for our purposes
 		if(line.isCONTIG()){

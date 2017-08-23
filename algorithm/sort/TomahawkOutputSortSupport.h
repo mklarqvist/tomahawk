@@ -56,9 +56,7 @@ public:
 };
 
 }
-
 }
-
 
 
 #endif /* TOMAHAWKOUTPUTSORTSUPPORT_H_ */

@@ -15,8 +15,8 @@ TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPref
 	inputFile(inputFile),
 	outputPrefix(outputPrefix),
 	reader_(inputFile),
-	rle_controller(nullptr),
-	header_(nullptr)
+	header_(nullptr),
+	rle_controller(nullptr)
 {}
 
 TomahawkImporter::~TomahawkImporter(){
@@ -111,6 +111,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 bool TomahawkImporter::Build(){
 	// check if input is BCF2
 	// else check vcf
+	//return(this->BuildVCF());
 
 	if(!this->BuildBCF()){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
@@ -158,7 +159,6 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.previous_position = entry.body->POS;
 	this->sort_order_helper.contigID = &contigID;
 	this->sort_order_helper.prevcontigID = contigID;
-	std::cerr << "contigID: " << contigID << ',' << *this->sort_order_helper.contigID << ',' << this->sort_order_helper.prevcontigID << std::endl;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
@@ -299,8 +299,6 @@ bool TomahawkImporter::BuildVCF(void){
 }
 
 bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
-	//std::cerr << "contigID: " << line.body->CHROM << ',' << *this->sort_order_helper.contigID << ',' << this->sort_order_helper.prevcontigID << std::endl;
-
 	if(this->sort_order_helper.prevcontigID != line.body->CHROM){
 		if(line.body->CHROM < this->sort_order_helper.prevcontigID){
 			std::cerr << Helpers::timestamp("ERROR", "BCF") << "Contigs are not sorted (" << (*this->header_)[this->sort_order_helper.prevcontigID].name << " > " << (*this->header_)[line.body->CHROM].name << ")..." << std::endl;
@@ -424,10 +422,15 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 	// Assess missingness
 	const float missing = line.getMissingness(this->header_->samples);
 	if(line.position == this->sort_order_helper.previous_position && *this->sort_order_helper.contigID == this->sort_order_helper.prevcontigID){
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
+		if(this->sort_order_helper.previous_included){
+			if(!SILENT)
+				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
 
-		goto next;
+			goto next;
+		} else {
+			if(!SILENT)
+				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Keeping (drop other)..." << std::endl;
+		}
 	}
 
 	// Execute only if the line is simple (biallelic and SNP)
@@ -436,6 +439,7 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 			if(!SILENT)
 				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
+			this->sort_order_helper.previous_included = false;
 			goto next;
 		}
 
@@ -447,7 +451,9 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 			this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, this->sort_order_helper.previous_position);
 		}
 		this->writer_ += line;
-	}
+		this->sort_order_helper.previous_included = true;
+	} else
+		this->sort_order_helper.previous_included = false;
 
 	next:
 	this->sort_order_helper.previous_position = line.position;

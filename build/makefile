@@ -17,6 +17,7 @@ RM := rm
 -include io/bcf/subdir.mk
 -include io/TomahawkOutput/subdir.mk
 -include io/subdir.mk
+-include algorithm/sort/subdir.mk
 -include algorithm/compression/subdir.mk
 -include subdir.mk
 -include objects.mk

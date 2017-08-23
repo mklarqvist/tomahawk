@@ -15,7 +15,7 @@ void programMessage(void){
 
 void programHelp(void){
 	std::cerr << "Usage: " << Tomahawk::Constants::PROGRAM_NAME << " [command] [-<command> [options]*]+" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, index, stats" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, index, stats, concat" << std::endl;
 }
 
 #endif /* TOMAHAWK_UTILITY_H_ */
