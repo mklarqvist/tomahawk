@@ -593,18 +593,30 @@ bool TomahawkOutputReader::javelinWeights(void){
 	memset(counts_within, 0, sizeof(U64)*11);
 	memset(counts_across, 0, sizeof(U64)*11);
 	memset(counts_global, 0, sizeof(U64)*11);
+	U64 cum_count = 0;
+	U64 count = 0;
 
 	while(this->nextVariant(entry)){
+		++cum_count;
+		if(count++ == 1000000){
+			std::cerr << Helpers::timestamp("PROGRESS","STATS") << Helpers::ToPrettyString(cum_count) << " entries parsed. " << this->stream.tellg() << '/' << this->filesize << std::endl;
+			count = 0;
+		}
+
+		//std::cerr << entry->R2 << '\t' << (BYTE)(entry->R2*100)/10 << std::endl;
+
 		if(entry->AcontigID == entry->BcontigID){
 			// not same contig
-			++counts_within[(BYTE)entry->R2*10];
+			++counts_within[(BYTE)(entry->R2*100)/10];
 		} else {
 			// same contig
-			++counts_across[(BYTE)entry->R2*10];
+			++counts_across[(BYTE)(entry->R2*100)/10];
 		}
-		++counts_global[(BYTE)entry->R2*10];
+		++counts_global[(BYTE)(entry->R2*100)/10];
 	}
+	std::cerr << Helpers::timestamp("LOG","STATS") << "Done (" << Helpers::ToPrettyString(cum_count) << " entries)" << std::endl;
 
+	std::cout << "Within\tAcross\Global" << std::endl;
 	for(U32 i = 0; i < 11; ++i){
 		std::cout << counts_within[i] << '\t' << counts_across[i] << '\t' << counts_global[i] << std::endl;
 	}

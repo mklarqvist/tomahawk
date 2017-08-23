@@ -109,12 +109,27 @@ bool TomahawkImporter::Extend(std::string extendFile){
 }
 
 bool TomahawkImporter::Build(){
-	// check if input is BCF2
-	// else check vcf
-	//return(this->BuildVCF());
+	std::ifstream temp(this->inputFile, std::ios::binary | std::ios::in);
+	if(!temp.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK")  << "Failed to open file..." << std::endl;
+		return false;
+	}
+	char tempData[2];
+	temp.read(&tempData[0], 2);
+	temp.close();
 
-	if(!this->BuildBCF()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
+	if(tempData[0] == '#' && tempData[1] == '#'){
+		if(!this->BuildVCF()){
+			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
+			return false;
+		}
+	} else if((BYTE)tempData[0] == IO::Constants::GZIP_ID1 && (BYTE)tempData[1] == IO::Constants::GZIP_ID2){
+		if(!this->BuildBCF()){
+			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
+			return false;
+		}
+	} else {
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Unknown file format!" << std::endl;
 		return false;
 	}
 	return true;

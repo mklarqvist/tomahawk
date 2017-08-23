@@ -47,6 +47,14 @@ int main(int argc, char** argv){
 		return(1);
 	}
 
+	// Literal string input line
+	Tomahawk::Constants::LITERAL_COMMAND_LINE = "tomahawk";
+	for(U32 i = 1; i < argc; ++i)
+		Tomahawk::Constants::LITERAL_COMMAND_LINE += " " + std::string(&argv[i][0]);
+
+	Tomahawk::Constants::LITERAL_COMMAND_LINE += "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
+	std::cerr << Tomahawk::Constants::LITERAL_COMMAND_LINE << std::endl;
+
 	if(strncmp(&argv[1][0], "import", 5) == 0){
 		return(import(argc, argv));
 

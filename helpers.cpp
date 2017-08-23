@@ -63,28 +63,27 @@ std::string output_separator(const U32 width){
 
 std::string datetime(){
 	time_t t = time(0);
-	struct timeval  	tv;
-	struct timezone 	tz;
+	struct timeval  tv;
+	struct timezone tz;
 	struct tm      	*now = localtime(&t);
 	gettimeofday(&tv, &tz);
-	std::string sec = std::to_string(now->tm_sec);
-	if(sec.size() == 1) sec = '0' + sec;
 
-	const S32 remainder = tv.tv_usec / 1000;
-	char pad = 0, pad2 = 0;
-	if(remainder < 10){ pad = '0'; pad2 = '0';}
-	else if(remainder < 100){pad = '0';}
+	char buffer[23];
+	sprintf(buffer, "%04u-%02u-%02u %02u:%02u:%02u,%03u",
+			now->tm_year + 1900,
+			now->tm_mon + 1,
+			now->tm_mday,
+			now->tm_hour,
+			now->tm_min,
+			now->tm_sec,
+			(U32)tv.tv_usec / 1000);
 
-	std::stringstream ret;
-	ret << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-'
-		<<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << ":"
-		<< sec << "," << pad << pad2 << remainder;
-
-		return ret.str();
+	return std::string(&buffer[0], 24);
 }
 
 std::string timestamp(const std::string type){
 	std::stringstream ret;
+
 	ret << "\33[2K\r\033[0m";
 	if(type == "ERROR") ret << "\033[0;31m";
 	else if(type == "WARNING") ret << "\033[38;5;208m";

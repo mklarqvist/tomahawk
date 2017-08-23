@@ -168,7 +168,7 @@ bool BCFReader::open(const std::string input){
 	}
 
 	if(!this->nextBlock()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed ot get first block!" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get first block!" << std::endl;
 		return false;
 	}
 

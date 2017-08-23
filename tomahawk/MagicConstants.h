@@ -8,6 +8,9 @@ extern int SILENT;
 namespace Tomahawk{
 namespace Constants{
 
+static std::string LITERAL_COMMAND_LINE;
+static std::string INTERPRETED_COMMAND;
+
 // Revision versioning
 const float PROGRAM_VERSION = 0.4; // major
 const U32 PROGRAM_VERSION_MINOR = 0;
@@ -18,8 +21,8 @@ const U32 PROGRAM_VERSION_MINOR = 0;
 const U32 GIT_COMMITS_SINCE_TAG = 1;
 // Get last git hash
 // git rev-parse HEAD
-static char word[2048];
-const U32 x = sprintf(word,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "844f5d1cdebb0691c21fd9da1f35fff78c102823");
+static char PROGRAM_VERSION_FRONT[2048];
+const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "844f5d1cdebb0691c21fd9da1f35fff78c102823");
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
