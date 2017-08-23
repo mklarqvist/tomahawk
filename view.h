@@ -265,22 +265,23 @@ int view(int argc, char** argv){
 		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
 		// Todo: move into class
 		// Set filter parameters
-		if(!filter.setFilterRsquared(minR2, maxR2)) return false;
+		if(!filter.setFilterRsquared(minR2, maxR2)) return 1;
 		filter.setFilterInclude(flagInclude);
 		filter.setFilterExclude(flagExclude);
-		if(!filter.setFilterJointHF(minAlleles, maxAlleles)) return false;
-		if(!filter.setFilterP(minP, maxP)) return false;
-		if(!filter.setFilterDprime(minDprime, maxDprime)) return false;
+		if(!filter.setFilterJointHF(minAlleles, maxAlleles)) return 1;
+		if(!filter.setFilterP(minP, maxP)) return 1;
+		if(!filter.setFilterDprime(minDprime, maxDprime)) return 1;
 		reader.setWriteHeader(outputHeader);
 		if(!reader.setWriterType(outputType)){
 			std::cerr << "failed set output type" << std::endl;
-			return false;
+			return 1;
 		}
 
 		if(!reader.Open(input))
-			return false;
+			return 1;
 
-		reader.AddRegions(filter_regions);
+		if(!reader.AddRegions(filter_regions))
+			return 1;
 
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;

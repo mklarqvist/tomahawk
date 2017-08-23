@@ -18,11 +18,11 @@ const U32 PROGRAM_VERSION_MINOR = 0;
 // Todo: fix inject in makefile
 // Get commit since last tag
 // git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 1;
+const U32 GIT_COMMITS_SINCE_TAG = 4;
 // Get last git hash
 // git rev-parse HEAD
 static char PROGRAM_VERSION_FRONT[2048];
-const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "844f5d1cdebb0691c21fd9da1f35fff78c102823");
+const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "cca824c1638915e9b05300975ffdfe6487332c03");
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 

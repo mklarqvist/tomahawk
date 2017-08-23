@@ -53,9 +53,6 @@ public:
 	bool sortMerge(const std::string& input);
 
 private:
-	// Type S requires function write(char*, length)
-	template <class S> bool sort(S& outstream, S& indexstream);
-	//template <class S> bool sortInplace(S& outstream);
 	template <class S> bool sortMerge(const U32 count, S& outstream);
 
 private:
@@ -83,44 +80,6 @@ public:
 	U64 from;
 	U64 to;
 };
-
-
-
-template <class S>
-bool TomahawkOutputSorter::sort(S& outstream, S& indexstream){
-	/*
-	const U32 entries = reader.block_size()/Y;
-	std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting " << reader.filesize() << " in blocks of " << reader.block_size() << "..." << std::endl;
-
-	// Pointers to reinterpreted pointers used for sorting
-	entry_type** pointers = new entry_type*[entries];
-
-	// Output partial sort index
-	TomahawkOutputSortIndexEntry index_entry;
-	index_entry.from = 0;
-
-	while(reader.nextBlock()){
-		index_entry.to = reader.tellg();
-		indexstream << index_entry;
-		std::swap(index_entry.from, index_entry.to);
-
-		for(U32 i = 0; i < reader.size(); ++i)
-			pointers[i] = reader[i];
-
-		std::sort(pointers, &pointers[reader.size()], Tomahawk::IO::Support::TomahawkOutputEntryCompFunc);
-		for(U32 i = 0; i < reader.size(); ++i)
-			outstream.write(reinterpret_cast<const char*>(pointers[i]), sizeof(entry_type));
-	}
-
-	// Flush output (should be done automatically upon leaving function)
-	outstream.flush();
-	indexstream.flush();
-
-	delete [] pointers;
-
-	return true;
-	*/
-}
 
 template <class S>
 bool TomahawkOutputSorter::sortMerge(const U32 count, S& outstream){

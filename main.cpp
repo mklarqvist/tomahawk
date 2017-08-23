@@ -53,6 +53,8 @@ int main(int argc, char** argv){
 		Tomahawk::Constants::LITERAL_COMMAND_LINE += " " + std::string(&argv[i][0]);
 
 	Tomahawk::Constants::LITERAL_COMMAND_LINE += "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
+
+	// Temp
 	std::cerr << Tomahawk::Constants::LITERAL_COMMAND_LINE << std::endl;
 
 	if(strncmp(&argv[1][0], "import", 5) == 0){
@@ -75,6 +77,14 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
 		return(stats(argc, argv));
+
+	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
+		programMessage();
+		return(0);
+	} else if(strncmp(&argv[1][0], "--help", 6) == 0 || strncmp(&argv[1][0], "help", 4) == 0){
+			programMessage();
+			programHelp();
+			return(0);
 
 	} else {
 		programMessage();
