@@ -1,10 +1,12 @@
+#include <cassert>
+
 #include "TomahawkOutputSort.h"
 
 namespace Tomahawk{
 namespace Algorithm{
 namespace Output{
 
-bool TomahawkOutputSorter::sort(const std::string& input){
+bool TomahawkOutputSorter::sort(const std::string& input, const U64 memory_limit){
 	std::vector<std::string> paths = Tomahawk::Helpers::splitLastOf(input, '/', true);
 	std::vector<std::string> files = Tomahawk::Helpers::splitLastOf(paths.back(), '.');
 
@@ -24,19 +26,14 @@ bool TomahawkOutputSorter::sort(const std::string& input){
 	outFile = paths[0] + outFile;
 	outIndex = paths[0] + outIndex;
 
-	return(this->sort(input, outFile, outIndex));
+	return(this->sort(input, outFile, memory_limit));
 }
 
-bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix){
-	std::string outFile = destinationPrefix + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
-	std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
-	return(this->sort(input, outFile, outIndex));
-}
+bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit){
+	const std::string outFile = destinationPrefix + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
+	const std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
 
-bool TomahawkOutputSorter::sort(const std::string& input, const std::string& outFile, const std::string& indexOut){
-	U64 blockSize = 1e9; // 1GB blocks
-
-	std::ofstream outIndexStream(indexOut, std::ios::out | std::ios::binary);
+	std::ofstream outIndexStream(outIndex, std::ios::out | std::ios::binary);
 	if(!outIndexStream.good()){
 		std::cerr << "Faield to open outindex" << std::endl;
 		return false;
@@ -65,7 +62,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& out
 
 
 	while(true){
-		if(!this->reader.nextBlockUntil(blockSize)){
+		if(!this->reader.nextBlockUntil(memory_limit)){
 			//std::cerr << "failed to get next block: " << this->reader.output_buffer.size() << std::endl;
 			trigger_break = true;
 		}
@@ -74,6 +71,8 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& out
 			trigger_break = true;
 			break;
 		}
+
+		assert((double)this->reader.output_buffer.size()/sizeof(IO::TomahawkOutputEntrySort) == 0);
 
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(IO::TomahawkOutputEntrySort)) << " entries" << std::endl;
 		std::sort(reinterpret_cast<IO::TomahawkOutputEntrySort*>(&this->reader.output_buffer.data[0]),
@@ -99,8 +98,6 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& out
 	this->reader.writer->close();
 
 	return true;
-
-	//return(this->sort(reader, outFileStream, outIndexStream));
 }
 
 bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){

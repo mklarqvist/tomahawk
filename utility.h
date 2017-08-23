@@ -6,7 +6,7 @@
 
 void programMessage(void){
 	std::cerr << "Program: " << Tomahawk::Constants::PROGRAM_NAME << std::endl;
-	std::cerr << "Version: " << Tomahawk::Constants::PROGRAM_VERSION << std::endl;
+	std::cerr << "Version: " << Tomahawk::Constants::word << std::endl;
 	std::cerr << "Contact: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>" << std::endl;
 	std::cerr << "Documentation: https://github.com/mklarqvist/Tomahawk" << std::endl;
 	std::cerr << "License: MIT" << std::endl;

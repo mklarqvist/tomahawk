@@ -48,13 +48,11 @@ public:
 	TomahawkOutputSorter(){}
 	~TomahawkOutputSorter(){}
 
-	bool sort(const std::string& input);
-	bool sort(const std::string& input, const std::string& destinationPrefix);
+	bool sort(const std::string& input, const U64 memory_limit);
+	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
 	bool sortMerge(const std::string& input);
 
 private:
-	bool sort(const std::string& input, const std::string& outFile, const std::string& indexOut);
-
 	// Type S requires function write(char*, length)
 	template <class S> bool sort(S& outstream, S& indexstream);
 	//template <class S> bool sortInplace(S& outstream);

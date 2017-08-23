@@ -39,7 +39,7 @@ int sort(int argc, char** argv){
 		Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
 
 		if(!merge){
-			if(!reader.sort(inputFile)){
+			if(!reader.sort(inputFile, 1e9)){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
 				return 1;
 			}

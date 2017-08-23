@@ -8,18 +8,31 @@ extern int SILENT;
 namespace Tomahawk{
 namespace Constants{
 
+// Revision versioning
+const float PROGRAM_VERSION = 0.4; // major
+const U32 PROGRAM_VERSION_MINOR = 0;
+
+// Todo: fix inject in makefile
+// Get commit since last tag
+// git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
+const U32 GIT_COMMITS_SINCE_TAG = 1;
+// Get last git hash
+// git rev-parse HEAD
+static char word[2048];
+const U32 x = sprintf(word,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "844f5d1cdebb0691c21fd9da1f35fff78c102823");
+
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
 const std::string PROGRAM_NAME = "tomahawk";
-const float PROGRAM_VERSION = 0.4;
-const U32 WRITE_BLOCK_SIZE = 1000000; // Byte size when a block is compressed and flushed to disk
-const U32 WRITE_BLOCK_SIZE_PADDING = 65536; // Internal use to avoid resizing in most cases
-
 const std::string OUTPUT_SUFFIX = "twk";
 const std::string OUTPUT_INDEX_SUFFIX = "twi";
 const std::string OUTPUT_LD_SUFFIX = "two";
 const std::string OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX = "twsi";
 const std::string OUTPUT_LD_SORT_INDEX_SUFFIX = "toi";
+
+// Writing Tomahawk import
+const U32 WRITE_BLOCK_SIZE = 1000000; // Byte size when a block is compressed and flushed to disk
+const U32 WRITE_BLOCK_SIZE_PADDING = 65536; // Internal use to avoid resizing in most cases
 
 // Headers
 const char* const WRITE_HEADER_MAGIC = "TOMAHAWK\1";

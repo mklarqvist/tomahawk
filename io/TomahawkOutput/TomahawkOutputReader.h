@@ -58,6 +58,9 @@ public:
 	bool nextVariantLimited(const entry_type*& entry);
 	bool nextBlockUntil(const U32 limit);
 
+	// Javelin
+	bool javelinWeights(void);
+
 	// Other
 	bool view(const std::string& filename);
 	bool index(const std::string& filename);

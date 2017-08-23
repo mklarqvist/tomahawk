@@ -584,6 +584,32 @@ bool TomahawkOutputReader::index(const std::string& input){
 	return true;
 }
 
+bool TomahawkOutputReader::javelinWeights(void){
+	const entry_type* entry;
+
+	U64 counts_within[11];
+	U64 counts_across[11];
+	U64 counts_global[11];
+	memset(counts_within, 0, sizeof(U64)*11);
+	memset(counts_across, 0, sizeof(U64)*11);
+	memset(counts_global, 0, sizeof(U64)*11);
+
+	while(this->nextVariant(entry)){
+		if(entry->AcontigID == entry->BcontigID){
+			// not same contig
+			++counts_within[(BYTE)entry->R2*10];
+		} else {
+			// same contig
+			++counts_across[(BYTE)entry->R2*10];
+		}
+		++counts_global[(BYTE)entry->R2*10];
+	}
+
+	for(U32 i = 0; i < 11; ++i){
+		std::cout << counts_within[i] << '\t' << counts_across[i] << '\t' << counts_global[i] << std::endl;
+	}
+}
+
 
 }
 } /* namespace Tomahawk */
