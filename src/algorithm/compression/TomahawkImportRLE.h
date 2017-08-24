@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../../math/FisherTest.h"
+#include "../../math/FisherMath.h"
 #include "../../io/bcf/BCFReader.h"
 #include "RunLengthEncoding.h"
 
@@ -144,7 +144,7 @@ struct TomahawkImportRLEHelper{
 	bool missingValues;
 	bool phased;
 	const U64 expectedSamples;
-	FisherTest fisherTable;
+	FisherMath fisherTable;
 };
 
 class TomahawkImportRLE{

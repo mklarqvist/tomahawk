@@ -8,24 +8,24 @@
 #include "../support/TypeDefinitions.h"
 
 namespace Tomahawk {
-namespace Algorithm{
+namespace Algorithm {
 
 #define KF_GAMMA_EPS 1e-14
 #define KF_TINY 1e-290
 #define FISHER_TINY 1e-279
 #define STIRLING_CONSTANT 0.5 * log(2 * M_PI)
 
-class FisherTest{
+class FisherMath{
 
 public:
-	FisherTest(const U32 number) :
+	FisherMath(const U32 number) :
 			number(number+1),
 			logN_values(number, 0)
 	{
 		this->Build();
 	}
 
-	~FisherTest(){}
+	~FisherMath(){}
 
 	void Build(void){
 		double factorial = 0;

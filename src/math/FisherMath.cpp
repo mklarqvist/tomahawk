@@ -1,4 +1,4 @@
-#include "FisherTest.h"
+#include "FisherMath.h"
 
 namespace Tomahawk {
 namespace Algorithm{

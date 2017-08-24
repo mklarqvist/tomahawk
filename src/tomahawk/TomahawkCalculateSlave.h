@@ -11,7 +11,7 @@
 #include "TomahawkOutput/TomahawkOutputLD.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
-#include "../math/FisherTest.h"
+#include "../math/FisherMath.h"
 #include "../algorithm/LoadBalancerBlock.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "TomahawkSlaveSIMDHelper.h"
@@ -314,7 +314,7 @@ private:
 
 	helper_type helper;
 	Support::TomahawkSlaveSIMDHelper<> helper_simd;
-	Algorithm::FisherTest fisherController;
+	Algorithm::FisherMath fisherController;
 	const manager_type& manager;
 
 	// thread
