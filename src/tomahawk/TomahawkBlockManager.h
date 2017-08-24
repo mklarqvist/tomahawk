@@ -188,6 +188,8 @@ public:
 		buffer += '\t';
 		buffer += std::to_string(this->currentMeta().position);
 		buffer += '\t';
+		buffer += '.';
+		buffer += '\t';
 		buffer += Constants::REF_ALT_LOOKUP[this->currentMeta().ref_alt >> 4];
 		buffer += '\t';
 		buffer += Constants::REF_ALT_LOOKUP[this->currentMeta().ref_alt & ((1 << 4) - 1)];

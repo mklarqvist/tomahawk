@@ -308,8 +308,16 @@ bool VCFHeader::__parseSampleLine(const char* const data, U32& offset, const U32
 		if(found == 0 || (*found != Tomahawk::VCF::Constants::VCF_DELIMITER)){
 			std::string sampleName(&data[offset], (&data[length - 1] - &data[offset]) - 1); // -2 because offset is +1 and newline is +1
 			//std::cerr << sampleName << std::endl;
+			++delimiters_found;
 			break;
 		}
+
+		std::string sampleName(&data[offset], (found - &data[offset]));
+		if(sampleName == "FORMAT"){
+			offset += found - &data[offset] + 1;
+			continue;
+		}
+
 		offset += found - &data[offset] + 1;
 		++delimiters_found;
 	}
