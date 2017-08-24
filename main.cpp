@@ -1,5 +1,4 @@
 /*
-
 Copyright (C) 2016-2017 Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
 
@@ -19,8 +18,8 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.  */
-
+DEALINGS IN THE SOFTWARE.
+*/
 #define DEBUG_MODE	0
 
 #include <iostream>
@@ -81,10 +80,11 @@ int main(int argc, char** argv){
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage();
 		return(0);
+
 	} else if(strncmp(&argv[1][0], "--help", 6) == 0 || strncmp(&argv[1][0], "help", 4) == 0){
-			programMessage();
-			programHelp();
-			return(0);
+		programMessage();
+		programHelp();
+		return(0);
 
 	} else {
 		programMessage();

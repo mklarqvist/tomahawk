@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "../TypeDefinitions.h"
+#include "../support/TypeDefinitions.h"
 #include "../third_party/xxhash.h"
 
 

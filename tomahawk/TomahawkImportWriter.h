@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "../TypeDefinitions.h"
+#include "../support/TypeDefinitions.h"
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
@@ -11,10 +11,8 @@
 #include "../io/BasicWriters.h"
 #include "../io/TGZFController.h"
 #include "../totempole/TotempoleEntry.h"
-#include "TomahawkEntryMeta.h"
+#include "base/TomahawkEntryMeta.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
-#include "../algorithm/compression/ByteReshuffle.h"
-
 #include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {

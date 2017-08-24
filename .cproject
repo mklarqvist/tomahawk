@@ -49,7 +49,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="bcf|algorithm|build|interface|io|support|third_party|tomahawk|math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="base|bcf|algorithm|build|interface|io|support|third_party|tomahawk|math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="algorithm"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="build"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="interface"/>
@@ -58,7 +58,8 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="math"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="support"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="third_party"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="tomahawk"/>
+						<entry excluding="base" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="tomahawk"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="tomahawk/base"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="totempole"/>
 					</sourceEntries>
 				</configuration>

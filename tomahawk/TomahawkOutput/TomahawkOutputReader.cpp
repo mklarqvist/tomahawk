@@ -2,12 +2,12 @@
 #include <bitset>
 #include <queue>
 
-#include "../../helpers.h"
+#include "../../support/helpers.h"
 #include "../../tomahawk/MagicConstants.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
-#include "../../io/TomahawkOutput/TomahawkOutputWriter.h"
+#include "TomahawkOutputWriter.h"
 
 namespace Tomahawk {
 namespace IO{
@@ -170,7 +170,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 
 bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 	if(positions.size() == 0)
-		return false;
+		return true;
 
 	if(this->interval_tree == nullptr){
 		this->interval_tree = new tree_type*[this->header.n_contig];

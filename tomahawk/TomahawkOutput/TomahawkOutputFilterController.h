@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <vector>
 
-#include "../../TypeDefinitions.h"
+#include "../../support/TypeDefinitions.h"
 #include "TomahawkOutputEntry.h"
 #include "../../tomahawk/MagicConstants.h"
 

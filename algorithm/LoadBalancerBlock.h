@@ -2,7 +2,7 @@
 #define ALGORITHM_LOADBALANCERBLOCK_H_
 
 #include <vector>
-#include "../TypeDefinitions.h"
+#include "../support/TypeDefinitions.h"
 
 namespace Tomahawk{
 
@@ -19,6 +19,7 @@ struct LoadBalancerBlock{
 		fromColumnAbsolute(0),
 		toColumnAbsolute(0)
 	{}
+
 	LoadBalancerBlock(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn, const U32 fromRowAbsolute, const U32 toRowAbsolute, const U32 fromColumnAbsolute, const U32 toColumnAbsolute, bool stagger = false) :
 			fromRow(fromRow),
 			toRow(toRow),
@@ -29,7 +30,8 @@ struct LoadBalancerBlock{
 			toRowAbsolute(toRowAbsolute),
 			fromColumnAbsolute(fromColumnAbsolute),
 			toColumnAbsolute(toColumnAbsolute)
-		{}
+	{}
+
 	~LoadBalancerBlock(){}
 
 	inline U32 getRows(void) const{ return(this->toRow - this->fromRow); }

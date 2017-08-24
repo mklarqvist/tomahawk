@@ -3,15 +3,28 @@
 
 namespace Tomahawk{
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + sizeof(float) + sizeof(float))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + 2*sizeof(float))
 
+/*
+ TomahawkEntryMeta encodes for the basic information
+ regaring a variant line such as position, if any genotypes
+ are missing and if the data is phased.
+ */
 #pragma pack(1)
 template <class T>
 struct TomahawkEntryMeta{
 	typedef TomahawkEntryMeta self_type;
 
 public:
-	TomahawkEntryMeta() : position(0), missing(0), phased(0), ref_alt(0), runs(0), MAF(0), HWE_P(0){}
+	TomahawkEntryMeta() :
+		position(0),
+		missing(0),
+		phased(0),
+		ref_alt(0),
+		runs(0),
+		MAF(0),
+		HWE_P(0)
+	{}
 	~TomahawkEntryMeta(){}
 
 	inline bool isValid(void) const{ return(this->runs > 0); }
@@ -32,7 +45,6 @@ public:
 	}
 
 public:
-	// memory aligned to 16 byte boundaries
 	const U32 missing: 1, phased: 1, position: 30;
 	const BYTE ref_alt;
 	const float MAF;

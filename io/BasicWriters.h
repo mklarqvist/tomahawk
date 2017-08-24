@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-#include "../helpers.h"
+#include "../support/helpers.h"
 #include "../algorithm/spinlock.h"
 #include "../io/BasicBuffer.h"
 #include "../tomahawk/MagicConstants.h"

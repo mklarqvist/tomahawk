@@ -1,7 +1,7 @@
 #ifndef IOCONSTANTS_H_
 #define IOCONSTANTS_H_
 
-#include "../TypeDefinitions.h"
+#include "../support/TypeDefinitions.h"
 
 namespace Tomahawk{
 namespace IO{

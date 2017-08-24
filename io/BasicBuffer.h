@@ -3,8 +3,8 @@
 
 #include <cstddef>
 #include <iostream>
-#include "../TypeDefinitions.h"
-#include "../helpers.h"
+#include "../support/TypeDefinitions.h"
+#include "../support/helpers.h"
 
 namespace Tomahawk {
 namespace IO{

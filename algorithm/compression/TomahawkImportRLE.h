@@ -231,11 +231,10 @@ public:
 		T __dump = 0;
 		T n_runs = 0;
 
-		assert(this->n_samples >= 2);
-
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
+		assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
 
 		this->helper_.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
@@ -243,12 +242,12 @@ public:
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2);
+			assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
+
 			if(packed != packed_internal){
 				__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
 				__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 				runs += __dump;
-
-				//std::cerr << length << '|' << (int)packed << std::endl;
 
 				this->helper_[packed] += length;
 				this->helper_.countsAlleles[packed >> 2] += length;
@@ -281,8 +280,8 @@ public:
 		// Position
 		U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
 		position <<= 2;
-		position |= this->helper_.phased << 1;
-		position |= this->helper_.missingValues << 0;
+		position |= this->helper_.phased << 1;		  // all samples in this variant are phased
+		position |= this->helper_.missingValues << 0; // has any missing values
 		meta += this->helper_.MGF;
 		meta += this->helper_.HWE_P;
 		meta += n_runs;

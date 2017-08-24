@@ -8,8 +8,8 @@
 #include <algorithm>
 
 #include "../tomahawk/MagicConstants.h"
-#include "../TypeDefinitions.h"
-#include "../helpers.h"
+#include "../support/TypeDefinitions.h"
+#include "../support/helpers.h"
 #include "TotempoleEntry.h"
 #include "../algorithm/OpenHashTable.h"
 #include "../totempole/TotempoleContig.h"

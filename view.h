@@ -3,7 +3,7 @@
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
-#include "io/TomahawkOutput/TomahawkOutputReader.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "io/bcf/BCFReader.h"
 
 void view_usage(void){
@@ -26,14 +26,14 @@ void view_usage(void){
 
 	// Two parameters
 	"Two parameters\n"
-	"  -p float number of parts to split problem into (default: 1)\n"
-	"  -P float chosen part to compute (0 < -C < -c; default: 1)\n"
-	"  -d float number of parts to split problem into (default: 1)\n"
-	"  -D float chosen part to compute (0 < -C < -c; default: 1)\n"
-	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
-	"  -A INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
-	"  -f INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
-	"  -F INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -p float smallest P-value (default: 0)\n"
+	"  -P float largest P-value (default: 1)\n"
+	"  -d float smallest D' value (default: -1)\n"
+	"  -D float largest D' value (default: 1)\n"
+	"  -a INT   minimum minor-haplotype count (default: 0)\n"
+	"  -A INT   maximum minor-haplotype count (default: infinity)\n"
+	"  -f INT   include FLAG value\n"
+	"  -F INT   exclude FLAG value\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -d       Show real-time progress update in cerr [null]\n"
@@ -272,23 +272,24 @@ int view(int argc, char** argv){
 		if(!filter.setFilterP(minP, maxP)) return 1;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return 1;
 		reader.setWriteHeader(outputHeader);
-		if(!reader.setWriterType(outputType)){
-			std::cerr << "failed set output type" << std::endl;
+
+		if(!reader.setWriterType(outputType))
 			return 1;
-		}
 
 		if(!reader.Open(input))
 			return 1;
 
-		if(!reader.AddRegions(filter_regions))
+		if(!reader.AddRegions(filter_regions)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
+		}
 
 		if(!reader.view(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;
 			return 1;
 		}
 	} else {
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized input file format: " << input << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
 		return 1;
 	}
 

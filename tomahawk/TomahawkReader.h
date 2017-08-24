@@ -8,7 +8,7 @@
 
 #include "MagicConstants.h"
 #include "../io/TGZFController.h"
-#include "TomahawkEntryMeta.h"
+#include "base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleReader.h"
 #include "../io/IOConstants.h"
 #include "TomahawkCalculateSlave.h"

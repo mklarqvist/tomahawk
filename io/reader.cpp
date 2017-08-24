@@ -1,4 +1,4 @@
-#include "../helpers.h"
+#include "../support/helpers.h"
 #include "reader.h"
 
 namespace Tomahawk{

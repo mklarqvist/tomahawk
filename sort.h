@@ -1,7 +1,7 @@
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
-#include "io/TomahawkOutput/TomahawkOutputReader.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "algorithm/sort/TomahawkOutputSort.h"
 
 int sort(int argc, char** argv){

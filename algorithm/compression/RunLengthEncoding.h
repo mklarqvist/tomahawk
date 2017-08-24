@@ -58,6 +58,4 @@ int static inline UNPACK3(char* target, T& length, BYTE& ref){
 }
 }
 
-
-
 #endif /* ALGORITHM_COMPRESSION_RUNLENGTHENCODING_H_ */

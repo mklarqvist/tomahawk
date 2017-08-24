@@ -92,41 +92,6 @@ struct BCFEntry{
 	void __parseID(U32& internal_pos);
 	void __parseRefAlt(U32& internal_pos);
 
-	template <class T>
-	void __parseGenotypes(void){
-		U32 internal_pos = this->p_genotypes;
-		T length = 1;
-#if BCF_ASSERT == 1
-		U32 sumLength = 0;
-#endif
-		U32 runs = 0;
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		BYTE packed = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
-
-		for(U32 i = 2; i < 32470 * 2; i+=2){
-			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-			const BYTE packed_internal = (BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) | BCF_UNPACK_GENOTYPE(fmt_type_value2);
-			if(packed != packed_internal){
-#if BCF_ASSERT == 1
-				sumLength += length;
-#endif
-				length = 1;
-				packed = packed_internal;
-				++runs;
-				continue;
-			}
-			++length;
-		}
-		++runs;
-#if BCF_ASSERT == 1
-		sumLength += length;
-		assert(sumLength == 32470);
-		assert(internal_pos == this->size());
-#endif
-	}
-
 	bool parse(void);
 	void SetRefAlt(void);
 

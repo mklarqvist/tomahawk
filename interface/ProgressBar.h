@@ -8,7 +8,7 @@
 #include <sstream>
 #include <thread>
 
-#include "../helpers.h"
+#include "../support/helpers.h"
 #include "Timer.h"
 
 namespace Tomahawk{

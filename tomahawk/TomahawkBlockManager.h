@@ -3,7 +3,7 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/GenotypeBitPacker.h"
-#include "TomahawkSupport.h"
+#include "base/TomahawkSupport.h"
 
 namespace Tomahawk{
 

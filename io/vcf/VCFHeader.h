@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include "../../helpers.h"
+#include "../../support/helpers.h"
 #include "../reader.h"
 #include "VCFHeaderConstants.h"
 #include "VCFHeaderContig.h"

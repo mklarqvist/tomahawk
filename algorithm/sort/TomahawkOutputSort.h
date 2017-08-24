@@ -3,7 +3,7 @@
 
 #include <queue>
 
-#include "../../io/TomahawkOutput/TomahawkOutputReader.h"
+#include "../../tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "TomahawkOutputSortSupport.h"
 
 namespace Tomahawk{

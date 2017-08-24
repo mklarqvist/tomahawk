@@ -1,7 +1,7 @@
 #ifndef TOMAHAWKOUTPUTWRITER_H_
 #define TOMAHAWKOUTPUTWRITER_H_
 
-#include "../BasicWriters.h"
+#include "../../io/BasicWriters.h"
 #include "../../totempole/TotempoleMagic.h"
 
 namespace Tomahawk{

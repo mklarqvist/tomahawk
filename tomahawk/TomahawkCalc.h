@@ -19,19 +19,15 @@ class TomahawkCalc{
 public:
 	TomahawkCalc();
 	~TomahawkCalc();
-
 	bool Open(const std::string input, const std::string output);
-
 	bool Calculate(pair_vector& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();
-
 	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
 	bool OpenWriter(const std::string destination);
 	bool SelectWriterOutputType(const writer_type::type writer_type);
-
 	bool CalculateWrapper();
 	template <class T> bool Calculate();
 	bool WriteTwoHeader(void);
@@ -49,26 +45,30 @@ private:
 
 template <class T>
 bool TomahawkCalc::Calculate(){
+	// Retrieve reference to Totempole reader
 	const totempole_reader& totempole = this->reader.getTotempole();
+
+	// Construct Tomahawk manager
 	TomahawkBlockManager<const T> controller(totempole);
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i)
 		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1
-	std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
 #else
-	std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
 #endif
-	std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
 	}
 
-	// Build 1-bit representation
+	// Build 1-bit representation from RLE data
 	controller.BuildVectorized();
 
 	if(!SILENT)
 		std::cerr << "Done..." << std::endl;
 
+	// Number of variants in memory
 	const U64 variants = controller.getVariants();
 
 	if(!SILENT)
@@ -111,6 +111,7 @@ bool TomahawkCalc::Calculate(){
 		}
 	}
 
+	// Update progress bar with data
 	this->progress.SetComparisons(totalComparisons);
 	this->progress.SetSamples(totempole.getSamples());
 	this->progress.SetDetailed(this->parameters.detailed_progress);
@@ -133,6 +134,7 @@ bool TomahawkCalc::Calculate(){
 		if(!SILENT)
 			std::cerr << '.';
 	}
+
 	if(!SILENT)
 		std::cerr << std::endl;
 

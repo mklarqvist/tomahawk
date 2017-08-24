@@ -1,9 +1,9 @@
 #ifndef TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
 #define TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
 
-#include "../io/BasicWriters.h"
-#include "TomahawkBlockManager.h"
-#include "../io/TGZFController.h"
+#include "../../io/BasicWriters.h"
+#include "../TomahawkBlockManager.h"
+#include "../../io/TGZFController.h"
 
 #define SLAVE_FLUSH_LIMIT	10000000	// 10 MB default flush limit
 #define SLAVE_FLUSH_LIMIT_NATURAL 65536

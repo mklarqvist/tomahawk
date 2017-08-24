@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <regex>
 
-#include "../../TypeDefinitions.h"
+#include "../../support/TypeDefinitions.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "../../tomahawk/MagicConstants.h"
 #include "TomahawkOutputEntry.h"
@@ -15,7 +15,7 @@
 #include "TomahawkOutputFilterController.h"
 #include "../../io/BasicBuffer.h"
 #include "../../io/TGZFController.h"
-#include "../../io/TomahawkOutput/TomahawkOutputWriter.h"
+#include "TomahawkOutputWriter.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../io/GZFHeader.h"
 #include "../../third_party/intervalTree.h"

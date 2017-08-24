@@ -8,7 +8,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "../../helpers.h"
+#include "../../support/helpers.h"
 #include "../../tomahawk/MagicConstants.h"
 
 namespace Tomahawk{

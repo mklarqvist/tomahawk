@@ -3,7 +3,7 @@
 #define VCFHEADERCONSTANTS_H_
 
 #include <string>
-#include "../../TypeDefinitions.h"
+#include "../../support/TypeDefinitions.h"
 
 namespace Tomahawk{
 namespace VCF{

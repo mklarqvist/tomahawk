@@ -19,8 +19,26 @@ class TomahawkImporter {
 	typedef BCF::BCFReader bcf_reader_type;
 	typedef BCF::BCFEntry bcf_entry_type;
 
+	/*
+	 This supportive structure keeps track of the current and
+	 previous contig identifiers and the previous obseved position.
+	 This information is necessary to guarantee the sort-order of
+	 the output Tomahawk file required for indexing.
+	 The flag previous_included is triggered whenever an entry is
+	 not filtered out. It is used when two or more entries share the
+	 same position. In this case, if the preceding line was included
+	 then ignore the current one. Otherwise, the preceding line was
+	 filtered out and the include the current one.
+	 Note that contigID is a pointer as this is required by our
+	 hash-table implementation as a return value
+	 */
 	struct __InternalHelper{
-		__InternalHelper(): contigID(nullptr), prevcontigID(-1), previous_position(-1), previous_included(false){}
+		__InternalHelper():
+			contigID(nullptr),
+			prevcontigID(-1),
+			previous_position(-1),
+			previous_included(false)
+		{}
 		S32* contigID;			// current contigID
 		S32 prevcontigID;		// previous contigID
 		S32 previous_position;	// current position
@@ -34,27 +52,28 @@ public:
 	bool Extend(std::string extendFile);
 
 private:
-	bool BuildVCF();
-	bool BuildBCF();
-	bool ExtendVCF();
-	bool ExtendBCF();
+	bool BuildVCF();  // import a VCF file
+	bool BuildBCF();  // import a BCF file
+	bool ExtendVCF(); // extend a Twk file with a VCF file
+	bool ExtendBCF(); // extend a Twk file with a BCF file
 
-	bool parseVCFLine(line_type& line);
-	bool parseBCFLine(bcf_entry_type& line);
+	bool parseVCFLine(line_type& line); // Import a VCF line
+	bool parseBCFLine(bcf_entry_type& line); // Import a BCF line
+	// Check if the current meta and RLE buffers exceeds
+	// the disk flush limit
 	bool checkSize(void) const{ return(this->meta_buffer.size() + this->rle_buffer.size() >= this->block_flush_limit); }
 
 private:
-	U32 block_flush_limit;
-	std::string inputFile;
-	std::string outputPrefix;
-	reader_type reader_;
-	header_type* header_;
-	writer_type writer_;
-
-	buffer_type meta_buffer;
-	buffer_type rle_buffer;
-	totempole_entry_type totempole_entry;
-	rle_controller_type* rle_controller;
+	U32 block_flush_limit;    // limit in bytes when to flush to disk
+	std::string inputFile;    // input file name
+	std::string outputPrefix; // output file prefix
+	reader_type reader_;      // reader
+	header_type* header_;     // header
+	writer_type writer_;      // writer
+	buffer_type meta_buffer;  // meta buffer
+	buffer_type rle_buffer;   // RLE buffer
+	totempole_entry_type totempole_entry;  // totempole entry for indexing
+	rle_controller_type* rle_controller;   // RLE packer
 };
 
 

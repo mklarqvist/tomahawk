@@ -8,7 +8,7 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/spinlock.h"
-#include "TomahawkOutputLD.h"
+#include "TomahawkOutput/TomahawkOutputLD.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
 #include "../math/FisherTest.h"
@@ -17,7 +17,7 @@
 #include "TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
 #include "TomahawkBlockManager.h"
-#include "TomahawkOutputManager.h"
+#include "TomahawkOutput/TomahawkOutputManager.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -31,6 +31,11 @@ namespace Tomahawk{
 
 #if SLAVE_DEBUG_MODE == 6
 
+/*
+ This supportive structure is only used internally for
+ directly comparing the output values of the two primary
+ algorithms A1 and A2 and their respective variations
+ */
 struct __methodCompare{
 	typedef __methodCompare self_type;
 	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
@@ -38,8 +43,8 @@ struct __methodCompare{
 	__methodCompare(){}
 	~__methodCompare(){}
 
-	float phased[3][4];
-	float unphased[3][9];
+	float phased[3][4];  // Phased A1, phased no missing A2, phased missing A2
+	float unphased[3][9]; // Unphased A1, unphased no missing A2, unphased missing A2
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& m){
 		// P, PV, PVM, U, UV, UVM
@@ -75,13 +80,16 @@ struct __methodCompare{
 		this->unphased[p][8] = helper[85];
 	}
 
+	// Check to make sure all algorithms and variations
+	// produce the correct output values
 	bool validate(void) const{
 		for(U32 i = 0; i < 4; ++i){
 			if(this->phased[0][i] != this->phased[1][i] ||
 			   this->phased[0][i] != this->phased[2][i] ||
 			   this->phased[1][i] != this->phased[2][i])
 			{
-				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->phased[0][i] << '\t' << this->phased[1][i] << '\t' << this->phased[2][i] << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->phased[0][i]
+						  << '\t' << this->phased[1][i] << '\t' << this->phased[2][i] << std::endl;
 				return false;
 			}
 		}
@@ -91,7 +99,8 @@ struct __methodCompare{
 			   this->unphased[0][i] != this->unphased[2][i] ||
 			   this->unphased[1][i] != this->unphased[2][i])
 			{
-				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->unphased[0][i] << '\t' << this->unphased[1][i] << '\t' << this->unphased[2][i] << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Phased failure: " << this->unphased[0][i]
+						  << '\t' << this->unphased[1][i] << '\t' << this->unphased[2][i] << std::endl;
 				return false;
 			}
 		}
@@ -102,7 +111,7 @@ struct __methodCompare{
 
 #endif
 
-// Parameter flags
+// Parameter thresholds for FLAGs
 #define LOW_MAF_THRESHOLD		0.01
 #define LOW_HWE_THRESHOLD		1e-6
 #define LONG_RANGE_THRESHOLD	500e3
@@ -112,61 +121,44 @@ struct __methodCompare{
 // SIMD trigger
 #if SIMD_AVAILABLE == 1
 
+#ifdef _popcnt64
 #define POPCOUNT_ITER	_popcnt64
+#else
+#define POPCOUNT_ITER	__builtin_popcountll
+#endif
 
 #define UNPHASED_UPPER_MASK	170  // 10101010b
 #define UNPHASED_LOWER_MASK	85   // 01010101b
-#define FILTER_UNPHASED_BYTE(A, B)	(((((A & UNPHASED_UPPER_MASK) | (B & UNPHASED_LOWER_MASK)) & UNPHASED_LOWER_MASK) << 1) & A)
-#define FILTER_UNPHASED_BYTE_PAIR(A, B, C, D)	((FILTER_UNPHASED_BYTE(A, B) >> 1) | FILTER_UNPHASED_BYTE(C, D))
-#define FILTER_UNPHASED_BYTE_SPECIAL(A)			(((A >> 1) & A) & UNPHASED_LOWER_MASK)
+#define FILTER_UNPHASED_BYTE(A, B) (((((A & UNPHASED_UPPER_MASK) | (B & UNPHASED_LOWER_MASK)) & UNPHASED_LOWER_MASK) << 1) & A)
+#define FILTER_UNPHASED_BYTE_PAIR(A, B, C, D) ((FILTER_UNPHASED_BYTE(A, B) >> 1) | FILTER_UNPHASED_BYTE(C, D))
+#define FILTER_UNPHASED_BYTE_SPECIAL(A) (((A >> 1) & A) & UNPHASED_LOWER_MASK)
 
 #if SIMD_VERSION == 6 // AVX-512: UNTESTED
 const VECTOR_TYPE ONE_MASK = _mm512_set1_epi8(255); // 11111111b
 const VECTOR_TYPE maskUnphasedHigh = _mm512_set1_epi8(UNPHASED_UPPER_MASK);	// 10101010b
 const VECTOR_TYPE maskUnphasedLow  = _mm512_set1_epi8(UNPHASED_LOWER_MASK);	// 01010101b
 
-#define PHASED_ALTALT(A,B)	_mm512_and_si512(A, B)
-#define PHASED_REFREF(A,B)	_mm512_and_si512(_mm512_xor_si512(A, ONE_MASK), _mm512_xor_si512(B, ONE_MASK))
-#define PHASED_ALTREF(A,B)	_mm512_and_si512(_mm512_xor_si512(A, B), B)
-#define PHASED_REFALT(A,B)	_mm512_and_si512(_mm512_xor_si512(A, B), A)
-#define PHASED_ALTALT_MASK(A,B,M)	_mm512_and_si512(PHASED_ALTALT(A, B), M)
-#define PHASED_REFREF_MASK(A,B,M)	_mm512_and_si512(PHASED_REFREF(A, B), M)
-#define PHASED_ALTREF_MASK(A,B,M)	_mm512_and_si512(PHASED_ALTREF(A, B), M)
-#define PHASED_REFALT_MASK(A,B,M)	_mm512_and_si512(PHASED_REFALT(A, B), M)
-#define MASK_MERGE(A,B)		_mm512_xor_si512(_mm512_or_si512(A, B), ONE_MASK)
+#define PHASED_ALTALT(A,B) _mm512_and_si512(A, B)
+#define PHASED_REFREF(A,B) _mm512_and_si512(_mm512_xor_si512(A, ONE_MASK), _mm512_xor_si512(B, ONE_MASK))
+#define PHASED_ALTREF(A,B) _mm512_and_si512(_mm512_xor_si512(A, B), B)
+#define PHASED_REFALT(A,B) _mm512_and_si512(_mm512_xor_si512(A, B), A)
+#define PHASED_ALTALT_MASK(A,B,M) _mm512_and_si512(PHASED_ALTALT(A, B), M)
+#define PHASED_REFREF_MASK(A,B,M) _mm512_and_si512(PHASED_REFREF(A, B), M)
+#define PHASED_ALTREF_MASK(A,B,M) _mm512_and_si512(PHASED_ALTREF(A, B), M)
+#define PHASED_REFALT_MASK(A,B,M) _mm512_and_si512(PHASED_REFALT(A, B), M)
+#define MASK_MERGE(A,B) _mm512_xor_si512(_mm512_or_si512(A, B), ONE_MASK)
 
-// Software intrinsic popcount
-#define POPCOUNT(A, B) {										\
-	__m256i tempA = _mm512_extracti64x4_epi64(B, 0);			\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 0));	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 1)); 	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 2)); 	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 3)); 	\
-	tempA = _mm512_extracti64x4_epi64(B, 1); 					\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 0));	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 1)); 	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 2)); 	\
-	A += __builtin_popcountll(_mm256_extract_epi64(tempA, 3)); 	\
-}
-
-// CPU intrinsic popcount
-// This variation appears to be the fastest in our application
-// Most likely because a result vector is already in an anonymous register
-// and does not need to be reloaded
-//
-// _popcnt64 performance on all architectures:
-// Latency 3, Throughput 1
-#define POPCOUNT2(A, B) { 							 	\
-	__m256i tempA = _mm512_extracti64x4_epi64(B, 0);	\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 0));		\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 1)); 	\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 2)); 	\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 3)); 	\
-	tempA = _mm512_extracti64x4_epi64(B, 1); 			\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 0));		\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 1)); 	\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 2)); 	\
-	A += _popcnt64(_mm256_extract_epi64(tempA, 3)); 	\
+#define POPCOUNT(A, B) {									\
+	__m256i tempA = _mm512_extracti64x4_epi64(B, 0);		\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 0));		\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 1)); 	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 2)); 	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 3)); 	\
+	tempA = _mm512_extracti64x4_epi64(B, 1); 				\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 0));		\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 1)); 	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 2)); 	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(tempA, 3)); 	\
 }
 
 #define FILTER_UNPHASED(A, B)			 _mm512_and_si512(_mm512_slli_epi64(_mm512_and_si512(_mm512_or_si512(_mm512_and_si512(A, maskUnphasedHigh),_mm512_and_si512(B, maskUnphasedLow)), maskUnphasedLow), 1), A)
@@ -191,19 +183,11 @@ const VECTOR_TYPE maskUnphasedLow  = _mm256_set1_epi8(UNPHASED_LOWER_MASK);	// 0
 #define MASK_MERGE(A,B)		_mm256_xor_si256(_mm256_or_si256(A, B), ONE_MASK)
 
 // Software intrinsic popcount
-#define POPCOUNT(A, B) {									\
-	A += __builtin_popcountll(_mm256_extract_epi64(B, 0));	\
-	A += __builtin_popcountll(_mm256_extract_epi64(B, 1));	\
-	A += __builtin_popcountll(_mm256_extract_epi64(B, 2));	\
-	A += __builtin_popcountll(_mm256_extract_epi64(B, 3));	\
-}
-
-// CPU intrinsic popcount
-#define POPCOUNT2(A, B) { 						\
-	A += _popcnt64(_mm256_extract_epi64(B, 0));	\
-	A += _popcnt64(_mm256_extract_epi64(B, 1)); \
-	A += _popcnt64(_mm256_extract_epi64(B, 2)); \
-	A += _popcnt64(_mm256_extract_epi64(B, 3)); \
+#define POPCOUNT(A, B) {							\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(B, 0));	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(B, 1));	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(B, 2));	\
+	A += POPCOUNT_ITER(_mm256_extract_epi64(B, 3));	\
 }
 
 #define FILTER_UNPHASED(A, B)			 _mm256_and_si256(_mm256_slli_epi64(_mm256_and_si256(_mm256_or_si256(_mm256_and_si256(A, maskUnphasedHigh),_mm256_and_si256(B, maskUnphasedLow)), maskUnphasedLow), 1), A)
@@ -230,14 +214,9 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 // extract_epi_64 is available AVX and later
 // popcnt64 is AVX and later
 
-#define POPCOUNT(A, B) {									\
-	A += __builtin_popcountll(_mm_extract_epi64(B, 0));		\
-	A += __builtin_popcountll(_mm_extract_epi64(B, 1));		\
-}
-
-#define POPCOUNT2(A, B) { 						\
-	A += _popcnt64(_mm_extract_epi64(B, 0));	\
-	A += _popcnt64(_mm_extract_epi64(B, 1)); 	\
+#define POPCOUNT(A, B) {								\
+	A += POPCOUNT_ITER(_mm_extract_epi64(B, 0));		\
+	A += POPCOUNT_ITER(_mm_extract_epi64(B, 1));		\
 }
 
 #define FILTER_UNPHASED(A, B)			 _mm_and_si128(_mm_slli_epi64(_mm_and_si128(_mm_or_si128(_mm_and_si128(A, maskUnphasedHigh),_mm_and_si128(B, maskUnphasedLow)), maskUnphasedLow), 1), A)
@@ -822,25 +801,25 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 #define ITER_SHORT {														\
 	ITER_BASE																\
 	__intermediate = FILTER_UNPHASED_SPECIAL(refref); 						\
-	POPCOUNT2(this->helper_simd.counters[0], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[0], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);	\
-	POPCOUNT2(this->helper_simd.counters[1], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[1], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(altref, altref); 						\
-	POPCOUNT2(this->helper_simd.counters[2], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[2], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);	\
-	POPCOUNT2(this->helper_simd.counters[3], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[3], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(refalt,refalt);						\
-	POPCOUNT2(this->helper_simd.counters[6], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[6], __intermediate);				\
 }
 
 #define ITER_LONG {															\
 	ITER_SHORT																\
 	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref); 	\
-	POPCOUNT2(this->helper_simd.counters[5], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[5], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt); 	\
-	POPCOUNT2(this->helper_simd.counters[7], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[7], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_SPECIAL(altalt); 						\
-	POPCOUNT2(this->helper_simd.counters[8], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[8], __intermediate);				\
 }
 
 	for( ; i < frontBonus; ) 					  	ITER_SHORT
@@ -963,29 +942,29 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 #define ITER_SHORT {														\
 	ITER_BASE																\
 	__intermediate = FILTER_UNPHASED_SPECIAL(refref); 						\
-	POPCOUNT2(this->helper_simd.counters[0], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[0], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);	\
-	POPCOUNT2(this->helper_simd.counters[1], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[1], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(altref, altref); 						\
-	POPCOUNT2(this->helper_simd.counters[2], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[2], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);	\
-	POPCOUNT2(this->helper_simd.counters[3], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[3], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref, altalt, altalt, refref);	\
-	POPCOUNT2(this->helper_simd.counters[4], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[4], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altref, altref, refalt);	\
-	POPCOUNT2(this->helper_simd.counters[4], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[4], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(refalt,refalt);						\
-	POPCOUNT2(this->helper_simd.counters[6], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[6], __intermediate);				\
 }
 
 #define ITER_LONG {															\
 	ITER_SHORT																\
 	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref); 	\
-	POPCOUNT2(this->helper_simd.counters[5], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[5], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt); 	\
-	POPCOUNT2(this->helper_simd.counters[7], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[7], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_SPECIAL(altalt); 						\
-	POPCOUNT2(this->helper_simd.counters[8], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[8], __intermediate);				\
 }
 
 	for( ; i < frontBonus; ) 					  	ITER_SHORT
@@ -1093,24 +1072,24 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 #define ITER_SHORT {														\
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);					\
 	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[0], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[0], __intermediate);				\
 	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[1], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[1], __intermediate);				\
 	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[2], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[2], __intermediate);				\
 	i += 1;																	\
 }
 
 #define ITER {																\
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);					\
 	__intermediate  = PHASED_ALTALT_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[3], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[3], __intermediate);				\
 	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[0], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[0], __intermediate);				\
 	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[1], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[1], __intermediate);				\
 	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks);	\
-	POPCOUNT2(this->helper_simd.counters[2], __intermediate);				\
+	POPCOUNT(this->helper_simd.counters[2], __intermediate);				\
 	i += 1;																	\
 }
 
@@ -1220,15 +1199,15 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 
 #define ITER_SHORT {											\
 	__intermediate  = PHASED_REFALT(vectorA[i], vectorB[i]);	\
-	POPCOUNT2(this->helper_simd.counters[2], __intermediate);	\
+	POPCOUNT(this->helper_simd.counters[2], __intermediate);	\
 	__intermediate  = PHASED_ALTREF(vectorA[i], vectorB[i]);	\
-	POPCOUNT2(this->helper_simd.counters[1], __intermediate);	\
+	POPCOUNT(this->helper_simd.counters[1], __intermediate);	\
 	i += 1;														\
 }
 
 #define ITER {													\
 	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);	\
-	POPCOUNT2(this->helper_simd.counters[3], __intermediate);	\
+	POPCOUNT(this->helper_simd.counters[3], __intermediate);	\
 	ITER_SHORT													\
 }
 
@@ -1511,13 +1490,7 @@ bool TomahawkCalculateSlave<T>::Calculate(void){
 
 template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& block1, const controller_type block2){
-	// Method 1: Input-specified (default)
-	// Method 2: Phased Vectorized No-Missing
-	// Method 3:
-	// Method 4: Unphased regular and unphased vectorized
-	// Method 5:
-	// Method 6: All algorithms comparison
-	#if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
+#if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
 	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
@@ -1542,14 +1515,14 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 		}
 	}
 
-	#elif SLAVE_DEBUG_MODE == 2
+#elif SLAVE_DEBUG_MODE == 2
 	if(this->CalculateLDPhasedVectorizedNoMissing(block1, block2)){
 		this->output_manager.Add(block1, block2, this->helper);
 	}
-	#elif SLAVE_DEBUG_MODE == 3
+#elif SLAVE_DEBUG_MODE == 3
 		this->CalculateLDPhased(block1, block2);
 
-	#elif SLAVE_DEBUG_MODE == 4
+#elif SLAVE_DEBUG_MODE == 4
 	// DEBUG
 	this->CalculateLDUnphased(block1, block2);
 	this->CalculateLDUnphasedVectorized(block1, block2);
@@ -1578,7 +1551,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 		std::cerr << m << std::endl;
 		//exit(1);
 	}
-	#endif
+#endif
 }
 
 template <class T>

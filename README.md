@@ -22,7 +22,7 @@ computer farms/clouds with a hardware architecture that is different from the co
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, `index`,
-and `stats`.
+`stats` and `concat`.
 Executing `tomahawk <command>` gives a list of commands with brief descriptions
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
@@ -47,7 +47,7 @@ tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
 ### Import-extend
 If you have split up your `vcf`/`bcf` files into multiple disjoint files (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
-tomahawk import -i file.vcf -e extend.twk -m 0.2 -H 1e-3 -M 0.1
+tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3 -M 0.1
 ```
 
 ### Calculating linkage disequilibrium

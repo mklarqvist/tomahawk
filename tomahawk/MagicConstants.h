@@ -1,7 +1,7 @@
 #ifndef MAGICCONSTANTS_H_
 #define MAGICCONSTANTS_H_
 
-#include "../TypeDefinitions.h"
+#include "../support/TypeDefinitions.h"
 
 extern int SILENT;
 
@@ -64,10 +64,15 @@ const BYTE REF_ALT_N = 4;
 
 // Upper bounds
 // change to constants
-const BYTE UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 00001111 = 2^4
-const U16 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)12 = 2^12
-const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)28 = 2^28
-const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)60 = 2^60
+const BYTE UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 00001111 = 2^4 - 1
+const U16 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)12 = 2^12 - 1
+const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)28 = 2^28 - 1
+const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)60 = 2^60 - 1
+
+const BYTE SAMPLES_8B_MASK = 15;
+const U16 SAMPLES_16B_MASK = 4095;
+const U32 SAMPLES_32B_MASK = 268435455;
+const U64 SAMPLES_64B_MASK = 1152921504606846976;
 
 // EOF
 //const char* const TOMAHAWK_EOF_MARKER = "We will be known forever by the tracks we leave" - Santee Sioux Native Americans from Dakota;

@@ -102,9 +102,6 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 			break;
 		}
 	}
-
-	// Temp
-	//std::cerr << this->header.getContig(entry.body->CHROM).name << ":" << entry.body->POS << std::endl;
 	entry.parse();
 
 	return true;
