@@ -389,6 +389,10 @@ bool TomahawkReader::outputBlocks(){
 
 	// Output header
 	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + Helpers::program_string(true) << std::endl;
+	std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
+	for(U32 i = 0; i < this->totempole_.header.samples - 1; ++i)
+		std::cout << this->totempole_.samples[i] << '\t';
+	std::cout << this->totempole_.samples[this->totempole_.header.samples - 1] << std::endl;
 
 	for(U32 i = 0; i < this->totempole_.getBlocks(); ++i)
 		(*this.*func__)(i);

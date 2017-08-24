@@ -332,7 +332,12 @@ bool VCFHeader::__parseSampleLine(const char* const data, U32& offset, const U32
 		}
 
 
-		std::string sampleName(&data[offset], (found - &data[offset] + 1));
+		std::string sampleName(&data[offset], (found - &data[offset]));
+		if(sampleName == "FORMAT"){
+			offset += found - &data[offset] + 1;
+			continue;
+		}
+
 		if(!this->getSample(sampleName, retValue))
 			this->addSample(sampleName);
 		else {
