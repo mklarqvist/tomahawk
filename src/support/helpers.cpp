@@ -12,6 +12,15 @@
 namespace Tomahawk{
 namespace Helpers{
 
+int isBigEndian(){
+	union {
+		uint32_t i;
+		uint8_t  c[4];
+	} val = {0x01020304};
+
+	return val.c[0] == 1;
+}
+
 std::vector<std::string> &split(std::string& s, char delim, std::vector<std::string>& elems) {
     std::stringstream ss(s);
     std::string item;
@@ -52,15 +61,6 @@ std::vector<std::string> splitLastOf(const std::string& s, const char delim, con
 	return(ret);
 }
 
-std::string output_separator(const U32 width){
-	std::string ret;
-	ret.reserve(width);
-	for(U32 i = 0; i < width; ++i)
-		ret += '-';
-
-	return ret;
-}
-
 std::string datetime(){
 	time_t t = time(0);
 	struct timeval  tv;
@@ -96,21 +96,16 @@ std::string timestamp(const std::string type){
 
 std::string timestamp(const std::string type, const std::string type2){
 	std::stringstream ret;
-	//ret << "\33[2K\r\033[0m";
-	//if(type == "ERROR" || type2 == "ERROR") ret << "\033[0;31m";
-	//else if(type == "WARNING") ret << "\033[38;5;226m";
+
+	ret << "\33[2K\r\033[0m";
+	if(type == "ERROR") ret << "\033[0;31m";
+	else if(type == "WARNING") ret << "\033[38;5;208m";
 
 	ret << "[" << datetime() << "]";
 	ret << "[" << type << "]";
 	ret << "[" << type2 << "] ";
 
 	return(ret.str());
-}
-
-double diffclock(clock_t clock1, clock_t clock2){
-	double diffticks = clock1 - clock2;
-	double diffms    = diffticks / ( CLOCKS_PER_SEC / 1000 );
-	return diffms;
 }
 
 std::string NumberThousandsSeparator(std::string number){

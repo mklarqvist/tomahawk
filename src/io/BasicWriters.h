@@ -8,7 +8,7 @@
 #include "../support/helpers.h"
 #include "../algorithm/spinlock.h"
 #include "../io/BasicBuffer.h"
-#include "../tomahawk/MagicConstants.h"
+#include "../support/MagicConstants.h"
 
 namespace Tomahawk {
 namespace IO{

@@ -2,7 +2,7 @@
 #define BCFENTRY_CPP_
 
 #include "BCFEntry.h"
-#include "../../tomahawk/MagicConstants.h"
+#include "../../support/MagicConstants.h"
 
 namespace Tomahawk {
 namespace BCF {

@@ -7,7 +7,7 @@
 
 #include "../../support/TypeDefinitions.h"
 #include "TomahawkOutputEntry.h"
-#include "../../tomahawk/MagicConstants.h"
+#include "../../support/MagicConstants.h"
 
 namespace Tomahawk {
 

@@ -7,7 +7,7 @@
 #include <iostream>
 #include <algorithm>
 
-#include "../tomahawk/MagicConstants.h"
+#include "../support/MagicConstants.h"
 #include "../support/TypeDefinitions.h"
 #include "../support/helpers.h"
 #include "TotempoleEntry.h"

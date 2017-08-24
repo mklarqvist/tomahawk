@@ -3,7 +3,7 @@
 #include <queue>
 
 #include "../../support/helpers.h"
-#include "../../tomahawk/MagicConstants.h"
+#include "../../support/MagicConstants.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"

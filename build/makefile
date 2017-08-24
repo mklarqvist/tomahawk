@@ -49,19 +49,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: Tomahawk_private
+all: tomahawk
 
 # Tool invocations
-Tomahawk_private: $(OBJS) $(USER_OBJS)
+tomahawk: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross G++ Linker'
-	g++ -pthread -o "Tomahawk_private" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -pthread -o "tomahawk" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS) Tomahawk_private
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS) tomahawk
 	-@echo ' '
 
 .PHONY: all clean dependents

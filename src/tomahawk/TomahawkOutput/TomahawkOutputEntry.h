@@ -37,7 +37,7 @@ struct TomahawkOutputEntry{
 	bool operator>(const self_type& other){ return(!((*this) < other)); }
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& entry){
-		os << (int)entry.FLAGS << '\t' << entry.AcontigID << '\t' << entry.Aposition << '\t' << entry.BcontigID << '\t' << entry.Bposition
+		os << std::setprecision(8) << (int)entry.FLAGS << '\t' << entry.AcontigID << '\t' << entry.Aposition << '\t' << entry.BcontigID << '\t' << entry.Bposition
 				<< '\t' << entry.p1 << '\t' << entry.p2 << '\t' << entry.q1 << '\t' << entry.q2 << '\t' << entry.D << '\t' << entry.Dprime
 				<< '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher << '\t' << entry.chiSqModel;
 
@@ -45,7 +45,7 @@ struct TomahawkOutputEntry{
 	}
 
 	std::ostream& write(std::ostream& os, const contig_type* const contigs) const{
-		os << (int)this->FLAGS << '\t' << contigs[this->AcontigID].name << '\t' << this->Aposition << '\t' << contigs[this->BcontigID].name << '\t' << this->Bposition
+		os << std::setprecision(8) << (int)this->FLAGS << '\t' << contigs[this->AcontigID].name << '\t' << this->Aposition << '\t' << contigs[this->BcontigID].name << '\t' << this->Bposition
 				<< '\t' << this->p1 << '\t' << this->p2 << '\t' << this->q1 << '\t' << this->q2 << '\t' << this->D << '\t' << this->Dprime
 				<< '\t' << this->R2 << '\t' << this->P << '\t' << this->chiSqFisher << '\t' << this->chiSqModel << '\n';
 

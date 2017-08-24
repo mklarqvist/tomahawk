@@ -605,10 +605,13 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 		this->helper[4] = this->helper[16] + this->helper[20] + this->helper[64] + this->helper[65] + 2*this->helper[80] + this->helper[81] + this->helper[84];
 		this->helper[5] = this->helper[17] + this->helper[21] + this->helper[68] + this->helper[69] + this->helper[81] + this->helper[84] + 2*this->helper[85];
 
+		// Update counter
 		++this->no_uncertainty;
 
-		// Use standard phased LD math
-		this->helper.chiSqFisher = 0;
+		// Reset
+		this->helper.chiSqModel = 0;
+
+		// Use standard math
 		return(this->CalculateLDPhasedMath());
 	}
 
@@ -1413,7 +1416,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		this->helper.chiSqModel = 0;
-		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]); // Todo; fix
+		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
 
 		return true;
 	}

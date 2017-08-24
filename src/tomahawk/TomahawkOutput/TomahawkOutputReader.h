@@ -9,7 +9,7 @@
 
 #include "../../support/TypeDefinitions.h"
 #include "../../algorithm/OpenHashTable.h"
-#include "../../tomahawk/MagicConstants.h"
+#include "../../support/MagicConstants.h"
 #include "TomahawkOutputEntry.h"
 #include "../../io/PackedEntryReader.h"
 #include "TomahawkOutputFilterController.h"

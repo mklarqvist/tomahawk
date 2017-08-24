@@ -9,7 +9,7 @@
 #include <algorithm>
 
 #include "../../support/helpers.h"
-#include "../../tomahawk/MagicConstants.h"
+#include "../../support/MagicConstants.h"
 
 namespace Tomahawk{
 namespace VCF{

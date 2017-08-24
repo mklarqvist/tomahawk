@@ -2,7 +2,7 @@
 #define TOMAHAWK_UTILITY_H_
 
 #include <iostream>
-#include "tomahawk/MagicConstants.h"
+#include "support/MagicConstants.h"
 
 void programMessage(void){
 	std::cerr << "Program: " << Tomahawk::Constants::PROGRAM_NAME << " " << Tomahawk::Constants::PROGRAM_VERSION_FRONT << std::endl;

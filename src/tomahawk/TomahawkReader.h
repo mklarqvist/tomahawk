@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <bitset>
 
-#include "MagicConstants.h"
+#include "../support/MagicConstants.h"
 #include "../io/TGZFController.h"
 #include "base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleReader.h"
