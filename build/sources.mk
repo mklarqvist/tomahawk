@@ -23,16 +23,16 @@ CPP_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-algorithm/sort \
-io \
-io/bcf \
-io/vcf \
-. \
-math \
-support \
-third_party \
-third_party/zlib \
-tomahawk \
-tomahawk/TomahawkOutput \
-totempole \
+src/algorithm/sort \
+src/io \
+src/io/bcf \
+src/io/vcf \
+src \
+src/math \
+src/support \
+src/third_party \
+src/third_party/zlib \
+src/tomahawk \
+src/tomahawk/TomahawkOutput \
+src/totempole \
 

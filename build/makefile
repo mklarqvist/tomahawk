@@ -8,17 +8,18 @@ RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include totempole/subdir.mk
--include tomahawk/TomahawkOutput/subdir.mk
--include tomahawk/subdir.mk
--include third_party/zlib/subdir.mk
--include third_party/subdir.mk
--include support/subdir.mk
--include math/subdir.mk
--include io/vcf/subdir.mk
--include io/bcf/subdir.mk
--include io/subdir.mk
--include algorithm/sort/subdir.mk
+-include src/totempole/subdir.mk
+-include src/tomahawk/TomahawkOutput/subdir.mk
+-include src/tomahawk/subdir.mk
+-include src/third_party/zlib/subdir.mk
+-include src/third_party/subdir.mk
+-include src/support/subdir.mk
+-include src/math/subdir.mk
+-include src/io/vcf/subdir.mk
+-include src/io/bcf/subdir.mk
+-include src/io/subdir.mk
+-include src/algorithm/sort/subdir.mk
+-include src/subdir.mk
 -include subdir.mk
 -include objects.mk
 

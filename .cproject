@@ -20,7 +20,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.639451169" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1512816234" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1350459350" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/Tomahawk_private}/build" id="cdt.managedbuild.builder.gnu.cross.1750567232" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/Tomahawk_private}/build" id="cdt.managedbuild.builder.gnu.cross.1750567232" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.773076487" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option id="gnu.c.compiler.option.optimization.level.1087624297" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.dialect.std.752679132" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c99" valueType="enumerated"/>
@@ -49,18 +49,16 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="base|bcf|algorithm|build|interface|io|support|third_party|tomahawk|math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="algorithm"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="build"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="interface"/>
-						<entry excluding="bcf|TomahawkOutput/bcf|totempole" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="io"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="io/bcf"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="math"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="support"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="third_party"/>
-						<entry excluding="base" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="tomahawk"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="tomahawk/base"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="totempole"/>
+						<entry excluding="src|src/algorithm|src/interface|src/io|src/math|src/support|src/third_party|src/tomahawk|src/totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="algorithm|interface|io|math|support|third_party|tomahawk|totempole" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/algorithm"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/interface"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/io"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/math"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/support"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/third_party"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/tomahawk"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src/totempole"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
