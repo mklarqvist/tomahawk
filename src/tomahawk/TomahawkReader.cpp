@@ -387,9 +387,13 @@ bool TomahawkReader::outputBlocks(){
 		std::cerr << Helpers::timestamp("LOG", "TGZF") << "Inflating " << this->totempole_.getBlocks() << " blocks..." << std::endl;
 
 
+
 	// Output header
-	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + Helpers::program_string(true) << std::endl;
-	std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
+	std::cout << this->totempole_.literals << std::endl;
+	std::cout << "##INFO=<ID=HWE_P,Number=1,Type=Float,Description=\"Hardy-Weinberg P-value (Fisher's exact test)\">" << std::endl;
+	std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
+	std::cout << "##tomahawk_viewCommand=" + Helpers::program_string(true) << std::endl;
+	std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 	for(U32 i = 0; i < this->totempole_.header.samples - 1; ++i)
 		std::cout << this->totempole_.samples[i] << '\t';
 	std::cout << this->totempole_.samples[this->totempole_.header.samples - 1] << std::endl;
