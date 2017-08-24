@@ -13,7 +13,7 @@ TomahawkReader::TomahawkReader() :
 	buffer_(),
 	data_(),
 	outputBuffer_(),
-	gzip_controller_()
+	tgzf_controller_()
 {}
 
 TomahawkReader::~TomahawkReader(){
@@ -196,8 +196,6 @@ bool TomahawkReader::getBlocks(void){
 		if(!this->getBlock(i))
 			return false;
 
-	//std::cerr << "Data: " << this->data_.size() << " expected " << buffer_size << std::endl;
-
 	return true;
 }
 
@@ -214,8 +212,6 @@ bool TomahawkReader::getBlocks(std::vector<U32>& blocks){
 	for(U32 i = 0; i < blocks.size(); ++i)
 		if(!this->getBlock(blocks[i]))
 			return false;
-
-	//std::cerr << "Data: " << this->data_.size() << " expected " << buffer_size << std::endl;
 
 	return true;
 }
@@ -254,7 +250,6 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		return false;
 	}
 
-	//std::cerr << "getblock " << blockID  << " seek to " << this->totempole_[blockID].byte_offset << std::endl;
 	this->stream_.seekg(this->totempole_[blockID].byte_offset);
 	if(!this->stream_.good()){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed search..." << std::endl;
@@ -272,7 +267,6 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		exit(1);
 	}
 
-	//this->manager_.Add(&this->data_.data[this->data_.pointer], this->totempole_[blockID]);
 	this->blockDataOffsets_.push_back(DataOffsetPair(&this->data_.data[this->data_.pointer], this->totempole_[blockID]));
 	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
@@ -281,7 +275,7 @@ bool TomahawkReader::getBlock(const U32 blockID){
 	}
 	this->buffer_.pointer = readLength;
 
-	if(!this->gzip_controller_.Inflate(this->buffer_, this->data_)){
+	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to inflate data..." << std::endl;
 		return false;
 	}
@@ -362,12 +356,10 @@ bool TomahawkReader::outputBlocks(std::vector<U32>& blocks){
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","BGZF") << "Inflating " << blocks.size() << " blocks..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG","TGZF") << "Inflating " << blocks.size() << " blocks..." << std::endl;
 
 	// Output header
-	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
-				+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
-				+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION] + '\n';
+	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + Helpers::program_string(true) << std::endl;
 
 
 	for(U32 i = 0; i < blocks.size(); ++i)
@@ -392,14 +384,11 @@ bool TomahawkReader::outputBlocks(){
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "BGZF") << "Inflating " << this->totempole_.getBlocks() << " blocks..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "TGZF") << "Inflating " << this->totempole_.getBlocks() << " blocks..." << std::endl;
 
 
 	// Output header
-	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
-				+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
-				+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION] + '\n';
-
+	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + Helpers::program_string(true) << std::endl;
 
 	for(U32 i = 0; i < this->totempole_.getBlocks(); ++i)
 		(*this.*func__)(i);

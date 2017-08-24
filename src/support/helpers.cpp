@@ -8,6 +8,8 @@
 
 #include "TypeDefinitions.h"
 #include "helpers.h"
+#include "simd_definitions.h"
+#include "MagicConstants.h"
 
 namespace Tomahawk{
 namespace Helpers{
@@ -61,6 +63,12 @@ std::vector<std::string> splitLastOf(const std::string& s, const char delim, con
 	return(ret);
 }
 
+std::string program_string(const bool back){
+	return(std::string(Constants::LITERAL_COMMAND_LINE)
+			+ "; VERSION=" + std::string(back ? Tomahawk::Constants::PROGRAM_VERSION_BACK : Tomahawk::Constants::PROGRAM_VERSION_FRONT)
+			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION]);
+}
+
 std::string datetime(){
 	time_t t = time(0);
 	struct timeval  tv;
@@ -78,7 +86,7 @@ std::string datetime(){
 			now->tm_sec,
 			(U32)tv.tv_usec / 1000);
 
-	return std::string(&buffer[0], 24);
+	return std::string(&buffer[0], 23);
 }
 
 std::string timestamp(const std::string type){

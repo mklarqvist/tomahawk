@@ -75,10 +75,10 @@ private:
 	bool ValidateHeader(std::ifstream& in) const;
 
 private:
-	U64 samples; // has to match header
+	U64 samples;   // has to match header
 	float version; // has to match header
-	U64 filesize_;
-	BYTE bit_width_;
+	U64 filesize_; // filesize
+	BYTE bit_width_; // bit width
 	std::ifstream stream_; // reader stream
 
 	IO::GenericWriterInterace* writer;
@@ -88,7 +88,7 @@ private:
 	IO::BasicBuffer buffer_;
 	IO::BasicBuffer data_;
 	IO::BasicBuffer outputBuffer_;
-	IO::TGZFController gzip_controller_;
+	IO::TGZFController tgzf_controller_;
 
 	std::vector<DataOffsetPair> blockDataOffsets_;
 };
@@ -132,7 +132,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 	char* data_position = &this->data_.data[this->data_.pointer];
 
 	// Inflate TGZF block
-	if(!this->gzip_controller_.Inflate(this->buffer_, this->data_)){
+	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << "failed" << std::endl;
 		return false;
 	}
