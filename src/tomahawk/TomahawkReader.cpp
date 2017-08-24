@@ -364,6 +364,12 @@ bool TomahawkReader::outputBlocks(std::vector<U32>& blocks){
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","BGZF") << "Inflating " << blocks.size() << " blocks..." << std::endl;
 
+	// Output header
+	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
+				+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
+				+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION] + '\n';
+
+
 	for(U32 i = 0; i < blocks.size(); ++i)
 		(*this.*func__)(blocks[i]);
 
@@ -387,6 +393,13 @@ bool TomahawkReader::outputBlocks(){
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG", "BGZF") << "Inflating " << this->totempole_.getBlocks() << " blocks..." << std::endl;
+
+
+	// Output header
+	std::cout << this->totempole_.literals + "\n##tomahawk_viewCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
+				+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
+				+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION] + '\n';
+
 
 	for(U32 i = 0; i < this->totempole_.getBlocks(); ++i)
 		(*this.*func__)(i);

@@ -17,8 +17,6 @@
 #include "TomahawkCalcParameters.h"
 #include "../algorithm/Balancer.h"
 
-// MAJOR TODO: SEPARATE OUT TWK READER FROM CALC FUNCTIONS
-
 namespace Tomahawk {
 
 // TomahawkReader class simply reads compressed data from disk
@@ -133,7 +131,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 	// Keep track of position because inflate function moves pointer
 	char* data_position = &this->data_.data[this->data_.pointer];
 
-	// Inflata TGZF block
+	// Inflate TGZF block
 	if(!this->gzip_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << "failed" << std::endl;
 		return false;

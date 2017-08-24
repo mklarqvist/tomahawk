@@ -14,6 +14,7 @@
 #include "../algorithm/OpenHashTable.h"
 #include "../totempole/TotempoleContig.h"
 #include "../totempole/TotempoleHeader.h"
+#include "../io/TGZFController.h"
 
 namespace Tomahawk {
 
@@ -33,6 +34,9 @@ class TotempoleReader {
 	typedef Totempole::TotempoleContig contig_type;
 	typedef TotempoleEntry entry_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
+	typedef IO::TGZFHeader tgzf_type;
+	typedef IO::TGZFController tgzf_controller_type;
+	typedef IO::BasicBuffer buffer_type;
 
 public:
 	TotempoleReader();
@@ -73,11 +77,13 @@ public:
 	U32 filesize;			// filesize
 	U32 n_contigs;			// number of contigs
 	header_type header;		// header information
+	std::string literals;	// literal data
+	tgzf_controller_type tgzf_controller;	// tgzf controller
 	contig_type* contigs;	// contig data
 	std::string* samples;	// sample names
 	entry_type* entries;	// totempole entries data
 	hash_table* contigsHashTable;	// contig name hash table
-	hash_table* sampleHashTable;	// smaple name hash table
+	hash_table* sampleHashTable;	// sample name hash table
 };
 
 } /* namespace Tomahawk */

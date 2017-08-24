@@ -52,7 +52,6 @@ bool TotempoleReader::Open(const std::string filename){
 		return false;
 	}
 
-
 	if(this->filesize < Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Failed MAGIC..." << std::endl;
 		return false;
@@ -63,18 +62,19 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not validate Totempole header..." << std::endl;
 		return false;
 	}
+
 	// Load header data
 	this->stream >> this->header;
 #if DEBUG_MODE == 1
 	std::cerr << this->header << std::endl;
 #endif
 
-
 	// Get number of contigs
 	this->stream.read(reinterpret_cast<char *>(&this->n_contigs), sizeof(U32));
 #if DEBUG_MODE == 1
 	std::cerr << this->n_contigs << std::endl;
 #endif
+
 	this->contigs = new contig_type[this->size()];
 	for(U32 i = 0; i < this->size(); ++i){
 		contig_base_type* contig_base = reinterpret_cast<contig_base_type*>(&this->contigs[i]);
@@ -95,6 +95,41 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << i << '\t' << samples[i] << std::endl;
 #endif
 	}
+
+
+	// Parse literal block
+	buffer_type buffer(sizeof(tgzf_type));
+	this->stream.read(&buffer.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+	buffer.pointer = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	if(!h->Validate()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
+		std::cerr << *h << std::endl;
+		return false;
+	}
+
+	buffer.resize(h->BSIZE); // make sure all data will fit
+
+	// Recast because if buffer is resized then the pointer address is incorrect
+	// resulting in segfault
+	h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+
+	this->stream.read(&buffer.data[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], (h->BSIZE) - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	if(!this->stream.good()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
+		return false;
+	}
+
+	buffer.pointer = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
+	buffer_type output_buffer(uncompressed_size);
+
+	if(!this->tgzf_controller.Inflate(buffer, output_buffer)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed inflate!" << std::endl;
+		return false;
+	}
+	this->literals = std::string(&output_buffer.data[0], output_buffer.size());
+	// end parse literals
 
 	if(this->stream.tellg() != this->header.offset){
 		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Corrupt file" << std::endl;

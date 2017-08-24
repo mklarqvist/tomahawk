@@ -34,6 +34,12 @@ DEALINGS IN THE SOFTWARE.
 #include "concat.h"
 #include "stats.h"
 
+// Declare extern
+char Tomahawk::Constants::PROGRAM_VERSION_FRONT[5048];
+char Tomahawk::Constants::PROGRAM_VERSION_BACK[5048];
+std::string Tomahawk::Constants::LITERAL_COMMAND_LINE;
+std::string Tomahawk::Constants::INTERPRETED_COMMAND;
+
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Tomahawk does not support big endian systems..." << std::endl;
@@ -47,14 +53,9 @@ int main(int argc, char** argv){
 	}
 
 	// Literal string input line
-	Tomahawk::Constants::LITERAL_COMMAND_LINE = "tomahawk";
+	Tomahawk::Constants::LITERAL_COMMAND_LINE = Tomahawk::Constants::PROGRAM_NAME;
 	for(U32 i = 1; i < argc; ++i)
 		Tomahawk::Constants::LITERAL_COMMAND_LINE += " " + std::string(&argv[i][0]);
-
-	Tomahawk::Constants::LITERAL_COMMAND_LINE += "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
-
-	// Temp
-	std::cerr << Tomahawk::Constants::LITERAL_COMMAND_LINE << std::endl;
 
 	if(strncmp(&argv[1][0], "import", 5) == 0){
 		return(import(argc, argv));

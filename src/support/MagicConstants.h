@@ -8,8 +8,8 @@ extern int SILENT;
 namespace Tomahawk{
 namespace Constants{
 
-static std::string LITERAL_COMMAND_LINE;
-static std::string INTERPRETED_COMMAND;
+extern std::string LITERAL_COMMAND_LINE;
+extern std::string INTERPRETED_COMMAND;
 
 // Revision versioning
 const float PROGRAM_VERSION = 0.4; // major
@@ -18,11 +18,14 @@ const U32 PROGRAM_VERSION_MINOR = 0;
 // Todo: fix inject in makefile
 // Get commit since last tag
 // git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 4;
+const U32 GIT_COMMITS_SINCE_TAG = 8;
 // Get last git hash
 // git rev-parse HEAD
-static char PROGRAM_VERSION_FRONT[2048];
-const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, "cca824c1638915e9b05300975ffdfe6487332c03");
+const std::string PROGRAM_GIT_HASH = "89034b10eb0fa5079d2e5bcd0d71f01f754ad5e0";
+extern char PROGRAM_VERSION_FRONT[5048];
+extern char PROGRAM_VERSION_BACK[5048];
+const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
+const U32 y = sprintf(PROGRAM_VERSION_BACK,"alpha-%.2f.%u-%u-%s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
@@ -64,8 +67,8 @@ const BYTE REF_ALT_N = 4;
 
 // Upper bounds
 // change to constants
-const BYTE UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 00001111 = 2^4 - 1
-const U16 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)12 = 2^12 - 1
+const U32 UPPER_LIMIT_SAMPLES_8B = ((1 << (8 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 00001111 = 2^4 - 1
+const U32 UPPER_LIMIT_SAMPLES_16B = ((1 << (16 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)12 = 2^12 - 1
 const U32 UPPER_LIMIT_SAMPLES_32B = ((1 << (32 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)28 = 2^28 - 1
 const U64 UPPER_LIMIT_SAMPLES_64B = (((U64)1 << (64 - TOMAHAWK_SNP_PACK_WIDTH)) - 1); // 0000(1)60 = 2^60 - 1
 

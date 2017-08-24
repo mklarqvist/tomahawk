@@ -14,6 +14,7 @@
 #include "base/TomahawkEntryMeta.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
 #include "../totempole/TotempoleReader.h"
+#include "../support/simd_definitions.h"
 
 namespace Tomahawk {
 
@@ -89,6 +90,17 @@ public:
 		totempole.seekp(posOffset); // seek to previous position
 		totempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
 		totempole.seekp(curPos); // seek back to current IO position
+
+		std::cerr << Helpers::timestamp("LOG") << "writing headers" << std::endl;
+		buffer_type temp;
+		for(U32 i = 0; i < header.literal_lines.size(); ++i){
+			std::cerr << header.literal_lines[i] << std::endl;
+			temp += header.literal_lines[i];
+		}
+		this->tgzf_controller.Deflate(temp);
+		tomahawk.write(&temp.data[0], temp.size());
+		this->tgzf_controller.Clear();
+		exit(1);
 	}
 
 private:
@@ -104,6 +116,8 @@ private:
 };
 
 class TomahawkImportWriter {
+	typedef IO::BasicBuffer buffer_type;
+
 public:
 	TomahawkImportWriter() :
 		blocksWritten_(0),
@@ -174,7 +188,7 @@ public:
 
 	void WriteHeaders(void){
 		if(this->vcf_header_ == nullptr){
-			std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
 			exit(1);
 		}
 
@@ -213,6 +227,21 @@ public:
 			this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
 			this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 		}
+
+		// Push in VCF header and executed line
+		buffer_type temp(this->vcf_header_->literal_lines.size()*65536);
+		for(U32 i = 0; i < this->vcf_header_->literal_lines.size(); ++i)
+			temp += this->vcf_header_->literal_lines[i] + '\n';
+
+		const std::string command = "##tomahawk_importCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
+			+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
+			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
+
+		temp += command;
+		this->gzip_controller_.Deflate(temp);
+		this->streamTotempole.write(&this->gzip_controller_.buffer.data[0], this->gzip_controller_.buffer.pointer);
+		this->gzip_controller_.Clear();
+		temp.deleteAll();
 
 		U32 curPos = this->streamTotempole.tellp(); // remember current IO position
 		this->streamTotempole.seekp(posOffset); // seek to previous position

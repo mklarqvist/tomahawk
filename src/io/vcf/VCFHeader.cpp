@@ -167,6 +167,7 @@ bool VCFHeader::__parseFirstLine(reader& stream){
 		return false;
 	}
 
+	this->literal_lines.push_back(std::string(&stream[0],stream.size()));
 	stream.clear();
 	return true;
 }
@@ -187,6 +188,7 @@ bool VCFHeader::__parseFirstLine(const char* const data, U32& offset){
 	}
 
 	const char* hit = std::strchr(&data[offset], '\n');
+	this->literal_lines.push_back(std::string(&data[offset], hit - &data[offset]));
 	offset += (hit + 1) - &data[offset];
 	return true;
 }
