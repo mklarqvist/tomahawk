@@ -382,7 +382,7 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 
 	TotempoleEntry totempole_entry_;
-	IO::TGZFController gzip_controller_;				// todo: writer should have no knowledge of this
+	IO::TGZFController gzip_controller_;			// todo: writer should have no knowledge of this
 	Algorithm::TomahawkImportRLE* rleController_;	// todo: writer should have no knowledge of this
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)

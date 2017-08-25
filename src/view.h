@@ -101,6 +101,7 @@ int view(int argc, char** argv){
 	U16 flagInclude = 0, flagExclude = 0;
 	bool outputHeader = true;
 	int outputType = 1;
+	bool dropGenotypes = false;
 
 	int c = 0;
 	int long_index = 0;
@@ -236,6 +237,10 @@ int view(int argc, char** argv){
 		case 'O':
 			outputType = atoi(optarg);
 			break;
+
+		case 'G':
+			dropGenotypes = true;
+			break;
 		}
 	}
 
@@ -274,6 +279,8 @@ int view(int argc, char** argv){
 
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
 		Tomahawk::TomahawkReader tomahawk;
+		tomahawk.setDropGenotypes(dropGenotypes);
+		tomahawk.setShowHeader(outputHeader);
 		if(!tomahawk.Open(input)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 			return 1;

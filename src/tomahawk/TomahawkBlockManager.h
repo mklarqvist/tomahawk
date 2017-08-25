@@ -177,7 +177,7 @@ public:
 		this->runsPointer = 0;
 	}
 
-	void WriteVariant(const TotempoleReader& totempole, IO::BasicBuffer& buffer) const{
+	void WriteVariant(const TotempoleReader& totempole, IO::BasicBuffer& buffer, bool dropGenotypes = false) const{
 		// All genotypes in this line will have the same phase
 		const char separator = this->currentMeta().phased == 1 ? '|' : '/';
 
@@ -202,41 +202,46 @@ public:
 		buffer += std::to_string(this->currentMeta().HWE_P);
 		buffer += std::string(";MAF=");
 		buffer += std::to_string(this->currentMeta().MAF);
-		buffer += '\t';
-		buffer += Constants::GT;
-		buffer += '\t';
 
-		// For each run length encoded entry
-		for(U32 i = 0; i < this->currentMeta().runs - 1; ++i){
-			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleA];
-			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleB];
+		if(!dropGenotypes){
+			buffer += '\t';
+			buffer += Constants::GT;
+			buffer += '\t';
 
-			// Repeat genotype run-length times
-			for(U32 k = 0; k < (*this)[i].runs; ++k){
+			// For each run length encoded entry
+			for(U32 i = 0; i < this->currentMeta().runs - 1; ++i){
+				const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleA];
+				const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleB];
+
+				// Repeat genotype run-length times
+				for(U32 k = 0; k < (*this)[i].runs; ++k){
+					buffer += left;
+					buffer += separator;
+					buffer += right;
+					buffer += '\t';
+				}
+			}
+
+			// For the last run length encoded entry
+			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleA];
+			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleB];
+
+			// Repeat genotype run-length - 1 times
+			// Do not put a tab delimiter last
+			for(U32 k = 0; k < (*this)[this->currentMeta().runs - 1].runs - 1; ++k){
 				buffer += left;
 				buffer += separator;
 				buffer += right;
 				buffer += '\t';
 			}
-		}
-
-		// For the last run length encoded entry
-		const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleA];
-		const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[this->currentMeta().runs - 1].alleleB];
-
-		// Repeat genotype run-length - 1 times
-		// Do not put a tab delimiter last
-		for(U32 k = 0; k < (*this)[this->currentMeta().runs - 1].runs - 1; ++k){
+			// Place a new line in the end instead
 			buffer += left;
 			buffer += separator;
 			buffer += right;
-			buffer += '\t';
+			buffer += '\n';
+		} else {
+			buffer += '\n';
 		}
-		// Place a new line in the end instead
-		buffer += left;
-		buffer += separator;
-		buffer += right;
-		buffer += '\n';
 	}
 
 	bool buildPacked(const U64& samples);

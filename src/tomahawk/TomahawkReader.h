@@ -63,6 +63,8 @@ public:
 	inline TotempoleReader& getTotempole(void){ return(this->totempole_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
 	inline const size_t DataOffsetSize(void) const{ return(this->blockDataOffsets_.size()); }
+	inline void setDropGenotypes(const bool yes){ this->dropGenotypes = yes; }
+	inline void setShowHeader(const bool yes){ this->showHeader = yes; }
 
 private:
 	void DetermineBitWidth(void);
@@ -79,6 +81,8 @@ private:
 	float version; // has to match header
 	U64 filesize_; // filesize
 	BYTE bit_width_; // bit width
+	bool dropGenotypes;
+	bool showHeader;
 	std::ifstream stream_; // reader stream
 
 	IO::GenericWriterInterace* writer;
@@ -149,7 +153,7 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
-		tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_);
+		tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_, this->dropGenotypes);
 
 		// Next variant
 		++tomahawk_controller;

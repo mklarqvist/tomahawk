@@ -66,7 +66,7 @@ clean:
 	-@echo ' '
 
 post-build:
-	-mv tomahawk ../bin/;
+	-mkdir -p ../bin; mv tomahawk ../bin/;
 	-@echo ' '
 
 .PHONY: all clean dependents
