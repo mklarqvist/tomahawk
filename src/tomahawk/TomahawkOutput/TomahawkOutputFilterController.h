@@ -32,7 +32,7 @@ public:
 	bool setFilterChiSquared(const double& min, const double& max);
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
-	bool setFilterJointHF(const int64_t& min, const int64_t& max);
+	bool setFilterMHF(const int64_t& min, const int64_t& max);
 
 	bool filter(const entry_type& target) const;
 

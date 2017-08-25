@@ -255,7 +255,7 @@ bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, cons
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterJointHF(const int64_t& min, const int64_t& max){
+bool TomahawkOutputFilterController::setFilterMHF(const int64_t& min, const int64_t& max){
 	if(min < 0){
 		std::cerr << "min < 0" << std::endl;
 		return false;

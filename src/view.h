@@ -100,7 +100,7 @@ int view(int argc, char** argv){
 	int64_t minAlleles = 0, maxAlleles = std::numeric_limits<int64_t>::max();
 	U16 flagInclude = 0, flagExclude = 0;
 	bool outputHeader = true;
-	int outputType = 0;
+	int outputType = 1;
 
 	int c = 0;
 	int long_index = 0;
@@ -290,7 +290,7 @@ int view(int argc, char** argv){
 		if(!filter.setFilterRsquared(minR2, maxR2)) return 1;
 		filter.setFilterInclude(flagInclude);
 		filter.setFilterExclude(flagExclude);
-		if(!filter.setFilterJointHF(minAlleles, maxAlleles)) return 1;
+		if(!filter.setFilterMHF(minAlleles, maxAlleles)) return 1;
 		if(!filter.setFilterP(minP, maxP)) return 1;
 		if(!filter.setFilterDprime(minDprime, maxDprime)) return 1;
 		reader.setWriteHeader(outputHeader);
