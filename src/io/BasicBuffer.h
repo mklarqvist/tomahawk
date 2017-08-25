@@ -62,7 +62,6 @@ struct BasicBuffer{
 		}
 
 		//std::cerr << Helpers::timestamp("DEBUG") << "Resizing buffer: " << this->capacity() << " -> " << new_size << "\tcopyto: " << copy_to << std::endl;
-		//std::cerr << "Copy to: " << copy_to << std::endl;
 		char* target = this->data;
 		this->data = new char[new_size];
 		memcpy(&this->data[0], &target[0], copy_to);
@@ -79,6 +78,8 @@ struct BasicBuffer{
 	void Add(const char* data, const U32 length){
 		if(this->size() + length >= this->capacity())
 			this->resize((this->size() + length) * 2);
+
+		std::cerr << (void*)this->data << '\t' << this->pointer << std::endl;
 
 		memcpy(&this->data[this->pointer], &data[0], length);
 		this->pointer += length;

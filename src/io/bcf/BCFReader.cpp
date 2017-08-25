@@ -82,13 +82,18 @@ bool BCFReader::parseHeader(void){
 		return false;
 	}
 
+	if(this->bgzf_controller.buffer.size() < 5){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Corrupted header!" << std::endl;
+		return false;
+	}
+
 	if(strncmp(&this->bgzf_controller.buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to validate MAGIC" << std::endl;
 		return false;
 	}
 
 	const U32 l_text = *reinterpret_cast<const U32* const>(&this->bgzf_controller.buffer[5]) + 4;
-	this->header_buffer.resize(l_text);
+	this->header_buffer.resize(l_text + 1);
 
 	if(l_text - 5 < this->bgzf_controller.buffer.size()){
 		this->header_buffer.Add(&this->bgzf_controller.buffer[5], l_text);
@@ -100,7 +105,6 @@ bool BCFReader::parseHeader(void){
 		//U32 p = 0;
 		while(this->nextBlock()){
 			if(head_read + this->bgzf_controller.buffer.size() >= l_text){
-				//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->bgzf_controller.buffer.size() << std::endl;
 				this->header_buffer.Add(&this->bgzf_controller.buffer[0], l_text - head_read);
 				this->current_pointer = l_text - head_read;
 				break;

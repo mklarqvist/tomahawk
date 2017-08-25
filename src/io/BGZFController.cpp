@@ -109,7 +109,7 @@ bool BGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
 		return false;
 	}
 
-	input.resize(h->BSIZE); // make sure all data will fit
+	input.resize(h->BSIZE + 1); // make sure all data will fit
 
 	// Recast because if buffer is resized then the pointer address is incorrect
 	// resulting in segfault
@@ -123,7 +123,7 @@ bool BGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
 
 	input.pointer = h->BSIZE + 1;
 	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.pointer -  sizeof(U32)]);
-	this->buffer.resize(uncompressed_size);
+	this->buffer.resize(uncompressed_size + 1);
 	this->buffer.reset();
 
 	if(!this->Inflate(input, this->buffer)){
