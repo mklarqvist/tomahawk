@@ -174,6 +174,8 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.previous_position = entry.body->POS;
 	this->sort_order_helper.contigID = &contigID;
 	this->sort_order_helper.prevcontigID = contigID;
+	this->writer_.totempole_entry_.contigID = contigID;
+	this->writer_.totempole_entry_.minPosition = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
@@ -260,19 +262,21 @@ bool TomahawkImporter::BuildVCF(void){
 		std::cerr << "failed to get line" << std::endl;
 		return false;
 	}
-	// Parse a VCF line
+
 	if(!line.Parse(&this->reader_[0], this->reader_.size())){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not parse..." << std::endl;
 		return false;
 	}
 
-	this->sort_order_helper.previous_position = line.position;
 	// Try to get contig information from header
 	if(!this->header_->getContig(std::string(line.CHROM, line.lCHROM), this->sort_order_helper.contigID)){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Contig does not exist in header..." << std::endl;
 		return false;
 	}
 	this->sort_order_helper.prevcontigID = *this->sort_order_helper.contigID;
+	this->sort_order_helper.previous_position = line.position;
+	this->writer_.totempole_entry_.contigID = *this->sort_order_helper.contigID;
+
 	if(!this->parseVCFLine(line)){
 		std::cerr << "faiaeld parse" << std::endl;
 		return false;
@@ -434,22 +438,22 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 		return false;
 	}
 
-	// Assess missingness
-	const float missing = line.getMissingness(this->header_->samples);
-	if(line.position == this->sort_order_helper.previous_position && *this->sort_order_helper.contigID == this->sort_order_helper.prevcontigID){
-		if(this->sort_order_helper.previous_included){
-			//if(!SILENT)
-			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
-
-			goto next;
-		} else {
-			//if(!SILENT)
-			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Keeping (drop other)..." << std::endl;
-		}
-	}
-
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.IsSimple()){
+		// Only check missing if simple
+		const float missing = line.getMissingness(this->header_->samples);
+		if(line.position == this->sort_order_helper.previous_position && *this->sort_order_helper.contigID == this->sort_order_helper.prevcontigID){
+			if(this->sort_order_helper.previous_included){
+				//if(!SILENT)
+				//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
+
+				goto next;
+			} else {
+				//if(!SILENT)
+				//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Keeping (drop other)..." << std::endl;
+			}
+		}
+
 		if(missing > DEFAULT_MISSINGNESS_CUTOFF){
 			//if(!SILENT)
 			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;

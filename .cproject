@@ -14,7 +14,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="" artifactName="tomahawk" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="cdt.managedbuild.toolchain.gnu.cross.base.340329375" name="build" parent="org.eclipse.cdt.build.core.emptycfg" postbuildStep="mv ${BuildArtifactFilePrefix}${BuildArtifactFileName} ../bin/;" prebuildStep="">
+				<configuration artifactExtension="" artifactName="tomahawk" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="cdt.managedbuild.toolchain.gnu.cross.base.340329375" name="build" parent="org.eclipse.cdt.build.core.emptycfg" postbuildStep="mkdir -p ../bin; mv ${BuildArtifactFilePrefix}${BuildArtifactFileName} ../bin/;" prebuildStep="">
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.cross.base.340329375.2086271547" name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.1353397404" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.base">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.639451169" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false"/>

@@ -167,7 +167,7 @@ bool VCFHeader::__parseFirstLine(reader& stream){
 		return false;
 	}
 
-	this->literal_lines.push_back(std::string(&stream[0],stream.size()));
+	this->literal_lines.push_back(std::string(&stream[0],stream.size()-1));
 	stream.clear();
 	return true;
 }
@@ -246,7 +246,7 @@ bool VCFHeader::__parseSampleLine(reader& stream){
 	U32 search_position = Tomahawk::VCF::Constants::HEADER_COLUMN.size() + 1;
 	U64 delimiters_found = 0;
 	while(true){ // while there is samples in line
-		char* found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
+		char* found = std::find(&stream[search_position], &stream[stream.size()-1], Tomahawk::VCF::Constants::VCF_DELIMITER);
 		if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER)
 			break;
 
@@ -262,12 +262,10 @@ bool VCFHeader::__parseSampleLine(reader& stream){
 	delimiters_found = 0;
 	S32* retValue;
 	char* found = 0;
-	while(found != &stream[stream.size()]){ // while there are samples in line
-		found = std::find(&stream[search_position], &stream[stream.size()], Tomahawk::VCF::Constants::VCF_DELIMITER);
-		//if(*found != Tomahawk::VCF::Constants::VCF_DELIMITER && found != &stream[stream.size()])
-		//	break;
-
+	while(found != &stream[stream.size()-1]){ // while there are samples in line
+		found = std::find(&stream[search_position], &stream[stream.size()-1], Tomahawk::VCF::Constants::VCF_DELIMITER);
 		std::string sampleName(&stream[search_position], (found - stream.buffer_ + 1) - search_position - 1);
+
 		if(sampleName == "FORMAT"){
 			search_position = found - stream.buffer_ + 1;
 			continue;
