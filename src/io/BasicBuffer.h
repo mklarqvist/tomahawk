@@ -79,8 +79,6 @@ struct BasicBuffer{
 		if(this->size() + length >= this->capacity())
 			this->resize((this->size() + length) * 2);
 
-		std::cerr << (void*)this->data << '\t' << this->pointer << std::endl;
-
 		memcpy(&this->data[this->pointer], &data[0], length);
 		this->pointer += length;
 	}
