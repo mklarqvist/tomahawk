@@ -19,6 +19,8 @@ class VCFHeader {
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef VCFHeaderContig contig_type;
 	typedef TotempoleReader totempole_type;
+	typedef IO::TGZFController tgzf_type;
+	typedef IO::BasicBuffer buffer_type;
 
 	enum VCF_ERROR_TYPE {VCF_PASS, VCF_ERROR_LINE1, VCF_ERROR_LINES, VCF_ERROR_SAMPLE, STREAM_BAD};
 
@@ -64,6 +66,22 @@ public:
 
 	bool parse(reader& stream);
 	bool parse(const char* const data, const U32& length);
+
+	bool writeTGZFLiterals(std::ofstream& stream) const{
+		buffer_type temp;
+		tgzf_type tgzf_controller;
+
+		for(U32 i = 0; i < this->literal_lines.size(); ++i){
+			std::cerr << this->literal_lines[i] << std::endl;
+			temp += this->literal_lines[i];
+		}
+		tgzf_controller.Deflate(temp);
+		stream.write(&temp.data[0], temp.size());
+		tgzf_controller.Clear();
+		temp.deleteAll();
+
+		return true;
+	}
 
 private:
 	// These functions are unsafe as they require contigHashTable to be

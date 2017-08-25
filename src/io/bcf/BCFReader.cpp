@@ -22,41 +22,9 @@ bool BCFReader::nextBlock(void){
 	if(this->stream.tellg() == this->filesize)
 		return false;
 
-	buffer.resize(sizeof(bgzf_type));
-	this->stream.read(&buffer.data[0], IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
-	const bgzf_type* h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
-	buffer.pointer = IO::Constants::BGZF_BLOCK_HEADER_LENGTH;
-	if(!h->Validate()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
-		std::cerr << *h << std::endl;
+	if(!this->bgzf_controller.InflateBlock(this->stream, this->buffer)){
 		return false;
 	}
-
-	buffer.resize(h->BSIZE); // make sure all data will fit
-
-	// Recast because if buffer is resized then the pointer address is incorrect
-	// resulting in segfault
-	h = reinterpret_cast<const bgzf_type*>(&buffer.data[0]);
-
-	this->stream.read(&buffer.data[IO::Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
-	if(!this->stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
-		return false;
-	}
-
-	buffer.pointer = h->BSIZE + 1;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-	output_buffer.resize(uncompressed_size);
-	this->output_buffer.reset();
-
-	if(!this->bgzf_controller.Inflate(buffer, output_buffer)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed inflate!" << std::endl;
-		return false;
-	}
-
-	// BGZF EOF marker
-	if(this->output_buffer.size() == 0)
-		return false;
 
 	// Reset buffer
 	this->buffer.reset();
@@ -66,37 +34,38 @@ bool BCFReader::nextBlock(void){
 }
 
 bool BCFReader::nextVariant(BCFEntry& entry){
-	if(this->current_pointer == this->output_buffer.size()){
+	if(this->current_pointer == this->bgzf_controller.buffer.size()){
 		if(!this->nextBlock())
 			return false;
 	}
 
-	if(this->current_pointer + 8 > this->output_buffer.size()){
-		const U32 partial = this->output_buffer.size() - this->current_pointer;
-		entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
+	if(this->current_pointer + 8 > this->bgzf_controller.buffer.size()){
+		const U32 partial = this->bgzf_controller.buffer.size() - this->current_pointer;
+		entry.add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
 		if(!this->nextBlock()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block in partial" << std::endl;
+			std::cerr << this->current_pointer << '/' << this->bgzf_controller.buffer.size() << std::endl;
 			return false;
 		}
 
-		entry.add(&this->output_buffer[0], 8 - partial);
+		entry.add(&this->bgzf_controller.buffer[0], 8 - partial);
 		this->current_pointer = 8 - partial;
 	} else {
-		entry.add(&this->output_buffer[this->current_pointer], 8);
+		entry.add(&this->bgzf_controller.buffer[this->current_pointer], 8);
 		this->current_pointer += 8;
 	}
 
 	U64 remainder = entry.sizeBody();
 	while(remainder > 0){
-		if(this->current_pointer + remainder > this->output_buffer.size()){
-			entry.add(&this->output_buffer[this->current_pointer], this->output_buffer.size() - this->current_pointer);
-			remainder -= this->output_buffer.size() - this->current_pointer;
+		if(this->current_pointer + remainder > this->bgzf_controller.buffer.size()){
+			entry.add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
+			remainder -= this->bgzf_controller.buffer.size() - this->current_pointer;
 			if(!this->nextBlock()){
 				//std::cerr << "failed to get next block" << std::endl;
 				return false;
 			}
 		} else {
-			entry.add(&this->output_buffer[this->current_pointer], remainder);
+			entry.add(&this->bgzf_controller.buffer[this->current_pointer], remainder);
 			this->current_pointer += remainder;
 			remainder = 0;
 			break;
@@ -108,36 +77,36 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 }
 
 bool BCFReader::parseHeader(void){
-	if(this->output_buffer.size() == 0){
+	if(this->bgzf_controller.buffer.size() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "No buffer!" << std::endl;
 		return false;
 	}
 
-	if(strncmp(&this->output_buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
+	if(strncmp(&this->bgzf_controller.buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to validate MAGIC" << std::endl;
 		return false;
 	}
 
-	const U32 l_text = *reinterpret_cast<const U32* const>(&this->output_buffer[5]) + 4;
+	const U32 l_text = *reinterpret_cast<const U32* const>(&this->bgzf_controller.buffer[5]) + 4;
 	this->header_buffer.resize(l_text);
 
-	if(l_text - 5 < this->output_buffer.size()){
-		this->header_buffer.Add(&this->output_buffer[5], l_text);
+	if(l_text - 5 < this->bgzf_controller.buffer.size()){
+		this->header_buffer.Add(&this->bgzf_controller.buffer[5], l_text);
 		this->current_pointer = l_text + 5;
 	} else {
-		U32 head_read = this->output_buffer.size() - 5;
-		this->header_buffer.Add(&this->output_buffer[5], this->output_buffer.size() - 5);
+		U32 head_read = this->bgzf_controller.buffer.size() - 5;
+		this->header_buffer.Add(&this->bgzf_controller.buffer[5], this->bgzf_controller.buffer.size() - 5);
 
 		//U32 p = 0;
 		while(this->nextBlock()){
-			if(head_read + this->output_buffer.size() >= l_text){
-				//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->output_buffer.size() << std::endl;
-				this->header_buffer.Add(&this->output_buffer[0], l_text - head_read);
+			if(head_read + this->bgzf_controller.buffer.size() >= l_text){
+				//std::cerr << "remainder: " << l_text - head_read << " and data: " << this->bgzf_controller.buffer.size() << std::endl;
+				this->header_buffer.Add(&this->bgzf_controller.buffer[0], l_text - head_read);
 				this->current_pointer = l_text - head_read;
 				break;
 			}
-			head_read += this->output_buffer.size();
-			this->header_buffer.Add(&this->output_buffer[0], this->output_buffer.size());
+			head_read += this->bgzf_controller.buffer.size();
+			this->header_buffer.Add(&this->bgzf_controller.buffer[0], this->bgzf_controller.buffer.size());
 		}
 	}
 

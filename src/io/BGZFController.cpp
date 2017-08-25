@@ -1,4 +1,5 @@
 #include <limits>
+#include <fstream>
 
 #include "../third_party/zlib/zlib.h"
 #include "IOConstants.h"
@@ -95,6 +96,46 @@ bool BGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	output.pointer += zs.total_out;
 
 	return(true);
+}
+
+bool BGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
+	input.resize(sizeof(header_type));
+	stream.read(&input.data[0], IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(&input.data[0]);
+	input.pointer = IO::Constants::BGZF_BLOCK_HEADER_LENGTH;
+	if(!h->Validate()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
+		std::cerr << *h << std::endl;
+		return false;
+	}
+
+	input.resize(h->BSIZE); // make sure all data will fit
+
+	// Recast because if buffer is resized then the pointer address is incorrect
+	// resulting in segfault
+	h = reinterpret_cast<const header_type*>(&input.data[0]);
+
+	stream.read(&input.data[IO::Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
+	if(!stream.good()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
+		return false;
+	}
+
+	input.pointer = h->BSIZE + 1;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.pointer -  sizeof(U32)]);
+	this->buffer.resize(uncompressed_size);
+	this->buffer.reset();
+
+	if(!this->Inflate(input, this->buffer)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed inflate!" << std::endl;
+		return false;
+	}
+
+	// BGZF EOF marker
+	if(this->buffer.size() == 0)
+		return false;
+
+	return true;
 }
 
 } /* namespace IO */

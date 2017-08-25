@@ -37,7 +37,6 @@ public:
 	U64 filesize;
 	U32 current_pointer;
 	buffer_type buffer;
-	buffer_type output_buffer;
 	buffer_type header_buffer;
 	bgzf_controller_type bgzf_controller;
 	header_type header;

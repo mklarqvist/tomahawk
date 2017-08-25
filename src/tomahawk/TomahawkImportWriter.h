@@ -67,7 +67,6 @@ public:
 		const U32 n_contigs = header.contigs.size();
 		this->totempole_output.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
-
 		// Write contig data to Totempole
 		// length | n_char | chars[0 .. n_char - 1]
 		for(U32 i = 0; i < header.contigs.size(); ++i){
@@ -91,16 +90,7 @@ public:
 		totempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
 		totempole.seekp(curPos); // seek back to current IO position
 
-		std::cerr << Helpers::timestamp("LOG") << "writing headers" << std::endl;
-		buffer_type temp;
-		for(U32 i = 0; i < header.literal_lines.size(); ++i){
-			std::cerr << header.literal_lines[i] << std::endl;
-			temp += header.literal_lines[i];
-		}
-		this->tgzf_controller.Deflate(temp);
-		tomahawk.write(&temp.data[0], temp.size());
-		this->tgzf_controller.Clear();
-		exit(1);
+		header.writeTGZFLiterals(totempole);
 	}
 
 private:

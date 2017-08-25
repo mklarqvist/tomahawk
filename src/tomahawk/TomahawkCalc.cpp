@@ -144,6 +144,8 @@ bool TomahawkCalc::WriteTwoHeaderBinary(void){
 	for(U32 i = 0; i < totempole.getContigs(); ++i)
 		streamTemp << *totempole.getContigBase(i);
 
+	// Todo: write VCF header data
+
 	return(stream.good());
 }
 
