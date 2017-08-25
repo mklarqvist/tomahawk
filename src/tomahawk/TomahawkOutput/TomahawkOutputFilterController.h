@@ -36,6 +36,8 @@ public:
 
 	bool filter(const entry_type& target) const;
 
+	std::string getInterpretedString(void) const;
+
 private:
 	inline void trigger(void){ this->any_filter_user_set = true; }
 

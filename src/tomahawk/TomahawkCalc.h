@@ -172,7 +172,7 @@ bool TomahawkCalc::Calculate(){
 		*slaves[0] += *slaves[i];
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedPretty() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
 		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*totempole.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
 	}
 

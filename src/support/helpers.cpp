@@ -137,26 +137,6 @@ std::string NumberThousandsSeparator(std::string number){
 	return number;
 }
 
-std::string MillisecondsToTimestring(const U32 ms){
-	const double seconds = ms / 1000;
-	const S32 hours = ((S32)seconds / 60 / 60);
-	const S32 minutes = ((S32)seconds / 60) % 60;
-	const S32 sec = (S32)seconds % 60;
-	const S32 remainder = (ms % 1000);
-
-	char pad = 0, pad2 = 0;
-	if(remainder < 10){ pad = '0'; pad2 = '0';}
-	else if(remainder < 100){pad = '0';}
-
-	std::stringstream st;
-
-	if(hours > 0) st << hours << 'h';
-	if(minutes > 0) st << minutes << 'm';
-	st << sec << '.' << pad << pad2 << remainder << 's';
-
-	return st.str();
-}
-
 bool matchPositionalStringTWO(const std::string& param){
 	return(std::regex_match(param, std::regex(
 			"^"

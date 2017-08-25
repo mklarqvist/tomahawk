@@ -126,6 +126,9 @@ bool TomahawkCalc::WriteTwoHeader(void){
 
 bool TomahawkCalc::WriteTwoHeaderNatural(void){
 	std::ostream& stream = this->writer->getStream();
+	stream << this->reader.getTotempole().literals << std::endl;
+	stream << "##tomahawk_calcCommand=" + Helpers::program_string(true) << std::endl;
+	stream << "##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString() << std::endl;
 	stream << "FLAG\tcontigA\tpositionA\tcontigB\tpositionB\tp11\tp12\tp21\tp22\tD\tDprime\tRsquared\tPFisher\tChiSquaredCV\tPmodel" << std::endl;
 	return true;
 }
@@ -135,7 +138,7 @@ bool TomahawkCalc::WriteTwoHeaderBinary(void){
 	std::ostream& stream = this->writer->getStream();
 	std::ofstream& streamTemp = *reinterpret_cast<std::ofstream*>(&stream); // for overloading to function correctly
 
-	const totempole_reader& totempole = this->reader.getTotempole();
+	totempole_reader& totempole = this->reader.getTotempole();
 	header_type head(Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
 	streamTemp << head;
 
@@ -144,7 +147,13 @@ bool TomahawkCalc::WriteTwoHeaderBinary(void){
 	for(U32 i = 0; i < totempole.getContigs(); ++i)
 		streamTemp << *totempole.getContigBase(i);
 
-	// Todo: write VCF header data
+	totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true) + '\n';
+	totempole.literals += "##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString();
+
+	if(!totempole.writeLiterals(streamTemp)){
+		std::cerr << "failed to write literals" << std::endl;
+		return false;
+	}
 
 	return(stream.good());
 }

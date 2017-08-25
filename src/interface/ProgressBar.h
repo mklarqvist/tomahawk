@@ -14,7 +14,10 @@
 namespace Tomahawk{
 namespace Interface{
 
-class ProgressBar{
+class ProgressBar {
+	typedef ProgressBar self_type;
+	typedef Timer timer_type;
+
 public:
 	ProgressBar(const bool detailed = false) :
 		samples(1),
@@ -30,7 +33,7 @@ public:
 	void Start(void){
 		this->timer.Start();
 		this->Run = true;
-		this->WorkerThread__ = std::thread(&ProgressBar::__run, this);
+		this->WorkerThread__ = std::thread(&self_type::__run, this);
 		this->WorkerThread__.detach(); // detach tread (do not wait for join)
 		//return this->WorkerThread__;
 	}
@@ -48,6 +51,7 @@ public:
 
 		std::cerr << Helpers::timestamp("PROGRESS") << "Time elapsed\tVariants\tGenotypes\tOutput\tProgress\tEst. Time left" << std::endl;
 		while(this->Run){
+			// Triggered every cycle (119 ms)
 			if(this->Detailed)
 				this->GetElapsedTime();
 
@@ -55,12 +59,12 @@ public:
 			if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
 				const double ComparisonsPerSecond = (double)this->counter/this->timer.Elapsed().count();
 
-				std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedPretty() << "\t"
+				std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t"
 						<< Helpers::ToPrettyString(this->counter) << "\t"
 						<< Helpers::ToPrettyString(this->counter*this->samples) << "\t"
 						<< Helpers::ToPrettyString(this->outputCount) << '\t'
 						<< (double)this->counter.load()/this->totalComparisons*100 << '%' << '\t'
-						<< Helpers::secondsToTimestring(this->totalComparisons/ComparisonsPerSecond) << std::endl;
+						<< Helpers::secondsToTimestring((this->totalComparisons - this->counter.load())/ComparisonsPerSecond) << std::endl;
 				i = 0;
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(119));
@@ -70,7 +74,7 @@ public:
 		if(this->Detailed)
 			this->GetElapsedTime();
 
-		std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedPretty() << "\t" << Helpers::ToPrettyString(this->counter) << "\t" << Helpers::ToPrettyString(this->counter*this->samples) << "\t" << Helpers::ToPrettyString(this->outputCount) << std::endl;
+		std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t" << Helpers::ToPrettyString(this->counter) << "\t" << Helpers::ToPrettyString(this->counter*this->samples) << "\t" << Helpers::ToPrettyString(this->outputCount) << std::endl;
 		std::cerr << Helpers::timestamp("PROGRESS") << "Finished" << std::endl;
 	}
 
@@ -83,7 +87,7 @@ public:
 		const std::string ComparisonsPerSecondString = Helpers::NumberThousandsSeparator(std::to_string((U32)ComparisonsPerSecond));
 
 		// Print output
-		std::cerr << "\33[2K\r" << this->timer.ElapsedPretty() << " | Comparisons: " <<
+		std::cerr << "\33[2K\r" << this->timer.ElapsedString() << " | Comparisons: " <<
 				Helpers::NumberThousandsSeparator(std::to_string(this->counter)) <<
 				" (" << ComparisonsPerSecondString << " comparisons/s)" << std::flush;
 
@@ -103,7 +107,7 @@ private:
 	U64 totalComparisons;
 	std::atomic<U64> counter;
 	std::atomic<U64> outputCount;
-	Timer timer;
+	timer_type timer;
 	bool Run;
 	bool Permission;
 	bool Detailed;

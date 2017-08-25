@@ -12,16 +12,16 @@ extern std::string LITERAL_COMMAND_LINE;
 extern std::string INTERPRETED_COMMAND;
 
 // Revision versioning
-const float PROGRAM_VERSION = 0.4; // major
+const float PROGRAM_VERSION = 0.5; // major
 const U32 PROGRAM_VERSION_MINOR = 0;
 
 // Todo: fix inject in makefile
 // Get commit since last tag
 // git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 8;
+const U32 GIT_COMMITS_SINCE_TAG = 14;
 // Get last git hash
 // git rev-parse HEAD
-const std::string PROGRAM_GIT_HASH = "89034b10eb0fa5079d2e5bcd0d71f01f754ad5e0";
+const std::string PROGRAM_GIT_HASH = "1cbba45c3b3e1468752a4745ce17bf9db98aca54";
 extern char PROGRAM_VERSION_FRONT[5048];
 extern char PROGRAM_VERSION_BACK[5048];
 const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
@@ -80,7 +80,6 @@ const U64 SAMPLES_64B_MASK = 1152921504606846976;
 // EOF
 //const char* const TOMAHAWK_EOF_MARKER = "We will be known forever by the tracks we leave" - Santee Sioux Native Americans from Dakota;
 //const U32 TOMAHAWK_EOF_MARKER_LENGTH = 31;
-
 
 const BYTE eof_length = 6;
 const U64 eof[6] = {2336361506924422487, 7959953386435011938, 8243124871055238688, 2334386829831791136, 8583987794834190964, 28464622577219173};

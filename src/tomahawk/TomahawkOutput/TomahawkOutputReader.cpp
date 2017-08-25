@@ -54,7 +54,7 @@ bool TomahawkOutputReader::OpenWriter(void){
 
 	this->writer->open();
 	if(this->output_header)
-		this->writer->writeHeader();
+		this->writer->writeHeader(this->literals);
 
 	return true;
 }
@@ -71,7 +71,7 @@ bool TomahawkOutputReader::OpenWriter(const std::string output_file){
 	}
 
 	if(this->output_header)
-		this->writer->writeHeader();
+		this->writer->writeHeader(this->literals);
 
 	return true;
 }
@@ -347,6 +347,13 @@ bool TomahawkOutputReader::ParseHeader(void){
 			exit(1); // unrecoverable error
 		}
 	}
+
+	if(!this->gzip_controller.InflateBlock(this->stream, this->buffer)){
+		std::cerr << "failed to get TWO block" << std::endl;
+		return false;
+	}
+
+	this->literals = std::string(this->gzip_controller.buffer.data);
 
 	return true;
 }

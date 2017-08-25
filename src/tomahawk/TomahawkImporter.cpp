@@ -350,13 +350,13 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	const float missing = 0;
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
 
 			goto next;
 		} else {
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Keeping (drop other)..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Keeping (drop other)..." << std::endl;
 
 		}
 	}
@@ -364,8 +364,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
 		if(missing > DEFAULT_MISSINGNESS_CUTOFF){
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing*100 << "%).  Dropping..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
 			this->sort_order_helper.previous_included = false;
 			goto next;
@@ -438,21 +438,21 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 	const float missing = line.getMissingness(this->header_->samples);
 	if(line.position == this->sort_order_helper.previous_position && *this->sort_order_helper.contigID == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Dropping..." << std::endl;
 
 			goto next;
 		} else {
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Keeping (drop other)..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Duplicate position (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << "): Keeping (drop other)..." << std::endl;
 		}
 	}
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.IsSimple()){
 		if(missing > DEFAULT_MISSINGNESS_CUTOFF){
-			if(!SILENT)
-				std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;
+			//if(!SILENT)
+			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
 			this->sort_order_helper.previous_included = false;
 			goto next;

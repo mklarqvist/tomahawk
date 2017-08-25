@@ -84,51 +84,28 @@ bool TotempoleReader::Open(const std::string filename){
 #endif
 	}
 
-	char temp_buffer[65536];
+	buffer_type buffer(65536);
 	this->samples = new std::string[this->getSamples()];
 	for(U32 i = 0; i < this->getSamples(); ++i){
-		this->stream.read(&temp_buffer[0], sizeof(U32));
-		const U32 length = *reinterpret_cast<const U32*>(&temp_buffer[0]);
-		this->stream.read(&temp_buffer[sizeof(U32)], length);
-		this->samples[i] = std::string(&temp_buffer[sizeof(U32)], length);
+		this->stream.read(&buffer.data[0], sizeof(U32));
+		const U32 length = *reinterpret_cast<const U32*>(&buffer.data[0]);
+		this->stream.read(&buffer.data[sizeof(U32)], length);
+		this->samples[i] = std::string(&buffer.data[sizeof(U32)], length);
 #if DEBUG_MODE == 1
 		std::cerr << i << '\t' << samples[i] << std::endl;
 #endif
 	}
 
-
 	// Parse literal block
-	buffer_type buffer(sizeof(tgzf_type));
-	this->stream.read(&buffer.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
-	const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
-	buffer.pointer = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
-	if(!h->Validate()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
-		std::cerr << *h << std::endl;
+	if(!this->tgzf_controller.InflateBlock(this->stream, buffer)){
+		std::cerr << "Failed to get literal tgzf block" << std::endl;
 		return false;
 	}
 
-	buffer.resize(h->BSIZE); // make sure all data will fit
-
-	// Recast because if buffer is resized then the pointer address is incorrect
-	// resulting in segfault
-	h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
-
-	this->stream.read(&buffer.data[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], (h->BSIZE) - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
-	if(!this->stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
-		return false;
-	}
-
-	buffer.pointer = h->BSIZE;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-	buffer_type output_buffer(uncompressed_size);
-
-	if(!this->tgzf_controller.Inflate(buffer, output_buffer)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed inflate!" << std::endl;
-		return false;
-	}
-	this->literals = std::string(&output_buffer.data[0], output_buffer.size());
+	this->literals = std::string(&this->tgzf_controller.buffer.data[0], this->tgzf_controller.buffer.size());
+#if DEBUG_MODE == 1
+	std::cerr << this->literals << std::endl;
+#endif
 	// end parse literals
 
 	if(this->stream.tellg() != this->header.offset){
@@ -136,10 +113,6 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << this->stream.tellg() << '/' << this->header.offset << std::endl;
 		return false;
 	}
-
-#if DEBUG_MODE == 1
-	std::cerr << this->n_contigs << '\t' << this->header.blocks << '\t' << this->header.samples << std::endl;
-#endif
 
 	// Populate Totempole entries
 	this->entries = new entry_type[this->getBlocks()];
@@ -177,6 +150,9 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOTEMPOLE") << "Could not parse Totempole..." << std::endl;
 		return false;
 	}
+
+	// Cleanup
+	buffer.deleteAll();
 
 	return true;
 }
@@ -269,6 +245,20 @@ std::vector<U32> TotempoleReader::findOverlaps(const Interval& interval) const{
 	}
 
 	return ret;
+}
+
+bool TotempoleReader::writeLiterals(std::ofstream& stream){
+	// Parse literal block
+	buffer_type buffer(&this->literals[0], this->literals.size());
+
+	this->tgzf_controller.Clear();
+	if(!this->tgzf_controller.Deflate(buffer)){
+		std::cerr << "Failed to deflate literal tgzf block" << std::endl;
+		return false;
+	}
+	stream.write(&this->tgzf_controller.buffer.data[0], this->tgzf_controller.buffer.pointer);
+
+	return true;
 }
 
 } /* namespace Tomahawk */

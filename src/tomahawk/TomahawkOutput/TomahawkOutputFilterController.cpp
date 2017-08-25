@@ -1,4 +1,5 @@
 #include <limits>
+#include <string>
 #include "TomahawkOutputFilterController.h"
 
 namespace Tomahawk {
@@ -26,6 +27,39 @@ TomahawkOutputFilterController::TomahawkOutputFilterController() :
 {}
 
 TomahawkOutputFilterController::~TomahawkOutputFilterController(){}
+
+std::string TomahawkOutputFilterController::getInterpretedString(void) const{
+	if(this->any_filter_user_set){
+		return(std::string(
+				"minP1=" + std::to_string(this->minP1) + " " +
+				"minP2=" + std::to_string(this->minP2) + " " +
+				"minQ1=" + std::to_string(this->minQ1) + " " +
+				"minQ2=" + std::to_string(this->minQ2) + " " +
+				"maxP1=" + std::to_string(this->maxP1) + " " +
+				"maxP2=" + std::to_string(this->maxP2) + " " +
+				"maxQ1=" + std::to_string(this->maxQ1) + " " +
+				"maxQ2=" + std::to_string(this->maxQ2) + " " +
+				"minMHF=" + std::to_string(this->minMHF) + " " +
+				"maxMHF=" + std::to_string(this->maxMHF) + " " +
+				"minD=" + std::to_string(this->minD) + " " +
+				"maxD=" + std::to_string(this->maxD) + " " +
+				"minDprime=" + std::to_string(this->minDprime) + " " +
+				"maxDprime=" + std::to_string(this->maxDprime) + " " +
+				"minR2=" + std::to_string(this->minR2) + " " +
+				"maxR2=" + std::to_string(this->maxR2) + " " +
+				"minP=" + std::to_string(this->minP) + " " +
+				"maxP=" + std::to_string(this->maxP) + " " +
+				"minChiSquared=" + std::to_string(this->minChiSquared) + " " +
+				"maxChiSquared=" + std::to_string(this->maxChiSquared) + " " +
+				"minPmodel=" + std::to_string(this->minPmodel) + " " +
+				"maxPmodel=" + std::to_string(this->maxPmodel) + " " +
+				"filterValueInclude=" + std::to_string(this->filterValueInclude) + " " +
+				"filterValueExclude=" + std::to_string(this->filterValueExclude)
+		));
+	} else {
+		return(std::string());
+	}
+}
 
 bool TomahawkOutputFilterController::filter(const entry_type& target) const{
 	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0)){

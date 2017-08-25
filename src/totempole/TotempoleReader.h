@@ -64,6 +64,7 @@ public:
 
 	hash_table* getContigHTablePointer(void) const{ return(this->contigsHashTable); }
 	hash_table* getSampleHTablePointer(void) const{ return(this->sampleHashTable); }
+	bool writeLiterals(std::ofstream& stream);
 
 private:
 	bool Validate(std::ifstream& in) const;

@@ -59,7 +59,7 @@ public:
 		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << data;
 	}
 
-	virtual void writeHeader(void) =0;
+	virtual void writeHeader(std::string& literals) =0;
 	virtual void writeEOF(void) =0;
 
 protected:
@@ -120,11 +120,21 @@ public:
 		this->controller.Clear();
 	}
 
-	void writeHeader(void){
-		*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << *this->header;
+	void writeHeader(std::string& literals){
+		std::ofstream& __stream = *reinterpret_cast<std::ofstream*>(&this->stream->getStream());
+		__stream << *this->header;
 		for(U32 i = 0; i < this->header->n_contig; ++i)
-			*reinterpret_cast<std::ofstream*>(&this->stream->getStream()) << this->contigs[i];
+			__stream << this->contigs[i];
 
+		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
+		buffer_type bufferInternal(&literals[0], literals.size());
+		if(!this->controller.Deflate(bufferInternal)){
+			std::cerr << "failed to deflate" << std::endl;
+			return;
+		}
+
+		__stream.write(&this->controller.buffer.data[0], this->controller.buffer.pointer);
+		this->controller.Clear();
 	};
 
 	// There is no EOF
@@ -153,9 +163,10 @@ public:
 		entry->write(*reinterpret_cast<std::ofstream*>(&this->stream->getStream()), this->contigs);
 	}
 
-	void writeHeader(void){
+	void writeHeader(std::string& literals){
+		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
 		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
-		this->stream->getStream() << header;
+		this->stream->getStream() << literals << '\n' << header;
 	};
 
 	// There is no EOF

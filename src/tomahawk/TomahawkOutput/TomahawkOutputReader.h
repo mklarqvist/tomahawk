@@ -107,6 +107,7 @@ public:
 	tgzf_controller_type gzip_controller; // TGZF controller
 	filter_type filter;	// filter parameters
 	WRITER_TYPE writer_output_type;
+	std::string literals; // header literals
 	writer_type* writer; // writer interface
 	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
 	contig_type* contigs;

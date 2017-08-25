@@ -14,7 +14,7 @@ struct BasicBuffer{
 
 	BasicBuffer() : pointer(0), width(0), data(nullptr){}
 	BasicBuffer(const U64 size) : pointer(0), width(size), data(new char[size]){}
-	BasicBuffer(char* target) : pointer(0), width(0), data(target){}
+	BasicBuffer(char* target, const size_t length) : pointer(length), width(length), data(target){}
 	BasicBuffer(const U64 size, char* target) : pointer(0), width(size), data(target){}
 	BasicBuffer(const self_type& other) : pointer(0), width(other.width), data(new char[other.width]){}
 	virtual ~BasicBuffer(){}

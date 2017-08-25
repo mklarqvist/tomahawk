@@ -21,29 +21,41 @@ public:
 		return out << timer.Elapsed().count();
 	}
 
-	std::string ElapsedPretty(void) const{ return this->SecondsToTimestring(this->Elapsed().count()); }
+	std::string ElapsedString(void){ return this->SecondsToTimestring(this->Elapsed().count()); }
 
 private:
-	std::string SecondsToTimestring(const double seconds) const{
+	std::string SecondsToTimestring(const double seconds){
 		const S32 hours = ((S32)seconds / 60 / 60);
 		const S32 minutes = ((S32)seconds / 60) % 60;
 		const S32 sec = (S32)seconds % 60;
 		const S32 remainder = (seconds - (S32)seconds)*1000;
 
-		char pad = 0, pad2 = 0;
-		if(remainder < 10){ pad = '0'; pad2 = '0';}
-		else if(remainder < 100){pad = '0';}
+		if(hours > 0){
+			sprintf(&this->buffer[0], "%02uh%02um%02u,%03us",
+					hours,
+					minutes,
+					sec,
+					remainder);
 
-		std::stringstream st;
+			return(std::string(&this->buffer[0], 13));
+		} else if(minutes > 0){
+			sprintf(&this->buffer[0], "%02um%02u,%03us",
+					minutes,
+					sec,
+					remainder);
 
-		if(hours > 0) st << hours << 'h';
-		if(minutes > 0) st << minutes << 'm';
-		st << sec << '.' << pad << pad2 << remainder << 's';
+			return(std::string(&this->buffer[0], 10));
+		} else {
+			sprintf(&this->buffer[0], "%02u,%03us",
+					sec,
+					remainder);
 
-		return st.str();
+			return(std::string(&this->buffer[0], 7));
+		}
 	}
 
 private:
+	char buffer[13];
 	std::chrono::high_resolution_clock::time_point _start;
 
 };

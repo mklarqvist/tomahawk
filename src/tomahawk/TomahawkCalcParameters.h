@@ -108,14 +108,19 @@ struct TomahawkCalcParameters{
 		return true;
 	}
 
+	std::string getInterpretedString(void) const{
+		return(std::string("minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
+				" minP=" + std::to_string(this->P_threshold) +
+				" minMHF=" + std::to_string(this->minimum_alleles) + " maxMHF=" + std::to_string(this->maximum_alleles) +
+				" partStart=" + std::to_string(this->chunk_selected) + " parts="  + std::to_string(this->n_chunks) +
+				" threads=" + std::to_string(this->n_threads) + " compression=" + std::to_string(this->compression_type) +
+				" stream_type=" + std::to_string(this->output_stream_type) + " force_type=" + std::to_string(this->force)
+		));
+	}
+
 	friend std::ostream& operator<<(std::ostream& os, const self_type& p){
 		// Todo: extend to dump all implicit parameters and store in TWO header output
-		os << Helpers::timestamp("CALC", "PARAMETERS") <<
-				"minR2=" << p.R2_min << " maxR2=" << p.R2_max << " "
-				"minP=" << p.P_threshold << ", "
-				"minMHF=" << p.minimum_alleles << " maxMHF=" << p.maximum_alleles << " "
-				"partStart=" << p.chunk_selected << " parts="  << p.n_chunks << " "
-				"threads=" << p.n_threads;
+		os << Helpers::timestamp("CALC", "PARAMETERS") << p.getInterpretedString();
 
 		return(os);
 	}

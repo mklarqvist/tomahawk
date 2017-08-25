@@ -99,7 +99,7 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	return(true);
 }
 
-bool TGZFController::Deflate(buffer_type& buffer){
+bool TGZFController::Deflate(const buffer_type& buffer){
 	this->buffer.resize(buffer);
 
 	memset(this->buffer.data, 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
@@ -200,6 +200,47 @@ bool TGZFController::Deflate(buffer_type& meta, buffer_type& rle){
 	meta += rle;
 	return(this->Deflate(meta));
 }
+
+bool TGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
+	input.resize(sizeof(header_type));
+	stream.read(&input.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(&input.data[0]);
+	input.pointer = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	if(!h->Validate()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Failed to validate!" << std::endl;
+		std::cerr << *h << std::endl;
+		return false;
+	}
+
+	input.resize(h->BSIZE); // make sure all data will fit
+
+	// Recast because if buffer is resized then the pointer address is incorrect
+	// resulting in segfault
+	h = reinterpret_cast<const header_type*>(&input.data[0]);
+
+	stream.read(&input.data[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	if(!stream.good()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Truncated file..." << std::endl;
+		return false;
+	}
+
+	input.pointer = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.pointer -  sizeof(U32)]);
+	this->buffer.resize(uncompressed_size);
+	this->buffer.reset();
+
+	if(!this->Inflate(input, this->buffer)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Failed inflate!" << std::endl;
+		return false;
+	}
+
+	// TGZF EOF marker
+	if(this->buffer.size() == 0)
+		return false;
+
+	return true;
+}
+
 
 }
 }
