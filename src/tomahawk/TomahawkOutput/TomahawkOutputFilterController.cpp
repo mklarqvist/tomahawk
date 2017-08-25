@@ -57,7 +57,7 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 				"filterValueExclude=" + std::to_string(this->filterValueExclude)
 		));
 	} else {
-		return(std::string());
+		return(std::string("no_filter"));
 	}
 }
 

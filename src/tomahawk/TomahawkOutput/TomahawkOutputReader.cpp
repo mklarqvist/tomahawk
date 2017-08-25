@@ -16,7 +16,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		position(0),
 		size(0),
 		output_header(true),
-		writer_output_type(WRITER_TYPE::binary),
+		writer_output_type(WRITER_TYPE::natural),
 		writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
