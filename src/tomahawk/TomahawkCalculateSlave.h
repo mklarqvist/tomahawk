@@ -25,12 +25,31 @@
 // Method 4: Unphased regular and unphased vectorized
 // Method 5: Compare phased and unphased
 // Method 6: All algorithms comparison (debug)
+// Method 7: All algorithms run-time output (debug)
 #define SLAVE_DEBUG_MODE	1
 
 namespace Tomahawk{
 
-#if SLAVE_DEBUG_MODE == 6
+#if SLAVE_DEBUG_MODE == 7
+#pragma pack(1)
+struct __costHelper{
+	// RLE_A and RLE_B for A1
+	float RLE_A, RLE_B;
+	// cycles A1_P and A1_U
+	U32 cycles_A1_P, cycles_A1_U;
+	// front, bonus, mid, bonus, tail, linear cycles (for A2P_NM and A2U_NM)
+	U32 skip_front, bonus_front, mid_iterations, bonus_tail, skip_tail;
+	// cycles A2_1-4
+	U32 cycles_A2_P, cycles_A2_U;
+	U32 cycles_A2_PM, cycles_A2_UM;
 
+	inline void reset(void){ memset(this, 0, sizeof(__costHelper)); }
+
+	friend void operator<<(IO::BasicBuffer& buffer, const __costHelper& entry){
+		buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(__costHelper));
+	}
+};
+#elif SLAVE_DEBUG_MODE == 6
 /*
  This supportive structure is only used internally for
  directly comparing the output values of the two primary

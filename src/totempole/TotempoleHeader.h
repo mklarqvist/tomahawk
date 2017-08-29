@@ -70,7 +70,7 @@ public:
 		os <<
 		"version: " << block.version << '\n' <<
 		"samples: " << block.samples << '\n' <<
-		"controller: " << std::bitset<16>(block.controller) << '\n' <<
+		"controller: " << std::bitset<8>(block.controller) << '\n' <<
 		"blocks: " << block.blocks << '\n' <<
 		"largest: " << block.largest_uncompressed << '\n' <<
 		"offset: " << block.offset;
