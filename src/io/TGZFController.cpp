@@ -1,6 +1,7 @@
 #include <fstream>
 #include <limits>
 
+#include "../third_party/zlib/zconf.h"
 #include "../third_party/zlib/zlib.h"
 #include "IOConstants.h"
 #include "TGZFController.h"

@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "../support/helpers.h"
+#include "../third_party/zlib/zconf.h"
 #include "../third_party/zlib/zlib.h"
 #include "BasicBuffer.h"
 #include "GZFHeader.h"
