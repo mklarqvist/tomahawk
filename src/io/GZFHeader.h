@@ -59,6 +59,19 @@ public:
 	}
 };
 
+/*
+ TGZF header
+ +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+ | 31|139|  8|  4|              0|  0|255|      6| 84| 90|      2|        BLK_LEN|
+ +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+  BGZF extension:
+                ^                              ^   ^   ^
+                |                              |   |   |
+               FLG.EXTRA                     XLEN  B   C
+  TGZF format is compatible with GZIP. It limits the size of each compressed
+  block to 2^32 bytes and adds and an extra "BC" field in the gzip header which
+  records the size.
+*/
 #pragma pack(1)
 struct TGZFHeader : public __headerBase{
 private:
@@ -95,6 +108,19 @@ public:
 	}
 };
 
+/*
+ BGZF/GZIP header (speciallized from RFC 1952; little endian):
+ +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+ | 31|139|  8|  4|              0|  0|255|      6| 66| 67|      2|BLK_LEN|
+ +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+  BGZF extension:
+                ^                              ^   ^   ^
+                |                              |   |   |
+               FLG.EXTRA                     XLEN  B   C
+  BGZF format is compatible with GZIP. It limits the size of each compressed
+  block to 2^16 bytes and adds and an extra "BC" field in the gzip header which
+  records the size.
+*/
 #pragma pack(1)
 struct BGZFHeader : public __headerBase{
 private:
