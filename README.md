@@ -4,6 +4,8 @@
 
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
+The current specification (v.0) is available [TWKv0](spec/TWKv0.pdf)
+
 ### Installation instructions
 Compiling Tomahawk with default parameters is straightforward.
 ```bash
@@ -41,13 +43,13 @@ The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3 -M 0.1
+tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
 ```
 
 ### Import-extend
 If you have split up your `vcf`/`bcf` files into multiple disjoint files (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3 -M 0.1
+tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
 ```
 
 ### Calculating linkage disequilibrium
@@ -57,15 +59,20 @@ tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.
 
 ### Converting between file formats and filtering
 Viewing LD data from the binary `two` file format and filtering out lines with a
-Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and has have
+Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
 FLAG bits `4` set and map to any of these regions
  ```bash
  tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
  ```
 
+ Viewing a `two` file
+ ```bash
+tomahawk view -Nhi file.two
+ ```
+
 Converting a `twk` file to `vcf`
  ```bash
- tomahawk view -HG -i file.twk -o -
+ tomahawk view -HG -i file.twk -o file.vcf
  ```
 
  ### License
