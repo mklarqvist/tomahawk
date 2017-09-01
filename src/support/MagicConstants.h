@@ -36,10 +36,6 @@ const std::string OUTPUT_LD_SUFFIX = "two";
 const std::string OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX = "twsi";
 const std::string OUTPUT_LD_SORT_INDEX_SUFFIX = "toi";
 
-// Writing Tomahawk import
-const U32 WRITE_BLOCK_SIZE = 1000000; // Byte size when a block is compressed and flushed to disk
-const U32 WRITE_BLOCK_SIZE_PADDING = 65536; // Internal use to avoid resizing in most cases
-
 // Headers
 const char* const WRITE_HEADER_MAGIC = "TOMAHAWK\1";
 const char* const WRITE_HEADER_INDEX_MAGIC = "TOTEMPOLE\1";

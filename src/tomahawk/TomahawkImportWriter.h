@@ -110,12 +110,14 @@ class TomahawkImportWriter {
 
 public:
 	TomahawkImportWriter() :
+		flush_limit(1000000),
+		n_variants_limit(1024),
 		blocksWritten_(0),
 		variants_written_(0),
 		largest_uncompressed_block_(0),
 		rleController_(nullptr),
-		buffer_rle_(Constants::WRITE_BLOCK_SIZE*2),
-		buffer_meta_(Constants::WRITE_BLOCK_SIZE*2),
+		buffer_rle_(flush_limit*2),
+		buffer_meta_(flush_limit*2),
 		vcf_header_(nullptr)
 	{}
 
@@ -146,6 +148,16 @@ public:
 
 		// Write Tomahawk and Totempole headers
 		this->WriteHeaders();
+		//
+		this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
+		if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
+			this->flush_limit *= sizeof(BYTE);
+		} else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
+			this->flush_limit *= sizeof(U16);
+		} else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
+			this->flush_limit *= sizeof(U32);
+		} else this->flush_limit *= sizeof(U64);
+
 		return true;
 	}
 
@@ -329,8 +341,11 @@ public:
 
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
-		if(this->buffer_rle_.size() >= Constants::WRITE_BLOCK_SIZE)
+		// or if the number of entries written to buffer exceeds our set limit
+		if(this->totempole_entry_.variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
+			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle_.size() << '/' << this->flush_limit << std::endl;
 			return true;
+		}
 
 		return false;
 	}
@@ -377,6 +392,8 @@ public:
 public:
 	std::ofstream streamTomahawk;	// stream
 	std::ofstream streamTotempole;	// stream
+	U32 flush_limit;
+	U32 n_variants_limit;
 	U32 blocksWritten_;				// number of blocks written
 	U32 variants_written_;			// number of variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
