@@ -26,7 +26,7 @@
 // Method 5: Phased A1 and Phased A2
 // Method 6: All algorithms comparison (debug)
 // Method 7: All algorithms run-time output (debug)
-#define SLAVE_DEBUG_MODE	5
+#define SLAVE_DEBUG_MODE	1
 
 namespace Tomahawk{
 
