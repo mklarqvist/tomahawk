@@ -52,7 +52,9 @@ bool TomahawkOutputReader::OpenWriter(void){
 	}
 	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
 
-	this->writer->open();
+	if(!this->writer->open())
+		return false;
+
 	if(this->output_header)
 		this->writer->writeHeader(this->literals);
 
@@ -77,7 +79,8 @@ bool TomahawkOutputReader::OpenWriter(const std::string output_file){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	this->OpenWriter();
+	if(!this->OpenWriter())
+		return false;
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
@@ -158,7 +161,9 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	this->OpenWriter();
+	if(!this->OpenWriter())
+		return false;
+
 	const entry_type*  entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))

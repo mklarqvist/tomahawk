@@ -234,7 +234,8 @@ public:
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-		assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
+		//assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
+		//std::cerr << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) << '\t' << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) << std::endl;
 
 		this->helper_.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
@@ -242,7 +243,8 @@ public:
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-			assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
+			//assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
+			//std::cerr << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) << '\t' << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) << std::endl;
 
 			if(packed != packed_internal){
 				__dump =  (length & (((T)1 << this->shiftSize_) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;

@@ -28,6 +28,11 @@ std::string timestamp(const std::string type, const std::string type2);
 std::string datetime();
 std::string NumberThousandsSeparator(std::string number);
 
+std::string basePath(const std::string& input);
+std::string baseName(const std::string& input);
+std::string extensionName(const std::string& input);
+std::vector<std::string> filePathBaseExtension(const std::string& input);
+
 std::string program_string(const bool back = false);
 
 template <class T>

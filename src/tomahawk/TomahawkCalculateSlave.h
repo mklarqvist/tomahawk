@@ -21,12 +21,12 @@
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
-// Method 3: Count comparisons for algorithm 1
-// Method 4: Unphased regular and unphased vectorized
-// Method 5: Compare phased and unphased
+// Method 3: Count comparisons for A1
+// Method 4: Unphased A1 and unphased A2
+// Method 5: Phased A1 and Phased A2
 // Method 6: All algorithms comparison (debug)
 // Method 7: All algorithms run-time output (debug)
-#define SLAVE_DEBUG_MODE	1
+#define SLAVE_DEBUG_MODE	5
 
 namespace Tomahawk{
 
@@ -273,8 +273,6 @@ public:
 						   const work_order& orders);
 
 	~TomahawkCalculateSlave();
-	//TomahawkCalculateSlave(const TomahawkCalculateSlave& other);
-	//TomahawkCalculateSlave(TomahawkCalculateSlave&& other) noexcept;
 	TomahawkCalculateSlave& operator=(const TomahawkCalculateSlave& other);
 	TomahawkCalculateSlave& operator=(TomahawkCalculateSlave&& other) noexcept;
 	TomahawkCalculateSlave& operator+=(const TomahawkCalculateSlave& other);
@@ -360,6 +358,61 @@ private:
 };
 
 template <class T>
+TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
+					   writer_type& writer,
+					   Interface::ProgressBar& progress,
+					   const TomahawkCalcParameters& parameters,
+					   const work_order& orders) :
+	parameters(parameters),
+	block_comparisons(0),
+	variant_comparisons(0),
+	samples(manager.header.getSamples()),
+	impossible(0),
+	possible(0),
+	no_uncertainty(0),
+	insufficent_alleles(0),
+	//false_positive(0),
+	//false_negative(0),
+	fisherController(1024),
+	manager(manager),
+	output_manager(writer, parameters.compression_type),
+	progress(progress),
+	phase_function_across(nullptr),
+	orders(orders),
+	byte_width(ceil((double)samples/4)),
+	byteAlignedEnd(this->byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4)),
+	vectorCycles(this->byteAlignedEnd*4/GENOTYPE_TRIP_COUNT),
+	phased_unbalanced_adjustment((this->samples*2)%8),
+	unphased_unbalanced_adjustment(this->samples%4)
+{
+	if(this->parameters.force == TomahawkCalcParameters::force_method::none)
+		this->phase_function_across = &self_type::CompareBlocksFunction;
+	else if(this->parameters.force == TomahawkCalcParameters::force_method::phasedFunction)
+		this->phase_function_across = &self_type::CompareBlocksFunctionForcedPhased;
+	else
+		this->phase_function_across = &self_type::CompareBlocksFunctionForcedUnphased;
+}
+
+template <class T>
+TomahawkCalculateSlave<T>::~TomahawkCalculateSlave(){ }
+
+// Reduce function
+template <class T>
+TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkCalculateSlave<T>& other){
+	this->block_comparisons += other.block_comparisons;
+	this->variant_comparisons += other.variant_comparisons;
+	this->impossible += other.impossible;
+	this->possible += other.possible;
+	this->no_uncertainty += other.no_uncertainty;
+	this->insufficent_alleles += other.insufficent_alleles;
+	//this->false_positive += other.false_positive;
+	//this->false_negative += other.false_negative;
+
+	return(*this);
+}
+
+
+template <class T>
 void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const controller_type& b){
 	// If long range
 	const meta_type& mA = a.currentMeta();
@@ -389,60 +442,6 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 }
 
 template <class T>
-TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
-						   writer_type& writer,
-						   Interface::ProgressBar& progress,
-						   const TomahawkCalcParameters& parameters,
-						   const work_order& orders) :
-		parameters(parameters),
-		block_comparisons(0),
-		variant_comparisons(0),
-		samples(manager.header.getSamples()),
-		impossible(0),
-		possible(0),
-		no_uncertainty(0),
-		insufficent_alleles(0),
-		//false_positive(0),
-		//false_negative(0),
-		fisherController(1024),
-		manager(manager),
-		output_manager(writer, parameters.compression_type),
-		progress(progress),
-		phase_function_across(nullptr),
-		orders(orders),
-		byte_width(ceil((double)samples/4)),
-		byteAlignedEnd(this->byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4)),
-		vectorCycles(this->byteAlignedEnd*4/GENOTYPE_TRIP_COUNT),
-		phased_unbalanced_adjustment((this->samples*2)%8),
-		unphased_unbalanced_adjustment(this->samples%4)
-	{
-		if(this->parameters.force == TomahawkCalcParameters::force_method::none)
-			this->phase_function_across = &self_type::CompareBlocksFunction;
-		else if(this->parameters.force == TomahawkCalcParameters::force_method::phasedFunction)
-			this->phase_function_across = &self_type::CompareBlocksFunctionForcedPhased;
-		else
-			this->phase_function_across = &self_type::CompareBlocksFunctionForcedUnphased;
-	}
-
-	template <class T>
-	TomahawkCalculateSlave<T>::~TomahawkCalculateSlave(){ }
-
-	// Reduce function
-	template <class T>
-	TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkCalculateSlave<T>& other){
-		this->block_comparisons += other.block_comparisons;
-		this->variant_comparisons += other.variant_comparisons;
-		this->impossible += other.impossible;
-		this->possible += other.possible;
-		this->no_uncertainty += other.no_uncertainty;
-		this->insufficent_alleles += other.insufficent_alleles;
-		//this->false_positive += other.false_positive;
-		//this->false_negative += other.false_negative;
-
-		return(*this);
-	}
-
-template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, const controller_type& b){
 	if(a.meta[a.metaPointer].MAF == 0 || b.meta[b.metaPointer].MAF == 0)
 		return false;
@@ -469,8 +468,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 #endif
 
 	while(true){
-		//if(currentMix != 0 || currentMix != 1 || currentMix != 5 || currentMix != 16 || currentMix != 17 || currentMix != 21 || currentMix != 80 || currentMix != 81 || currentMix != 84)
-		//std::cerr << (int)currentMix << std::endl;
 		// If processed run length A > processed run length B
 		if(currentLengthA > currentLengthB){
 			currentLengthA -= currentLengthB;
@@ -619,10 +616,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 	// There is no phase uncertainty
 	// Use phased math
 	if(number_of_hets == 0){
-		this->helper[0] = 2*this->helper[0] + this->helper[1] + this->helper[4] + this->helper[16] + this->helper[17] + this->helper[64] + this->helper[68];
-		this->helper[1] = this->helper[1] + this->helper[4] + 2*this->helper[5] + this->helper[20] + this->helper[21] + this->helper[65] + this->helper[69];
-		this->helper[4] = this->helper[16] + this->helper[20] + this->helper[64] + this->helper[65] + 2*this->helper[80] + this->helper[81] + this->helper[84];
-		this->helper[5] = this->helper[17] + this->helper[21] + this->helper[68] + this->helper[69] + this->helper[81] + this->helper[84] + 2*this->helper[85];
+		this->helper[0] = 2*this->helper[0] + this->helper[1]  + this->helper[4]  + this->helper[5]  + this->helper[16] + this->helper[64] + this->helper[80];
+		this->helper[1] = this->helper[1]   + this->helper[16] + this->helper[21] + this->helper[81];
+		this->helper[4] = this->helper[4]   + this->helper[64] + this->helper[69] + this->helper[84];
+		this->helper[5] = this->helper[5]   + this->helper[21] + this->helper[69] + this->helper[80] + this->helper[81] + this->helper[84] + 2*this->helper[85];
 
 		// Update counter
 		++this->no_uncertainty;
@@ -634,13 +631,13 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 		return(this->CalculateLDPhasedMath());
 	}
 
-	const double p = ((this->helper[0] + this->helper[1] + this->helper[4] + this->helper[5])*2.0
+	const double p = ((this->helper[0] + this->helper[1]  + this->helper[4]  + this->helper[5])*2.0
 				   + (this->helper[16] + this->helper[17] + this->helper[20] + this->helper[21] + this->helper[64] + this->helper[65] + this->helper[68] + this->helper[69]))
 				   / (2.0 * this->helper.totalAlleleCounts);
 	const double q = ((this->helper[0] + this->helper[16] + this->helper[64] + this->helper[80])*2.0
-				   + (this->helper[1] + this->helper[4] + this->helper[17] + this->helper[20] + this->helper[65] + this->helper[68] + this->helper[81] + this->helper[84]))
+				   + (this->helper[1]  + this->helper[4]  + this->helper[17] + this->helper[20] + this->helper[65] + this->helper[68] + this->helper[81] + this->helper[84]))
 				   / (2.0 * this->helper.totalAlleleCounts);
-	const double n11 = (2.0* this->helper[0] + this->helper[1] + this->helper[4] + this->helper[16] + this->helper[64]);
+	const double n11 = 2.0* this->helper[0] + this->helper[1] + this->helper[4] + this->helper[16] + this->helper[64];
 
 	// Not used for anything
 	//const double n12 = (2.0*this->helper[5]  + this->helper[1]  + this->helper[4]  + this->helper[21] + this->helper[69]);
@@ -822,11 +819,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 
 #define ITER_SHORT {														\
 	ITER_BASE																\
-	__intermediate = FILTER_UNPHASED_SPECIAL(refref); 						\
+	__intermediate = FILTER_UNPHASED_SPECIAL(refref);						\
 	POPCOUNT(this->helper_simd.counters[0], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);	\
 	POPCOUNT(this->helper_simd.counters[1], __intermediate);				\
-	__intermediate = FILTER_UNPHASED(altref, altref); 						\
+	__intermediate = FILTER_UNPHASED(altref, altref);						\
 	POPCOUNT(this->helper_simd.counters[2], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);	\
 	POPCOUNT(this->helper_simd.counters[3], __intermediate);				\
@@ -836,11 +833,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 
 #define ITER_LONG {															\
 	ITER_SHORT																\
-	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref); 	\
+	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref);	\
 	POPCOUNT(this->helper_simd.counters[5], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt); 	\
+	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt);	\
 	POPCOUNT(this->helper_simd.counters[7], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_SPECIAL(altalt); 						\
+	__intermediate = FILTER_UNPHASED_SPECIAL(altalt);						\
 	POPCOUNT(this->helper_simd.counters[8], __intermediate);				\
 }
 
@@ -1040,14 +1037,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 	std::cout << ticks_per_iter.count() << '\n';
 #endif
 
-	/*
-	if(this->helper[0]+this->helper[1]+this->helper[5] + this->helper[16]+this->helper[17]+this->helper[21] + this->helper[80]+this->helper[81]+this->helper[85] != this->samples){
-		std::cerr << a.metaPointer*a.packed->width << '/' << a.packed->total_size << '\t' << b.metaPointer*b.packed->width << '/' << b.packed->total_size << "\tExpected: " << this->samples << '/' << this->helper[0]+this->helper[1]+this->helper[5] + this->helper[16]+this->helper[17]+this->helper[21] + this->helper[80]+this->helper[81]+this->helper[85] << std::endl;
-		std::cerr << this->manager[0].packed->total_size << '\t' << this->manager[1].packed->total_size << '\t' << this->manager[2].packed->total_size << '\t' << this->manager[3].packed->total_size << std::endl;
-		exit(1);
-	}
-	*/
-
 	this->setFLAGs(a, b);
 	return(this->CalculateLDUnphasedMath());
 }
@@ -1126,9 +1115,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	U32 k = 0;
 #endif
 
-	//std::cerr << datA.frontZero << '\t' << datB.frontZero << '\t' << datA.tailZero << '\t' << datB.tailZero << "\t->\t" << frontSmallest << '\t' << tailSmallest << std::endl;
-	//std::cerr << frontSmallest << "->" << frontBonus << "->" << this->vectorCycles - tailBonus << "->" << this->vectorCycles - tailSmallest << "(" << (this->vectorCycles - tailSmallest)*(256/8) << ")/" << (this->byteAlignedEnd/(256/8)) << " skip " << this->byteAlignedEnd << "->" << this->byte_width << std::endl;
-
 	BYTE mask;
 #ifdef __INTEL_COMPILER
 	#pragma vector aligned
@@ -1164,8 +1150,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	this->helper[1] = this->helper_simd.counters[1];
 	this->helper[4] = this->helper_simd.counters[2];
 	this->helper[5] = this->helper_simd.counters[3];
-	//const float test = this->helper[0]; // Todo: fix to correct for missing values
-	//this->helper[0] = this->samples*2 - (this->helper[1] + this->helper[4] + this->helper[5] + test + this->phased_unbalanced_adjustment); // Todo: have to correct this given missingness
 	this->helper[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + this->helper_simd.counters[0] - this->phased_unbalanced_adjustment;
 
 
@@ -1174,15 +1158,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	auto ticks_per_iter = Cycle(t1-t0);
 	std::cout << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
-
-	/*
-	if(this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] != this->samples*2){
-		std::cerr << "V\t" << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << "\tsum: " << this->helper[0]+this->helper[1]+this->helper[4]+this->helper[5] << "\ttest: " << testSum << std::endl;
-		std::cerr << a.metaPointer*a.packed->width << '/' << a.packed->total_size << '\t' << b.metaPointer*b.packed->width << '/' << b.packed->total_size << std::endl;
-		std::cerr << this->manager[0].packed->total_size << '\t' << this->manager[1].packed->total_size << '\t' << this->manager[2].packed->total_size << '\t' << this->manager[3].packed->total_size << std::endl;
-		exit(1);
-	}
-	*/
 
 	this->setFLAGs(a, b);
 	return(this->CalculateLDPhasedMath());

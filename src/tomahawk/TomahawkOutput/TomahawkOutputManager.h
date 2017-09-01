@@ -59,7 +59,7 @@ private:
 	void FinaliseBinary(void){
 		if(this->buffer.size() > 0){
 			if(!this->compressor.Deflate(this->buffer)){
-				std::cerr << "failed deflate" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA!" << std::endl;
 				exit(1);
 			}
 			this->writer << compressor.buffer;

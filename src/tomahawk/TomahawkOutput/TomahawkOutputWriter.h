@@ -8,7 +8,10 @@ namespace Tomahawk{
 namespace IO {
 
 class TomahawkOutputWriterInterface {
+private:
 	typedef TomahawkOutputWriterInterface self_type;
+
+protected:
 	typedef GenericWriterInterace stream_type;
 	typedef IO::WriterStandardOut cout_type;
 	typedef IO::WriterFile file_type;
@@ -35,7 +38,7 @@ public:
 		return true;
 	}
 
-	bool open(const std::string output){
+	virtual bool open(const std::string output){
 		if(output.size() == 0)
 			return(this->open());
 

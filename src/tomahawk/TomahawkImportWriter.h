@@ -129,7 +129,7 @@ public:
 
 	bool Open(const std::string output){
 		this->filename = output;
-		this->DetermineBasePath();
+		this->CheckOutputNames(output);
 		this->streamTomahawk.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
 		this->streamTotempole.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::out | std::ios::binary);
 
@@ -148,22 +148,27 @@ public:
 
 		// Write Tomahawk and Totempole headers
 		this->WriteHeaders();
-		//
-		this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
-		if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
-			this->flush_limit *= sizeof(BYTE);
-		} else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
-			this->flush_limit *= sizeof(U16);
-		} else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
-			this->flush_limit *= sizeof(U32);
-		} else this->flush_limit *= sizeof(U64);
+
+		// Determine flush limit
+		this->DetermineFlushLimit();
 
 		return true;
 	}
 
+	void DetermineFlushLimit(void){
+		this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
+		if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1)
+			this->flush_limit *= sizeof(BYTE);
+		else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1)
+			this->flush_limit *= sizeof(U16);
+		else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1)
+			this->flush_limit *= sizeof(U32);
+		else this->flush_limit *= sizeof(U64);
+	}
+
 	bool OpenExtend(const std::string output){
 		this->filename = output;
-		this->DetermineBasePath();
+		this->CheckOutputNames(output);
 		this->streamTomahawk.open(output, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
 		this->streamTotempole.open(output + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
 
@@ -184,6 +189,9 @@ public:
 		this->streamTomahawk.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
 		tempsize = this->streamTotempole.tellp();
 		this->streamTotempole.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
+
+		// Determine flush limit
+		this->DetermineFlushLimit();
 
 		return true;
 	}
@@ -353,38 +361,15 @@ public:
 	const U32& blocksWritten(void) const{ return this->blocksWritten_; }
 	const U64& size(void) const{ return this->buffer_rle_.size(); }
 
-	void DetermineBaseName(const std::string& string){
-		if(string.size() == 0)
-			return;
+	void CheckOutputNames(const std::string& input){
+		std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+		this->basePath = paths[0];
 
-		std::vector<std::string> data = Tomahawk::Helpers::split(string, '.');
-		if(data.size() == 1){
-			this->baseName = string;
-		} else {
-			std::transform(data.back().begin(), data.back().end(), data.back().begin(), ::tolower);
-			// Data already terminates in the correct output suffix
-			if(data.back() == Constants::OUTPUT_SUFFIX){
-				this->baseName = string.substr(0, string.find_last_of('.'));
-				return;
-			}
-			this->baseName = string;
-		}
+		if(paths[3].size() == Constants::OUTPUT_SUFFIX.size() && strncasecmp(&paths[3][0], &Constants::OUTPUT_SUFFIX[0], Constants::OUTPUT_SUFFIX.size()) == 0)
+			this->baseName = paths[2];
+		else this->baseName = paths[1];
 	}
 
-	void DetermineBasePath(void){
-		if(this->filename.size() == 0)
-			return;
-
-		std::vector<std::string> data = Tomahawk::Helpers::split(this->filename, '/');
-		if(data.size() == 1){ // If there is no path then we only need to set the basename;
-			this->basePath = "";
-			this->DetermineBaseName(this->filename);
-		} else {
-			const U32 lastPos = this->filename.find_last_of('/') + 1;
-			this->basePath = this->filename.substr(0, lastPos);
-			this->DetermineBaseName(this->filename.substr(lastPos, this->filename.length()));
-		}
-	}
 
 	U32 GetVariantsWritten(void) const{ return this->variants_written_; }
 	TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry_); }

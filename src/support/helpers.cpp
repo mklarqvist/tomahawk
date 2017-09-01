@@ -116,6 +116,52 @@ std::string timestamp(const std::string type, const std::string type2){
 	return(ret.str());
 }
 
+std::string basePath(const std::string& input){
+	size_t found = input.find_last_of("/\\");
+	if(found != std::string::npos)
+		return(input.substr(0, found));
+	else return std::string();
+}
+
+std::string baseName(const std::string& input){
+	size_t found = input.find_last_of("/\\");
+	if(found == std::string::npos)
+		found = -1;
+
+	return(input.substr(found+1, input.size()));
+}
+
+std::string extensionName(const std::string& input){
+	std::string base = baseName(input);
+	size_t foundDot = base.rfind('.');
+	if(foundDot == std::string::npos)
+		foundDot = base.size() - 1;
+
+	return(base.substr(foundDot+1, base.size()));
+}
+
+
+std::vector<std::string> filePathBaseExtension(const std::string& input){
+	std::vector<std::string> ret;
+
+	const std::string base = baseName(input);
+	ret.push_back(basePath(input));
+	ret.push_back(base);
+
+	size_t foundDot = base.rfind('.');
+	if(foundDot == std::string::npos){
+		ret.push_back(base);
+		ret.push_back(std::string());
+	} else {
+		ret.push_back(base.substr(0, foundDot));
+		ret.push_back(base.substr(foundDot+1, base.size()));
+	}
+
+	ret.push_back(extensionName(input));
+	return(ret);
+}
+
+
 std::string NumberThousandsSeparator(std::string number){
 	int insertPosition = number.length() - 3;
 	char EndPos = 0;

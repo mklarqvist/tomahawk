@@ -313,10 +313,9 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
-		if(!reader.view(input)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to read!" << std::endl;
+		if(!reader.view(input))
 			return 1;
-		}
+
 	} else {
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
 		return 1;
