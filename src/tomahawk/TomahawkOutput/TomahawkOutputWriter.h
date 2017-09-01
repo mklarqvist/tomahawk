@@ -27,7 +27,7 @@ public:
 	{}
 	virtual ~TomahawkOutputWriterInterface(){ delete this->stream; }
 
-	bool open(void){
+	virtual bool open(void){
 		this->stream = new cout_type();
 		if(!this->stream->open())
 			return false;
@@ -80,10 +80,15 @@ public:
 	TomahawkOutputWriter(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
 		TomahawkOutputWriterInterface(contigs, header),
 		flush_limit(flush_limit),
-		buffer(flush_limit + 524288)
+		buffer(flush_limit + 2048)
 	{
 		this->controller.buffer.resize(this->buffer);
 	}
+
+	// if binary
+	// does not support cout writer
+	// also open two.twi
+	// if not ending in .two add .two
 
 	~TomahawkOutputWriter(){
 		// Flush upon termination
@@ -129,7 +134,7 @@ public:
 		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
 		buffer_type bufferInternal(&literals[0], literals.size());
 		if(!this->controller.Deflate(bufferInternal)){
-			std::cerr << "failed to deflate" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to deflate!" << std::endl;
 			return;
 		}
 
@@ -166,7 +171,10 @@ public:
 	void writeHeader(std::string& literals){
 		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
 		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
-		this->stream->getStream() << literals << '\n' << header;
+		if(literals.size() > 0)
+			this->stream->getStream() << literals << '\n' << header;
+		else
+			this->stream->getStream() << header;
 	};
 
 	// There is no EOF

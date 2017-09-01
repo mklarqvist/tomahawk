@@ -20,8 +20,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-#define DEBUG_MODE	0
-
 #include <iostream>
 #include <getopt.h>
 
@@ -33,12 +31,6 @@ DEALINGS IN THE SOFTWARE.
 #include "index.h"
 #include "concat.h"
 #include "stats.h"
-
-// Declare extern
-char Tomahawk::Constants::PROGRAM_VERSION_FRONT[5048];
-char Tomahawk::Constants::PROGRAM_VERSION_BACK[5048];
-std::string Tomahawk::Constants::LITERAL_COMMAND_LINE;
-std::string Tomahawk::Constants::INTERPRETED_COMMAND;
 
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){

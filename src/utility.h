@@ -4,6 +4,12 @@
 #include <iostream>
 #include "support/MagicConstants.h"
 
+// Declare extern
+char Tomahawk::Constants::PROGRAM_VERSION_FRONT[5048];
+char Tomahawk::Constants::PROGRAM_VERSION_BACK[5048];
+std::string Tomahawk::Constants::LITERAL_COMMAND_LINE;
+std::string Tomahawk::Constants::INTERPRETED_COMMAND;
+
 void programMessage(void){
 	std::cerr << "Program: " << Tomahawk::Constants::PROGRAM_NAME << " " << Tomahawk::Constants::PROGRAM_VERSION_FRONT << std::endl;
 	std::cerr << "Contact: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>" << std::endl;
