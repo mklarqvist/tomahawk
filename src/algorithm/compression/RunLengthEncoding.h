@@ -1,5 +1,3 @@
-
-
 #ifndef ALGORITHM_COMPRESSION_RUNLENGTHENCODING_H_
 #define ALGORITHM_COMPRESSION_RUNLENGTHENCODING_H_
 
@@ -7,7 +5,7 @@ namespace Tomahawk{
 namespace Algorithm{
 
 template <class T>
-int static inline PACK3(const BYTE& ref, char* target, T length){
+inline int PACK3(const BYTE& ref, char* target, T length){
 	if(length <= 7){
 		*target++ = 0 | ((ref & 15) << 3) | (length & 7); // highest bit is 0
 		return 1;
@@ -31,7 +29,7 @@ int static inline PACK3(const BYTE& ref, char* target, T length){
 }
 
 template <class T>
-int static inline UNPACK3(char* target, T& length, BYTE& ref){
+inline int UNPACK3(char* target, T length, BYTE& ref){
 	if((*target & 128) == 0){
 		length = *target & 7;
 		ref = *target >> 3;
@@ -52,7 +50,7 @@ int static inline UNPACK3(char* target, T& length, BYTE& ref){
 		++target;
 	}
 
-	return(target-target0);
+	return(target - target0);
 }
 
 }

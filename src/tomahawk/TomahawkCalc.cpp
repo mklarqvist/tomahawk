@@ -5,39 +5,20 @@
 namespace Tomahawk {
 
 TomahawkCalc::TomahawkCalc(void) :
-	parameters_validated(false),
-	writer(nullptr)
+	parameters_validated(false)
 {}
 
-TomahawkCalc::~TomahawkCalc(){
-	delete this->writer;
-}
+TomahawkCalc::~TomahawkCalc(){}
 
 bool TomahawkCalc::Open(const std::string input, const std::string output){
 	if(!this->reader.Open(input)){
 		return false;
 	}
 
-	if(output == "-")
-		this->parameters.output_stream_type = parameter_type::writer_type::type::cout;
-	else
-		this->parameters.output_stream_type = parameter_type::writer_type::type::file;
-
-	if(!this->SelectWriterOutputType(this->parameters.output_stream_type))
-		return false;
-
-	if(!this->OpenWriter(output)){
-		return false;
-	}
+	this->input_file = input;
+	this->output_file = output;
 
 	return true;
-}
-
-bool TomahawkCalc::OpenWriter(const std::string destination){
-	if(destination == "-")
-		return(this->writer->open());
-
-	return(this->writer->open(destination));
 }
 
 template <typename K, typename V>
@@ -103,59 +84,6 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	return(this->Calculate(this->balancer.getLoad()));
-}
-
-bool TomahawkCalc::SelectWriterOutputType(const writer_type::type writer_type){
-	if(this->writer != nullptr)
-		return false;
-
-	if(writer_type == writer_type::type::cout)
-		this->writer = new IO::WriterStandardOut;
-	else
-		this->writer = new IO::WriterFile;
-
-	return true;
-}
-
-bool TomahawkCalc::WriteTwoHeader(void){
-	if(this->parameters.compression_type == writer_type::compression::natural)
-		return(this->WriteTwoHeaderNatural());
-	else
-		return(this->WriteTwoHeaderBinary());
-}
-
-bool TomahawkCalc::WriteTwoHeaderNatural(void){
-	std::ostream& stream = this->writer->getStream();
-	stream << this->reader.getTotempole().literals << std::endl;
-	stream << "##tomahawk_calcCommand=" + Helpers::program_string(true) << std::endl;
-	stream << "##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString() << std::endl;
-	stream << "FLAG\tcontigA\tpositionA\tcontigB\tpositionB\tp11\tp12\tp21\tp22\tD\tDprime\tRsquared\tPFisher\tChiSquaredCV\tPmodel" << std::endl;
-	return true;
-}
-
-bool TomahawkCalc::WriteTwoHeaderBinary(void){
-	typedef IO::TomahawkOutputHeader<Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
-	std::ostream& stream = this->writer->getStream();
-	std::ofstream& streamTemp = *reinterpret_cast<std::ofstream*>(&stream); // for overloading to function correctly
-
-	totempole_reader& totempole = this->reader.getTotempole();
-	header_type head(Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
-	streamTemp << head;
-
-	// Write contig data to TWO
-	// length | n_char | chars[0 .. n_char - 1]
-	for(U32 i = 0; i < totempole.getContigs(); ++i)
-		streamTemp << *totempole.getContigBase(i);
-
-	totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true) + '\n';
-	totempole.literals += "##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString();
-
-	if(!totempole.writeLiterals(streamTemp)){
-		std::cerr << "failed to write literals" << std::endl;
-		return false;
-	}
-
-	return(stream.good());
 }
 
 } /* namespace Tomahawk */

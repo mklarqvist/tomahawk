@@ -182,7 +182,6 @@ public:
 
 	// There is no EOF
 	void writeEOF(void){};
-
 };
 
 }

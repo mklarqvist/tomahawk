@@ -4,8 +4,11 @@
 #include "../../io/BasicWriters.h"
 #include "../TomahawkBlockManager.h"
 #include "../../io/TGZFController.h"
+#include "../../support/MagicConstants.h"
+#include "../../totempole/TotempoleMagic.h"
+#include "TotempoleOutputEntry.h"
 
-#define SLAVE_FLUSH_LIMIT	10000000	// 10 MB default flush limit
+#define SLAVE_FLUSH_LIMIT 10000000	// 10 MB default flush limit
 #define SLAVE_FLUSH_LIMIT_NATURAL 65536
 
 namespace Tomahawk{
@@ -13,25 +16,20 @@ namespace IO {
 
 template <class T>
 struct TomahawkOutputManager{
-	typedef IO::GenericWriterInterace writer_type;
+	typedef TomahawkOutputManager self_type;
+	typedef IO::WriterFile writer_type;
 	typedef TomahawkBlock<const T> controller_type;
-	typedef TomahawkOutputManager<T> self_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef TGZFController tgzf_controller;
-
-	// Function pointer to write class function
-	typedef void (self_type::*outFunction)(const controller_type& a, const controller_type& b, const helper_type& helper);
-	typedef void (self_type::*flushFunction)(void);
+	typedef Totempole::TotempoleOutputEntry totempoly_entry;
 
 public:
-	TomahawkOutputManager(writer_type& writer,
-						  const writer_type::compression type) :
+	TomahawkOutputManager() :
 		outCount(0),
 		progressCount(0),
-		function(type == writer_type::compression::natural ? &self_type::AddNatural : &self_type::AddBinary),
-		flush(type == writer_type::compression::natural ? &self_type::FinaliseNatural : &self_type::FinaliseBinary),
-		writer(writer),
+		writer(nullptr),
+		writer_index(nullptr),
 		buffer(2*SLAVE_FLUSH_LIMIT),
 		sprintf_buffer(new char[255])
 	{
@@ -44,87 +42,60 @@ public:
 		delete [] this->sprintf_buffer;
 	}
 
-	inline void Add(const controller_type& a, const controller_type& b, const helper_type& helper){ (this->*function)(a, b, helper); }
-	inline void Finalise(void){ (this->*flush)(); }
+	TomahawkOutputManager(const self_type& other) :
+		outCount(0),
+		progressCount(0),
+		writer(other.writer),
+		writer_index(other.writer_index),
+		buffer(2*SLAVE_FLUSH_LIMIT),
+		sprintf_buffer(new char[255])
+	{
+	}
+
 	inline const U64& GetCounts(void) const{ return this->outCount; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
 
-private:
-	void FinaliseNatural(void){
-		this->writer << this->buffer;
-		this->buffer.reset();
+	bool Open(const std::string output, TotempoleReader& totempole){
+		if(output.size() == 0)
+			return false;
+
+		this->writer = new writer_type;
+		this->writer_index = new writer_type;
+
+		this->CheckOutputNames(output);
+		this->filename = output;
+		if(!this->writer->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX)){
+			std::cerr << "failed open" << std::endl;
+			return false;
+		}
+
+		if(!this->writer_index->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+			std::cerr << "failed open index" << std::endl;
+			return false;
+		}
+
+		if(!this->WriteHeader(totempole)){
+			std::cerr << "failed to write header" << std::endl;
+			return false;
+		}
+
+		return true;
 	}
 
-	void FinaliseBinary(void){
+	void Finalise(void){
 		if(this->buffer.size() > 0){
 			if(!this->compressor.Deflate(this->buffer)){
-				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA!" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 				exit(1);
 			}
-			this->writer << compressor.buffer;
+			*this->writer << compressor.buffer;
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
 	}
 
-	void AddNatural(const controller_type& a, const controller_type& b, const helper_type& helper){
-		this->buffer += std::to_string(helper.controller);
-		this->buffer += '\t';
-
-		//  Todo: need Totempole for mapping contigID to name
-		this->buffer += std::to_string(a.support->contigID);
-		this->buffer += '\t';
-		this->buffer += std::to_string(a.meta[a.metaPointer].position);
-		this->buffer += '\t';
-		this->buffer += std::to_string(b.support->contigID);
-		this->buffer += '\t';
-		this->buffer += std::to_string(b.meta[b.metaPointer].position);
-		this->buffer += '\t';
-
-		// If data is phased output in integer form
-		if((helper.controller & 1) == 1){
-			this->buffer += std::to_string((U32)helper.alleleCounts[0]);
-			this->buffer += '\t';
-			this->buffer += std::to_string((U32)helper.alleleCounts[1]);
-			this->buffer += '\t';
-			this->buffer += std::to_string((U32)helper.alleleCounts[4]);
-			this->buffer += '\t';
-			this->buffer += std::to_string((U32)helper.alleleCounts[5]);
-		} else {
-			this->buffer += std::to_string(helper.alleleCounts[0]);
-			this->buffer += '\t';
-			this->buffer += std::to_string(helper.alleleCounts[1]);
-			this->buffer += '\t';
-			this->buffer += std::to_string(helper.alleleCounts[4]);
-			this->buffer += '\t';
-			this->buffer += std::to_string(helper.alleleCounts[5]);
-		}
-
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.D);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.Dprime);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.R2);
-		this->buffer += '\t';
-		U32 l = std::sprintf(this->sprintf_buffer, "%E", helper.P);
-		this->buffer.Add(this->sprintf_buffer, l);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.chiSqFisher);
-		this->buffer += '\t';
-		this->buffer += std::to_string(helper.chiSqModel);
-		this->buffer += '\n';
-		++this->outCount;
-		++this->progressCount;
-
-		if(this->buffer.size() > SLAVE_FLUSH_LIMIT_NATURAL){
-			this->writer << this->buffer;
-			this->buffer.reset();
-		}
-	}
-
-	void AddBinary(const controller_type& a, const controller_type& b, const helper_type& helper){
+	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
 		const U32 writePosA = a.meta[a.metaPointer].position << 2 | a.meta[a.metaPointer].phased << 1 | a.meta[a.metaPointer].missing;
 		const U32 writePosB = b.meta[b.metaPointer].position << 2 | b.meta[b.metaPointer].phased << 1 | b.meta[b.metaPointer].missing;
 		this->buffer += helper.controller;
@@ -135,23 +106,83 @@ private:
 		this->buffer << helper;
 		++this->outCount;
 		++this->progressCount;
+		++this->entry.entries;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
 			if(!this->compressor.Deflate(this->buffer)){
-				std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed deflate..." << std::endl;
+				std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed deflate DATA..." << std::endl;
 				exit(1);
 			}
-			this->writer << compressor.buffer;
+
+			this->writer->getLock()->lock();
+			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
+			this->entry.uncompressed_size = this->buffer.size();
+			*this->writer << compressor.buffer;
+			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
+			this->writer_index->getNativeStream() << this->entry;
+			std::cerr << this->entry << std::endl;
+			this->writer->getLock()->unlock();
+
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
 	}
 
+	void close(void){
+		delete this->writer;
+		delete this->writer_index;
+	}
+
+private:
+	bool WriteHeader(TotempoleReader& totempole){
+		typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
+		std::ofstream& stream = this->writer->getNativeStream();
+		std::ofstream& stream_index = this->writer_index->getNativeStream();
+
+		header_type head(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
+		header_type headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, totempole.getSamples(), totempole.getContigs());
+		stream << head;
+
+		// Write contig data to TWO
+		// length | n_char | chars[0 .. n_char - 1]
+		for(U32 i = 0; i < totempole.getContigs(); ++i)
+			stream << *totempole.getContigBase(i);
+
+		totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true) + '\n';
+		totempole.literals += "##tomahawk_calcInterpretedCommand=" + totempole.literals;
+
+		if(!totempole.writeLiterals(stream)){
+			std::cerr << "failed to write literals" << std::endl;
+			return false;
+		}
+
+		stream_index << headIndex;
+
+		return(stream.good());
+	}
+
+	void CheckOutputNames(const std::string& input){
+		std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+		this->basePath = paths[0];
+		if(this->basePath.size() > 0)
+			this->basePath += '/';
+
+		if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+			this->baseName = paths[2];
+		else this->baseName = paths[1];
+	}
+
+
+private:
+	std::string filename;
+	std::string basePath;
+	std::string baseName;
+
 	U64 outCount;			// lines written
 	U32 progressCount;		// lines added since last flush
-	outFunction function;	// add function pointer
-	flushFunction flush;	// flush function pointer
-	writer_type& writer;	// writer interface
+	totempoly_entry entry; // track stuff
+	writer_type* writer;	// writer
+	writer_type* writer_index;	// writer index
 	buffer_type buffer;		// internal buffer
 	tgzf_controller compressor;// compressor
 	char* sprintf_buffer;	// special buffer used for sprintf writing scientific output in natural mode

@@ -364,6 +364,8 @@ public:
 	void CheckOutputNames(const std::string& input){
 		std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
 		this->basePath = paths[0];
+		if(this->basePath.size() > 0)
+			this->basePath += '/';
 
 		if(paths[3].size() == Constants::OUTPUT_SUFFIX.size() && strncasecmp(&paths[3][0], &Constants::OUTPUT_SUFFIX[0], Constants::OUTPUT_SUFFIX.size()) == 0)
 			this->baseName = paths[2];

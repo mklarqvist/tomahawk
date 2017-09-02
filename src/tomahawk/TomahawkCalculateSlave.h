@@ -254,7 +254,6 @@ class TomahawkCalculateSlave{
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T> output_manager_type;
-	typedef IO::GenericWriterInterace writer_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TomahawkBlockPackedPair<> simd_pair;
 
@@ -267,12 +266,13 @@ class TomahawkCalculateSlave{
 
 public:
 	TomahawkCalculateSlave(const manager_type& manager,
-						   writer_type& writer,
-						   Interface::ProgressBar& progress,
-						   const TomahawkCalcParameters& parameters,
-						   const work_order& orders);
+						output_manager_type& writer,
+						Interface::ProgressBar& progress,
+						const TomahawkCalcParameters& parameters,
+						const work_order& orders);
 
 	~TomahawkCalculateSlave();
+
 	TomahawkCalculateSlave& operator=(const TomahawkCalculateSlave& other);
 	TomahawkCalculateSlave& operator=(TomahawkCalculateSlave&& other) noexcept;
 	TomahawkCalculateSlave& operator+=(const TomahawkCalculateSlave& other);
@@ -290,7 +290,6 @@ public:
 
 private:
 	bool Calculate();
-
 	bool DiagonalWorkOrder(const order_type& order);
 	bool SquareWorkOrder(const order_type& order);
 	bool CompareBlocks(controller_type& block1);
@@ -298,7 +297,6 @@ private:
 	inline void CompareBlocksFunction(const controller_type& block1, const controller_type block2);
 	inline void CompareBlocksFunctionForcedPhased(const controller_type& block1, const controller_type block2);
 	inline void CompareBlocksFunctionForcedUnphased(const controller_type& block1, const controller_type block2);
-
 	bool CalculateLDPhased(const controller_type& a, const controller_type& b);
 	bool CalculateLDPhasedMath(void);
 	bool CalculateLDPhasedVectorized(const controller_type& a, const controller_type& b);
@@ -307,10 +305,8 @@ private:
 	bool CalculateLDUnphasedVectorized(const controller_type& a, const controller_type& b);
 	bool CalculateLDUnphasedVectorizedNoMissing(const controller_type& a, const controller_type& b);
 	bool CalculateLDUnphasedMath(void);
-
 	double EstimateChiSq(const double& target, const double& p, const double& q) const;
 	bool ChooseF11Calculate(const double& target, const double& p, const double& q);
-
 	void setFLAGs(const controller_type& a, const controller_type& b);
 
 private:
@@ -359,7 +355,7 @@ private:
 
 template <class T>
 TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
-					   writer_type& writer,
+		output_manager_type& writer,
 					   Interface::ProgressBar& progress,
 					   const TomahawkCalcParameters& parameters,
 					   const work_order& orders) :
@@ -375,7 +371,7 @@ TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 	//false_negative(0),
 	fisherController(1024),
 	manager(manager),
-	output_manager(writer, parameters.compression_type),
+	output_manager(writer),
 	progress(progress),
 	phase_function_across(nullptr),
 	orders(orders),

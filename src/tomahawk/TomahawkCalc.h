@@ -2,6 +2,7 @@
 #define TOMAHAWK_TOMAHAWKCALC_H_
 
 #include "TomahawkReader.h"
+#include "TomahawkOutput/TomahawkOutputManager.h"
 
 namespace Tomahawk {
 
@@ -10,7 +11,6 @@ class TomahawkCalc{
 	typedef TomahawkCalcParameters parameter_type;
 	typedef std::pair<U32,U32> pair_type;
 	typedef std::vector<pair_type> pair_vector;
-	typedef IO::GenericWriterInterace writer_type;
 	typedef Balancer balancer_type;
 	typedef TotempoleReader totempole_reader;
 	typedef Interface::ProgressBar progress_type;
@@ -26,27 +26,30 @@ public:
 	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
-	bool OpenWriter(const std::string destination);
-	bool SelectWriterOutputType(const writer_type::type writer_type);
 	bool CalculateWrapper();
 	template <class T> bool Calculate();
-	bool WriteTwoHeader(void);
-	bool WriteTwoHeaderNatural(void);
-	bool WriteTwoHeaderBinary(void);
 
 private:
+	std::string input_file;
+	std::string output_file;
+
 	bool parameters_validated;
 	progress_type progress;
 	balancer_type balancer;
 	parameter_type parameters;
 	reader_type reader;
-	writer_type* writer;
 };
 
 template <class T>
 bool TomahawkCalc::Calculate(){
 	// Retrieve reference to Totempole reader
-	const totempole_reader& totempole = this->reader.getTotempole();
+	totempole_reader& totempole = this->reader.getTotempole();
+
+	IO::TomahawkOutputManager<T> writer;
+	if(!writer.Open(this->output_file, totempole)){
+		std::cerr << "failed to open" << std::endl;
+		return false;
+	}
 
 	// Construct Tomahawk manager
 	TomahawkBlockManager<const T> controller(totempole);
@@ -130,7 +133,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new TomahawkCalculateSlave<T>(controller, *this->writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		slaves[i] = new TomahawkCalculateSlave<T>(controller, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
 	}
@@ -145,9 +148,6 @@ bool TomahawkCalc::Calculate(){
 	// Setup front-end interface
 	Interface::Timer timer;
 	timer.Start();
-
-	// Write TWO output header
-	this->WriteTwoHeader();
 
 	// Start workers
 	for(U32 i = 0; i < this->parameters.n_threads; ++i)
@@ -180,7 +180,8 @@ bool TomahawkCalc::Calculate(){
 	delete [] slaves;
 
 	// Flush writer
-	this->writer->flush();
+	writer.Finalise();
+	writer.close();
 
 	return true;
 }

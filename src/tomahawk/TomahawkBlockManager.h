@@ -52,6 +52,7 @@ public:
 
 class TomahawkBlockPacked{
 	typedef TomahawkBlockPackedPair<> pair_type;
+
 public:
 	TomahawkBlockPacked() : width(0), data(nullptr){}
 	~TomahawkBlockPacked(){
@@ -77,12 +78,10 @@ public:
 
 	/** Move assignment operator */
 	TomahawkBlockPacked& operator=(TomahawkBlockPacked&& other) noexcept{
-		std::cerr << "move assign " << std::endl;
-		if(this != &other) // prevent self-move
-		{
-
+		 // prevent self-move
+		if(this != &other)
 			this->width = other.width;
-		}
+
 		return *this;
 	}
 
@@ -332,8 +331,6 @@ template <class T>
 class TomahawkBlockManager{
 	typedef TomahawkBlockManager<T> self_type;
 	typedef TomahawkBlock<const T> controller_type;
-	typedef const TomahawkEntryMeta<const T> meta_type;
-	typedef const Support::TomahawkRun<const T> run_type;
 	typedef TotempoleEntry totempole_entry_type;
 
 public:
@@ -345,9 +342,9 @@ public:
 	controller_type operator[](const U32 p) const{ return(controller_type(this->blocks[p])); } // copy constructor return
 	void Add(const char* data, const totempole_entry_type& entry){ this->blocks.push_back(controller_type(data, entry)); }
 	bool BuildVectorized(void){
-		for(U32 i = 0; i < this->blocks.size(); ++i){
+		for(U32 i = 0; i < this->blocks.size(); ++i)
 			this->blocks[i].buildPacked(header.getSamples());
-		}
+
 		return true;
 	}
 

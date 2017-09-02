@@ -33,9 +33,7 @@ void calc_usage(void){
 	"\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout)\n"
-	"  -N       output in tab-delimited text format [null]\n"
-	"  -B       output in binary TWO format (default)[null]\n"
+	"  -o FILE  output file\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n"
 	"  -c INT   number of parts to split problem into (default: 1)\n"
 	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"
@@ -50,8 +48,6 @@ void calc_usage(void){
 }
 
 int calc(int argc, char** argv){
-	typedef Tomahawk::IO::GenericWriterInterace::compression compression_type;
-
 	//argc -= 2; argv += 2;
 
 	int c;
@@ -68,8 +64,6 @@ int calc(int argc, char** argv){
 		{"output",		required_argument, 0,  'o' },
 		{"parts",		optional_argument, 0,  'c' },
 		{"partStart",	optional_argument, 0,  'C' },
-		{"natural",		no_argument, 0,  'N' },
-		{"binary",		no_argument, 0,  'B' },
 		{"minP",		optional_argument, 0,  'P' },
 		{"phased",		no_argument, 0,  'p' },
 		{"unphased",	no_argument, 0,  'u' },
@@ -89,12 +83,12 @@ int calc(int argc, char** argv){
 	Tomahawk::TomahawkCalc tomahawk;
 	Tomahawk::TomahawkCalcParameters& parameters = tomahawk.getParameters();
 	std::string input;
-	std::string output = "-";
+	std::string output;
 	SILENT = 0;
 
 	S32 windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdNBc:C:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -111,12 +105,6 @@ int calc(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive number of worker threads" << std::endl;
 				return(1);
 			}
-			break;
-		case 'N':
-			parameters.compression_type = compression_type::natural;
-			break;
-		case 'B':
-			parameters.compression_type = compression_type::binary;
 			break;
 		case 'c':
 			parameters.n_chunks = atoi(optarg);

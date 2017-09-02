@@ -27,7 +27,6 @@ struct TomahawkCalcParameters{
 		minimum_alleles(CALC_DEFAULT_MINALLELES),
 		maximum_alleles(CALC_DEFAULT_MAXALLELES),
 		compression_type(writer_type::compression::binary),
-		output_stream_type(writer_type::type::cout),
 		force(force_method::none),
 		detailed_progress(false)
 	{
@@ -43,7 +42,6 @@ struct TomahawkCalcParameters{
 		minimum_alleles(other.minimum_alleles),
 		maximum_alleles(other.maximum_alleles),
 		compression_type(other.compression_type),
-		output_stream_type(other.output_stream_type),
 		force(other.force),
 		detailed_progress(other.detailed_progress)
 	{
@@ -114,7 +112,7 @@ struct TomahawkCalcParameters{
 				" minMHF=" + std::to_string(this->minimum_alleles) + " maxMHF=" + std::to_string(this->maximum_alleles) +
 				" partStart=" + std::to_string(this->chunk_selected) + " parts="  + std::to_string(this->n_chunks) +
 				" threads=" + std::to_string(this->n_threads) + " compression=" + std::to_string(this->compression_type) +
-				" stream_type=" + std::to_string(this->output_stream_type) + " force_type=" + std::to_string(this->force)
+				" force_type=" + std::to_string(this->force)
 		));
 	}
 
@@ -134,7 +132,6 @@ struct TomahawkCalcParameters{
 	int64_t minimum_alleles;
 	int64_t maximum_alleles;
 	writer_type::compression compression_type;
-	writer_type::type output_stream_type;
 	force_method force;
 	bool detailed_progress;
 };

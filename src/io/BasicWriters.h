@@ -131,6 +131,8 @@ public:
 		this->lock.unlock();
 	}
 
+	lock_type* getLock(void){ return(&this->lock); }
+
 private:
 	std::string outFile;
 	std::ofstream stream;
