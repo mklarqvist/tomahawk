@@ -54,7 +54,7 @@ tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
 
 ### Calculating linkage disequilibrium
 ```bash
-tomahawk calc -Bpdi file.twk -o - -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28 > output.two
+tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28
 ```
 
 ### Converting between file formats and filtering

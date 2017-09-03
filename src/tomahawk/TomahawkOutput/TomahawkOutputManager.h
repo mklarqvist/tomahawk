@@ -93,6 +93,10 @@ public:
 			this->buffer.reset();
 			this->compressor.Clear();
 		}
+		this->writer->flush();
+		this->writer->close();
+		this->writer_index->flush();
+		this->writer_index->close();
 	}
 
 	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
@@ -106,6 +110,11 @@ public:
 		this->buffer << helper;
 		++this->outCount;
 		++this->progressCount;
+
+		if(this->entry.entries == 0){
+
+		}
+
 		++this->entry.entries;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
