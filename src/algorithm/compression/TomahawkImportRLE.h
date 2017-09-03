@@ -249,13 +249,13 @@ public:
 			if(packed != packed_internal){
 				__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
 				__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-				//runs += __dump;
+				runs += __dump;
 
 				this->helper[packed] += length;
 				this->helper.countsAlleles[packed >> 2] += length;
 				this->helper.countsAlleles[packed & 3]  += length;
 
-				runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
+				//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
 
 				sumLength += length;
 				length = 1;
@@ -267,8 +267,8 @@ public:
 		}
 		__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
 		__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-		//runs += __dump;
-		runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
+		runs += __dump;
+		//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
 		++n_runs;
 
 		this->helper[packed] += length;
