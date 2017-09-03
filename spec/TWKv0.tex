@@ -102,6 +102,7 @@ Unlike BCI/BAI, TWI/TOI stores the virtual file offset to every single TGZF bloc
   \multicolumn{5}{|c|}{\textcolor{gray}{\it List of sample identifiers (n\_samples)}} \\\cline{2-5}
   & {\sf l\_name} & Length of sample name & {\tt uint32\_t} & \\\cline{2-5}
   & {\sf sample\_name} & Sample name & {\tt char[l\_name]} & \\\cline{2-5}
+  \hline
   \multicolumn{2}{|l|}{\sf TGZF\_block} & \begin{tabular}{@{}l@{}}Compressed DATA by {\sf zlib::deflate()}. DATA keeping \\ VCF header and any changes made to the file\end{tabular} &  & \\\cline{1-5}
   \multicolumn{5}{|c|}{\textcolor{gray}{\it Totempole entries until end-of-file}} \\\cline{2-5}
   & {\sf byte\_offset} & Virtual file offset to start to TGZF block & {\tt uint64\_t} & \\\cline{2-5}
@@ -110,6 +111,7 @@ Unlike BCI/BAI, TWI/TOI stores the virtual file offset to every single TGZF bloc
   & {\sf max\_position} & Largest variant position & {\tt uint32\_t} & \\\cline{2-5}
     & {\sf n\_variants} & Number of variants & {\tt uint16\_t} & \\\cline{2-5}
   & {\sf uncompressed\_size} & Uncompressed size of data & {\tt uint32\_t} & \\\cline{2-5}
+  \hline
   \multicolumn{2}{|l|}{\sf EOF\_string} & End-of-file marker & {\tt char*} & \\\cline{1-5}
 \end{tabular}}
 \end{table}
@@ -133,6 +135,7 @@ Unlike BCI/BAI, TWI/TOI stores the virtual file offset to every single TGZF bloc
   & {\sf n\_runs} & Number of runs for this variant & {\tt Template} & \\\cline{2-5}
   & \multicolumn{4}{|l|}{\textcolor{gray}{\it Until end of TGZF block}} \\\cline{2-5}
   & {\sf RLE} & Run-length encoded data & {\tt Template*} & \\\cline{2-5}
+  \hline
   \multicolumn{2}{|l|}{\sf EOF\_string} & End-of-file marker & {\tt char*} & \\\cline{1-5}
 \end{tabular}}
 \end{table}
@@ -177,8 +180,8 @@ TWO entries
   \multicolumn{2}{|l|}{\sf q2} & Haplotype counts for A2B2 (Alt-Alt). Is estimated if FLAG bit 1 is unset & {\tt float} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf D} & Coefficient of linkage disequilibrium (D) & {\tt float} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf Dprime} & Normalised D value & {\tt float} & \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf R2} & Tomahawk major version & {\tt float} & \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf P} & Tomahawk major version & {\tt double} & \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf R2} & Correlation coefficient squared & {\tt float} & \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf P} & Fisher's exact test P-value & {\tt double} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf chiSqFisher} & \begin{tabular}{@{}l@{}}Exact Fisher's test or Chi-squared test (see FLAG bit) \\ for the 2x2 haplotype contingency table\end{tabular} & {\tt double} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf chiSqModel} & Chi-squared critical value for the 3x3 genotype contingency table & {\tt double} & \\\cline{1-5}
 \end{tabular}}
@@ -208,6 +211,34 @@ The TWO FLAG
   \multicolumn{1}{|l|}{\sf 15} & Currently unused \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 16} & Currently unused \\ \cline{1-2}
   \end{tabular}}
+\end{table}
+
+\subsection{TOI format}
+\begin{table}[H]
+{\small
+\begin{tabular}{|l|l|l|l|r|}
+  \cline{1-5}
+  \multicolumn{2}{|l|}{\bf Field} & \multicolumn{1}{l|}{\bf Description} & \multicolumn{1}{l|}{\bf Type} & \multicolumn{1}{r|}{\bf Value} \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf MAGIC} & Start of file identifier string & {\tt char[9]} & {\tt TOMAHAWK\char`\~OUTPUT\char`\~INDEX\char92 1} \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf version} & Tomahawk major version & {\tt float} & \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf samples} & Number of samples & {\tt uint64\_t} & \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf controller} & \tt{\sf missing}\char60\char60 7\char124\tt{\sf unused} & {\tt uint64\_t} & \\\cline{1-5}
+
+  \multicolumn{5}{|c|}{\textcolor{gray}{\it List of TOI entries until end-of-file marker}} \\\cline{2-5}
+  & {\sf byte\_offset} & Virtual data offset into {\tt TWO} & {\tt uint64\_t} & \\\cline{2-5}
+  & {\sf byte\_offset\_end} & Virtual data offset end {\tt TWO} & {\tt uint64\_t} & \\\cline{2-5}
+  & {\sf n\_entries} & Number of {\tt TWO} entries & {\tt uint32\_t} & \\\cline{2-5}
+  & {\sf uncompressed\_size} & {\tt TGZF DATA} uncompressed size & {\tt uint32\_t} & \\\cline{2-5}
+  & {\sf contig\_IDA} & All entries belong to this {\tt AcontigID} & {\tt int32\_t} & \\\cline{2-5}
+  & {\sf min\_posA} & Smallest {\tt Aposition} & {\tt int32\_t} & \\\cline{2-5}
+  & {\sf max\_posA} & Largest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
+  & {\sf contig\_IDB} & All entries belong to this {\tt BcontigID} & {\tt int32\_t} & \\\cline{2-5}
+  & {\sf min\_posB} & Smallest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
+  & {\sf max\_posB} & Largest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
+
+\hline
+  \multicolumn{2}{|l|}{\sf EOF\_string} & End-of-file marker & {\tt char*} & \\\cline{1-5}
+\end{tabular}}
 \end{table}
 
 \end{document}
