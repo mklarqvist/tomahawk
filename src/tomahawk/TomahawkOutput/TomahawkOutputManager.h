@@ -23,6 +23,7 @@ struct TomahawkOutputManager{
 	typedef IO::BasicBuffer buffer_type;
 	typedef TGZFController tgzf_controller;
 	typedef Totempole::TotempoleOutputEntry totempoly_entry;
+	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 
 public:
 	TomahawkOutputManager() :
@@ -89,14 +90,19 @@ public:
 				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 				exit(1);
 			}
-			*this->writer << compressor.buffer;
+			this->writer->getLock()->lock();
+			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
+			this->entry.uncompressed_size = this->buffer.size();
+			this->writer->writeNoLock(compressor.buffer);
+			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
+			this->writer_index->getNativeStream() << this->entry;
+			std::cerr << this->entry << std::endl;
+			this->writer->getLock()->unlock();
+
 			this->buffer.reset();
 			this->compressor.Clear();
+			this->entry.reset();
 		}
-		this->writer->flush();
-		this->writer->close();
-		this->writer_index->flush();
-		this->writer_index->close();
 	}
 
 	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
@@ -111,10 +117,43 @@ public:
 		++this->outCount;
 		++this->progressCount;
 
+		// First one
 		if(this->entry.entries == 0){
-
+			this->entry.contigIDA = a.support->contigID;
+			this->entry.contigIDB = b.support->contigID;
+			this->entry.minPositionA = a.meta[a.metaPointer].position;
+			this->entry.minPositionB = b.meta[b.metaPointer].position;
 		}
 
+		//
+		if(this->entry.contigIDA != -1){
+			if(a.meta[a.metaPointer].position < this->entry_track.maxPositionA || a.meta[a.metaPointer].position > this->entry.minPositionA){
+				this->entry.minPositionA = -1;
+				this->entry.maxPositionA = -1;
+			} else this->entry.maxPositionA = a.meta[a.metaPointer].position;
+
+			if(this->entry.contigIDA != a.support->contigID){
+				this->entry.contigIDA = -1;
+				this->entry.minPositionA = -1;
+				this->entry.maxPositionA = -1;
+			}
+		}
+
+		if(this->entry.contigIDB != -1){
+			if(b.meta[b.metaPointer].position < this->entry_track.maxPositionB || b.meta[b.metaPointer].position > this->entry.minPositionB){
+				this->entry.minPositionB = -1;
+				this->entry.maxPositionB = -1;
+			} else this->entry.maxPositionB = b.meta[b.metaPointer].position;
+
+			if(this->entry.contigIDB != b.support->contigID){
+				this->entry.contigIDB = -1;
+				this->entry.minPositionB = -1;
+				this->entry.maxPositionB = -1;
+			}
+		}
+
+		this->entry_track.maxPositionA = a.meta[a.metaPointer].position;
+		this->entry_track.maxPositionB = b.meta[b.metaPointer].position;
 		++this->entry.entries;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
@@ -126,18 +165,24 @@ public:
 			this->writer->getLock()->lock();
 			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
 			this->entry.uncompressed_size = this->buffer.size();
-			*this->writer << compressor.buffer;
-			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
-			this->writer_index->getNativeStream() << this->entry;
+			this->writer->writeNoLock(compressor.buffer);
+			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
 			std::cerr << this->entry << std::endl;
-			this->writer->getLock()->unlock();
 
+			this->writer_index->getNativeStream() << this->entry;
+			this->writer->getLock()->unlock();
 			this->buffer.reset();
 			this->compressor.Clear();
+			this->entry.reset();
+			this->entry_track.reset();
 		}
 	}
 
 	void close(void){
+		this->writer->flush();
+		this->writer_index->flush();
+		this->writer->close();
+		this->writer_index->close();
 		delete this->writer;
 		delete this->writer_index;
 	}
@@ -166,6 +211,8 @@ private:
 		}
 
 		stream_index << headIndex;
+		totempole_controller_byte controller;
+		stream_index << controller;
 
 		return(stream.good());
 	}
@@ -190,6 +237,7 @@ private:
 	U64 outCount;			// lines written
 	U32 progressCount;		// lines added since last flush
 	totempoly_entry entry; // track stuff
+	totempoly_entry entry_track; // track stuff
 	writer_type* writer;	// writer
 	writer_type* writer_index;	// writer index
 	buffer_type buffer;		// internal buffer

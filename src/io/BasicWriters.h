@@ -131,6 +131,14 @@ public:
 		this->lock.unlock();
 	}
 
+	inline void writeNoLock(const char* data, const U32 length){
+		this->stream.write(&data[0], length);
+	}
+
+	inline void writeNoLock(const buffer_type& buffer){
+		this->stream.write(&buffer.data[0], buffer.pointer);
+	}
+
 	lock_type* getLock(void){ return(&this->lock); }
 
 private:
