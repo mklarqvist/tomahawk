@@ -16,6 +16,7 @@
 #include "TotempoleHeader.h"
 
 namespace Tomahawk {
+namespace Totempole{
 
 // Todo: temp interval
 struct Interval{
@@ -29,9 +30,9 @@ struct Interval{
 
 class TotempoleReader {
 	typedef TotempoleReader self_type;
-	typedef Totempole::TotempoleHeader header_type;
-	typedef Totempole::TotempoleContigBase contig_base_type;
-	typedef Totempole::TotempoleContig contig_type;
+	typedef TotempoleHeader header_type;
+	typedef TotempoleContigBase contig_base_type;
+	typedef TotempoleContig contig_type;
 	typedef TotempoleEntry entry_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef IO::TGZFHeader tgzf_type;
@@ -88,6 +89,7 @@ public:
 	hash_table* sampleHashTable;	// sample name hash table
 };
 
+}
 } /* namespace Tomahawk */
 
 #endif /* TOMAHAWK_TOTEMPOLEREADER_H_ */

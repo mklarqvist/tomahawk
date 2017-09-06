@@ -51,8 +51,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/third_party/xxhash/xxhsum.c|src/third_party/zlib/test|src/third_party/zlib/contrib|src/third_party/zlib/examples|bcf|algorithm|build|interface|io|support|third_party|tomahawk|math|io/totempole|totempole" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="build"/>
+						<entry excluding="third_party/xxhash/xxhsum.c|third_party/zlib/win32|third_party/zlib/watcom|third_party/zlib/test|third_party/zlib/qnx|third_party/zlib/old|third_party/zlib/nintendods|third_party/zlib/msdos|third_party/zlib/examples|third_party/zlib/doc|third_party/zlib/contrib|third_party/zlib/as400|third_party/zlib/amiga" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

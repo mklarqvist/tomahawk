@@ -8,23 +8,20 @@
 
 #include "../support/MagicConstants.h"
 #include "../io/TGZFController.h"
-#include "base/TomahawkEntryMeta.h"
-
 #include "../io/IOConstants.h"
-#include "TomahawkCalculateSlave.h"
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
-#include "TomahawkCalcParameters.h"
 #include "../algorithm/Balancer.h"
-
-
+#include "TomahawkCalcParameters.h"
+#include "base/TomahawkEntryMeta.h"
+#include "TomahawkCalculateSlave.h"
 
 namespace Tomahawk {
 
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
 	typedef TomahawkCalcParameters parameter_type;
-	typedef TotempoleEntry totempole_entry;
+	typedef Totempole::TotempoleEntry totempole_entry;
 
 public:
 	// Used to keep track of char pointer offsets in buffer
@@ -54,7 +51,7 @@ public:
 	bool outputBlocks();
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
-	inline TotempoleReader& getTotempole(void){ return(this->totempole_); }
+	inline Totempole::TotempoleReader& getTotempole(void){ return(this->totempole_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
 	inline const size_t DataOffsetSize(void) const{ return(this->blockDataOffsets_.size()); }
 	inline void setDropGenotypes(const bool yes){ this->dropGenotypes = yes; }
@@ -75,7 +72,7 @@ private:
 	bool dropGenotypes;
 	bool showHeader; // flag to output header or not
 	std::ifstream stream_; // reader stream
-	TotempoleReader totempole_;
+	Totempole::TotempoleReader totempole_;
 
 	// Todo: Why so many???
 	IO::BasicBuffer buffer_;

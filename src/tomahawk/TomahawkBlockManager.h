@@ -113,7 +113,7 @@ struct TomahawkBlock{
 	typedef TomahawkEntryMeta<T> meta_type;
 
 public:
-	TomahawkBlock(const char* target, const TotempoleEntry& support) :
+	TomahawkBlock(const char* target, const Totempole::TotempoleEntry& support) :
 		metaPointer(0),
 		runsPointer(0),
 		support(&support),
@@ -179,7 +179,7 @@ public:
 		this->runsPointer = 0;
 	}
 
-	void WriteVariant(const TotempoleReader& totempole, IO::BasicBuffer& buffer, bool dropGenotypes = false) const{
+	void WriteVariant(const Totempole::TotempoleReader& totempole, IO::BasicBuffer& buffer, bool dropGenotypes = false) const{
 		// All genotypes in this line will have the same phase
 		const char separator = this->currentMeta().phased == 1 ? '|' : '/';
 
@@ -252,7 +252,7 @@ public:
 public:
 	U32 metaPointer;
 	U32 runsPointer;
-	const TotempoleEntry* const support; // parent Totempole information
+	const Totempole::TotempoleEntry* const support; // parent Totempole information
 	const meta_type* const meta;
 	const type* const runs;
 	TomahawkBlockPacked* packed;
@@ -334,10 +334,10 @@ template <class T>
 class TomahawkBlockManager{
 	typedef TomahawkBlockManager<T> self_type;
 	typedef TomahawkBlock<const T> controller_type;
-	typedef TotempoleEntry totempole_entry_type;
+	typedef Totempole::TotempoleEntry totempole_entry_type;
 
 public:
-	TomahawkBlockManager(const TotempoleReader& header) :
+	TomahawkBlockManager(const Totempole::TotempoleReader& header) :
 		header(header)
 	{}
 	~TomahawkBlockManager(){}
@@ -365,7 +365,7 @@ public:
 	std::vector<controller_type> blocks;
 
 	// Header
-	const TotempoleReader& header;
+	const Totempole::TotempoleReader& header;
 };
 
 

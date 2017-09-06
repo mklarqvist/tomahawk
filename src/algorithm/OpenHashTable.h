@@ -10,7 +10,6 @@
 #include "../support/TypeDefinitions.h"
 #include "../third_party/xxhash/xxhash.h"
 
-
 namespace Tomahawk {
 namespace Hash {
 

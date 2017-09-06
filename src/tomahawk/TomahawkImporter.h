@@ -15,7 +15,7 @@ class TomahawkImporter {
 	typedef VCF::VCFLine line_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef Algorithm::TomahawkImportRLE rle_controller_type;
-	typedef TotempoleEntry totempole_entry_type;
+	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef BCF::BCFReader bcf_reader_type;
 	typedef BCF::BCFEntry bcf_entry_type;
 

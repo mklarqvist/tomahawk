@@ -252,7 +252,7 @@ class TomahawkCalculateSlave{
 	typedef TomahawkBlock<const T> controller_type;
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
-	typedef TotempoleEntry totempole_entry_type;
+	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T> output_manager_type;
 	typedef Support::TomahawkOutputLD helper_type;
 	typedef TomahawkBlockPackedPair<> simd_pair;

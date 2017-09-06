@@ -18,7 +18,7 @@ class VCFHeader {
 	typedef VCFHeader self_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef VCFHeaderContig contig_type;
-	typedef TotempoleReader totempole_type;
+	typedef Totempole::TotempoleReader totempole_type;
 	typedef IO::TGZFController tgzf_type;
 	typedef IO::BasicBuffer buffer_type;
 

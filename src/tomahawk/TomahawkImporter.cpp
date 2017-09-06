@@ -46,7 +46,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 		return false;
 	}
 
-	const TotempoleReader& totempole = tReader.getTotempole();
+	const Totempole::TotempoleReader& totempole = tReader.getTotempole();
 	*this->header_ = totempole; // Convert data in totempole to VCF header
 
 	// Parse lines

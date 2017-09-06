@@ -2,6 +2,7 @@
 #define TOTEMPOLEENTRY_H_
 
 namespace Tomahawk{
+namespace Totempole{
 
 #pragma pack(1)
 struct TotempoleEntry{
@@ -63,7 +64,7 @@ public:
 };
 
 }
-
+}
 
 
 #endif /* TOTEMPOLEENTRY_H_ */

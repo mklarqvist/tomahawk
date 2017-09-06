@@ -1,6 +1,7 @@
 #include "TotempoleReader.h"
 
 namespace Tomahawk {
+namespace Totempole {
 
 TotempoleReader::TotempoleReader() :
 		filesize(0),
@@ -260,4 +261,5 @@ bool TotempoleReader::writeLiterals(std::ofstream& stream){
 	return true;
 }
 
+}
 } /* namespace Tomahawk */

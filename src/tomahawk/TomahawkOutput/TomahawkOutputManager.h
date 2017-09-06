@@ -61,7 +61,7 @@ public:
 	inline void ResetProgress(void){ this->progressCount = 0; }
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
 
-	bool Open(const std::string output, TotempoleReader& totempole){
+	bool Open(const std::string output, Totempole::TotempoleReader& totempole){
 		if(output.size() == 0)
 			return false;
 
@@ -193,7 +193,7 @@ public:
 	}
 
 private:
-	bool WriteHeader(TotempoleReader& totempole){
+	bool WriteHeader(Totempole::TotempoleReader& totempole){
 		//typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 		std::ofstream& stream = this->writer->getNativeStream();
 		std::ofstream& stream_index = this->writer_index->getNativeStream();
