@@ -61,26 +61,49 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		return false;
 	}
 
-	/*
 	IO::TGZFController c;
 	c.InflateOpen(this->reader.stream);
-	char input_buffer[2048];
+	char input_buffer[5012];
 	char output_buffer[10000];
+	U32 output_buffer_pointer = 0;
 
-	U32 ret = 0;
-	if((ret = c.Inflate(&input_buffer[0], &output_buffer[0], 2000)) <= 0){
-		std::cerr << "faailedi nflate" << std::endl;
-		return false;
+	U32 it = 0;
+
+	while(true){
+		this->reader.stream.read(&input_buffer[0], 5012);
+		U32 avail_in = 5012;
+		U32 input_pos = 0;
+
+		while(true){
+			U32 ret = 0;
+			std::cerr << "availIn: " << avail_in  << " pos: " << input_pos << std::endl;
+			if((ret = c.Inflate(&input_buffer[input_pos], avail_in, &output_buffer[output_buffer_pointer], 10000 - output_buffer_pointer)) <= 0){
+				std::cerr << "faailedi nflate" << std::endl;
+				break;
+			}
+			input_pos += avail_in;
+			avail_in = 5012 - avail_in;
+
+			std::cout << ret << '\t' << sizeof(entry_type) << '\t' << ret / sizeof(entry_type) << std::endl;
+			const U32 n_entries = ret / sizeof(entry_type);
+			const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
+			for(U32 i = 0; i < n_entries; ++i)
+				std::cerr << entries[i] << std::endl;
+
+			const U32 remainder = ret % sizeof(entry_type);
+			std::cerr << "remainder" << remainder << std::endl;
+			memcpy(&output_buffer[0], &output_buffer[10000 - remainder], remainder);
+			output_buffer_pointer = remainder;
+
+			if(it++ == 1)
+				exit(1);
+
+		}
+		std::cerr << "end inner" << std::endl;
+		exit(1);
 	}
 
-	std::cout << ret << '\t' << sizeof(entry_type) << '\t' << ret / sizeof(entry_type) << std::endl;
-	const U32 n_entries = ret / sizeof(entry_type);
-	const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
-	for(U32 i = 0; i < n_entries; ++i)
-		std::cerr << entries[i] << std::endl;
-
 	return false;
-*/
 
 	/*
 	std::cerr << "attempting to open: " << inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX << std::endl;

@@ -26,10 +26,13 @@ public:
 	void Clear();
 	bool Inflate(buffer_type& input, buffer_type& output, const header_type& header) const;
 	bool Inflate(buffer_type& input, buffer_type& output) const;
+	bool InflateBlock(std::ifstream& stream, buffer_type& input);
+	bool InflateOpen(std::ifstream& stream);
+	int Inflate(const char* const input, U32& avail_in, const char* output, const U32& avail_out);
+
 	bool Deflate(const buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
-	U32 InflateSize(buffer_type& input) const;
-	bool InflateBlock(std::ifstream& stream, buffer_type& input);
+
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream.write(entry.buffer.data, entry.buffer.pointer);
@@ -41,6 +44,7 @@ private:
 
 public:
 	buffer_type buffer;
+	z_stream zstream;
 };
 
 }

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstring>
 #include "TotempoleOutputEntry.h"
+#include "../support/MagicConstants.h"
 
 namespace Tomahawk{
 namespace IO{

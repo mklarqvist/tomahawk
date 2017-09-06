@@ -10,12 +10,7 @@ TomahawkReader::TomahawkReader() :
 	bit_width_(0),
 	dropGenotypes(false),
 	showHeader(true),
-	writer(nullptr),
-	totempole_(),
-	buffer_(),
-	data_(),
-	outputBuffer_(),
-	tgzf_controller_()
+	writer(nullptr)
 {}
 
 TomahawkReader::~TomahawkReader(){
@@ -63,6 +58,7 @@ bool TomahawkReader::Open(const std::string input){
 	return(this->Validate());
 }
 
+
 inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
 	char MAGIC[Constants::WRITE_HEADER_MAGIC_LENGTH];
 	in.read(MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
@@ -73,121 +69,16 @@ inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
 	return false;
 }
 
-U64 TomahawkReader::GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks){
-	if(blocks.size() == 0)
-		return 0;
-
-	char temp[sizeof(U32)];
-	U32* BSIZE = reinterpret_cast<U32*>(&temp[0]);
-	U64 totalSize = 0;
-
-	U32 number_of_blocks = blocks.size();
-	bool adjusted = false;
-
-	if(blocks[blocks.size()-1].second == this->totempole_.getBlocks()){
-		//std::cerr << "Last one is final" << std::endl;
-		this->stream_.seekg(this->filesize_ - Constants::eof_length*sizeof(U64) - sizeof(U32));
-		if(!this->stream_.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-			return(0);
-		}
-		this->stream_.read(&temp[0], sizeof(U32));
-		totalSize += *BSIZE;
-		adjusted = true;
-		--blocks[blocks.size()-1].second;
-	}
-	// Check for duplicates
-
-	for(U32 i = 0; i < number_of_blocks; ++i){
-		for(U32 j = blocks[i].first; j < blocks[i].second; ++j){
-			this->stream_.seekg(this->totempole_[j+1].byte_offset - sizeof(U32));
-			if(!this->stream_.good()){
-				std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-				return(0);
-			}
-			this->stream_.read(&temp[0], sizeof(U32));
-			//std::cerr << *BSIZE << std::endl;
-			totalSize += *BSIZE;
-		}
-	}
-
-	// Restore if last one was last
-	if(adjusted)
-		++blocks[blocks.size()-1].second;
-
-	return totalSize;
-}
-
-U64 TomahawkReader::GetUncompressedSizes(std::vector<U32>& blocks){
-	if(blocks.size() == 0)
-		return 0;
-
-	char temp[sizeof(U32)];
-	U32* BSIZE = reinterpret_cast<U32*>(&temp[0]);
-	U64 totalSize = 0;
-
-	U32 number_of_blocks = blocks.size();
-
-	std::sort(blocks.begin(), blocks.end());
-	if(blocks[blocks.size()-1] == this->totempole_.getBlocks() -1){
-		//std::cerr << "Last one is final" << std::endl;
-		this->stream_.seekg(this->filesize_ - Constants::eof_length*sizeof(U64) - sizeof(U32));
-		if(!this->stream_.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-			return(0);
-		}
-		this->stream_.read(&temp[0], sizeof(U32));
-		totalSize += *BSIZE;
-		--number_of_blocks;
-	}
-	// Check for duplicates
-
-	for(U32 i = 0; i < number_of_blocks; ++i){
-		this->stream_.seekg(this->totempole_[blocks[i]+1].byte_offset - sizeof(U32));
-		if(!this->stream_.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-			return(0);
-		}
-		this->stream_.read(&temp[0], sizeof(U32));
-		//std::cerr << *BSIZE << std::endl;
-		totalSize += *BSIZE;
-	}
-
-	return totalSize;
-}
-
-U64 TomahawkReader::GetUncompressedSizes(void){
-	char temp[sizeof(U32)];
-	U32* BSIZE = reinterpret_cast<U32*>(&temp[0]);
-	U64 totalSize = 0;
-
-	for(U32 i = 0; i < this->totempole_.getBlocks()-1; ++i){
-		this->stream_.seekg(this->totempole_[i+1].byte_offset - sizeof(U32));
-		this->stream_.read(&temp[0], sizeof(U32));
-		if(!this->stream_.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-			return(0);
-		}
-		totalSize += *BSIZE;
-	}
-
-	this->stream_.seekg(this->filesize_ - Constants::eof_length*sizeof(U64) - sizeof(U32));
-	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Illegal seek..." << std::endl;
-		return(0);
-	}
-	this->stream_.read(&temp[0], sizeof(U32));
-	totalSize += *BSIZE;
-
-	//std::cerr << "Final: " << *BSIZE << std::endl;
-
-	return totalSize;
-}
-
 bool TomahawkReader::getBlocks(void){
-	U64 buffer_size = this->GetUncompressedSizes();
-	if(buffer_size == 0)
+	U64 buffer_size = 0;
+	for(U32 i = 0; i < this->totempole_.header.blocks; ++i){
+		buffer_size += this->totempole_[i].uncompressed_size;
+	}
+
+	if(buffer_size == 0){
+		std::cerr << "impsosible" << std::endl;
 		return false;
+	}
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().blocks << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
@@ -202,7 +93,12 @@ bool TomahawkReader::getBlocks(void){
 }
 
 bool TomahawkReader::getBlocks(std::vector<U32>& blocks){
-	U64 buffer_size = this->GetUncompressedSizes(blocks);
+	U64 buffer_size = 0;
+	for(U32 i = 0; i < blocks.size(); ++i){
+		std::cerr << i << '/' << blocks.size() << '\t' << this->totempole_[i].uncompressed_size << std::endl;
+		buffer_size += this->totempole_[i].uncompressed_size;
+	}
+
 	if(buffer_size == 0)
 		return false;
 
@@ -219,7 +115,13 @@ bool TomahawkReader::getBlocks(std::vector<U32>& blocks){
 }
 
 bool TomahawkReader::getBlocks(std::vector< std::pair<U32, U32> >& blocks){
-	U64 buffer_size = this->GetUncompressedSizes(blocks);
+	U64 buffer_size = 0;
+	for(U32 i = 0; i < blocks.size(); ++i){
+		for(U32 j = blocks[i].first; j < blocks[i].second; ++j){
+			buffer_size += this->totempole_[j].uncompressed_size;
+		}
+	}
+
 	if(buffer_size == 0){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Uncompressed size is 0..." << std::endl;
 		return false;
@@ -258,11 +160,7 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		return false;
 	}
 
-	U32 readLength = 0;
-	if(blockID != this->totempole_.getBlocks() - 1)
-		readLength = this->totempole_[blockID + 1].byte_offset - this->totempole_[blockID].byte_offset;
-	else
-		readLength = this->filesize_ - Constants::eof_length*sizeof(U64) - this->totempole_[this->totempole_.getBlocks()-1].byte_offset;
+	const U32 readLength = this->totempole_[blockID].byte_offset_end - this->totempole_[blockID].byte_offset;
 
 	if(readLength > this->buffer_.capacity()){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Overflowing capacity: " << readLength << '/' << this->buffer_.capacity() << std::endl;
@@ -278,7 +176,7 @@ bool TomahawkReader::getBlock(const U32 blockID){
 	this->buffer_.pointer = readLength;
 
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to inflate data..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate data..." << std::endl;
 		return false;
 	}
 

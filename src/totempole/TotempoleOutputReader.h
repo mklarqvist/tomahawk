@@ -15,14 +15,17 @@ class TotempoleOutputReader {
 	typedef TotempoleOutputEntry entry_type;
 	typedef IO::BasicBuffer buffer_type;
 
+	enum TOI_ERROR {TOI_OK, TOI_NO_EXIST, TOI_CORRUPTED};
+
 public:
-	TotempoleOutputReader() : n_entries(0), entries(nullptr){}
+	TotempoleOutputReader() : n_entries(0), ERROR_STATE(TOI_OK), entries(nullptr){}
 	~TotempoleOutputReader(){}
 
 	bool Open(const std::string& input){
 		this->stream = std::ifstream(input, std::ios::in | std::ios::binary | std::ios::ate);
 		if(!this->stream.good()){
 			//std::cerr << "failed does not exist" << std::endl;
+			this->ERROR_STATE = TOI_NO_EXIST;
 			return false;
 		}
 
@@ -32,6 +35,7 @@ public:
 		this->stream >> this->header;
 		if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC)){
 			std::cerr << "incorrect header" << std::endl;
+			this->ERROR_STATE = TOI_CORRUPTED;
 			exit(1);
 		}
 
@@ -40,6 +44,7 @@ public:
 
 		if(readUntil % sizeof(entry_type) != 0){
 			std::cerr << "corrupted data" << std::endl;
+			this->ERROR_STATE = TOI_CORRUPTED;
 			exit(1);
 		}
 
@@ -66,6 +71,7 @@ private:
 	std::ifstream stream;
 	header_type header;
 	buffer_type buffer;
+	TOI_ERROR ERROR_STATE;
 	const entry_type* entries;
 };
 

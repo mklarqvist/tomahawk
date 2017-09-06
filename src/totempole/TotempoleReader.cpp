@@ -122,7 +122,6 @@ bool TotempoleReader::Open(const std::string filename){
 		std::cerr << i << '\t' << this->header.blocks << '\t' << this->entries[i] << std::endl;
 #endif
 	}
-
 	this->BuildUpdateContigs();
 
 #if DEBUG_MODE == 1
@@ -134,7 +133,7 @@ bool TotempoleReader::Open(const std::string filename){
 		return false;
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->getSamples())) << " blocks..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->getBlocks())) << " blocks..." << std::endl;
 		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(this->size())) << " contigs and " << Helpers::NumberThousandsSeparator(std::to_string(this->getSamples())) << " samples..." << std::endl;
 	}
 

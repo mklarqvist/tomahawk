@@ -1,6 +1,8 @@
 #ifndef TOTEMPOLEOUTPUTENTRY_H_
 #define TOTEMPOLEOUTPUTENTRY_H_
 
+#include "../support/TypeDefinitions.h"
+
 namespace Tomahawk {
 namespace Totempole {
 

@@ -339,6 +339,7 @@ public:
 			this->largest_uncompressed_block_ = this->buffer_meta_.size();
 
 		this->totempole_entry_.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
+		this->totempole_entry_.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 		this->streamTotempole << this->totempole_entry_; // Write totempole output
 		++this->blocksWritten_; // update number of blocks written
 		this->variants_written_ += this->totempole_entry_.variants; // update number of variants written

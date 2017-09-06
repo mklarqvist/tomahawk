@@ -1,6 +1,5 @@
 
 #include "TomahawkCalc.h"
-#include "../totempole/TotempoleMagic.h"
 
 namespace Tomahawk {
 

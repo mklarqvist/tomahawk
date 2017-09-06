@@ -9,13 +9,15 @@
 #include "../support/MagicConstants.h"
 #include "../io/TGZFController.h"
 #include "base/TomahawkEntryMeta.h"
-#include "../totempole/TotempoleReader.h"
+
 #include "../io/IOConstants.h"
 #include "TomahawkCalculateSlave.h"
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
 #include "../algorithm/Balancer.h"
+
+
 
 namespace Tomahawk {
 
@@ -60,9 +62,6 @@ public:
 
 private:
 	void DetermineBitWidth(void);
-	U64 GetUncompressedSizes(std::vector<U32>& blocks);
-	U64 GetUncompressedSizes(std::vector< std::pair<U32, U32> >& blocks);
-	U64 GetUncompressedSizes(void);
 	template <class T> bool outputBlock(const U32 blockID);
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
@@ -76,8 +75,6 @@ private:
 	bool dropGenotypes;
 	bool showHeader; // flag to output header or not
 	std::ifstream stream_; // reader stream
-
-	IO::GenericWriterInterace* writer;
 	TotempoleReader totempole_;
 
 	// Todo: Why so many???
@@ -87,6 +84,8 @@ private:
 	IO::TGZFController tgzf_controller_;
 
 	std::vector<DataOffsetPair> blockDataOffsets_;
+
+	IO::GenericWriterInterace* writer;
 };
 
 template <class T>

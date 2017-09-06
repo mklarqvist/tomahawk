@@ -19,17 +19,64 @@ TGZFController::~TGZFController(){ this->buffer.deleteAll(); }
 
 void TGZFController::Clear(){ this->buffer.reset(); }
 
-U32 TGZFController::InflateSize(buffer_type& input) const{
-	const header_type& header = *reinterpret_cast<const header_type* const>(&input.data[0]);
-	if(!header.Validate()){
-		 std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid TGZF header" << std::endl;
-		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << "Output length: " << header.BSIZE << std::endl;
-		 std::cerr << Helpers::timestamp("DEBUG","TGZF") << std::endl;
-		 std::cerr << header << std::endl;
-		 exit(1);
+bool TGZFController::InflateOpen(std::ifstream& stream){
+	this->buffer.reset();
+	this->buffer.resize(sizeof(header_type));
+	stream.read(&this->buffer.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(&this->buffer.data[0]);
+	//input.pointer = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	if(!h->Validate()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Failed to validate!" << std::endl;
+		std::cerr << *h << std::endl;
+		return false;
 	}
 
-	return header.BSIZE;
+	this->zstream = z_stream();
+	this->zstream.zalloc    = NULL;
+	this->zstream.zfree     = NULL;
+	//this->zstream.next_in   = (Bytef*)&input.data[Constants::TGZF_BLOCK_HEADER_LENGTH];
+	//this->zstream.avail_in  = (h->BSIZE + 1) - 16;
+	//this->zstream.next_out  = (Bytef*)&output.data[output.pointer];
+	//this->zstream.avail_out = (U32)avail_out;
+	return true;
+}
+
+int TGZFController::Inflate(const char* const input, U32& avail_in, const char* output, const U32& avail_out){
+	this->zstream.next_in   = (Bytef*)input;
+	this->zstream.next_out  = (Bytef*)output;
+	this->zstream.avail_out = avail_out;
+	this->zstream.avail_in  = avail_in;
+
+	int status = inflateInit2(&this->zstream, Constants::GZIP_WINDOW_BITS);
+	if(status != Z_OK){
+		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Zlib inflateInit failed: " << (int)status << std::endl;
+		exit(1);
+	}
+
+	// decompress
+	status = inflate(&this->zstream, Z_FINISH);
+	std::cerr<<"in: " << this->zstream.total_in << " out: " << this->zstream.total_out << std::endl;
+	avail_in = this->zstream.total_in;
+
+	if(status != Z_STREAM_END){
+		inflateEnd(&this->zstream);
+		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Zlib inflateEnd failed: " << (int)status << std::endl;
+		return(this->zstream.total_out);
+		//exit(1);
+	}
+
+	// finalize
+	status = inflateEnd(&this->zstream);
+	if(status != Z_OK){
+		inflateEnd(&this->zstream);
+		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Zlib inflateFinalize failed: " << (int)status << std::endl;
+		exit(1);
+	}
+
+	if(this->zstream.total_out == 0)
+		std::cerr << Helpers::timestamp("LOG", "TGZF") << "Detected empty TGZF block" << std::endl;
+
+	return(this->zstream.total_out);
 }
 
 bool TGZFController::Inflate(buffer_type& input, buffer_type& output) const{
@@ -56,7 +103,7 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 
 	//U32* crc = reinterpret_cast<U32*>(&input.data[input.size() - 2*sizeof(U32)]);
 
-	// Bug fix for ZLIB when overflowing an U32
+	// Fix for ZLIB when overflowing an U32
 	U64 avail_out = output.capacity() - output.size();
 	if(avail_out > std::numeric_limits<U32>::max())
 		avail_out = std::numeric_limits<U32>::max();

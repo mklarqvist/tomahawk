@@ -1,6 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWKCALC_H_
 #define TOMAHAWK_TOMAHAWKCALC_H_
 
+#include "../totempole/TotempoleMagic.h"
 #include "TomahawkReader.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
@@ -46,15 +47,20 @@ bool TomahawkCalc::Calculate(){
 	totempole_reader& totempole = this->reader.getTotempole();
 
 	IO::TomahawkOutputManager<T> writer;
+	std::cerr << "before open" << std::endl;
 	if(!writer.Open(this->output_file, totempole)){
 		std::cerr << "failed to open" << std::endl;
 		return false;
 	}
 
+	std::cerr << "writer reader" << std::endl;
+
 	// Construct Tomahawk manager
 	TomahawkBlockManager<const T> controller(totempole);
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i)
 		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
+
+	std::cerr << "after manager" << std::endl;
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1

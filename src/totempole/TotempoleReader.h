@@ -8,13 +8,12 @@
 #include <algorithm>
 
 #include "../support/MagicConstants.h"
-#include "../support/TypeDefinitions.h"
 #include "../support/helpers.h"
-#include "TotempoleEntry.h"
-#include "../algorithm/OpenHashTable.h"
-#include "../totempole/TotempoleContig.h"
-#include "../totempole/TotempoleHeader.h"
 #include "../io/TGZFController.h"
+#include "../algorithm/OpenHashTable.h"
+#include "TotempoleEntry.h"
+#include "TotempoleContig.h"
+#include "TotempoleHeader.h"
 
 namespace Tomahawk {
 
@@ -29,6 +28,7 @@ struct Interval{
 };
 
 class TotempoleReader {
+	typedef TotempoleReader self_type;
 	typedef Totempole::TotempoleHeader header_type;
 	typedef Totempole::TotempoleContigBase contig_base_type;
 	typedef Totempole::TotempoleContig contig_type;
@@ -41,6 +41,7 @@ class TotempoleReader {
 public:
 	TotempoleReader();
 	~TotempoleReader();
+
 	bool Open(const std::string filename);
 	std::vector<U32> findOverlaps(const Interval& interval) const;
 	const entry_type& front(void) const{ return(this->entries[0]); }

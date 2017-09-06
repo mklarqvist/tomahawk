@@ -2,12 +2,13 @@
 #define TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
 
 #include "../../io/BasicWriters.h"
-#include "../TomahawkBlockManager.h"
 #include "../../io/TGZFController.h"
 #include "../../support/MagicConstants.h"
+#include "../../totempole/TotempoleContig.h"
 #include "../../totempole/TotempoleMagic.h"
-#include "TomahawkOutputEntry.h"
 #include "../../totempole/TotempoleOutputEntry.h"
+#include "../TomahawkBlockManager.h"
+#include "TomahawkOutputEntry.h"
 #include "TomahawkOutputLD.h"
 
 #define SLAVE_FLUSH_LIMIT 10000000	// 10 MB default flush limit
@@ -79,6 +80,7 @@ public:
 			return false;
 		}
 
+		std::cerr << "before write header" << std::endl;
 		if(!this->WriteHeader(totempole)){
 			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to write header" << std::endl;
 			return false;
@@ -201,10 +203,16 @@ private:
 		stream << head;
 		stream_index << headIndex;
 
+		std::cerr << "after writing heads" << std::endl;
+
 		// Write contig data to TWO
 		// length | n_char | chars[0 .. n_char - 1]
+		std::cerr << "contigs: " << totempole.getContigs() << std::endl;
+		std::cerr << "first: " << totempole.contigs << std::endl;
 		for(U32 i = 0; i < totempole.getContigs(); ++i)
 			stream << *totempole.getContigBase(i);
+
+		std::cerr << "after contigs" << std::endl;
 
 		totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true) + '\n';
 		totempole.literals += "##tomahawk_calcInterpretedCommand=" + totempole.literals;
