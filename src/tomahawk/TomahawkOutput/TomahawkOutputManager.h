@@ -6,7 +6,9 @@
 #include "../../io/TGZFController.h"
 #include "../../support/MagicConstants.h"
 #include "../../totempole/TotempoleMagic.h"
-#include "TotempoleOutputEntry.h"
+#include "TomahawkOutputEntry.h"
+#include "../../totempole/TotempoleOutputEntry.h"
+#include "TomahawkOutputLD.h"
 
 #define SLAVE_FLUSH_LIMIT 10000000	// 10 MB default flush limit
 #define SLAVE_FLUSH_LIMIT_NATURAL 65536
@@ -19,9 +21,10 @@ struct TomahawkOutputManager{
 	typedef TomahawkOutputManager self_type;
 	typedef IO::WriterFile writer_type;
 	typedef TomahawkBlock<const T> controller_type;
-	typedef Support::TomahawkOutputLD helper_type;
+	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef TGZFController tgzf_controller;
+	typedef IO::TomahawkOutputEntry entry_type;
 	typedef Totempole::TotempoleOutputEntry totempoly_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 
@@ -67,17 +70,17 @@ public:
 		this->CheckOutputNames(output);
 		this->filename = output;
 		if(!this->writer->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX)){
-			std::cerr << "failed open" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to open..." << std::endl;
 			return false;
 		}
 
 		if(!this->writer_index->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
-			std::cerr << "failed open index" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed open index..." << std::endl;
 			return false;
 		}
 
 		if(!this->WriteHeader(totempole)){
-			std::cerr << "failed to write header" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to write header" << std::endl;
 			return false;
 		}
 
@@ -96,7 +99,7 @@ public:
 			this->writer->writeNoLock(compressor.buffer);
 			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
 			this->writer_index->getNativeStream() << this->entry;
-			std::cerr << this->entry << std::endl;
+			//std::cerr << this->entry << std::endl;
 			this->writer->getLock()->unlock();
 
 			this->buffer.reset();
@@ -167,7 +170,7 @@ public:
 			this->entry.uncompressed_size = this->buffer.size();
 			this->writer->writeNoLock(compressor.buffer);
 			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
-			std::cerr << this->entry << std::endl;
+			//std::cerr << this->entry << std::endl;
 
 			this->writer_index->getNativeStream() << this->entry;
 			this->writer->getLock()->unlock();
@@ -189,13 +192,14 @@ public:
 
 private:
 	bool WriteHeader(TotempoleReader& totempole){
-		typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
+		//typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 		std::ofstream& stream = this->writer->getNativeStream();
 		std::ofstream& stream_index = this->writer_index->getNativeStream();
 
-		header_type head(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
-		header_type headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, totempole.getSamples(), totempole.getContigs());
+		TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> head(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
+		TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, totempole.getSamples(), totempole.getContigs());
 		stream << head;
+		stream_index << headIndex;
 
 		// Write contig data to TWO
 		// length | n_char | chars[0 .. n_char - 1]
@@ -206,13 +210,9 @@ private:
 		totempole.literals += "##tomahawk_calcInterpretedCommand=" + totempole.literals;
 
 		if(!totempole.writeLiterals(stream)){
-			std::cerr << "failed to write literals" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to write literals..." << std::endl;
 			return false;
 		}
-
-		stream_index << headIndex;
-		totempole_controller_byte controller;
-		stream_index << controller;
 
 		return(stream.good());
 	}

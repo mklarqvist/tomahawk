@@ -6,61 +6,21 @@ namespace Tomahawk{
 namespace Algorithm{
 namespace Output{
 
-bool TomahawkOutputSorter::sort(const std::string& input, const U64 memory_limit){
-	std::vector<std::string> paths = Tomahawk::Helpers::splitLastOf(input, '/', true);
-	std::vector<std::string> files = Tomahawk::Helpers::splitLastOf(paths.back(), '.');
-
-	// Todo: if failed to read from file suffix: try to look into file header MAGIC
-	if(files[1].size() == 0){
-		std::cerr << "could not determine file type from suffix" << std::endl;
-		return false;
-	}
-
-	std::transform(files[1].begin(), files[1].end(), files[1].begin(), ::tolower);
-
-	// Setup filenames
-	std::string outFile = files[0] + "__partial_sort." + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
-	std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
-	std::cerr << Helpers::timestamp("LOG","SORT") << "Setting filename to: " << outFile << std::endl;
-	std::cerr << Helpers::timestamp("LOG","SORT") << "Setting index filename to: " << outIndex << std::endl;
-	outFile = paths[0] + outFile;
-	outIndex = paths[0] + outIndex;
-
-	return(this->sort(input, outFile, memory_limit));
-}
-
 bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit){
-	const std::string outFile = destinationPrefix + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX;
-	const std::string outIndex = outFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX;
-
-	std::ofstream outIndexStream(outIndex, std::ios::out | std::ios::binary);
-	if(!outIndexStream.good()){
-		std::cerr << "Faield to open outindex" << std::endl;
-		return false;
-	}
-	outIndexStream.write(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH);
-	outIndexStream.write((char*)&Tomahawk::Constants::PROGRAM_VERSION, sizeof(float));
-
 	if(!this->reader.Open(input)){
 		std::cerr << "failed top open: " << input << std::endl;
 		return false;
 	}
 
-	TomahawkOutputSortIndexEntry index;
-
-	//this->reader.writer_output_type = this->reader.WRITER_TYPE::binary;
 	this->reader.setWriterType(0);
-	if(!this->reader.OpenWriter(outFile)){
-		std::cerr << "failed open" << std::endl;
-		return false;
-	}
+	this->reader.OpenWriter(destinationPrefix);
+
+	// if index
+	// split into thread parts
+	// write each
+
 
 	bool trigger_break = false;
-	IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->reader.writer->getStream());
-	std::ofstream& native = stream.getNativeStream();
-	index.from = native.tellp();
-
-
 	while(true){
 		if(!this->reader.nextBlockUntil(memory_limit)){
 			//std::cerr << "failed to get next block: " << this->reader.output_buffer.size() << std::endl;
@@ -72,35 +32,56 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 			break;
 		}
 
-		assert((double)this->reader.output_buffer.size()/sizeof(IO::TomahawkOutputEntrySort) == 0);
+		assert((this->reader.output_buffer.size() % sizeof(IO::TomahawkOutputEntry)) == 0);
 
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(IO::TomahawkOutputEntrySort)) << " entries" << std::endl;
-		std::sort(reinterpret_cast<IO::TomahawkOutputEntrySort*>(&this->reader.output_buffer.data[0]),
-				  reinterpret_cast<IO::TomahawkOutputEntrySort*>(&this->reader.output_buffer.data[this->reader.output_buffer.size() - sizeof(IO::TomahawkOutputEntrySort)]));
+		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
+		std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
+				  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size() - sizeof(entry_sort_type)]));
 
 		//const entry_type* entry;
 		//while(this->reader.nextVariantLimited(entry)){
 		//	std::cerr << *entry << std::endl;
 		//}
-
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
 		this->reader.writer->write(this->reader.output_buffer);
 
-		index.to = native.tellp();
-		std::cerr << "index: " << index << std::endl;
-		outIndexStream << index;
-		index.from = native.tellp();
-
+		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
 		if(trigger_break) break;
 	}
 	std::cerr << this->reader.output_buffer.size() << std::endl;
-	this->reader.writer->writeEOF();
+
+	this->reader.writer->flush();
 	this->reader.writer->close();
 
 	return true;
 }
 
 bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
+	if(!this->reader.Open(inputFile)){
+		std::cerr << "failed top open: " << inputFile << std::endl;
+		return false;
+	}
+
+	/*
+	IO::TGZFController c;
+	c.InflateOpen(this->reader.stream);
+	char input_buffer[2048];
+	char output_buffer[10000];
+
+	U32 ret = 0;
+	if((ret = c.Inflate(&input_buffer[0], &output_buffer[0], 2000)) <= 0){
+		std::cerr << "faailedi nflate" << std::endl;
+		return false;
+	}
+
+	std::cout << ret << '\t' << sizeof(entry_type) << '\t' << ret / sizeof(entry_type) << std::endl;
+	const U32 n_entries = ret / sizeof(entry_type);
+	const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
+	for(U32 i = 0; i < n_entries; ++i)
+		std::cerr << entries[i] << std::endl;
+
+	return false;
+*/
+
 	/*
 	std::cerr << "attempting to open: " << inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX << std::endl;
 	std::ifstream indexStream(inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX, std::ios::binary | std::ios::in | std::ios::ate);

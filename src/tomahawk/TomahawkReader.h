@@ -41,8 +41,6 @@ public:
 
 	bool Open(const std::string input);
 
-	// Bulk functions
-
 	// Reader functions
 	bool getBlocks(void);
 	bool getBlocks(std::vector<U32>& blocks);
@@ -52,12 +50,6 @@ public:
 	// Output functions
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
-
-	// Todo: reimplement for writing Tomahawk output data
-	//bool SelectWriterOutputType(const IO::GenericWriterInterace::type writer_type);
-	//void SetOutputType(IO::GenericWriterInterace::compression type){ this->parameters.compression_type = type; }
-	//bool OpenWriter(void);
-	//bool OpenWriter(const std::string destination);
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline TotempoleReader& getTotempole(void){ return(this->totempole_); }
@@ -77,12 +69,12 @@ private:
 	bool ValidateHeader(std::ifstream& in) const;
 
 private:
-	U64 samples;   // has to match header
-	float version; // has to match header
-	U64 filesize_; // filesize
+	U64 samples;     // has to match header
+	float version;   // has to match header
+	U64 filesize_;   // filesize
 	BYTE bit_width_; // bit width
 	bool dropGenotypes;
-	bool showHeader;
+	bool showHeader; // flag to output header or not
 	std::ifstream stream_; // reader stream
 
 	IO::GenericWriterInterace* writer;
@@ -100,14 +92,14 @@ private:
 template <class T>
 bool TomahawkReader::outputBlock(const U32 blockID){
 	if(!this->stream_.good()){
-		std::cerr << "stream bad " << blockID << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Stream bad " << blockID << std::endl;
 		return false;
 	}
 
 	//std::cerr << "getblock " << blockID  << " seek to " << this->totempole_[blockID].byte_offset << std::endl;
 	this->stream_.seekg(this->totempole_[blockID].byte_offset);
 	if(!this->stream_.good()){
-		std::cerr << "Failed search" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed search..." << std::endl;
 		return false;
 	}
 
@@ -119,13 +111,13 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 		readLength = this->filesize_ - Constants::eof_length*sizeof(U64) - this->totempole_[this->totempole_.getBlocks()-1].byte_offset;
 
 	if(readLength > this->buffer_.capacity()){
-		std::cerr << "impossible: " << readLength << '/' << this->buffer_.capacity() << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Impossible: " << readLength << '/' << this->buffer_.capacity() << std::endl;
 		exit(1);
 	}
 
 	// Read from start to start + byte-width
 	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
-		std::cerr << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
 		std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
 		return false;
 	}
@@ -137,7 +129,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 
 	// Inflate TGZF block
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
-		std::cerr << "failed" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate DATA..." << std::endl;
 		return false;
 	}
 
@@ -177,8 +169,6 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 
 	return true;
 }
-
-
 
 } /* namespace Tomahawk */
 

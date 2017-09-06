@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../src/totempole/TotempoleOutputReader.cpp \
 ../src/totempole/TotempoleReader.cpp 
 
 OBJS += \
+./src/totempole/TotempoleOutputReader.o \
 ./src/totempole/TotempoleReader.o 
 
 CPP_DEPS += \
+./src/totempole/TotempoleOutputReader.d \
 ./src/totempole/TotempoleReader.d 
 
 

@@ -19,6 +19,7 @@
 #include "../../totempole/TotempoleMagic.h"
 #include "../../io/GZFHeader.h"
 #include "../../third_party/intervalTree.h"
+#include "../../totempole/TotempoleOutputReader.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -36,6 +37,7 @@ class TomahawkOutputReader {
 	typedef IO::TGZFController tgzf_controller_type;
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef Totempole::TotempoleOutputReader toi_reader_type;
 
 public:
 	enum WRITER_TYPE {binary, natural};
@@ -114,6 +116,7 @@ public:
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
+	toi_reader_type toi_reader;
 };
 
 }

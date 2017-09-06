@@ -4,6 +4,9 @@
 #include "../support/simd_definitions.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "base/TomahawkSupport.h"
+#include "../tomahawk/base/TomahawkEntryMeta.h"
+#include "../totempole/TotempoleEntry.h"
+#include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk{
 

@@ -31,16 +31,17 @@ int sort(int argc, char** argv){
 	programMessage();
 	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
 
-	if(argc < 1){
+	if(argc < 2){
 		std::cerr << argc << std::endl;
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Missing parameters" << std::endl;
 		return(1);
 	}
 
 	std::string inputFile(&argv[0][0]);
+	std::string outputFile(&argv[1][0]);
 
 	// is merge?
-	bool merge = argv[1];
+	bool merge = argv[2];
 	std::cerr << merge << std::endl;
 
 	// Parse file suffix
@@ -61,7 +62,7 @@ int sort(int argc, char** argv){
 		Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
 
 		if(!merge){
-			if(!reader.sort(inputFile, 1e9)){
+			if(!reader.sort(inputFile, outputFile, 1e9)){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
 				return 1;
 			}

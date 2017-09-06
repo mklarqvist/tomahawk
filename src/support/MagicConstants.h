@@ -1,6 +1,7 @@
 #ifndef MAGICCONSTANTS_H_
 #define MAGICCONSTANTS_H_
 
+#include <string>
 #include "../support/TypeDefinitions.h"
 
 extern int SILENT;

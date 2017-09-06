@@ -5,6 +5,7 @@
 
 #include "../../tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "TomahawkOutputSortSupport.h"
+#include "../../tomahawk/TomahawkOutput/TomahawkOutputManager.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -34,32 +35,6 @@ public:
     bool (*compFunc)(const entry_type* a, const entry_type* b);
 };
 
-// Sorter
-class TomahawkOutputSorter{
-	typedef IO::TomahawkOutputEntry entry_type;
-	typedef TomahawkOutputSorter self_type;
-	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
-	typedef std::priority_queue< queue_entry > queue_type; // prio queue
-	typedef IO::TomahawkOutputReader two_reader_type;
-	typedef IO::PartialSortIndexHeader partial_header_type;
-	typedef IO::PartialSortIndexHeaderEntry partial_header_entry_type;
-
-public:
-	TomahawkOutputSorter(){}
-	~TomahawkOutputSorter(){}
-
-	bool sort(const std::string& input, const U64 memory_limit);
-	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
-	bool sortMerge(const std::string& input);
-
-private:
-	template <class S> bool sortMerge(const U32 count, S& outstream);
-
-private:
-	two_reader_type reader;
-
-};
-
 #pragma pack(1)
 struct TomahawkOutputSortIndexEntry{
 	typedef TomahawkOutputSortIndexEntry self_type;
@@ -80,6 +55,33 @@ public:
 	U64 from;
 	U64 to;
 };
+
+// Sorter
+class TomahawkOutputSorter{
+	typedef IO::TomahawkOutputEntry entry_type;
+	typedef IO::TomahawkOutputEntrySort entry_sort_type;
+	typedef TomahawkOutputSorter self_type;
+	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
+	typedef std::priority_queue< queue_entry > queue_type; // prio queue
+	typedef IO::TomahawkOutputReader two_reader_type;
+	typedef IO::PartialSortIndexHeader partial_header_type;
+	typedef IO::PartialSortIndexHeaderEntry partial_header_entry_type;
+
+public:
+	TomahawkOutputSorter(){}
+	~TomahawkOutputSorter(){}
+
+	//bool sort(const std::string& input, const U64 memory_limit);
+	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
+	bool sortMerge(const std::string& input);
+
+private:
+	template <class S> bool sortMerge(const U32 count, S& outstream);
+
+private:
+	two_reader_type reader;
+};
+
 
 template <class S>
 bool TomahawkOutputSorter::sortMerge(const U32 count, S& outstream){

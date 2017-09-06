@@ -308,6 +308,10 @@ bool TomahawkOutputReader::Open(const std::string input){
 		return false;
 	}
 
+	if(!this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+		std::cerr << "could not open index" << std::endl;
+	}
+
 	this->filesize = this->stream.tellg();
 	this->stream.seekg(0);
 
@@ -430,15 +434,15 @@ bool TomahawkOutputReader::nextBlock(void){
 
 bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 	// Check if resize required
-	if(this->output_buffer.capacity() < limit + 500536){
+	if(this->output_buffer.capacity() < limit + 500536)
 		this->output_buffer.resize(limit + 500536);
-		//std::cerr << "resizing out buffer: " << limit+500536 << std::endl;
-	}
+
 
 	this->position = 0;
 	this->output_buffer.reset();
 
-	while(this->output_buffer.size() < limit){
+	// Keep inflating DATA until bounds is reached
+	while(this->output_buffer.size() <= limit){
 		//std::cerr << this->stream.tellg() << '/' << this->filesize << std::endl;
 
 		// Stream died
@@ -448,7 +452,9 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 		}
 
 		// EOF
-		if(this->stream.tellg() == this->filesize){
+		// Casting stream to U64 is safe as this point is not
+		// reached if above good() return fails
+		if((U64)this->stream.tellg() == this->filesize){
 			//std::cerr << "eof" << std::endl;
 			return false;
 		}
