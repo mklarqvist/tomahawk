@@ -8,27 +8,23 @@
 #include <regex>
 
 #include "../../support/TypeDefinitions.h"
-#include "../../algorithm/OpenHashTable.h"
-#include "../../support/MagicConstants.h"
-#include "TomahawkOutputEntry.h"
-#include "../../io/PackedEntryReader.h"
-#include "TomahawkOutputFilterController.h"
 #include "../../io/BasicBuffer.h"
 #include "../../io/TGZFController.h"
-#include "TomahawkOutputWriter.h"
+#include "../../support/MagicConstants.h"
+#include "../../algorithm/OpenHashTable.h"
 #include "../../totempole/TotempoleMagic.h"
-#include "../../io/GZFHeader.h"
 #include "../../third_party/intervalTree.h"
 #include "../../totempole/TotempoleOutputReader.h"
+#include "TomahawkOutputEntry.h"
+#include "TomahawkOutputFilterController.h"
+#include "TomahawkOutputWriter.h"
 
 namespace Tomahawk {
 namespace IO {
-// Todo: TomahawkOutputIndexReader
 
 class TomahawkOutputReader {
 	typedef TomahawkOutputEntry entry_type;
 	typedef TomahawkOutputFilterController filter_type;
-	typedef PackedEntryReader<entry_type, sizeof(entry_type)> reader_type;
 	typedef Tomahawk::IO::TomahawkOutputWriterInterface writer_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	typedef Totempole::TotempoleContigBase contig_type;
@@ -100,7 +96,6 @@ public:
 	U32 size;
 
 	std::ifstream stream; // reader stream
-	reader_type reader; // reader
 	header_type header; // header
 	bool output_header;
 
@@ -111,7 +106,7 @@ public:
 	WRITER_TYPE writer_output_type;
 	std::string literals; // header literals
 	writer_type* writer; // writer interface
-	// Todo: PackedEntryIterator taking as input char* and length or IO::BasicBuffer
+
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;

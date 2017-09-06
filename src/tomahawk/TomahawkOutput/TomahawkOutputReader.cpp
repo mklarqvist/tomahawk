@@ -152,10 +152,10 @@ bool TomahawkOutputReader::__viewOnly(void){
 	exit(1);
 
 	const entry_type* entry;
-	while(this->reader.nextEntry(entry)){
-		std::cout << *entry << '\n';
+	//while(this->reader.nextEntry(entry)){
+	//	std::cout << *entry << '\n';
 		//std::cout.write(reinterpret_cast<const char*>(entry), sizeof(entry_type));
-	}
+	//}
 
 	return true;
 }
@@ -391,7 +391,7 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	buffer.resize(h->BSIZE); // make sure all data will fit
 
-	// Recast because if buffer is resized then the pointer address is incorrect
+	// Recast because if buffer is (actually) resized then the pointer address is incorrect
 	// resulting in segfault
 	h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
 
@@ -403,6 +403,7 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	buffer.pointer = h->BSIZE;
 	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
+	std::cerr << uncompressed_size << std::endl;
 	output_buffer.resize(uncompressed_size);
 	this->output_buffer.reset();
 
@@ -428,6 +429,8 @@ bool TomahawkOutputReader::nextBlock(void){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 		return false;
 	}
+
+	//std::cerr << this->position << '/' << this->size << '\t' << this->output_buffer.size() << '/' << this->output_buffer.capacity() << std::endl;
 
 	return true;
 }
@@ -533,20 +536,21 @@ bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 	return true;
 }
 
+
 bool TomahawkOutputReader::summary(const std::string& input){
-	if(!this->reader.setup(input))
-		return false;
+	//if(!this->reader.setup(input))
+	//	return false;
 
 	return true;
 }
 
 bool TomahawkOutputReader::index(const std::string& input){
-	if(!this->reader.setup(input))
-		return false;
+	//if(!this->reader.setup(input))
+	//	return false;
 
 	const entry_type* entry;
-	if(!this->reader.nextEntry(entry))
-		return false;
+	//if(!this->reader.nextEntry(entry))
+	//	return false;
 
 	//const entry_type* previous = entry;
 	U32 currentAID = entry->AcontigID;
@@ -559,7 +563,8 @@ bool TomahawkOutputReader::index(const std::string& input){
 	double AposStepsR = 0;
 	U64 outputEntries = 0;
 
-	while(this->reader.nextEntry(entry)){
+	//while(this->reader.nextEntry(entry)){
+	while(true){
 		/*
 		if(!(*previous < *entry)){
 			std::cerr << "file is not sorted" << std::endl;

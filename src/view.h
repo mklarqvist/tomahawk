@@ -23,10 +23,10 @@ DEALINGS IN THE SOFTWARE.
 #include <getopt.h>
 
 #include "utility.h"
-#include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
+#include "tomahawk/TomahawkReader.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputFilterController.h"
 #include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
-#include "io/bcf/BCFReader.h"
 
 void view_usage(void){
 	programMessage();
