@@ -134,7 +134,6 @@ public:
 		for(U32 i = 0; i < this->header->n_contig; ++i)
 			__stream << this->contigs[i];
 
-		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
 		buffer_type bufferInternal(&literals[0], literals.size());
 		if(!this->controller.Deflate(bufferInternal)){
 			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to deflate!" << std::endl;
@@ -172,7 +171,6 @@ public:
 	}
 
 	void writeHeader(std::string& literals){
-		literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
 		const std::string header = "FLAG\tAcontigID\tAposition\tBcontigID\tBpositionID\tp1\tp2\tq1\tq2\tD\tDprime\tR2\tP\tchiSqFisher\tchiSqModel\n";
 		if(literals.size() > 0)
 			this->stream->getStream() << literals << '\n' << header;

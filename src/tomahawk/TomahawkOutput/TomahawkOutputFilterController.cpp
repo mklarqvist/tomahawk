@@ -35,12 +35,12 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 				"minP2=" + std::to_string(this->minP2) + " " +
 				"minQ1=" + std::to_string(this->minQ1) + " " +
 				"minQ2=" + std::to_string(this->minQ2) + " " +
-				"maxP1=" + std::to_string(this->maxP1) + " " +
-				"maxP2=" + std::to_string(this->maxP2) + " " +
-				"maxQ1=" + std::to_string(this->maxQ1) + " " +
-				"maxQ2=" + std::to_string(this->maxQ2) + " " +
+				"maxP1=" + (this->maxP1 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxP1)) + " " +
+				"maxP2=" + (this->maxP2 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxP2)) + " " +
+				"maxQ1=" + (this->maxQ1 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxQ1)) + " " +
+				"maxQ2=" + (this->maxQ2 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxQ2)) + " " +
 				"minMHF=" + std::to_string(this->minMHF) + " " +
-				"maxMHF=" + std::to_string(this->maxMHF) + " " +
+				"maxMHF=" + (this->maxMHF == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxMHF)) + " " +
 				"minD=" + std::to_string(this->minD) + " " +
 				"maxD=" + std::to_string(this->maxD) + " " +
 				"minDprime=" + std::to_string(this->minDprime) + " " +
@@ -50,7 +50,7 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 				"minP=" + std::to_string(this->minP) + " " +
 				"maxP=" + std::to_string(this->maxP) + " " +
 				"minChiSquared=" + std::to_string(this->minChiSquared) + " " +
-				"maxChiSquared=" + std::to_string(this->maxChiSquared) + " " +
+				"maxChiSquared=" + (this->maxChiSquared == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquared)) + " " +
 				"minPmodel=" + std::to_string(this->minPmodel) + " " +
 				"maxPmodel=" + std::to_string(this->maxPmodel) + " " +
 				"filterValueInclude=" + std::to_string(this->filterValueInclude) + " " +

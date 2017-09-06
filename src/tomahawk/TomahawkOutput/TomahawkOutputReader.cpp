@@ -161,6 +161,9 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
+	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=YES regions=FALSE";
+
 	if(!this->OpenWriter())
 		return false;
 
@@ -403,7 +406,6 @@ bool TomahawkOutputReader::nextBlock(void){
 
 	buffer.pointer = h->BSIZE;
 	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-	std::cerr << uncompressed_size << std::endl;
 	output_buffer.resize(uncompressed_size);
 	this->output_buffer.reset();
 

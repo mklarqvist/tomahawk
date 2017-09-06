@@ -207,9 +207,6 @@ private:
 		for(U32 i = 0; i < totempole.getContigs(); ++i)
 			stream << *totempole.getContigBase(i);
 
-		totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true) + '\n';
-		totempole.literals += "##tomahawk_calcInterpretedCommand=" + totempole.literals;
-
 		if(!totempole.writeLiterals(stream)){
 			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to write literals..." << std::endl;
 			return false;

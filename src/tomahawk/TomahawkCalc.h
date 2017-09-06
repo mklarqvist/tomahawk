@@ -45,6 +45,8 @@ template <class T>
 bool TomahawkCalc::Calculate(){
 	// Retrieve reference to Totempole reader
 	totempole_reader& totempole = this->reader.getTotempole();
+	totempole.literals += "\n##tomahawk_calcCommand=" + Helpers::program_string(true);
+	totempole.literals += "\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString();
 
 	IO::TomahawkOutputManager<T> writer;
 	if(!writer.Open(this->output_file, totempole)){

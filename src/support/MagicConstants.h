@@ -13,16 +13,16 @@ extern std::string LITERAL_COMMAND_LINE;
 extern std::string INTERPRETED_COMMAND;
 
 // Revision versioning
-const float PROGRAM_VERSION = 0.5; // major
+const float PROGRAM_VERSION = 0.6; // major
 const U32 PROGRAM_VERSION_MINOR = 0;
 
 // Todo: fix inject in makefile
 // Get commit since last tag
 // git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 10;
+const U32 GIT_COMMITS_SINCE_TAG = 0;
 // Get last git hash
 // git rev-parse HEAD
-const std::string PROGRAM_GIT_HASH = "3a2bcb6bf5e55eddb74a3e24b72be28df82403e0";
+const std::string PROGRAM_GIT_HASH = "83d63bb0c3de66c422e36bf055e618469b1e389d";
 extern char PROGRAM_VERSION_FRONT[5048];
 extern char PROGRAM_VERSION_BACK[5048];
 const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
