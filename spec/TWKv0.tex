@@ -94,6 +94,7 @@ Unlike BCI/BAI, TWI/TOI stores the virtual file offset to every single TGZF bloc
   \multicolumn{2}{|l|}{\sf n\_blocks} & Number of TGZF blocks in Twk file & {\tt uint32\_t} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf n\_largest} & Size in bytes of largest uncompressed TGZF block & {\tt uint32\_t} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf header\_offset} & Relative disk offset until this position (start of data) & {\tt uint32\_t} & \\\cline{1-5}
+  \multicolumn{2}{|l|}{\sf header\_offset\_end} & Relative disk offset until end of block (end of data) & {\tt uint32\_t} & \\\cline{1-5}
   \multicolumn{2}{|l|}{\sf n\_contigs} & Number of contigs in header & {\tt uint32\_t} & \\\cline{1-5}
   \multicolumn{5}{|c|}{\textcolor{gray}{\it List of contig data (n\_contigs)}} \\\cline{2-5}
   & {\sf bp\_contig} & Length of contig in bases & {\tt uint32\_t} & \\\cline{2-5}
@@ -199,12 +200,12 @@ The TWO FLAG
   \multicolumn{1}{|l|}{\sf 3} & A field is incomplete (A1B1, A1B2, A2B1, or A2B2 has 0 observations) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 4} & There are multiple possible biological solutions (valid roots in cubic equation) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 5} & Both variants are on the same contig \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 6} & There is > 1 million base pairs between the variants \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 7} & There is $>$ 1 million base pairs between the variants \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 8} & Variant A failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 9} & Variant B failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 10} & Variant A has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 11} & Variant B has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 6} & There is $>$ 1 million base pairs between the variants \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 7} & Variant A failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 8} & Variant B failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 9} & Variant A has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 10} & Variant B has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 11} & Currently unused \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 12} & Currently unused \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 13} & Currently unused \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 14} & Currently unused \\ \cline{1-2}
