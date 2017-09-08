@@ -12,7 +12,7 @@ private:
 	typedef __headerBase self_type;
 
 public:
-	__headerBase(); // disallow ctor and dtor
+	__headerBase();
 	~__headerBase();
 
 	BYTE ID1;
@@ -62,12 +62,12 @@ public:
 /*
  TGZF header
  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
- | 31|139|  8|  4|              0|  0|255|      6| 84| 90|      2|        BLK_LEN|
+ | 31|139|  8|  4|              0|  0|255|      6| 84| 90|      4|        BLK_LEN|
  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
   BGZF extension:
                 ^                              ^   ^   ^
                 |                              |   |   |
-               FLG.EXTRA                     XLEN  B   C
+               FLG.EXTRA                     XLEN  T   Z
   TGZF format is compatible with GZIP. It limits the size of each compressed
   block to 2^32 bytes and adds and an extra "BC" field in the gzip header which
   records the size.
@@ -109,7 +109,7 @@ public:
 };
 
 /*
- BGZF/GZIP header (speciallized from RFC 1952; little endian):
+ BGZF/GZIP header (specialised from RFC 1952; little endian):
  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  | 31|139|  8|  4|              0|  0|255|      6| 66| 67|      2|BLK_LEN|
  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+

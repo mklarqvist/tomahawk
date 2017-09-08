@@ -13,6 +13,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	}
 
 	this->reader.setWriterType(0);
+	this->reader.literals += "\n##tomahawk_sortCommand=" + Helpers::program_string(true);
 	this->reader.OpenWriter(destinationPrefix);
 
 	// if index
@@ -34,6 +35,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		assert((this->reader.output_buffer.size() % sizeof(IO::TomahawkOutputEntry)) == 0);
 
+		//std::cerr << Helpers::timestamp("DEBUG") << this->reader.output_buffer.size() << '/' << memory_limit << std::endl;
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
 		std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
 				  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size() - sizeof(entry_sort_type)]));
@@ -61,49 +63,49 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		return false;
 	}
 
-	IO::TGZFController c;
-	c.InflateOpen(this->reader.stream);
-	char input_buffer[5012];
-	char output_buffer[10000];
-	U32 output_buffer_pointer = 0;
+	IO::TGZFControllerStream c;
 
-	U32 it = 0;
+	//char input_buffer[5012];
+	const U32 n_entries_chunk = sizeof(entry_type)*1000;
+	BYTE output_buffer[n_entries_chunk];
+	//U32 output_buffer_pointer = 0;
 
-	while(true){
-		this->reader.stream.read(&input_buffer[0], 5012);
-		U32 avail_in = 5012;
-		U32 input_pos = 0;
+	while(this->reader.stream.good()){
+		std::cerr << this->reader.stream.tellg() << std::endl;
+		if(!c.InflateOpen(this->reader.stream)){
+			return false;
+		}
+
+		if(!this->reader.stream.good())
+			break;
 
 		while(true){
-			U32 ret = 0;
-			std::cerr << "availIn: " << avail_in  << " pos: " << input_pos << std::endl;
-			if((ret = c.Inflate(&input_buffer[input_pos], avail_in, &output_buffer[output_buffer_pointer], 10000 - output_buffer_pointer)) <= 0){
-				std::cerr << "faailedi nflate" << std::endl;
+			U32 return_size = 0;
+			if(!c.Inflate(this->reader.stream, output_buffer, n_entries_chunk, return_size))
 				break;
-			}
-			input_pos += avail_in;
-			avail_in = 5012 - avail_in;
 
-			std::cout << ret << '\t' << sizeof(entry_type) << '\t' << ret / sizeof(entry_type) << std::endl;
-			const U32 n_entries = ret / sizeof(entry_type);
-			const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
-			for(U32 i = 0; i < n_entries; ++i)
-				std::cerr << entries[i] << std::endl;
+			//const U32 n_entries = return_size / sizeof(entry_type);
+			//const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
+			//for(U32 i = 0; i < n_entries; ++i)
+			//	std::cout << entries[i] << std::endl;
 
-			const U32 remainder = ret % sizeof(entry_type);
-			std::cerr << "remainder" << remainder << std::endl;
-			memcpy(&output_buffer[0], &output_buffer[10000 - remainder], remainder);
-			output_buffer_pointer = remainder;
+				//output_buffer_pointer += ret;
+			//std::cerr << "done" << std::endl;
 
-			if(it++ == 1)
-				exit(1);
-
+			//std::cerr << output_buffer_pointer << '/' << n_entries_chunk << std::endl;
+			//std::cerr << "end inner" << std::endl;
+			//const U32 remainder = n_entries_chunk % sizeof(entry_type);
+			//std::cerr << "remainder: " << remainder << std::endl;
+			//memcpy(&output_buffer[0], &output_buffer[n_entries_chunk - remainder], remainder);
+			//output_buffer_pointer = remainder;
 		}
-		std::cerr << "end inner" << std::endl;
-		exit(1);
+		this->reader.stream.seekg(IO::Constants::TGZF_BLOCK_FOOTER_LENGTH, std::ios::cur); // tail data
+		std::cerr << this->reader.stream.tellg() << '\t' << this->reader.filesize << std::endl;
+		if(this->reader.stream.tellg() == this->reader.filesize || !this->reader.stream.good())
+			break;
 	}
 
-	return false;
+	return true;
 
 	/*
 	std::cerr << "attempting to open: " << inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX << std::endl;

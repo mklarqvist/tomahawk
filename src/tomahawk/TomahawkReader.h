@@ -74,10 +74,10 @@ private:
 	std::ifstream stream_; // reader stream
 	Totempole::TotempoleReader totempole_;
 
-	// Todo: Why so many???
-	IO::BasicBuffer buffer_;
-	IO::BasicBuffer data_;
-	IO::BasicBuffer outputBuffer_;
+
+	IO::BasicBuffer buffer_; // input buffer
+	IO::BasicBuffer data_; // inflate buffer
+	IO::BasicBuffer outputBuffer_; // output buffer
 	IO::TGZFController tgzf_controller_;
 
 	std::vector<DataOffsetPair> blockDataOffsets_;

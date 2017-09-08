@@ -54,7 +54,7 @@ public:
 	virtual inline bool close(void){ this->stream->close(); return true; }
 	virtual void operator<<(const entry_type* const entryentry) =0;
 	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
-	virtual inline void write(buffer_type& buffer){ this->stream->write(&buffer.data[0], buffer.size()); }
+	virtual inline const U64 write(buffer_type& buffer){ return(this->stream->write(&buffer.data[0], buffer.size())); }
 	inline stream_type* getStream(void){ return(this->stream); }
 
 	template<class T>
@@ -122,10 +122,11 @@ public:
 		}
 	}
 
-	inline void write(buffer_type& buffer){
+	inline const U64 write(buffer_type& buffer){
+		this->controller.Clear();
 		this->controller.Deflate(buffer);
 		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
-		this->controller.Clear();
+		return(this->controller.buffer.size());
 	}
 
 	void writeHeader(std::string& literals){

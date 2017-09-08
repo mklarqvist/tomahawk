@@ -87,7 +87,7 @@ bool BCFReader::parseHeader(void){
 		return false;
 	}
 
-	if(strncmp(&this->bgzf_controller.buffer.data[0], "BCF\2\2", 5) != 0){ // weird: should be BCF/2/1
+	if(strncmp(&this->bgzf_controller.buffer.data[0], "BCF\2\2", 5) != 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to validate MAGIC" << std::endl;
 		return false;
 	}
