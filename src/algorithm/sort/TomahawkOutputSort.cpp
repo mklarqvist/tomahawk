@@ -63,47 +63,14 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		return false;
 	}
 
-	IO::TGZFControllerStream c;
+	IO::TGZFEntryIterator<entry_type> c(this->reader.stream, 65536, 0, this->reader.filesize);
+	const entry_type* entry;
 
-	//char input_buffer[5012];
-	const U32 n_entries_chunk = sizeof(entry_type)*1000;
-	BYTE output_buffer[n_entries_chunk];
-	//U32 output_buffer_pointer = 0;
-
-	while(this->reader.stream.good()){
-		std::cerr << this->reader.stream.tellg() << std::endl;
-		if(!c.InflateOpen(this->reader.stream)){
-			return false;
-		}
-
-		if(!this->reader.stream.good())
-			break;
-
-		while(true){
-			U32 return_size = 0;
-			if(!c.Inflate(this->reader.stream, output_buffer, n_entries_chunk, return_size))
-				break;
-
-			//const U32 n_entries = return_size / sizeof(entry_type);
-			//const entry_type* const entries = reinterpret_cast<const entry_type* const>(&output_buffer[0]);
-			//for(U32 i = 0; i < n_entries; ++i)
-			//	std::cout << entries[i] << std::endl;
-
-				//output_buffer_pointer += ret;
-			//std::cerr << "done" << std::endl;
-
-			//std::cerr << output_buffer_pointer << '/' << n_entries_chunk << std::endl;
-			//std::cerr << "end inner" << std::endl;
-			//const U32 remainder = n_entries_chunk % sizeof(entry_type);
-			//std::cerr << "remainder: " << remainder << std::endl;
-			//memcpy(&output_buffer[0], &output_buffer[n_entries_chunk - remainder], remainder);
-			//output_buffer_pointer = remainder;
-		}
-		this->reader.stream.seekg(IO::Constants::TGZF_BLOCK_FOOTER_LENGTH, std::ios::cur); // tail data
-		std::cerr << this->reader.stream.tellg() << '\t' << this->reader.filesize << std::endl;
-		if(this->reader.stream.tellg() == this->reader.filesize || !this->reader.stream.good())
-			break;
+	U64 count = 0;
+	while(c.nextEntry(entry)){
+		++count;
 	}
+	std::cerr << "count: " << count << std::endl;
 
 	return true;
 

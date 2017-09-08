@@ -92,8 +92,8 @@ private:
 
 public:
 	U64 filesize;	// input file size
-	U32 position;
-	U32 size;
+	U64 position;
+	U64 size;
 
 	std::ifstream stream; // reader stream
 	header_type header; // header
