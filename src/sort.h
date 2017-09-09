@@ -68,7 +68,7 @@ int sort(int argc, char** argv){
 			}
 		} else {
 			std::cerr << "is merge" << std::endl;
-			if(!reader.sortMerge(inputFile)){
+			if(!reader.sortMerge(inputFile, outputFile, 10e6)){
 				std::cerr << "failed merge" << std::endl;
 				return 1;
 			}

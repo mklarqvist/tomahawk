@@ -53,6 +53,7 @@ public:
 	virtual inline void flush(void){ this->stream->flush(); }
 	virtual inline bool close(void){ this->stream->close(); return true; }
 	virtual void operator<<(const entry_type* const entryentry) =0;
+	virtual void operator<<(const entry_type& entryentry) =0;
 	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
 	virtual inline const U64 write(buffer_type& buffer){ return(this->stream->write(&buffer.data[0], buffer.size())); }
 	inline stream_type* getStream(void){ return(this->stream); }
@@ -122,6 +123,16 @@ public:
 		}
 	}
 
+	void operator<<(const entry_type& entry){
+		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
+		if(this->buffer.size() > this->flush_limit){
+			this->controller.Deflate(this->buffer);
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+			this->controller.Clear();
+			this->buffer.reset();
+		}
+	}
+
 	inline const U64 write(buffer_type& buffer){
 		this->controller.Clear();
 		this->controller.Deflate(buffer);
@@ -169,6 +180,10 @@ public:
 
 	void operator<<(const entry_type* const entry){
 		entry->write(*reinterpret_cast<std::ofstream*>(&this->stream->getStream()), this->contigs);
+	}
+
+	void operator<<(const entry_type& entry){
+		entry.write(*reinterpret_cast<std::ofstream*>(&this->stream->getStream()), this->contigs);
 	}
 
 	void writeHeader(std::string& literals){

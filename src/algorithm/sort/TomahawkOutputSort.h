@@ -49,7 +49,7 @@ public:
 
 	//bool sort(const std::string& input, const U64 memory_limit);
 	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
-	bool sortMerge(const std::string& input);
+	bool sortMerge(const std::string& input, const std::string& destinationPrefix, const U32 block_size);
 
 private:
 	template <class S> bool sortMerge(const U32 count, S& outstream);

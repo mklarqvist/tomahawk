@@ -115,7 +115,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	return true;
 }
 
-bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
+bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::string& destinationPrefix, const U32 block_size){
 	if(!this->reader.Open(inputFile)){
 		std::cerr << "failed top open: " << inputFile << std::endl;
 		return false;
@@ -126,39 +126,22 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		return false;
 	}
 
+	this->reader.setWriterType(0);
+	this->reader.literals += "\n##tomahawk_sortCommand=" + Helpers::program_string(true);
+	if(!this->reader.OpenWriter(destinationPrefix)){
+		std::cerr << "failed open" << std::endl;
+		return false;
+	}
+
 	const U32 n_toi_entries = this->reader.toi_reader.size();
 	std::ifstream streams[n_toi_entries];
 	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
 
 	for(U32 i = 0; i < n_toi_entries; ++i){
-		std::cerr << i << '\t' << this->reader.toi_reader[i] << std::endl;
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
 	}
-
-	//IO::TGZFEntryIterator<entry_type> c(this->reader.stream, 65536, 0, this->reader.filesize);
-	/*
-	const entry_type* entry;
-
-	U64 count = 0;
-
-	for(U32 i = 0; i < n_toi_entries; ++i){
-		while(iterators[i]->nextEntry(entry)){
-			++count;
-		}
-		std::cerr << "done " << i << std::endl;
-	}
-
-	//while(c.nextEntry(entry)){
-	//	++count;
-	//}
-	std::cerr << "count: " << count << std::endl;
-
-
-
-	return true;
-	*/
 
 	// queue
 	queue_type outQueue;
@@ -167,15 +150,15 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 	const entry_type* e;
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		iterators[i]->nextEntry(e);
-		entry_type hard_copy(*e);
+		entry_type hard_copy(*e); // invoke copy ctor to avoid pointer errors when modifying internal buffer
 		outQueue.push( queue_entry(hard_copy, i, IO::Support::TomahawkOutputEntryCompFuncConst) );
 	}
 
-	entry_type prev;
-	prev.AcontigID = 0;
-	prev.Aposition = 0;
-	prev.BcontigID = 0;
-	prev.Bposition = 0;
+	//entry_type prev;
+	//prev.AcontigID = 0;
+	//prev.Aposition = 0;
+	//prev.BcontigID = 0;
+	//prev.Bposition = 0;
 
 	// while queue is not empty
 	while(outQueue.empty() == false){
@@ -185,12 +168,13 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		// write the entry from the top of the queue
 		//std::cout.write(reinterpret_cast<const char*>(lowest.data), sizeof(entry_type));
 
-		assert(prev < lowest.data);
+		//assert(prev < lowest.data);
 
 		//std::cout << lowest.data << '\n';
+		*this->reader.writer << lowest.data;
 		// remove this record from the queue
-		std::cerr << prev << '\n' << lowest.data << std::endl << std::endl;
-		prev = lowest.data;
+		//std::cerr << prev << '\n' << lowest.data << std::endl << std::endl;
+		//prev = lowest.data;
 
 		outQueue.pop();
 
@@ -202,61 +186,12 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile){
 		}
 	}
 
+	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)
 		delete iterators[i];
 	delete [] iterators;
 
 	return true;
-
-	/*
-	std::cerr << "attempting to open: " << inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX << std::endl;
-	std::ifstream indexStream(inputFile + '.' + Tomahawk::Constants::OUTPUT_LD_PARTIAL_SORT_INDEX_SUFFIX, std::ios::binary | std::ios::in | std::ios::ate);
-	if(!indexStream.good()){
-		std::cerr << "bad index stream" << std::endl;
-		return false;
-	}
-	const U64 filesize_index = indexStream.tellg();
-	indexStream.seekg(0);
-
-	// parse header
-	partial_header_type head;
-	indexStream >> head;
-	if(!head.validate()){
-		std::cerr << "Failed to validate header" << std::endl;
-		return false;
-	}
-	std::cerr << std::string(&head.header[0], Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH) << '\t' << head.version << std::endl;
-	std::cerr << "position now: " << indexStream.tellg() << '/' << filesize_index << std::endl;
-	std::cerr << "entries: " << (filesize_index - indexStream.tellg())/(2*sizeof(U64)) << std::endl;
-
-	char* indexHeaderEntries = new char[filesize_index - indexStream.tellg()];
-	const U32 indexEntryEnd = (filesize_index - indexStream.tellg())/(2*sizeof(U64));
-	indexStream.read(indexHeaderEntries, filesize_index - indexStream.tellg());
-	const partial_header_entry_type* const entries = reinterpret_cast<const partial_header_entry_type* const>(&indexHeaderEntries[0]);
-
-	sort_reader* sortEntries = new sort_reader[indexEntryEnd];
-
-	std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << indexEntryEnd << " file handles..." << std::endl;
-	for(U32 i = 0; i < indexEntryEnd; ++i){
-		//std::cerr << entries[i] << std::endl;
-
-		if(!sortEntries[i].setup(inputFile, entries[i].from, entries[i].to, 1000000 - (1000000 % sizeof(entry_type)))){
-			std::cerr << "failed setup" << std::endl;
-		}
-	}
-
-	//
-	if(!this->kwayMerge(sortEntries, indexEntryEnd, std::cout)){
-		delete [] sortEntries;
-		delete [] indexHeaderEntries;
-		return false;
-	}
-
-	delete [] sortEntries;
-	delete [] indexHeaderEntries;
-
-	return true;
-	*/
 }
 
 }
