@@ -42,6 +42,7 @@ class TomahawkOutputSorter{
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
 	typedef std::priority_queue< queue_entry > queue_type; // prio queue
 	typedef IO::TomahawkOutputReader two_reader_type;
+	typedef Totempole::TotempoleOutputEntry totempoly_entry;
 
 public:
 	TomahawkOutputSorter(){}
