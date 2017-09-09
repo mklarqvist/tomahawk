@@ -13,7 +13,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	}
 
 	this->reader.setWriterType(0);
-	this->reader.literals += "\n##tomahawk_sortCommand=" + Helpers::program_string(true);
+	this->reader.literals += "\n##tomahawk_partialSortCommand=" + Helpers::program_string(true);
 	this->reader.OpenWriter(destinationPrefix);
 	IO::WriterFile toi_writer;
 	toi_writer.open(destinationPrefix + ".toi");
@@ -127,7 +127,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	}
 
 	this->reader.setWriterType(0);
-	this->reader.literals += "\n##tomahawk_sortCommand=" + Helpers::program_string(true);
+	this->reader.literals += "\n##tomahawk_mergeSortCommand=" + Helpers::program_string(true);
 	if(!this->reader.OpenWriter(destinationPrefix)){
 		std::cerr << "failed open" << std::endl;
 		return false;
@@ -138,6 +138,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
 
 	for(U32 i = 0; i < n_toi_entries; ++i){
+		std::cerr << this->reader.toi_reader[i] << std::endl;
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
@@ -150,41 +151,34 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	const entry_type* e;
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		iterators[i]->nextEntry(e);
-		entry_type hard_copy(*e); // invoke copy ctor to avoid pointer errors when modifying internal buffer
+		entry_type hard_copy(e); // invoke copy ctor to avoid pointer errors when modifying internal buffer
 		outQueue.push( queue_entry(hard_copy, i, IO::Support::TomahawkOutputEntryCompFuncConst) );
 	}
 
-	//entry_type prev;
-	//prev.AcontigID = 0;
-	//prev.Aposition = 0;
-	//prev.BcontigID = 0;
-	//prev.Bposition = 0;
+	U64 counts = 0;
 
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
-		const queue_entry& lowest = outQueue.top();
-		const U32 id = lowest.streamID;
-		// write the entry from the top of the queue
-		//std::cout.write(reinterpret_cast<const char*>(lowest.data), sizeof(entry_type));
+		const U32 id = outQueue.top().streamID;
+		*this->reader.writer << outQueue.top().data;
 
-		//assert(prev < lowest.data);
-
-		//std::cout << lowest.data << '\n';
-		*this->reader.writer << lowest.data;
 		// remove this record from the queue
-		//std::cerr << prev << '\n' << lowest.data << std::endl << std::endl;
-		//prev = lowest.data;
-
 		outQueue.pop();
+		++counts;
 
-		// If it is possible to get a new entry from this particular stream
+		// Replace value from target stream
 		if(iterators[id]->nextEntry(e)){
 			// Push new entry into priority queue
-			entry_type hard_copy(*e);
+			entry_type hard_copy(e);
 			outQueue.push( queue_entry(hard_copy, id, IO::Support::TomahawkOutputEntryCompFuncConst) );
 		}
 	}
+
+	std::cerr << "counts: " << counts << std::endl;
+
+	this->reader.writer->flush();
+	this->reader.writer->close();
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)

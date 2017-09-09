@@ -14,10 +14,9 @@ struct TomahawkOutputEntry{
 
 	TomahawkOutputEntry(){}; 	// has no ctor
 	~TomahawkOutputEntry(){};	// has no dtor
-	//TomahawkOutputEntry(const self_type& other) :
-	//	FLAGS(other.FLAGS),
-	//	AcontigID(other.AcontigID),
-
+	TomahawkOutputEntry(const self_type* other){
+		memcpy(this, other, sizeof(self_type));
+	}
 
 	// Comparator function
 	// Called from sort helper only
