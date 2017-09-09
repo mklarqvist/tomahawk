@@ -15,6 +15,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),
 		size(0),
+		hasIndex(false),
 		output_header(true),
 		writer_output_type(WRITER_TYPE::natural),
 		writer(nullptr),
@@ -311,8 +312,9 @@ bool TomahawkOutputReader::Open(const std::string input){
 		return false;
 	}
 
-	if(!this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
-		std::cerr << "could not open index" << std::endl;
+	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+		//std::cerr << "could not open index" << std::endl;
+		this->hasIndex = true;
 	}
 
 	this->filesize = this->stream.tellg();

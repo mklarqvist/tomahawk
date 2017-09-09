@@ -94,6 +94,7 @@ public:
 	U64 filesize;	// input file size
 	U64 position;
 	U64 size;
+	bool hasIndex;
 
 	std::ifstream stream; // reader stream
 	header_type header; // header

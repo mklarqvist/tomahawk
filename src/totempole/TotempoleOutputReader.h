@@ -55,6 +55,7 @@ public:
 		//for(U32 i = 0; i < this->n_entries; ++i)
 		//	std::cerr << this->entries[i] << std::endl;
 
+		this->ERROR_STATE = TOI_OK;
 		return true;
 	}
 
@@ -66,12 +67,14 @@ public:
 	bool getIsSorted(void) const{ return(this->header.controller.sorted); }
 	const U32& size(void) const{ return(this->n_entries); }
 
+public:
+	TOI_ERROR ERROR_STATE;
+
 private:
 	U32 n_entries;
 	std::ifstream stream;
 	header_type header;
 	buffer_type buffer;
-	TOI_ERROR ERROR_STATE;
 	const entry_type* entries;
 };
 

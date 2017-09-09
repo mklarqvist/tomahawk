@@ -160,17 +160,13 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 			if(this->STATE == TGZF_STATE::TGZF_END){
 				this->stream.seekg(IO::Constants::TGZF_BLOCK_FOOTER_LENGTH, std::ios::cur);
 
-				std::cerr << this->stream.tellg() << '\t' << this->IO_end_offset << std::endl;
-
 				if(this->stream.tellg() == this->IO_end_offset)
 					return false;
 
 				this->reset(); // reset state
-				//std::cerr << "reset data" << std::endl;
 			}
 
 			if(!parent_type::Inflate(this->stream, (BYTE*)&output_buffer.data[0], this->chunk_size, ret_size)){
-				//std::cerr << "failed inflate next: " << this->STATE << std::endl;
 				if(this->STATE != TGZF_STATE::TGZF_END){
 					std::cerr << "invalid state" << std::endl;
 					exit(1);
@@ -189,7 +185,6 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		this->entries = reinterpret_cast<const T*>(this->output_buffer.data);
 	}
 
-	//std::cerr << this->pointer << '/' << this->n_entries << std::endl;
 	entry = &this->entries[this->pointer++];
 	return true;
 }

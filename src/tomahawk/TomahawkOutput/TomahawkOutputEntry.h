@@ -12,8 +12,12 @@ struct TomahawkOutputEntry{
 	typedef TomahawkOutputEntry self_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 
-	TomahawkOutputEntry(); 	// has no ctor
-	~TomahawkOutputEntry();	// has no dtor
+	TomahawkOutputEntry(){}; 	// has no ctor
+	~TomahawkOutputEntry(){};	// has no dtor
+	//TomahawkOutputEntry(const self_type& other) :
+	//	FLAGS(other.FLAGS),
+	//	AcontigID(other.AcontigID),
+
 
 	// Comparator function
 	// Called from sort helper only
@@ -121,18 +125,18 @@ static inline bool TomahawkOutputEntryCompFunc(TomahawkOutputEntry* self, Tomaha
 	return false;
 }
 
-static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry* self, const TomahawkOutputEntry* other){
-	if (self->AcontigID < other->AcontigID) return true;
-	if (other->AcontigID < self->AcontigID) return false;
+static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry& self, const TomahawkOutputEntry& other){
+	if (self.AcontigID < other.AcontigID) return true;
+	if (other.AcontigID < self.AcontigID) return false;
 
-	if (self->Aposition < other->Aposition) return true;
-	if (other->Aposition < self->Aposition) return false;
+	if (self.Aposition < other.Aposition) return true;
+	if (other.Aposition < self.Aposition) return false;
 
-	if (self->BcontigID < other->BcontigID) return true;
-	if (other->BcontigID < self->BcontigID) return false;
+	if (self.BcontigID < other.BcontigID) return true;
+	if (other.BcontigID < self.BcontigID) return false;
 
-	if (self->Bposition < other->Bposition) return true;
-	if (other->Bposition < self->Bposition) return false;
+	if (self.Bposition < other.Bposition) return true;
+	if (other.Bposition < self.Bposition) return false;
 
 	return false;
 }

@@ -4,7 +4,6 @@
 #include <queue>
 
 #include "../../tomahawk/TomahawkOutput/TomahawkOutputReader.h"
-#include "TomahawkOutputSortSupport.h"
 #include "../../tomahawk/TomahawkOutput/TomahawkOutputManager.h"
 
 namespace Tomahawk{
@@ -17,11 +16,11 @@ struct TomahawkOutputSortMergeQueueContainer {
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> self_type;
 
 public:
-	TomahawkOutputSortMergeQueueContainer(const entry_type* data,
+	TomahawkOutputSortMergeQueueContainer(const entry_type& data,
 										  U32 streamID,
-										  bool (*compFunc)(const entry_type* a, const entry_type* b) = T::operator<)
+										  bool (*compFunc)(const entry_type& a, const entry_type& b) = T::operator<)
 	: streamID(streamID)
-	, data(data)
+	, data(data) // call copy ctor for hard copy
 	, compFunc(compFunc)
     {}
 
@@ -31,29 +30,8 @@ public:
 
 public:
     U32 streamID;
-    const entry_type* data;
-    bool (*compFunc)(const entry_type* a, const entry_type* b);
-};
-
-#pragma pack(1)
-struct TomahawkOutputSortIndexEntry{
-	typedef TomahawkOutputSortIndexEntry self_type;
-
-public:
-	friend std::ostream& operator<<(std::ostream& os, const self_type& entry){
-		os << entry.from << '\t' << entry.to;
-		return(os);
-	}
-
-	friend std::ofstream& operator<<(std::ofstream& of, const self_type& entry){
-		of.write((char*)&entry.from, sizeof(U64));
-		of.write((char*)&entry.to,   sizeof(U64));
-		return(of);
-	}
-
-public:
-	U64 from;
-	U64 to;
+    entry_type data;
+    bool (*compFunc)(const entry_type& a, const entry_type& b);
 };
 
 // Sorter
@@ -64,8 +42,6 @@ class TomahawkOutputSorter{
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
 	typedef std::priority_queue< queue_entry > queue_type; // prio queue
 	typedef IO::TomahawkOutputReader two_reader_type;
-	typedef IO::PartialSortIndexHeader partial_header_type;
-	typedef IO::PartialSortIndexHeaderEntry partial_header_entry_type;
 
 public:
 	TomahawkOutputSorter(){}
