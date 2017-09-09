@@ -57,8 +57,7 @@ public:
 	bool Inflate(std::ifstream& stream, const BYTE* output, const U32& avail_out, U32& return_size);
 
 	void reset(void){
-		this->avail_in = 0;
-		this->avail_offset = 0;
+		this->total_out = 0;
 		this->bytes_read = 0;
 		this->BSIZE = 0;
 		this->STATE = TGZF_STATE::TGZF_INIT;
@@ -71,8 +70,7 @@ protected:
 protected:
 	TGZF_STATE STATE;
 	U32 chunk_size;
-	U32 avail_in;
-	U32 avail_offset;
+	U32 total_out;
 	U32 bytes_read;
 	U32 BSIZE;
 	z_stream d_stream;
@@ -138,18 +136,14 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		if(this->STATE == TGZF_STATE::TGZF_END){
 			this->stream.seekg(IO::Constants::TGZF_BLOCK_FOOTER_LENGTH, std::ios::cur);
 
-			std::cerr << this->stream.tellg() << '\t' << this->IO_end_offset << std::endl;
-
 			if(this->stream.tellg() == this->IO_end_offset)
 				return false;
 
 			this->reset(); // reset state
-			//std::cerr << "reset data" << std::endl;
 		}
 
 		U32 ret_size = 0;
 		if(!parent_type::Inflate(this->stream, (BYTE*)&output_buffer.data[0], this->chunk_size, ret_size)){
-			//std::cerr << "failed inflate next: " << this->STATE << std::endl;
 			if(this->STATE != TGZF_STATE::TGZF_END){
 				std::cerr << "invalid state" << std::endl;
 				exit(1);
@@ -157,7 +151,7 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		}
 
 		if(ret_size % sizeof(T) != 0){
-			std::cerr << "impossible: " << ret_size % sizeof(T) << std::endl;
+			std::cerr << "impossible: " << ret_size % sizeof(T) << '\t' << ret_size << '/' << this->chunk_size << '\t' << "state: " << this->STATE << " size: " << sizeof(T) << std::endl;
 			exit(1);
 		}
 
@@ -193,7 +187,6 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		this->n_entries = ret_size / sizeof(T);
 		this->pointer = 0;
 		this->entries = reinterpret_cast<const T*>(this->output_buffer.data);
-		std::cerr << this->n_entries << '/' << this->chunk_size/sizeof(T) << std::endl;
 	}
 
 	//std::cerr << this->pointer << '/' << this->n_entries << std::endl;
