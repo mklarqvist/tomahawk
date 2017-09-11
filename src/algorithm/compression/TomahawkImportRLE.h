@@ -356,13 +356,11 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicB
 	// Position
 	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
 	position <<= 2;
-	position |= this->helper.phased << 1;		  // all samples in this variant are phased
-	position |= this->helper.missingValues << 0; // has any missing values
+	position |= this->helper.phased << 1;
+	position |= this->helper.missingValues << 0;
 	meta += this->helper.MGF;
 	meta += this->helper.HWE_P;
 	meta += n_runs;
-
-	//std::cerr << " -> " << meta.size() << '\t' << runs.size() << "\t" << n_runs*sizeof(T) << std::endl;
 
 	this->helper.reset();
 	return true;
@@ -476,6 +474,9 @@ bool TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 
 template <class T>
 bool TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+	meta += line.position;
+	meta += line.ref_alt;
+
 	///////////////////////////////
 	// Encoding:
 	// First 8|T| - TOMAHAWK_SNP_PACK_WIDTH bits encode the run length

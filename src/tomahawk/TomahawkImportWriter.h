@@ -4,15 +4,15 @@
 #include <fstream>
 
 #include "../support/TypeDefinitions.h"
-#include "../io/vcf/VCFHeaderConstants.h"
-#include "../io/vcf/VCFLines.h"
-#include "../io/vcf/VCFHeader.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
 #include "../io/TGZFController.h"
-#include "../totempole/TotempoleEntry.h"
-#include "base/TomahawkEntryMeta.h"
+#include "../io/vcf/VCFHeaderConstants.h"
+#include "../io/vcf/VCFLines.h"
+#include "../io/vcf/VCFHeader.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
+#include "base/TomahawkEntryMeta.h"
+#include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
 #include "TomahawkImporterFilters.h"
@@ -225,20 +225,21 @@ public:
 		if(n_runs == 1){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			//std::cerr << "singleton" << std::endl;
 			return false;
 		}
 
 		if(test.HWE_P < this->filter.HWE_P){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << std::endl;
+			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << '\t' << test << std::endl;
 			return false;
 		}
 
 		if(test.MAF < this->filter.MAF){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << std::endl;
+			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << '\t' << test << std::endl;
 			return false;
 		}
 

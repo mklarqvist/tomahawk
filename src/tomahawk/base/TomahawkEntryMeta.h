@@ -6,9 +6,10 @@ namespace Tomahawk{
 #define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + 2*sizeof(float))
 
 /*
- TomahawkEntryMeta encodes for the basic information
- regaring a variant line such as position, if any genotypes
- are missing and if the data is phased.
+ TomahawkEntryMetaBase is used for reinterpreting
+ byte streams of TomahawkEntryMeta
+ Number of runs can be inferred from the sample
+ number and byte length of the stream
  */
 #pragma pack(1)
 struct TomahawkEntryMetaBase{
