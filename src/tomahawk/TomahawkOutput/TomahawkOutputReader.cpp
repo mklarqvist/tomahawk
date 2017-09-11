@@ -363,7 +363,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 	}
 
 	if(!this->gzip_controller.InflateBlock(this->stream, this->buffer)){
-		std::cerr << "failed to get TWO block" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
 		return false;
 	}
 

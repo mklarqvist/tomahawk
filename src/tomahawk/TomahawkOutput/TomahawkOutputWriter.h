@@ -3,6 +3,7 @@
 
 #include "../../io/BasicWriters.h"
 #include "../../totempole/TotempoleMagic.h"
+#include "../../totempole/TotempoleOutputEntry.h"
 
 namespace Tomahawk{
 namespace IO {
@@ -43,9 +44,13 @@ public:
 			return(this->open());
 
 		this->outFile = output;
+		this->CheckOutputNames(output);
+
 		this->stream = new file_type();
-		if(!this->stream->open(output))
+		if(!this->stream->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX)){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to open..." << std::endl;
 			return false;
+		}
 
 		return true;
 	}
@@ -66,8 +71,22 @@ public:
 	virtual void writeHeader(std::string& literals) =0;
 	virtual void writeEOF(void) =0;
 
+	void CheckOutputNames(const std::string& input){
+		std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+		this->basePath = paths[0];
+		if(this->basePath.size() > 0)
+			this->basePath += '/';
+
+		if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+			this->baseName = paths[2];
+		else this->baseName = paths[1];
+	}
+
 protected:
 	std::string outFile;
+	std::string basePath;
+	std::string baseName;
+
 	stream_type* stream;
 	const header_type* header;
 	const contig_type* contigs;
@@ -75,7 +94,10 @@ protected:
 
 // case binary
 class TomahawkOutputWriter : public TomahawkOutputWriterInterface {
+private:
 	typedef TomahawkOutputWriter self_type;
+
+protected:
 	typedef IO::BasicBuffer buffer_type;
 	typedef IO::TGZFController tgzf_controller_type;
 
@@ -94,7 +116,7 @@ public:
 	// also open two.twi
 	// if not ending in .two add .two
 
-	~TomahawkOutputWriter(){
+	virtual ~TomahawkOutputWriter(){
 		// Flush upon termination
 		this->flush();
 		this->writeEOF();
@@ -111,9 +133,9 @@ public:
 		}
 		this->stream->flush();
 	}
-	inline bool close(void){ this->stream->close(); return true; }
+	virtual inline bool close(void){ this->stream->close(); return true; }
 
-	void operator<<(const entry_type* const entry){
+	virtual void operator<<(const entry_type* const entry){
 		this->buffer.Add(reinterpret_cast<const char*>(entry), sizeof(entry_type));
 		if(this->buffer.size() > this->flush_limit){
 			this->controller.Deflate(this->buffer);
@@ -123,7 +145,7 @@ public:
 		}
 	}
 
-	void operator<<(const entry_type& entry){
+	virtual void operator<<(const entry_type& entry){
 		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
 		if(this->buffer.size() > this->flush_limit){
 			this->controller.Deflate(this->buffer);
@@ -133,7 +155,7 @@ public:
 		}
 	}
 
-	inline const U64 write(buffer_type& buffer){
+	virtual inline const U64 write(buffer_type& buffer){
 		this->controller.Clear();
 		this->controller.Deflate(buffer);
 		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
@@ -159,13 +181,185 @@ public:
 	// There is no EOF
 	void writeEOF(void){};
 
-private:
+protected:
 	U32 flush_limit;
 	buffer_type buffer;
 	tgzf_controller_type controller;
 };
 
-// case binary
+// case binary + index
+class TomahawkOutputWriterIndex : public TomahawkOutputWriter{
+	typedef TomahawkOutputWriter parent_type;
+	typedef Totempole::TotempoleOutputEntry totempole_type;
+	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+
+public:
+	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header) : TomahawkOutputWriter(contigs, header){}
+	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
+		TomahawkOutputWriter(contigs, header, flush_limit)
+	{
+
+	}
+	~TomahawkOutputWriterIndex(){}
+
+	bool open(const std::string output){
+		if(output.size() == 0){
+			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Writing to cout is illegal..." << std::endl;
+			return false;
+		}
+
+		this->outFile = output;
+		this->CheckOutputNames(output);
+
+		this->stream = new file_type();
+		if(!this->stream->open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX)){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to open..." << std::endl;
+			return false;
+		}
+
+		if(!this->stream_index.open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed open index..." << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
+	inline bool close(void){
+		this->stream->flush();
+		this->stream->close();
+		this->stream_index.flush();
+		this->stream_index.close();
+		return true;
+	}
+
+	inline void flush(void){
+		parent_type::flush();
+		this->stream_index.flush();
+	}
+
+	inline void setPrevEntry(const entry_type* entry){
+		this->entry_prev.AcontigID = entry->AcontigID;
+		this->entry_prev.BcontigID = entry->BcontigID;
+		this->entry_prev.Aposition = entry->Aposition;
+		this->entry_prev.Bposition = entry->Bposition;
+	}
+
+	inline void setPrevEntry(const entry_type& entry){
+		this->entry_prev.AcontigID = entry.AcontigID;
+		this->entry_prev.BcontigID = entry.BcontigID;
+		this->entry_prev.Aposition = entry.Aposition;
+		this->entry_prev.Bposition = entry.Bposition;
+	}
+
+	void operator<<(const entry_type* const entry){
+		// A
+		if(this->totempole_entry.contigIDA != -1){
+			if(entry->Aposition < entry_prev.Aposition || entry->Aposition < this->totempole_entry.minPositionA){
+				this->totempole_entry.minPositionA = -1;
+				this->totempole_entry.maxPositionA = -1;
+			} else if(this->totempole_entry.minPositionA != -1) this->totempole_entry.maxPositionA = entry->Aposition;
+
+			if(this->totempole_entry.contigIDA != entry->AcontigID){
+				this->totempole_entry.contigIDA = -1;
+				this->totempole_entry.minPositionA = -1;
+				this->totempole_entry.maxPositionA = -1;
+			}
+		}
+
+		// B
+		if(this->totempole_entry.contigIDB != -1){
+			if(entry->Bposition < this->entry_prev.Bposition || entry->Bposition < this->totempole_entry.minPositionB){
+				this->totempole_entry.minPositionB = -1;
+				this->totempole_entry.maxPositionB = -1;
+			} else if(this->totempole_entry.minPositionB != -1) this->totempole_entry.maxPositionB = entry->Bposition;
+
+			if(this->totempole_entry.contigIDB != entry->BcontigID){
+				this->totempole_entry.contigIDB = -1;
+				this->totempole_entry.minPositionB = -1;
+				this->totempole_entry.maxPositionB = -1;
+			}
+		}
+		++this->totempole_entry.entries;
+
+		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
+		if(this->buffer.size() > this->flush_limit){
+			IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
+			this->controller.Deflate(this->buffer);
+			this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+			this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
+			this->totempole_entry.uncompressed_size = this->controller.buffer.size();
+			this->controller.Clear();
+			this->buffer.reset();
+			this->stream_index.getNativeStream() << this->totempole_entry;
+			this->totempole_entry.reset();
+		}
+
+		this->setPrevEntry(entry);
+	}
+
+	void operator<<(const entry_type& entry){
+		// A
+		if(this->totempole_entry.contigIDA != -1){
+			if(entry.Aposition < entry_prev.Aposition || entry.Aposition < this->totempole_entry.minPositionA){
+				this->totempole_entry.minPositionA = -1;
+				this->totempole_entry.maxPositionA = -1;
+			} else if(this->totempole_entry.minPositionA != -1) this->totempole_entry.maxPositionA = entry.Aposition;
+
+			if(this->totempole_entry.contigIDA != entry.AcontigID){
+				this->totempole_entry.contigIDA = -1;
+				this->totempole_entry.minPositionA = -1;
+				this->totempole_entry.maxPositionA = -1;
+			}
+		}
+
+		// B
+		if(this->totempole_entry.contigIDB != -1){
+			if(entry.Bposition < this->entry_prev.Bposition || entry.Bposition < this->totempole_entry.minPositionB){
+				this->totempole_entry.minPositionB = -1;
+				this->totempole_entry.maxPositionB = -1;
+			} else if(this->totempole_entry.minPositionB != -1) this->totempole_entry.maxPositionB = entry.Bposition;
+
+			if(this->totempole_entry.contigIDB != entry.BcontigID){
+				this->totempole_entry.contigIDB = -1;
+				this->totempole_entry.minPositionB = -1;
+				this->totempole_entry.maxPositionB = -1;
+			}
+		}
+		++this->totempole_entry.entries;
+
+		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
+		if(this->buffer.size() > this->flush_limit){
+			IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
+			this->controller.Deflate(this->buffer);
+			this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+			this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
+			this->totempole_entry.uncompressed_size = this->controller.buffer.size();
+			this->controller.Clear();
+			this->buffer.reset();
+			this->stream_index.getNativeStream() << this->totempole_entry;
+			this->totempole_entry.reset();
+		}
+
+		this->setPrevEntry(entry);
+	}
+
+	void writeHeader(std::string& literals){
+		parent_type::writeHeader(literals);
+
+		toi_header_type toi_header;
+		stream_index.getNativeStream() << toi_header;
+	};
+
+private:
+	totempole_type totempole_entry;
+	entry_type entry_prev;
+	file_type stream_index;
+};
+
+// case natural
 class TomahawkOutputWriterNatural : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriterNatural self_type;
 

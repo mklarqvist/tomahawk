@@ -34,7 +34,7 @@ public:
 
 		this->stream >> this->header;
 		if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC)){
-			std::cerr << "incorrect header" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header" << std::endl;
 			this->ERROR_STATE = TOI_CORRUPTED;
 			exit(1);
 		}
@@ -43,7 +43,7 @@ public:
 		const U32 readUntil = filesize - (U32)this->stream.tellg();
 
 		if(readUntil % sizeof(entry_type) != 0){
-			std::cerr << "corrupted data" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Corrupted data!" << std::endl;
 			this->ERROR_STATE = TOI_CORRUPTED;
 			exit(1);
 		}
@@ -62,7 +62,7 @@ public:
 	const entry_type& operator[](const U32 p) const{ return(this->entries[p]); }
 
 	// Find data blocks mapping to these regions
-	bool findOverlap();
+	//bool findOverlap();
 
 	bool getIsSorted(void) const{ return(this->header.controller.sorted); }
 	const U32& size(void) const{ return(this->n_entries); }

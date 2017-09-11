@@ -8,7 +8,7 @@ namespace Output{
 
 bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit){
 	if(!this->reader.Open(input)){
-		std::cerr << "failed top open: " << input << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 		return false;
 	}
 
@@ -51,7 +51,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
 		const entry_type* entry;
 		if(!this->reader.nextVariantLimited(entry)){
-			std::cerr << "no data" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","SORT") << "No data" << std::endl;
 			return false;
 		}
 		totempoly_entry totempole;
@@ -99,7 +99,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		this->reader.writer->write(this->reader.output_buffer);
 		totempole.byte_offset_end = stream.getNativeStream().tellp();
-		std::cerr << totempole << std::endl;
+		//std::cerr << totempole << std::endl;
 		toi_writer.getNativeStream() << totempole;
 
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
@@ -116,29 +116,23 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::string& destinationPrefix, const U32 block_size){
 	if(!this->reader.Open(inputFile)){
-		std::cerr << "failed top open: " << inputFile << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << inputFile << "..." << std::endl;
 		return false;
 	}
 
 	if(!this->reader.hasIndex){
-		std::cerr << "Does not have TOI index" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Does not have TOI index" << std::endl;
 		return false;
 	}
 
-	this->reader.setWriterType(0);
 	this->reader.literals += "\n##tomahawk_mergeSortCommand=" + Helpers::program_string(true);
-	if(!this->reader.OpenWriter(destinationPrefix)){
-		std::cerr << "failed open" << std::endl;
+
+	writer_type writer(this->reader.contigs, &this->reader.header);
+	if(!writer.open(destinationPrefix)){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed open" << std::endl;
 		return false;
 	}
-
-	IO::WriterFile toi_writer;
-	toi_writer.open(destinationPrefix + ".toi");
-	IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
-	toi_writer.getNativeStream() << headIndex;
-
-	// out stream reference
-	IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->reader.writer->getStream());
+	writer.writeHeader(this->reader.literals);
 
 	const U32 n_toi_entries = this->reader.toi_reader.size();
 	std::ifstream* streams = new std::ifstream[n_toi_entries];
@@ -154,18 +148,6 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	// queue
 	queue_type outQueue;
 
-	// index
-	/*
-	totempoly_entry totempole;
-	totempole.contigIDA = entry->AcontigID;
-	totempole.contigIDB = entry->BcontigID;
-	totempole.minPositionA = entry->Aposition;
-	totempole.minPositionB = entry->Bposition;
-	totempole.entries = 1;
-	totempole.byte_offset = stream.getNativeStream().tellp();
-	totempole.uncompressed_size = this->reader.output_buffer.size();
-	 */
-
 	// draw one from each
 	const entry_type* e;
 	for(U32 i = 0; i < n_toi_entries; ++i){
@@ -174,11 +156,19 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		outQueue.push( queue_entry(hard_copy, i, IO::Support::TomahawkOutputEntryCompFuncConst) );
 	}
 
+	if(outQueue.empty()){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "No data in queue..." << std::endl;
+		return false;
+	}
+
+	// index
+	writer.setPrevEntry(outQueue.top().data);
+
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
-		*this->reader.writer << outQueue.top().data;
+		writer << outQueue.top().data;
 
 		// remove this record from the queue
 		outQueue.pop();
@@ -191,10 +181,8 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		}
 	}
 
-	this->reader.writer->flush();
-	this->reader.writer->close();
-	toi_writer.flush();
-	toi_writer.close();
+	writer.flush();
+	writer.close();
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)
