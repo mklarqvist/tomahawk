@@ -1,6 +1,7 @@
 #include <cassert>
 
 #include "TomahawkOutputSort.h"
+#include "../../io/TGZFEntryIterator.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -19,8 +20,9 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		basePath += '/';
 
 	std::string baseName;
-	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
-		baseName = paths[2];
+	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() &&
+	   strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+		 baseName = paths[2];
 	else baseName = paths[1];
 
 	//
@@ -42,10 +44,8 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	bool trigger_break = false;
 	while(true){
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Reading..." << std::endl;
-		if(!this->reader.nextBlockUntil(memory_limit)){
-			//std::cerr << "failed to get next block: " << this->reader.output_buffer.size() << std::endl;
+		if(!this->reader.nextBlockUntil(memory_limit))
 			trigger_break = true;
-		}
 
 		if(this->reader.output_buffer.size() == 0){
 			trigger_break = true;
@@ -54,7 +54,6 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
-		//std::cerr << Helpers::timestamp("DEBUG") << this->reader.output_buffer.size() << '/' << memory_limit << std::endl;
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
 		std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
 				  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size()]));
@@ -79,7 +78,6 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		std::swap(prev, entry);
 
 		while(this->reader.nextVariantLimited(entry)){
-			//std::cerr << *entry << std::endl;
 			if(totempole.contigIDA != -1){
 				if(entry->Aposition < prev->Aposition || entry->Aposition < totempole.minPositionA){
 					totempole.minPositionA = -1;
@@ -116,6 +114,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
 		if(trigger_break) break;
 	}
+
 	toi_writer.flush();
 	toi_writer.close();
 
@@ -175,11 +174,46 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	writer.setPrevEntry(outQueue.top().data);
 	writer.setPrevEntryFirst(outQueue.top().data);
 
+	// Secondary TOI index
+	/*
+	U32 currentAID = outQueue.top().data.AcontigID;
+	U32 currentAPos = outQueue.top().data.Aposition;
+	U64 AIDSteps = 0;
+	U64 APosSteps = 0;
+	double AposStepsR = 0;
+	U64 outputEntries = 0;
+	*/
+	//
+
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
 		writer << outQueue.top().data;
+
+		//
+		/*
+		const entry_type& ent = outQueue.top().data;
+		++AIDSteps;
+		++APosSteps;
+		AposStepsR += ent.R2;
+
+		if(ent.Aposition != currentAPos || ent.AcontigID != currentAID){
+			std::cout << "2switch: " << currentAID << '\t' << currentAPos << '\t' << APosSteps << '\t' << AposStepsR/APosSteps << '\n';
+			currentAPos = ent.Aposition;
+			APosSteps = 0;
+			AposStepsR = 0;
+			++outputEntries;
+		}
+
+		if(ent.AcontigID != currentAID){
+			std::cerr << "1switch: " << currentAID << "->" << ent.AcontigID << '\t' << AIDSteps << std::endl;
+			currentAID = ent.AcontigID;
+			AIDSteps = 0;
+			++outputEntries;
+		}
+		*/
+		//
 
 		// remove this record from the queue
 		outQueue.pop();
@@ -191,6 +225,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 			outQueue.push( queue_entry(hard_copy, id, IO::Support::TomahawkOutputEntryCompFuncConst) );
 		}
 	}
+	//std::cerr << "Total output entries: " << outputEntries << std::endl;
 
 	writer.flush();
 	writer.close();

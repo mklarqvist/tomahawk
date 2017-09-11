@@ -22,7 +22,6 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
-#include "utility.h"
 #include "support/MagicConstants.h"
 #include "tomahawk/TomahawkCalc.h"
 

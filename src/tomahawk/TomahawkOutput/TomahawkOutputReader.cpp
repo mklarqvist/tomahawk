@@ -584,7 +584,7 @@ bool TomahawkOutputReader::index(const std::string& input){
 		AposStepsR += entry->R2;
 
 		if(entry->BcontigID != currentBID || entry->Aposition != currentAPos || entry->AcontigID != currentAID){
-			//std::cerr << "switch: " << currentAID << ',' << currentAPos << ',' << currentBID << '\t' << entry->AcontigID << ',' << entry->Aposition << ',' << entry->BcontigID << '\t' << BIDSteps << std::endl;
+			std::cerr << "switch: " << currentAID << ',' << currentAPos << ',' << currentBID << '\t' << entry->AcontigID << ',' << entry->Aposition << ',' << entry->BcontigID << '\t' << BIDSteps << std::endl;
 			currentBID = entry->BcontigID;
 			BIDSteps = 0;
 			++outputEntries;
@@ -599,12 +599,11 @@ bool TomahawkOutputReader::index(const std::string& input){
 		}
 
 		if(entry->AcontigID != currentAID){
-			//std::cerr << "switch: " << currentAID << "->" << entry->AcontigID << '\t' << AIDSteps << std::endl;
+			std::cerr << "switch: " << currentAID << "->" << entry->AcontigID << '\t' << AIDSteps << std::endl;
 			currentAID = entry->AcontigID;
 			AIDSteps = 0;
 			++outputEntries;
 		}
-
 	}
 	std::cerr << "Index would have: " << outputEntries << " entries..." << std::endl;
 

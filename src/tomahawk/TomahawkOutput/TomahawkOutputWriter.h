@@ -194,11 +194,15 @@ class TomahawkOutputWriterIndex : public TomahawkOutputWriter{
 	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 
 public:
-	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header) : TomahawkOutputWriter(contigs, header){}
+	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header) : TomahawkOutputWriter(contigs, header){
+		this->toi_header = toi_header_type(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, header->samples, header->n_contig);
+		this->toi_header.controller.sorted = 1;
+	}
 	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
 		TomahawkOutputWriter(contigs, header, flush_limit)
 	{
-
+		this->toi_header = toi_header_type(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, header->samples, header->n_contig);
+		this->toi_header.controller.sorted = 1;
 	}
 	~TomahawkOutputWriterIndex(){}
 
@@ -244,7 +248,6 @@ public:
 			this->controller.Clear();
 			this->buffer.reset();
 			this->stream_index.getNativeStream() << this->totempole_entry;
-			std::cerr << this->totempole_entry << std::endl;
 			this->totempole_entry.reset();
 		}
 		this->stream->flush();
@@ -365,7 +368,6 @@ public:
 			this->controller.Clear();
 			this->buffer.reset();
 			this->stream_index.getNativeStream() << this->totempole_entry;
-			std::cerr << this->totempole_entry << std::endl;
 			this->totempole_entry.reset();
 		}
 
@@ -375,12 +377,11 @@ public:
 
 	void writeHeader(std::string& literals){
 		parent_type::writeHeader(literals);
-
-		toi_header_type toi_header(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->header->samples, this->header->n_contig);
 		stream_index.getNativeStream() << toi_header;
 	};
 
 private:
+	toi_header_type toi_header;
 	totempole_type totempole_entry;
 	entry_type entry_prev;
 	file_type stream_index;

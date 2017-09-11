@@ -8,6 +8,7 @@ CPP_SRCS += \
 ../src/io/BasicBuffer.cpp \
 ../src/io/BasicWriters.cpp \
 ../src/io/TGZFController.cpp \
+../src/io/TGZFControllerStream.cpp \
 ../src/io/reader.cpp 
 
 OBJS += \
@@ -15,6 +16,7 @@ OBJS += \
 ./src/io/BasicBuffer.o \
 ./src/io/BasicWriters.o \
 ./src/io/TGZFController.o \
+./src/io/TGZFControllerStream.o \
 ./src/io/reader.o 
 
 CPP_DEPS += \
@@ -22,6 +24,7 @@ CPP_DEPS += \
 ./src/io/BasicBuffer.d \
 ./src/io/BasicWriters.d \
 ./src/io/TGZFController.d \
+./src/io/TGZFControllerStream.d \
 ./src/io/reader.d 
 
 
