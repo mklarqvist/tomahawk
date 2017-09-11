@@ -11,8 +11,7 @@
 #include "TomahawkOutputEntry.h"
 #include "TomahawkOutputLD.h"
 
-#define SLAVE_FLUSH_LIMIT 10000000	// 10 MB default flush limit
-#define SLAVE_FLUSH_LIMIT_NATURAL 65536
+#define SLAVE_FLUSH_LIMIT 10000000	// 10 MB
 
 namespace Tomahawk{
 namespace IO {

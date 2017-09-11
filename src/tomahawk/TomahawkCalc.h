@@ -50,7 +50,7 @@ bool TomahawkCalc::Calculate(){
 
 	IO::TomahawkOutputManager<T> writer;
 	if(!writer.Open(this->output_file, totempole)){
-		std::cerr << "failed to open" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
 
@@ -69,7 +69,10 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	// Build 1-bit representation from RLE data
-	controller.BuildVectorized();
+	if(!controller.BuildVectorized()){
+		std::cerr << Helpers::timestamp("ERROR", "SIMD") << "Failed building bit-representation..." << std::endl;
+		return false;
+	}
 
 	if(!SILENT)
 		std::cerr << "Done..." << std::endl;

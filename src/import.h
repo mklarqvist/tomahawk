@@ -33,7 +33,6 @@ void import_usage(void){
 	"  -o FILE  output file prefix (required)\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff\n"
 	"  -m FLOAT Minor-allele frequency (MAF) cutoff\n"
-	"  -M INT   Minor-allele count cutoff\n"
 	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
 	"  -s       Hide all program messages [null]\n";
 }
@@ -50,6 +49,9 @@ int import(int argc, char** argv){
 		{"input",		required_argument, 0,  'i' },
 		{"output",		optional_argument, 0,  'o' },
 		{"extend",		optional_argument, 0,  'e' },
+		{"hwep",		optional_argument, 0,  'h' },
+		{"missingness",		optional_argument, 0,  'n' },
+		{"maf",		optional_argument, 0,  'm' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -59,8 +61,11 @@ int import(int argc, char** argv){
 	std::string extend;
 	bool extension_mode = false;
 	SILENT = 0;
+	double hwe_p = 0;
+	double maf = 0;
+	double missingness = 0;
 
-	while ((c = getopt_long(argc, argv, "i:o:e:s?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:s?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -75,13 +80,22 @@ int import(int argc, char** argv){
 			extension_mode = true;
 			extend = std::string(optarg);
 			break;
-	  case 's':
-		  SILENT = 1;
-		  break;
+		case 'h':
+			hwe_p = atof(optarg);
+			break;
+		case 'n':
+			missingness = atof(optarg);
+			break;
+		case 'm':
+			maf = atof(optarg);
+			break;
+		case 's':
+			SILENT = 1;
+			break;
 
-	  default:
-		  std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
-		  return(1);
+		default:
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
+			return(1);
 		}
 	}
 
@@ -107,6 +121,10 @@ int import(int argc, char** argv){
 	}
 
 	Tomahawk::TomahawkImporter importer(input, output);
+	importer.getFilters().HWE_P = hwe_p;
+	importer.getFilters().MAF = maf;
+	importer.getFilters().missingness = missingness;
+
 	if(!extension_mode){
 		if(!importer.Build()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;

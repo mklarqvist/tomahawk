@@ -3,6 +3,7 @@
 
 #include "../io/vcf/VCFHeader.h"
 #include "../io/bcf/BCFReader.h"
+#include "TomahawkImporterFilters.h"
 #include "TomahawkImportWriter.h"
 
 namespace Tomahawk {
@@ -18,6 +19,7 @@ class TomahawkImporter {
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef BCF::BCFReader bcf_reader_type;
 	typedef BCF::BCFEntry bcf_entry_type;
+	typedef TomahawkImporterFilters filter_type;
 
 	/*
 	 This supportive structure keeps track of the current and
@@ -50,6 +52,7 @@ public:
 	~TomahawkImporter();
 	bool Build();
 	bool Extend(std::string extendFile);
+	filter_type& getFilters(void){ return(this->filters); }
 
 private:
 	bool BuildVCF();  // import a VCF file
@@ -68,11 +71,12 @@ private:
 	std::string inputFile;    // input file name
 	std::string outputPrefix; // output file prefix
 	reader_type reader_;      // reader
-	header_type* header_;     // header
 	writer_type writer_;      // writer
 	buffer_type meta_buffer;  // meta buffer
 	buffer_type rle_buffer;   // RLE buffer
 	totempole_entry_type totempole_entry;  // totempole entry for indexing
+	filter_type filters;
+	header_type* header_;     // header
 	rle_controller_type* rle_controller;   // RLE packer
 };
 

@@ -15,106 +15,22 @@
 #include "../algorithm/compression/TomahawkImportRLE.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
+#include "TomahawkImporterFilters.h"
 
 namespace Tomahawk {
 
-class TomahawkImportWriterTemp {
-	typedef TomahawkImportWriterTemp self_type;
-	typedef Tomahawk::IO::WriterFile writer_type;
-	typedef IO::BasicBuffer buffer_type;
-	typedef IO::TGZFController tgzf_type;
-	typedef VCF::VCFHeader header_type;
-	typedef Totempole::TotempoleEntry totempole_type;
-
-public:
-	void add(buffer_type& rle, buffer_type& meta, totempole_type& totempole_entry){
-		totempole_entry.byte_offset = this->totempole_output.getStream().tellp(); // IO offset in Tomahawk output
-		this->tgzf_controller.Deflate(meta, rle); // Deflate block
-		this->tomahawk_output.getNativeStream() << this->tgzf_controller; // Write tomahawk output
-		this->tgzf_controller.Clear();
-
-		// Keep track of largest block observed
-		if(meta.size() > this->largest_uncompressed_block)
-			this->largest_uncompressed_block = meta.size();
-
-		totempole_entry.uncompressed_size = meta.size(); // Store uncompressed size
-		this->totempole_output.getNativeStream() << totempole_entry; // Write totempole output
-		++this->blocksWritten; // update number of blocks written
-		this->variants_written += totempole_entry.variants; // update number of variants written
-	}
-
-	void WriteHeaders(const header_type& header){
-		std::ofstream& totempole = this->totempole_output.getNativeStream();
-		std::ofstream& tomahawk  = this->tomahawk_output.getNativeStream();
-
-		// Write MAGIC
-		this->totempole_output.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
-		this->tomahawk_output.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
-
-		// Write samples
-		const U64& samples = header.samples;
-		Totempole::TotempoleHeader h(samples);
-		totempole << h;
-		Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
-		tomahawk << *hB;
-
-		// Write out dummy variable for IO offset
-		U32 nothing = 0; // Dummy variable
-		size_t posOffset = totempole.tellp(); // remember current IO position
-		this->totempole_output.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
-
-		// Write the number of contigs
-		const U32 n_contigs = header.contigs.size();
-		this->totempole_output.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
-
-		// Write contig data to Totempole
-		// length | n_char | chars[0 .. n_char - 1]
-		for(U32 i = 0; i < header.contigs.size(); ++i){
-			Totempole::TotempoleContigBase contig(header.contigs[i].length,
-												  header.contigs[i].name.size(),
-												  header.contigs[i].name);
-
-			totempole << contig;
-		}
-
-		// Write sample names
-		// n_char | chars[0..n_char - 1]
-		for(U32 i = 0; i < samples; ++i){
-			const U32 n_char = header.sampleNames[i].size();
-			this->totempole_output.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-			this->totempole_output.write(reinterpret_cast<const char*>(&header.sampleNames[i][0]), n_char);
-		}
-
-		U32 curPos = totempole.tellp(); // remember current IO position
-		totempole.seekp(posOffset); // seek to previous position
-		totempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
-		totempole.seekp(curPos); // seek back to current IO position
-
-		header.writeTGZFLiterals(totempole);
-	}
-
-private:
-	bool writeHeaders(header_type& header);
-
-private:
-	U32 blocksWritten;				// number of blocks written
-	U32 variants_written;			// number of variants written
-	U32 largest_uncompressed_block;// size of largest block in b
-	writer_type tomahawk_output;
-	writer_type totempole_output;
-	tgzf_type tgzf_controller;
-};
-
 class TomahawkImportWriter {
 	typedef IO::BasicBuffer buffer_type;
+	typedef TomahawkImporterFilters filter_type;
 
 public:
-	TomahawkImportWriter() :
+	TomahawkImportWriter(const filter_type& filter) :
 		flush_limit(1000000),
 		n_variants_limit(1024),
 		blocksWritten_(0),
 		variants_written_(0),
 		largest_uncompressed_block_(0),
+		filter(filter),
 		rleController_(nullptr),
 		buffer_rle_(flush_limit*2),
 		buffer_meta_(flush_limit*2),
@@ -294,32 +210,92 @@ public:
 		this->buffer_meta_.reset();
 	}
 
-	inline void operator+=(const VCF::VCFLine& line){
-		if(this->totempole_entry_.minPosition == 0)
-			this->totempole_entry_.minPosition = line.position;
+	inline bool add(const VCF::VCFLine& line){
+		const U32 meta_start_pos = this->buffer_meta_.pointer;
+		const U32 rle_start_pos  = this->buffer_rle_.pointer;
+		if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			return false;
+		}
 
-		this->totempole_entry_.maxPosition = line.position;
-		++this->totempole_entry_;
-		this->buffer_meta_ += line.position;
-		this->buffer_meta_ += line.ref_alt;
-		this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_);
+		const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
+		const TomahawkEntryMetaBase& test = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+
+		if(n_runs == 1){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			return false;
+		}
+
+		if(test.HWE_P < this->filter.HWE_P){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << std::endl;
+			return false;
+		}
+
+		if(test.MAF < this->filter.MAF){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << std::endl;
+			return false;
+		}
+
+		if(this->totempole_entry.minPosition == 0)
+			this->totempole_entry.minPosition = line.position;
+
+		this->totempole_entry.maxPosition = line.position;
+		++this->totempole_entry;
+
+		return true;
 	}
 
-	inline void operator+=(const BCF::BCFEntry& line){
-		if(this->totempole_entry_.minPosition == 0)
-			this->totempole_entry_.minPosition = line.body->POS + 1;
+	inline bool add(const BCF::BCFEntry& line){
+		const U32 meta_start_pos = this->buffer_meta_.pointer;
+		const U32 rle_start_pos  = this->buffer_rle_.pointer;
+		if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			return false;
+		}
 
-		this->totempole_entry_.maxPosition = line.body->POS + 1;
-		++this->totempole_entry_;
-		this->buffer_meta_ += (U32)line.body->POS + 1;
-		this->buffer_meta_ += line.ref_alt;
-		this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_);
+		const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
+		const TomahawkEntryMetaBase& test = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+
+		if(n_runs == 1){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			return false;
+		}
+
+		if(test.HWE_P < this->filter.HWE_P){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << std::endl;
+			return false;
+		}
+
+		if(test.MAF < this->filter.MAF){
+			this->buffer_meta_.pointer = meta_start_pos; // reroll back
+			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << std::endl;
+			return false;
+		}
+
+		if(this->totempole_entry.minPosition == 0)
+			this->totempole_entry.minPosition = line.body->POS + 1;
+
+		this->totempole_entry.maxPosition = line.body->POS + 1;
+		++this->totempole_entry;
+
+		return true;
 	}
 
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
-		this->totempole_entry_.reset();
-		this->totempole_entry_.contigID = contig;
-		this->totempole_entry_.minPosition = minPos;
+		this->totempole_entry.reset();
+		this->totempole_entry.contigID = contig;
+		this->totempole_entry.minPosition = minPos;
 	}
 
 	// flush and write
@@ -329,7 +305,7 @@ public:
 			return false;
 		}
 
-		this->totempole_entry_.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
+		this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 		this->gzip_controller_.Deflate(this->buffer_meta_, this->buffer_rle_); // Deflate block
 		this->streamTomahawk << this->gzip_controller_; // Write tomahawk output
 		this->gzip_controller_.Clear(); // Clean up gzip controller
@@ -338,11 +314,11 @@ public:
 		if(this->buffer_meta_.size() > this->largest_uncompressed_block_)
 			this->largest_uncompressed_block_ = this->buffer_meta_.size();
 
-		this->totempole_entry_.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
-		this->totempole_entry_.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
-		this->streamTotempole << this->totempole_entry_; // Write totempole output
+		this->totempole_entry.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
+		this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
+		this->streamTotempole << this->totempole_entry; // Write totempole output
 		++this->blocksWritten_; // update number of blocks written
-		this->variants_written_ += this->totempole_entry_.variants; // update number of variants written
+		this->variants_written_ += this->totempole_entry.variants; // update number of variants written
 
 		this->reset(); // reset buffers
 		return true;
@@ -351,7 +327,7 @@ public:
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
 		// or if the number of entries written to buffer exceeds our set limit
-		if(this->totempole_entry_.variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
+		if(this->totempole_entry.variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
 			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle_.size() << '/' << this->flush_limit << std::endl;
 			return true;
 		}
@@ -375,7 +351,7 @@ public:
 
 
 	U32 GetVariantsWritten(void) const{ return this->variants_written_; }
-	Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry_); }
+	Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
 	std::ofstream streamTomahawk;	// stream
@@ -385,10 +361,11 @@ public:
 	U32 blocksWritten_;				// number of blocks written
 	U32 variants_written_;			// number of variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
+	const filter_type& filter;		// filters
 
-	Totempole::TotempoleEntry totempole_entry_;
-	IO::TGZFController gzip_controller_;			// todo: writer should have no knowledge of this
-	Algorithm::TomahawkImportRLE* rleController_;	// todo: writer should have no knowledge of this
+	Totempole::TotempoleEntry totempole_entry;
+	IO::TGZFController gzip_controller_;
+	Algorithm::TomahawkImportRLE* rleController_;
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 

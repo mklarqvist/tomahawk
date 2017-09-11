@@ -19,10 +19,10 @@ const U32 PROGRAM_VERSION_MINOR = 0;
 // Todo: fix inject in makefile
 // Get commit since last tag
 // git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 0;
+const U32 GIT_COMMITS_SINCE_TAG = 35;
 // Get last git hash
 // git rev-parse HEAD
-const std::string PROGRAM_GIT_HASH = "83d63bb0c3de66c422e36bf055e618469b1e389d";
+const std::string PROGRAM_GIT_HASH = "83d23f8d0cf036c5cd156e4d745631af661af6e1";
 extern char PROGRAM_VERSION_FRONT[5048];
 extern char PROGRAM_VERSION_BACK[5048];
 const U32 x = sprintf(PROGRAM_VERSION_FRONT,"alpha-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);

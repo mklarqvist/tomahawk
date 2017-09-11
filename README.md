@@ -67,13 +67,25 @@ FLAG bits `4` set and map to any of these regions
 
  Viewing a `two` file
  ```bash
-tomahawk view -Nhi file.two
+tomahawk view -i file.two
  ```
 
 Converting a `twk` file to `vcf`
  ```bash
- tomahawk view -HG -i file.twk -o file.vcf
+ tomahawk view -i file.twk -o file.vcf
  ```
+
+### Sort TWO file
+Partially sort `two` file in 500 MB chunks
+```bash
+tomahawk sort -i file.two -o partial.two -L 500
+```
+
+Perform k-way merge of partially sorted blocks
+```bash
+tomahawk sort -i partial.two -o sorted.two -M
+```
+
 
  ### License
  [MIT](LICENSE)

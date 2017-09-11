@@ -15,6 +15,7 @@ TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPref
 	inputFile(inputFile),
 	outputPrefix(outputPrefix),
 	reader_(inputFile),
+	writer_(this->filters),
 	header_(nullptr),
 	rle_controller(nullptr)
 {}
@@ -174,8 +175,8 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.previous_position = entry.body->POS;
 	this->sort_order_helper.contigID = &contigID;
 	this->sort_order_helper.prevcontigID = contigID;
-	this->writer_.totempole_entry_.contigID = contigID;
-	this->writer_.totempole_entry_.minPosition = entry.body->POS;
+	this->writer_.totempole_entry.contigID = contigID;
+	this->writer_.totempole_entry.minPosition = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
@@ -275,7 +276,7 @@ bool TomahawkImporter::BuildVCF(void){
 	}
 	this->sort_order_helper.prevcontigID = *this->sort_order_helper.contigID;
 	this->sort_order_helper.previous_position = line.position;
-	this->writer_.totempole_entry_.contigID = *this->sort_order_helper.contigID;
+	this->writer_.totempole_entry.contigID = *this->sort_order_helper.contigID;
 
 	if(!this->parseVCFLine(line)){
 		std::cerr << "faiaeld parse" << std::endl;
@@ -382,8 +383,10 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 			this->writer_.TotempoleSwitch(line.body->CHROM, this->sort_order_helper.previous_position);
 		}
-		this->writer_ += line;
-		this->sort_order_helper.previous_included = true;
+		if(this->writer_.add(line))
+			this->sort_order_helper.previous_included = true;
+		else
+			this->sort_order_helper.previous_included = false;
 	} else
 		this->sort_order_helper.previous_included = false;
 
@@ -469,8 +472,10 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 
 			this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, this->sort_order_helper.previous_position);
 		}
-		this->writer_ += line;
-		this->sort_order_helper.previous_included = true;
+		if(this->writer_.add(line))
+			this->sort_order_helper.previous_included = true;
+		else
+			this->sort_order_helper.previous_included = false;
 	} else
 		this->sort_order_helper.previous_included = false;
 

@@ -11,19 +11,47 @@ namespace Tomahawk{
  are missing and if the data is phased.
  */
 #pragma pack(1)
-template <class T>
-struct TomahawkEntryMeta{
-	typedef TomahawkEntryMeta self_type;
+struct TomahawkEntryMetaBase{
+	typedef TomahawkEntryMetaBase self_type;
 
 public:
-	TomahawkEntryMeta() :
+	TomahawkEntryMetaBase() :
 		position(0),
 		missing(0),
 		phased(0),
 		ref_alt(0),
-		runs(0),
 		MAF(0),
 		HWE_P(0)
+	{}
+	~TomahawkEntryMetaBase(){}
+
+	bool isSingleton(void) const{ return(this->MAF == 0); }
+
+	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
+		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MAF << '\t' << entry.HWE_P;
+		return(out);
+	}
+
+public:
+	const U32 missing: 1, phased: 1, position: 30;
+	const BYTE ref_alt;
+	const float MAF;
+	const float HWE_P;
+};
+
+/*
+ TomahawkEntryMeta encodes for the basic information
+ regaring a variant line such as position, if any genotypes
+ are missing and if the data is phased.
+ */
+#pragma pack(1)
+template <class T>
+struct TomahawkEntryMeta : public TomahawkEntryMetaBase{
+	typedef TomahawkEntryMeta self_type;
+
+public:
+	TomahawkEntryMeta() :
+		runs(0)
 	{}
 	~TomahawkEntryMeta(){}
 
@@ -45,10 +73,6 @@ public:
 	}
 
 public:
-	const U32 missing: 1, phased: 1, position: 30;
-	const BYTE ref_alt;
-	const float MAF;
-	const float HWE_P;
 	T runs;
 };
 
