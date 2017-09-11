@@ -16,9 +16,9 @@ struct TomahawkEntryMetaBase{
 
 public:
 	TomahawkEntryMetaBase() :
-		position(0),
 		missing(0),
 		phased(0),
+		position(0),
 		ref_alt(0),
 		MAF(0),
 		HWE_P(0)

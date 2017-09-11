@@ -8,8 +8,6 @@
 
 namespace Tomahawk {
 
-#define DEFAULT_MISSINGNESS_CUTOFF 0.2
-
 TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPrefix) :
 	block_flush_limit(65536),
 	inputFile(inputFile),
@@ -260,7 +258,7 @@ bool TomahawkImporter::BuildVCF(void){
 		return false;
 
 	if(!this->reader_.getLine()){
-		std::cerr << "failed to get line" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Failed to get line" << std::endl;
 		return false;
 	}
 
@@ -279,7 +277,7 @@ bool TomahawkImporter::BuildVCF(void){
 	this->writer_.totempole_entry.contigID = *this->sort_order_helper.contigID;
 
 	if(!this->parseVCFLine(line)){
-		std::cerr << "faiaeld parse" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Failed parse" << std::endl;
 		return false;
 	}
 
@@ -325,7 +323,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			exit(1);
 		}
 
-		std::cerr << Helpers::timestamp("DEBUG", "BCF") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(line.body->CHROM).name << "..." << std::endl;
+		//std::cerr << Helpers::timestamp("DEBUG", "BCF") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(line.body->CHROM).name << "..." << std::endl;
 		this->sort_order_helper.previous_position = 0;
 
 		// Get new contig value from header
@@ -368,7 +366,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
-		if(missing > DEFAULT_MISSINGNESS_CUTOFF){
+		if(missing > this->filters.missingness){
 			//if(!SILENT)
 			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing*100 << "%).  Dropping..." << std::endl;
 
@@ -457,7 +455,7 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 			}
 		}
 
-		if(missing > DEFAULT_MISSINGNESS_CUTOFF){
+		if(missing > this->filters.missingness){
 			//if(!SILENT)
 			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[*this->sort_order_helper.contigID].name << ":" << line.position << ", " << missing*100 << "%).  Dropping..." << std::endl;
 

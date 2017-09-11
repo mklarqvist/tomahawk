@@ -30,8 +30,7 @@ Executing `tomahawk <command>` gives a list of commands with brief descriptions
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
 format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
 commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
-disequilibrium data is written out in `two` and `toi` format. There is an option
-to produce human-readable tab-delimited output for smaller datasets (`-N` flag in `calc`).
+disequilibrium data is written out in `two` and `toi` format.
 
 ### Importing to Tomahawk
 By design Tomahawk only operates on bi-allelic SNVs and as such filters out
@@ -75,7 +74,7 @@ Converting a `twk` file to `vcf`
  tomahawk view -i file.twk -o file.vcf
  ```
 
-### Sort TWO file
+### Sort `TWO` file
 Partially sort `two` file in 500 MB chunks
 ```bash
 tomahawk sort -i file.two -o partial.two -L 500

@@ -13,7 +13,6 @@ namespace Tomahawk{
 template <class T, class Y = Support::TomahawkRun<T>>
 struct TomahawkBlock; // forward declare: required for build function
 
-
 template <int T = SIMD_ALIGNMENT>
 struct TomahawkBlockPackedPair{
 public:
