@@ -108,7 +108,7 @@ int sort(int argc, char** argv){
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
 	}
 
 	Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;

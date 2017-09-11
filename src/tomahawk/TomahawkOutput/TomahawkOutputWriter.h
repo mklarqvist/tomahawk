@@ -376,7 +376,7 @@ public:
 	void writeHeader(std::string& literals){
 		parent_type::writeHeader(literals);
 
-		toi_header_type toi_header;
+		toi_header_type toi_header(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->header->samples, this->header->n_contig);
 		stream_index.getNativeStream() << toi_header;
 	};
 
