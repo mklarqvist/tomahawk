@@ -220,7 +220,7 @@ public:
 		}
 
 		const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-		const TomahawkEntryMetaBase& test = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+		const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 		if(n_runs == 1){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
@@ -229,17 +229,17 @@ public:
 			return false;
 		}
 
-		if(test.HWE_P < this->filter.HWE_P){
+		if(base_meta.HWE_P < this->filter.HWE_P){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << '\t' << test << std::endl;
+			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << '\t' << base_meta << std::endl;
 			return false;
 		}
 
-		if(test.MAF < this->filter.MAF){
+		if(base_meta.MAF < this->filter.MAF){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << '\t' << test << std::endl;
+			//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
 			return false;
 		}
 
@@ -262,7 +262,7 @@ public:
 		}
 
 		const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-		const TomahawkEntryMetaBase& test = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+		const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 		if(n_runs == 1){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
@@ -270,17 +270,17 @@ public:
 			return false;
 		}
 
-		if(test.HWE_P < this->filter.HWE_P){
+		if(base_meta.HWE_P < this->filter.HWE_P){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << test.HWE_P << std::endl;
+			//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << std::endl;
 			return false;
 		}
 
-		if(test.MAF < this->filter.MAF){
+		if(base_meta.MAF < this->filter.MAF){
 			this->buffer_meta_.pointer = meta_start_pos; // reroll back
 			this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-			//std::cerr << "MAF < " << this->filter.MAF << ": " << test.MAF << std::endl;
+			//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;
 			return false;
 		}
 
