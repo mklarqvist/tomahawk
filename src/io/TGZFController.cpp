@@ -315,7 +315,7 @@ bool TGZFControllerStream::__Inflate(std::ifstream& stream, const BYTE* output, 
 		this->d_stream.next_in  = (Bytef*)&this->buffer.data[0];
 
 		if(total == 0){
-			std::cerr << "nothing read" << std::endl;
+			std::cerr << Helpers::timestamp("WARNING","TGZF") << "Nothing read!" << std::endl;
 			return false;
 		}
 		this->buffer.pointer = total;

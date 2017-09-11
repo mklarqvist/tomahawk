@@ -234,8 +234,27 @@ public:
 	}
 
 	inline void flush(void){
-		parent_type::flush();
-		this->stream_index.flush();
+		if(this->buffer.size() > 0){
+			IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
+			this->controller.Deflate(this->buffer);
+			this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
+			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+			this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
+			this->totempole_entry.uncompressed_size = this->controller.buffer.size();
+			this->controller.Clear();
+			this->buffer.reset();
+			this->stream_index.getNativeStream() << this->totempole_entry;
+			std::cerr << this->totempole_entry << std::endl;
+			this->totempole_entry.reset();
+		}
+		this->stream->flush();
+	}
+
+	void setPrevEntryFirst(const entry_type& entry){
+		this->totempole_entry.contigIDA = entry.AcontigID;
+		this->totempole_entry.contigIDB = entry.BcontigID;
+		this->totempole_entry.minPositionA = entry.Aposition;
+		this->totempole_entry.minPositionB = entry.Bposition;
 	}
 
 	inline void setPrevEntry(const entry_type* entry){
@@ -253,6 +272,9 @@ public:
 	}
 
 	void operator<<(const entry_type* const entry){
+		if(this->totempole_entry.entries == 0)
+			this->setPrevEntryFirst(*entry);
+
 		// A
 		if(this->totempole_entry.contigIDA != -1){
 			if(entry->Aposition < entry_prev.Aposition || entry->Aposition < this->totempole_entry.minPositionA){
@@ -300,9 +322,12 @@ public:
 	}
 
 	void operator<<(const entry_type& entry){
+		if(this->totempole_entry.entries == 0)
+			this->setPrevEntryFirst(entry);
+
 		// A
 		if(this->totempole_entry.contigIDA != -1){
-			if(entry.Aposition < entry_prev.Aposition || entry.Aposition < this->totempole_entry.minPositionA){
+			if(entry.Aposition < this->entry_prev.Aposition || entry.Aposition < this->totempole_entry.minPositionA){
 				this->totempole_entry.minPositionA = -1;
 				this->totempole_entry.maxPositionA = -1;
 			} else if(this->totempole_entry.minPositionA != -1) this->totempole_entry.maxPositionA = entry.Aposition;
@@ -340,9 +365,11 @@ public:
 			this->controller.Clear();
 			this->buffer.reset();
 			this->stream_index.getNativeStream() << this->totempole_entry;
+			std::cerr << this->totempole_entry << std::endl;
 			this->totempole_entry.reset();
 		}
 
+		// Update previous entry
 		this->setPrevEntry(entry);
 	}
 

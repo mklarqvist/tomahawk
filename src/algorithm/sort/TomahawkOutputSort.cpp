@@ -12,11 +12,23 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		return false;
 	}
 
+	//
+	std::vector<std::string> paths = Helpers::filePathBaseExtension(destinationPrefix);
+	std::string basePath = paths[0];
+	if(basePath.size() > 0)
+		basePath += '/';
+
+	std::string baseName;
+	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+		baseName = paths[2];
+	else baseName = paths[1];
+
+	//
 	this->reader.setWriterType(0);
 	this->reader.literals += "\n##tomahawk_partialSortCommand=" + Helpers::program_string(true);
-	this->reader.OpenWriter(destinationPrefix);
+	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
 	IO::WriterFile toi_writer;
-	toi_writer.open(destinationPrefix + ".toi");
+	toi_writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
 	IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
 	toi_writer.getNativeStream() << headIndex;
 
@@ -99,7 +111,6 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		this->reader.writer->write(this->reader.output_buffer);
 		totempole.byte_offset_end = stream.getNativeStream().tellp();
-		//std::cerr << totempole << std::endl;
 		toi_writer.getNativeStream() << totempole;
 
 		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
@@ -139,7 +150,6 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
 
 	for(U32 i = 0; i < n_toi_entries; ++i){
-		std::cerr << this->reader.toi_reader[i] << std::endl;
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
@@ -163,6 +173,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	// index
 	writer.setPrevEntry(outQueue.top().data);
+	writer.setPrevEntryFirst(outQueue.top().data);
 
 	// while queue is not empty
 	while(outQueue.empty() == false){

@@ -26,56 +26,102 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "algorithm/sort/TomahawkOutputSort.h"
 
-int sort(int argc, char** argv){
-	argc -= 2; argv += 2;
+void sort_usage(void){
 	programMessage();
-	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
+	std::cerr <<
+	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n"
+	"\n"
+	"Options:\n"
+	"  -i FILE  input Tomahawk (required)\n"
+	"  -o FILE  output file (required)\n"
+	"  -L INT   memory limit in MB (default: 100)\n"
+	"  -M       merge [null]\n"
+	"  -t INT   number of CPU threads (default: maximum available)\n";
+}
 
-	if(argc < 2){
-		std::cerr << argc << std::endl;
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Missing parameters" << std::endl;
+int sort(int argc, char** argv){
+	if(argc < 3){
+		sort_usage();
 		return(1);
 	}
 
-	std::string inputFile(&argv[0][0]);
-	std::string outputFile(&argv[1][0]);
+	static struct option long_options[] = {
+		{"input",		required_argument, 0, 'i' },
+		{"output",		required_argument, 0, 'o' },
+		{"memory",		optional_argument, 0, 'L' },
+		{"merge",		no_argument, 0, 'M' },
+		{"silent",		no_argument, 0,  's' },
+		{0,0,0,0}
+	};
 
-	// is merge?
-	bool merge = argv[2];
-	std::cerr << merge << std::endl;
+	// Parameter defaults
+	std::string input, output;
+	S32 memory_limit = 100e6;
+	bool merge = false;
 
-	// Parse file suffix
-	std::vector<std::string> paths = Tomahawk::Helpers::splitLastOf(inputFile, '/', true);
-	std::vector<std::string> files = Tomahawk::Helpers::splitLastOf(paths[1], '.');
+	int c = 0;
+	int long_index = 0;
+	while ((c = getopt_long(argc, argv, "i:o:L:Ms", long_options, &long_index)) != -1){
+		switch (c){
+		case ':':   /* missing option argument */
+			fprintf(stderr, "%s: option `-%c' requires an argument\n",
+					argv[0], optopt);
+			break;
 
-	// Todo: if failed to read from file suffix: try to look into file header MAGIC
-	if(files[1].size() == 0){
-		std::cerr << "could not determine file type from suffix" << std::endl;
-		return false;
+		case '?':
+		default:
+			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n",
+					argv[0], optopt);
+			break;
+
+		case 'i':
+			input = std::string(optarg);
+			break;
+		case 'o':
+			output = std::string(optarg);
+			break;
+		case 'L':
+			memory_limit = atoi(optarg) * 1e6;
+			if(memory_limit < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
+				return(1);
+			}
+			break;
+
+		case 'M':
+			merge = true;
+			break;
+		}
 	}
 
-	std::transform(files[1].begin(), files[1].end(), files[1].begin(), ::tolower);
+	if(input.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << input.size() << '\t' << input << std::endl;
+		return(1);
+	}
 
-	if(files[1] == Tomahawk::Constants::OUTPUT_SUFFIX){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR","SORT") << "Twk files are guaranteed sorted..." << std::endl;
-	} else if(files[1] == Tomahawk::Constants::OUTPUT_LD_SUFFIX) {
-		Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
+	if(output.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
+		std::cerr << output.size() << '\t' << input << std::endl;
+		return(1);
+	}
 
-		if(!merge){
-			if(!reader.sort(inputFile, outputFile, 1e9)){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
-				return 1;
-			}
-		} else {
-			std::cerr << "is merge" << std::endl;
-			if(!reader.sortMerge(inputFile, outputFile, 10e6)){
-				std::cerr << "failed merge" << std::endl;
-				return 1;
-			}
+	if(!SILENT){
+		programMessage();
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
+	}
 
+	Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
+	if(!merge){
+		if(!reader.sort(input, output, memory_limit)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
+			return 1;
 		}
 	} else {
-		std::cerr << "Unknown file type" << std::endl;
+		if(!reader.sortMerge(input, output, 10e6)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "failed merge" << std::endl;
+			return 1;
+		}
 	}
 
 	return 0;
