@@ -358,29 +358,7 @@ bool TomahawkOutputReader::OpenExtend(const std::string input){
 	return true;
 }
 
-
-bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
-	if(file_list.size() == 0){
-		std::cerr << "no input file list given" << std::endl;
-		return false;
-	}
-
-	std::ifstream file_list_read(file_list);
-	if(!file_list_read.good()){
-		std::cerr << "faild to get file_list" << std::endl;
-		return false;
-	}
-
-	std::vector<std::string> files;
-	std::string line;
-	while(getline(file_list_read, line)){
-		if(line.size() == 0){
-			std::cerr << "empty line" << std::endl;
-			break;
-		}
-		files.push_back(line);
-	}
-
+bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
 		std::cerr << "no input files" << std::endl;
 		return false;
@@ -425,6 +403,40 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	this->writer->flush();
 	this->writer->close();
 	return true;
+}
+
+bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const std::string& output){
+	if(files.size() == 0){
+		std::cerr << "no input files given" << std::endl;
+		return false;
+	}
+
+	return(this->__concat(files, output));
+}
+
+bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
+	if(file_list.size() == 0){
+		std::cerr << "no input file list given" << std::endl;
+		return false;
+	}
+
+	std::ifstream file_list_read(file_list);
+	if(!file_list_read.good()){
+		std::cerr << "faild to get file_list" << std::endl;
+		return false;
+	}
+
+	std::vector<std::string> files;
+	std::string line;
+	while(getline(file_list_read, line)){
+		if(line.size() == 0){
+			std::cerr << "empty line" << std::endl;
+			break;
+		}
+		files.push_back(line);
+	}
+
+	return(this->__concat(files, output));
 }
 
 bool TomahawkOutputReader::ParseHeader(void){

@@ -40,7 +40,7 @@ int main(int argc, char** argv){
 
 	if(argc == 1){
 		programMessage();
-		programHelp();
+		programHelpDetailed();
 		return(1);
 	}
 
@@ -76,12 +76,12 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "--help", 6) == 0 || strncmp(&argv[1][0], "help", 4) == 0){
 		programMessage();
-		programHelp();
+		programHelpDetailed();
 		return(0);
 
 	} else {
 		programMessage();
-		programHelp();
+		programHelpDetailed();
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal command" << std::endl;
 		return(1);
 	}

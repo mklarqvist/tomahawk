@@ -23,4 +23,17 @@ void programHelp(void){
 	std::cerr << "Commands: import, view, calc, sort, index, stats, concat" << std::endl;
 }
 
+void programHelpDetailed(void){
+	programHelp();
+	std::cerr <<
+    "\n"
+	"concat       concatenate TWO files from the same set of samples\n"
+	"calc         calculate linkage disequilibrium (TWO/TOI format)\n"
+	"import       import VCF/BCF to TWK/TWI\n"
+	"stat         basic statistics of TWK/TWO\n"
+	"sort         sort TWO file\n"
+    "merge        merge TWO files from non-overlapping sample sets\n"
+    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
+}
+
 #endif /* TOMAHAWK_UTILITY_H_ */

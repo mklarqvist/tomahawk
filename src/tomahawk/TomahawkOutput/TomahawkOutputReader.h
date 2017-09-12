@@ -64,7 +64,10 @@ public:
 	bool view(const std::string& filename);
 	bool index(const std::string& filename);
 	bool summary(const std::string& input);
+
+	// Concatenate
 	bool concat(const std::string& file_list, const std::string& output);
+	bool concat(const std::vector<std::string>& files, const std::string& output);
 
 	//
 	bool setWriterType(const int type){
@@ -93,6 +96,7 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 	bool __checkRegion(const entry_type* const entry);
+	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
 public:
 	U64 filesize;	// input file size

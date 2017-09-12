@@ -20,6 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
+#include <vector>
+
 #include "utility.h"
 #include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
@@ -50,7 +52,8 @@ int concat(int argc, char** argv){
 	};
 
 	// Parameter defaults
-	std::string input, output, files;
+	std::vector<std::string> input;
+	std::string output, files;
 
 	int c = 0;
 	int long_index = 0;
@@ -68,7 +71,7 @@ int concat(int argc, char** argv){
 			break;
 
 		case 'i':
-			input = std::string(optarg);
+			input.push_back(std::string(optarg));
 			break;
 		case 'o':
 			output = std::string(optarg);
@@ -79,21 +82,18 @@ int concat(int argc, char** argv){
 		}
 	}
 
-	if(input.length() == 0 && files.length() == 0){
+	if(input.size() == 0 && files.length() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
-		std::cerr << input.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
 	if(output.length() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
-		std::cerr << output.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
-	if(files.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No list of files specified..." << std::endl;
-		std::cerr << files.size() << '\t' << input << std::endl;
+	if(files.length() != 0 && input.size() != 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot specify both list of input files and manually declare input files..." << std::endl;
 		return(1);
 	}
 
@@ -103,10 +103,16 @@ int concat(int argc, char** argv){
 	}
 
 	Tomahawk::IO::TomahawkOutputReader reader;
-	if(input.size() == 0) input = files;
-	if(!reader.concat(files, output)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
-		return 1;
+	if(input.size() == 0){
+		if(!reader.concat(files, output)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
+			return 1;
+		}
+	} else {
+		if(!reader.concat(input, output)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
+			return 1;
+		}
 	}
 
 	return 0;
