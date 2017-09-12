@@ -8,6 +8,7 @@
 namespace Tomahawk{
 namespace VCF{
 namespace Constants{
+
 const std::string HEADER_COLUMN = "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
 const char VCF_DELIMITER = '\t';
 

@@ -75,6 +75,11 @@ struct TomahawkOutputEntry{
 
 
 // Sort reinterpreted casts of data
+// Workaround is based on data being reinterpreted as
+// entries from byte streams. Therefore regular sorting
+// is illegal. Instead a BYTE array literals stored as
+// a hard copy and reinterpreted as an entry in the
+// overloaded operator<
 #pragma pack(1)
 struct TomahawkOutputEntrySort{
 	typedef TomahawkOutputEntrySort self_type;
@@ -107,22 +112,6 @@ struct TomahawkOutputEntrySort{
 
 // comparator functions for output entry
 namespace Support{
-
-static inline bool TomahawkOutputEntryCompFunc(TomahawkOutputEntry* self, TomahawkOutputEntry* other){
-	if (self->AcontigID < other->AcontigID) return true;
-	if (other->AcontigID < self->AcontigID) return false;
-
-	if (self->Aposition < other->Aposition) return true;
-	if (other->Aposition < self->Aposition) return false;
-
-	if (self->BcontigID < other->BcontigID) return true;
-	if (other->BcontigID < self->BcontigID) return false;
-
-	if (self->Bposition < other->Bposition) return true;
-	if (other->Bposition < self->Bposition) return false;
-
-	return false;
-}
 
 static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry& self, const TomahawkOutputEntry& other){
 	if (self.AcontigID < other.AcontigID) return true;

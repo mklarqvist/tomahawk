@@ -51,6 +51,7 @@ public:
 	bool AddRegions(std::vector<std::string>& positions);
 
 	bool Open(const std::string input);
+	bool OpenExtend(const std::string input);
 	bool nextBlock(void);
 	bool nextVariant(const entry_type*& entry);
 	bool nextVariantLimited(const entry_type*& entry);
@@ -63,6 +64,7 @@ public:
 	bool view(const std::string& filename);
 	bool index(const std::string& filename);
 	bool summary(const std::string& input);
+	bool concat(const std::string& file_list, const std::string& output);
 
 	//
 	bool setWriterType(const int type){
@@ -83,7 +85,9 @@ public:
 	bool OpenWriter(const std::string output_file);
 
 private:
+	bool __Open(const std::string input);
 	bool ParseHeader(void);
+	bool ParseHeaderExtend(void);
 	bool __ParseRegion(const std::string& region, interval_type& interval);
 	bool __viewOnly(void);
 	bool __viewFilter(void);

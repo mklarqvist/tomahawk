@@ -96,16 +96,16 @@ public:
 	}
 
 public:
-	U64 byte_offset;	// tellg() position in stream for start of record in Tomahawk file
+	U64 byte_offset;		// tellg() position in stream for start of record in Tomahawk file
 	U64 byte_offset_end;	// tellg() position in stream for start of record in Tomahawk file
-	U32 entries; 		// number of variants in this block
-	U32 uncompressed_size; // uncompressed size of this block
-	S32 contigIDA; // if contigID >= 0 then all entries belong to this contigID
-	S32 minPositionA; // minPosition of entries. 0 if contigID = -1
-	S32 maxPositionA; // maxPosition of entries, 0 if contigID = -1
-	S32 contigIDB; // if contigID >= 0 then all entries belong to this contigID
-	S32 minPositionB; // minPosition of entries. 0 if contigID = -1
-	S32 maxPositionB; // maxPosition of entries, 0 if contigID = -1
+	U32 entries; 			// number of variants in this block
+	U32 uncompressed_size;	// uncompressed size of this block
+	S32 contigIDA; 			// if contigID >= 0 then all entries belong to this contigID
+	S32 minPositionA; 		// minPosition of entries. 0 if contigID = -1 or not sorted
+	S32 maxPositionA;		// maxPosition of entries, 0 if contigID = -1 or not sorted
+	S32 contigIDB;			// if contigID >= 0 then all entries belong to this contigID
+	S32 minPositionB;		// minPosition of entries. 0 if contigID = -1 or not sorted
+	S32 maxPositionB;		// maxPosition of entries, 0 if contigID = -1 or not sorted
 };
 
 }

@@ -21,6 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
+/*
+ Tomahawk:
+ Modified to work with pointers to intervals
+ Modified interval struct and added contigInterval struct
+ */
 #ifndef __INTERVAL_TREE_H
 #define __INTERVAL_TREE_H
 

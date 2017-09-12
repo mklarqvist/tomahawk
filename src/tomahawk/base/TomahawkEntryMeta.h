@@ -74,7 +74,7 @@ public:
 	}
 
 public:
-	T runs;
+	T runs; // number of runs
 };
 
 }

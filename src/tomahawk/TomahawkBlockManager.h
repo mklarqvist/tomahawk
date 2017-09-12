@@ -262,19 +262,15 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 	if(controller.support->variants == 0)
 		return false;
 
-	// Todo: put all variants in same buffer
 	controller.reset();
 	TomahawkBlock<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkBlock<T, Support::TomahawkRunPacked<T>>*>(&controller);
-	//std::cerr << samples << '\t' << c.support->variants << '\t' << ceil((double)samples/4) << std::endl;
 
 	this->width = c.support->variants;
-	//const BYTE overlow_uneven_refs = this->width % 8;
-	//this->total_size = sizeof(BYTE)*this->width*c.support->variants; // Number of bytes for all variants in this block
 	this->data = new pair_type*[c.support->variants];
 
 	const U32 byte_width = ceil((double)samples/4);
 
-	// INVERSE mask is cheaper
+	// INVERSE mask is cheaper in terms of instructions used
 	// exploited in calculations: TomahawkCalculationSlave
 	const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 	const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -292,9 +288,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 	}
 	controller.reset();
 
-	//const U32 WIDTH = ceil((double)samples/4);	// Number of bytes required per variant
 	const U32 byteAlignedEnd  = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
-	//const U32 vectorCycles	  = byteAlignedEnd*4/GENOTYPE_TRIP_COUNT;
 
 	// Search for zero runs in either end
 	for(U32 i = 0; i < c.support->variants; ++i){
@@ -306,6 +300,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 				break;
 		}
 
+		// Front of zeroes
 		this->data[i]->frontZero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
 		if(j == byteAlignedEnd)
 			break;
@@ -315,10 +310,9 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 			if(this->data[i]->data[j] != 0 || this->data[i]->mask[j] != 0)
 				break;
 		}
-		this->data[i]->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
 
-		//if(/this->data[i]->frontZero > samples)
-		//std::cerr << this->data[i]->frontZero << '\t' << this->data[i]->tailZero << '\t' << std::endl;
+		// Tail of zeroes
+		this->data[i]->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
 	}
 	return true;
 }

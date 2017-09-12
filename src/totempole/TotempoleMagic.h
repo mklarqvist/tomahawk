@@ -130,7 +130,7 @@ struct TomahawkOutputSortHeader : public TomahawkOutputHeader<length>{
 		return(stream);
 	}
 
-	void setSorted(const bool yes){ this->controller.sorted = yes; }
+	inline void setSorted(const bool yes){ this->controller.sorted = yes; }
 
 public:
 	totempole_controller_byte controller;

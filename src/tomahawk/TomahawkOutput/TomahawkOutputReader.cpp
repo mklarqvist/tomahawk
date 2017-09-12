@@ -305,7 +305,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 	return true;
 }
 
-bool TomahawkOutputReader::Open(const std::string input){
+bool TomahawkOutputReader::__Open(const std::string input){
 	this->stream.open(input, std::ios::binary | std::ios::in | std::ios::ate);
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to open file: " << input << std::endl;
@@ -331,11 +331,99 @@ bool TomahawkOutputReader::Open(const std::string input){
 		return false;
 	}
 
+	return true;
+}
+
+bool TomahawkOutputReader::Open(const std::string input){
+	if(!this->__Open(input))
+		return false;
+
 	if(!this->ParseHeader()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to parse header!" << std::endl;
 		return false;
 	}
 
+	return true;
+}
+
+bool TomahawkOutputReader::OpenExtend(const std::string input){
+	if(!this->__Open(input))
+		return false;
+
+	if(!this->ParseHeaderExtend()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to extend header!" << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+
+bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
+	if(file_list.size() == 0){
+		std::cerr << "no input file list given" << std::endl;
+		return false;
+	}
+
+	std::ifstream file_list_read(file_list);
+	if(!file_list_read.good()){
+		std::cerr << "faild to get file_list" << std::endl;
+		return false;
+	}
+
+	std::vector<std::string> files;
+	std::string line;
+	while(getline(file_list_read, line)){
+		if(line.size() == 0){
+			std::cerr << "empty line" << std::endl;
+			break;
+		}
+		files.push_back(line);
+	}
+
+	if(files.size() == 0){
+		std::cerr << "no input files" << std::endl;
+		return false;
+	}
+
+	// open first one
+	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << std::endl;
+	if(!this->Open(files[0])){
+		std::cerr << "failed to parse: " << files[0] << std::endl;
+		return false;
+	}
+
+	this->setWriterType(0);
+	this->setWriteHeader(true);
+	this->literals += "\n##tomahawk_concatCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_concatFiles=";
+	for(U32 i = 0; i < files.size(); ++i)
+		this->literals += files[i] + ';';
+
+	if(!this->OpenWriter(output)){
+		std::cerr << "failed to open writer" << std::endl;
+		return false;
+	}
+
+	while(this->nextBlock()){
+		this->writer->write(this->output_buffer);
+	}
+
+	for(U32 i = 1; i < files.size(); ++i){
+		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << std::endl;
+		this->stream.close();
+		if(!this->OpenExtend(files[i])){
+			std::cerr << "failed to parse: " << files[i] << std::endl;
+			return false;
+		}
+
+		while(this->nextBlock()){
+			this->writer->write(this->output_buffer);
+		}
+	}
+
+	this->writer->flush();
+	this->writer->close();
 	return true;
 }
 
@@ -368,6 +456,28 @@ bool TomahawkOutputReader::ParseHeader(void){
 	}
 
 	this->literals = std::string(this->gzip_controller.buffer.data);
+
+	return true;
+}
+
+bool TomahawkOutputReader::ParseHeaderExtend(void){
+	if(this->header.n_contig == 0)
+		return false;
+
+	U32* ret;
+	for(U32 i = 0; i < this->header.n_contig; ++i){
+		this->stream >> this->contigs[i];
+		// std::cerr << this->contigs[i] << std::endl;
+		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
+			std::cerr << "Contig does not exist in other file" << std::endl;
+			return false;
+		}
+	}
+
+	if(!this->gzip_controller.InflateBlock(this->stream, this->buffer)){
+		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
+		return false;
+	}
 
 	return true;
 }

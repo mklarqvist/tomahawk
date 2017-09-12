@@ -21,17 +21,93 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 #include "utility.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
+
+void concat_usage(void){
+	programMessage();
+	std::cerr <<
+	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n"
+	"\n"
+	"Options:\n"
+	"  -i FILE  input files (required)\n"
+	"  -F LIST  list of files to concatenate (required)\n"
+	"  -o FILE  output file (required)\n"
+	"  -t INT   number of CPU threads (default: maximum available)\n";
+}
 
 int concat(int argc, char** argv){
-	// 1: Input list of TWO files: check files for header and EOF marker
-	// Check validity before beginning copy: do not want to concat
-	// several large files and then fail hours later because a file was
-	// truncated or erroneous
-	// Also have to check that sample and contig information is identical
-	// or at least mappable to each other
-	// 2: Open first and hard copy from 0->size-EOF
-	// 3: Next file: open and copy from header->size-eof
-	// 4: Last file: open and copy from header->eof
+	if(argc < 3){
+		sort_usage();
+		return(1);
+	}
 
-	return(0);
+	static struct option long_options[] = {
+		{"input",		optional_argument, 0, 'i' },
+		{"output",		required_argument, 0, 'o' },
+		{"files",		optional_argument, 0, 'F' },
+		{"silent",		no_argument, 0,  's' },
+		{0,0,0,0}
+	};
+
+	// Parameter defaults
+	std::string input, output, files;
+
+	int c = 0;
+	int long_index = 0;
+	while ((c = getopt_long(argc, argv, "i:o:F:s", long_options, &long_index)) != -1){
+		switch (c){
+		case ':':   /* missing option argument */
+			fprintf(stderr, "%s: option `-%c' requires an argument\n",
+					argv[0], optopt);
+			break;
+
+		case '?':
+		default:
+			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n",
+					argv[0], optopt);
+			break;
+
+		case 'i':
+			input = std::string(optarg);
+			break;
+		case 'o':
+			output = std::string(optarg);
+			break;
+		case 'F':
+			files = std::string(optarg);
+			break;
+		}
+	}
+
+	if(input.length() == 0 && files.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << input.size() << '\t' << input << std::endl;
+		return(1);
+	}
+
+	if(output.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
+		std::cerr << output.size() << '\t' << input << std::endl;
+		return(1);
+	}
+
+	if(files.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No list of files specified..." << std::endl;
+		std::cerr << files.size() << '\t' << input << std::endl;
+		return(1);
+	}
+
+	if(!SILENT){
+		programMessage();
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling concat..." << std::endl;
+	}
+
+	Tomahawk::IO::TomahawkOutputReader reader;
+	if(input.size() == 0) input = files;
+	if(!reader.concat(files, output)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
+		return 1;
+	}
+
+	return 0;
 }
