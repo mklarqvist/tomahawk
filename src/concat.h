@@ -28,18 +28,21 @@ DEALINGS IN THE SOFTWARE.
 void concat_usage(void){
 	programMessage();
 	std::cerr <<
-	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n"
-	"\n"
+	"About:  Concatenate or combine TWO files. All source files must share the same contig\n"
+	"        information in the same order as described in the header. This program is used\n"
+	"        primarily to concatenate output TWO files from calc in chunk mode.\n"
+	"        The input files does not have to be sorted or indexed.\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " concat [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input files (required)\n"
 	"  -F LIST  list of files to concatenate (required)\n"
 	"  -o FILE  output file (required)\n"
-	"  -t INT   number of CPU threads (default: maximum available)\n";
+	"  -s       silent mode (turn off all messages)\n";
 }
 
 int concat(int argc, char** argv){
 	if(argc < 3){
-		sort_usage();
+		concat_usage();
 		return(1);
 	}
 

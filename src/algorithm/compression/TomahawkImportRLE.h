@@ -297,10 +297,11 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicB
 	meta += line.ref_alt;
 
 	U32 internal_pos = line.p_genotypes;
-	T length = 1;
 	U64 sumLength = 0;
+	T length = 1;
 	T __dump = 0;
 	T n_runs = 0;
+	//const U64 runs_pointer_begin = runs.pointer;
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
@@ -360,6 +361,7 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicB
 	position |= this->helper.missingValues << 0;
 	meta += this->helper.MGF;
 	meta += this->helper.HWE_P;
+	//n_runs = runs.pointer - runs_pointer_begin; // temp
 	meta += n_runs;
 
 	this->helper.reset();
