@@ -148,14 +148,19 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	std::ifstream* streams = new std::ifstream[n_toi_entries];
 	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
 
+	std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
 	}
+	std::cerr << " Done!";
 
 	// queue
 	queue_type outQueue;
+
+	//
+	std::cerr << Helpers::timestamp("LOG", "SORT") << "Merging..." << std::endl;
 
 	// draw one from each
 	const entry_type* e;
