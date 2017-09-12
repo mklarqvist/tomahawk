@@ -1,7 +1,7 @@
 #ifndef TGZFHEADER_H_
 #define TGZFHEADER_H_
 
-#include "IOConstants.h"
+#include "GZFConstants.h"
 
 namespace Tomahawk{
 namespace IO{

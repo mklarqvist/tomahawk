@@ -2,10 +2,10 @@
 #include <limits>
 #include <cassert>
 
-#include "../third_party/zlib/zconf.h"
-#include "../third_party/zlib/zlib.h"
-#include "IOConstants.h"
+#include "../../third_party/zlib/zconf.h"
+#include "../../third_party/zlib/zlib.h"
 #include "TGZFController.h"
+#include "GZFConstants.h"
 
 namespace Tomahawk {
 namespace IO {

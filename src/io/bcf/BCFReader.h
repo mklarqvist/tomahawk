@@ -6,7 +6,7 @@
 #define BCF_ASSERT 1
 
 #include "../BasicBuffer.h"
-#include "../BGZFController.h"
+#include "../compression/BGZFController.h"
 #include "BCFEntry.h"
 
 namespace Tomahawk {

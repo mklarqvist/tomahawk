@@ -16,6 +16,7 @@ RM := rm
 -include src/support/subdir.mk
 -include src/math/subdir.mk
 -include src/io/vcf/subdir.mk
+-include src/io/compression/subdir.mk
 -include src/io/bcf/subdir.mk
 -include src/io/subdir.mk
 -include src/algorithm/sort/subdir.mk

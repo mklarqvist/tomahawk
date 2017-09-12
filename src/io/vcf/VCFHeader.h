@@ -4,10 +4,10 @@
 #include <algorithm>
 
 #include "../../support/helpers.h"
-#include "../reader.h"
 #include "VCFHeaderConstants.h"
 #include "VCFHeaderContig.h"
 #include "VCFHeaderLine.h"
+#include "../reader.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "../../totempole/TotempoleReader.h"
 

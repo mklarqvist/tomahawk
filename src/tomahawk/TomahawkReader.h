@@ -7,8 +7,8 @@
 #include <bitset>
 
 #include "../support/MagicConstants.h"
-#include "../io/TGZFController.h"
-#include "../io/IOConstants.h"
+#include "../io/compression/TGZFController.h"
+#include "../io/compression/GZFConstants.h"
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
 #include "../algorithm/Balancer.h"

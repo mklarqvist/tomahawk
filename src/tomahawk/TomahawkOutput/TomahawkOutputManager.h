@@ -2,7 +2,7 @@
 #define TOMAHAWK_TOMAHAWKOUTPUTMANAGER_H_
 
 #include "../../io/BasicWriters.h"
-#include "../../io/TGZFController.h"
+#include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
 #include "../../totempole/TotempoleContig.h"
 #include "../../totempole/TotempoleMagic.h"

@@ -1,6 +1,7 @@
 #ifndef VCFPARSER_H_
 #define VCFPARSER_H_
 
+#include "../io/reader.h"
 #include "../io/vcf/VCFHeader.h"
 #include "../io/bcf/BCFReader.h"
 #include "TomahawkImporterFilters.h"

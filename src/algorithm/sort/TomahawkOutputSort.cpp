@@ -1,7 +1,7 @@
 #include <cassert>
 
 #include "TomahawkOutputSort.h"
-#include "../../io/TGZFEntryIterator.h"
+#include "../../io/compression/TGZFEntryIterator.h"
 
 namespace Tomahawk{
 namespace Algorithm{

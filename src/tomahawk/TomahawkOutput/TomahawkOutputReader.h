@@ -9,7 +9,7 @@
 
 #include "../../support/TypeDefinitions.h"
 #include "../../io/BasicBuffer.h"
-#include "../../io/TGZFController.h"
+#include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "../../totempole/TotempoleMagic.h"

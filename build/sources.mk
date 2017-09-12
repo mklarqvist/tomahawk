@@ -26,6 +26,7 @@ SUBDIRS := \
 src/algorithm/sort \
 src/io \
 src/io/bcf \
+src/io/compression \
 src/io/vcf \
 src \
 src/math \

@@ -1,12 +1,11 @@
-#ifndef IOCONSTANTS_H_
-#define IOCONSTANTS_H_
+#ifndef GZFCONSTANTS_H_
+#define GZFCONSTANTS_H_
 
-#include "../support/TypeDefinitions.h"
+#include "../../support/TypeDefinitions.h"
 
 namespace Tomahawk{
 namespace IO{
 namespace Constants{
-
 
 // zlib & TGZF constants
 const BYTE GZIP_ID1   = 31;
@@ -33,4 +32,4 @@ const BYTE  	BGZF_BLOCK_HEADER_LENGTH  	= 18;
 }
 }
 
-#endif /* IOCONSTANTS_H_ */
+#endif /* GZFCONSTANTS_H_ */

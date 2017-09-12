@@ -10,7 +10,7 @@
 #include "../support/MagicConstants.h"
 #include "../support/helpers.h"
 #include "../algorithm/OpenHashTable.h"
-#include "../io/TGZFController.h"
+#include "../io/compression/TGZFController.h"
 #include "TotempoleEntry.h"
 #include "TotempoleContig.h"
 #include "TotempoleHeader.h"

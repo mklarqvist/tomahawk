@@ -6,7 +6,7 @@
 #include "../support/TypeDefinitions.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
-#include "../io/TGZFController.h"
+#include "../io/compression/TGZFController.h"
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
