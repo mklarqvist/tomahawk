@@ -52,7 +52,7 @@ private:
 	bool filterPmodel(const entry_type& type) const;
 	bool filterFLAG(const entry_type& type) const;
 
-private:
+public:
 	bool any_filter_user_set;
 
 	// Filters
