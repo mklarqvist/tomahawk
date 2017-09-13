@@ -10,7 +10,8 @@
 #include "TomahawkOutputWriter.h"
 
 namespace Tomahawk {
-namespace IO{
+namespace IO {
+
 TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
 		position(0),

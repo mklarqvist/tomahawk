@@ -154,7 +154,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
 	}
-	std::cerr << " Done!";
+	std::cerr << " Done!" << std::endl;
 
 	// queue
 	queue_type outQueue;
