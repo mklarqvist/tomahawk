@@ -7,7 +7,7 @@ TotempoleOutputReader::TotempoleOutputReader() : n_entries(0), ERROR_STATE(TOI_O
 TotempoleOutputReader::~TotempoleOutputReader(){}
 
 bool TotempoleOutputReader::Open(const std::string& input){
-	this->stream = std::ifstream(input, std::ios::in | std::ios::binary | std::ios::ate);
+	this->stream.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream.good()){
 		//std::cerr << "failed does not exist" << std::endl;
 		this->ERROR_STATE = TOI_NO_EXIST;
