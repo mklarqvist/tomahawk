@@ -71,7 +71,7 @@ int main(int argc, char** argv){
 		return(stats(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
-		programMessage();
+		programMessage(false);
 		return(0);
 
 	} else if(strncmp(&argv[1][0], "--help", 6) == 0 || strncmp(&argv[1][0], "help", 4) == 0){
