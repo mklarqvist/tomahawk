@@ -31,8 +31,10 @@ DEALINGS IN THE SOFTWARE.
 void view_usage(void){
 	programMessage();
 	std::cerr <<
-	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " view [options] <in.twk>|<in.two>\n"
-	"\n"
+	"About:  Convert binary TWK/TWO to natural text (VCF/LD); subset and slice data\n"
+	"        Data does not have to be indexed. However, operations are faster if they\n"
+	"        are.\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file (- for stdout)\n"
@@ -57,7 +59,7 @@ void view_usage(void){
 	"  -x FLOAT   smallest Chi-squared CV (default: 0)\n"
 	"  -X FLOAT   largest Chi-squared CV (default: inf)\n"
 	"  -a INT     minimum minor-haplotype count (default: 0)\n"
-	"  -A INT     maximum minor-haplotype count (default: infinity)\n"
+	"  -A INT     maximum minor-haplotype count (default: inf)\n"
 	"  -f INT     include FLAG value\n"
 	"  -F INT     exclude FLAG value\n"
 	"  -r FLOAT   Pearson's R-squared minimum cut-off value (default: 0.1)\n"
@@ -73,8 +75,6 @@ void view_usage(void){
 }
 
 int view(int argc, char** argv){
-	//argc -= 1; argv += 1;
-
 	if(argc < 3){
 		view_usage();
 		return(1);
