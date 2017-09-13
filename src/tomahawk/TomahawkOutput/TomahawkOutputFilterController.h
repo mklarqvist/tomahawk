@@ -22,8 +22,8 @@ public:
 
 	inline const bool& isAnySet(void) const{ return(this->any_filter_user_set); }
 
-	bool setFilterTable(const S32& a, const S32& b, const S32& c, const S32& d);
-	bool setFilterTable(const S32& all);
+	bool setFilterTable(const double& a, const double& b, const double& c, const double& d);
+	bool setFilterTable(const double& all);
 	bool setFilterD(const float& min, const float& max);
 	bool setFilterDprime(const float& min, const float& max);
 	bool setFilterRsquared(const float& min, const float& max);
@@ -32,15 +32,14 @@ public:
 	bool setFilterChiSquared(const double& min, const double& max);
 	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
 	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
-	bool setFilterMHF(const int64_t& min, const int64_t& max);
+	bool setFilterMHF(const double& min, const double& max);
 
 	bool filter(const entry_type& target) const;
 
 	std::string getInterpretedString(void) const;
-
-private:
 	inline void trigger(void){ this->any_filter_user_set = true; }
 
+private:
 	template <class T, class Y> bool filter(const T& value, const Y& min, const Y& max) const;
 
 	bool filterJointHF(const entry_type& target) const;
@@ -56,9 +55,9 @@ public:
 	bool any_filter_user_set;
 
 	// Filters
-	U64 minP1, minP2, minQ1, minQ2;
-	U64 maxP1, maxP2, maxQ1, maxQ2;
-	U64 minMHF, maxMHF;
+	double minP1, minP2, minQ1, minQ2;
+	double maxP1, maxP2, maxQ1, maxQ2;
+	double minMHF, maxMHF;
 	float minD, maxD;
 	float minDprime, maxDprime;
 	double minR2, maxR2;

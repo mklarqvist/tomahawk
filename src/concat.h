@@ -37,7 +37,7 @@ void concat_usage(void){
 	"  -i FILE  input files (required)\n"
 	"  -F LIST  list of files to concatenate (required)\n"
 	"  -o FILE  output file (required)\n"
-	"  -s       silent mode (turn off all messages)\n";
+	"  -s       Hide all program messages [null]\n";
 }
 
 int concat(int argc, char** argv){

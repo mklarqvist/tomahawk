@@ -34,7 +34,7 @@ void view_usage(void){
 	"About:  Convert binary TWK->VCF or TWO->LD; subset and slice TWK/TWO data\n"
 	"        Data does not have to be indexed. However, operations are faster if they\n"
 	"        are.\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] <in.two>\n\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file (- for stdout)\n"
@@ -42,7 +42,7 @@ void view_usage(void){
 	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
 	"  -N       output in tab-delimited text format (see -O) [null]\n"
 	"  -B       output in binary TWO/TWK format (see -O, default)[null]\n"
-	"  -t INT   number of CPU threads (default: maximum available)\n\n"
+	"  -s       Hide all program messages [null]\n\n"
 
 	// Twk parameters
 	"Twk parameters\n"
@@ -50,12 +50,14 @@ void view_usage(void){
 
 	// Two parameters
 	"Two parameters\n"
+	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value (default: 0.1)\n"
+	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -p, --minP   FLOAT   smallest P-value (default: 0)\n"
 	"  -P, --maxP   FLOAT   largest P-value (default: 1)\n"
 	"  -d, --minD   FLOAT   smallest D value (default: -1)\n"
 	"  -D, --maxD   FLOAT   largest D value (default: 1)\n"
-	"  -d, --minDP  FLOAT   smallest D' value (default: -1)\n"
-	"  -D, --maxDP  FLOAT   largest D' value (default: 1)\n"
+	"  -b, --minDP  FLOAT   smallest D' value (default: 0)\n"
+	"  -B, --maxDP  FLOAT   largest D' value (default: 1)\n"
 	"  -x, --minChi FLOAT   smallest Chi-squared CV (default: 0)\n"
 	"  -X, --maxChi FLOAT   largest Chi-squared CV (default: inf)\n"
 	"  -a, --minMHC FLOAT   minimum minor-haplotype count (default: 0)\n"
@@ -64,12 +66,8 @@ void view_usage(void){
 	"  -M, --maxMP  FLOAT   largest model Chi-squared CV (default: inf)\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
-	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  --min<cell>  FLOAT   smallest cell count (default: 0)\n"
-	"  --max<cell>  FLOAT   largest cell count (default: inf)\n"
-	"  -d                   Show real-time progress update in cerr [null]\n"
-	"  -s                   Hide all program messages [null]\n";
+	"  --max<cell>  FLOAT   largest cell count (default: inf)\n";
 }
 
 int view(int argc, char** argv){
@@ -85,14 +83,16 @@ int view(int argc, char** argv){
 		{"maxP",		optional_argument, 0, 'P' },
 		{"minR2",		optional_argument, 0, 'r' },
 		{"maxR2",		optional_argument, 0, 'R' },
-		{"minDprime",	optional_argument, 0, 'd' },
-		{"maxDprime",	optional_argument, 0, 'D' },
+		{"minDP",	optional_argument, 0, 'd' },
+		{"maxDP",	optional_argument, 0, 'D' },
+		{"minChi",	optional_argument, 0, 'x' },
+		{"maxChi",	optional_argument, 0, 'X' },
 		{"minAlelles",	optional_argument, 0, 'a' },
 		{"maxAlleles",	optional_argument, 0, 'A' },
+		{"minMP",	optional_argument, 0, 'm' },
+		{"maxMP",	optional_argument, 0, 'M' },
 		{"flagInclude",	optional_argument, 0, 'f' },
 		{"flagExclude",	optional_argument, 0, 'F' },
-		{"minHWE",	optional_argument, 0, 'w' },
-		{"maxHWE",	optional_argument, 0, 'W' },
 		{"headerOnly",	no_argument, 0, 'H' },
 		{"noHeader",	no_argument, 0, 'h' },
 		{"dropGenotypes",	optional_argument, 0, 'G' },
@@ -110,7 +110,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:P:p:a:A:R:r:f:F:d:D:w:W:O:hHGsNB", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:b:B:x:X:a:A:m:M:f:F:HhGs", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -140,6 +140,7 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter r has to be in range 0 < r < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		case 'R':
 			two_filter.maxR2 = atof(optarg);
@@ -151,6 +152,7 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter R has to be in range 0 < R < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		case 'd':
 			two_filter.minDprime = atof(optarg);
@@ -162,6 +164,7 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter d has to be in range 0 < d < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		case 'D':
 			two_filter.maxDprime = atof(optarg);
@@ -173,6 +176,7 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter D has to be in range 0 < D < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		case 'p':
 			two_filter.minP = atof(optarg);
@@ -184,6 +188,7 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter p has to be in range 0 < p < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		case 'P':
 			two_filter.maxP = atof(optarg);
@@ -195,9 +200,45 @@ int view(int argc, char** argv){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter P has to be in range 0 < P < 1" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
+
+		case 'x':
+			two_filter.minChiSquared = atof(optarg);
+			if(two_filter.minChiSquared < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter x cannot be negative" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+		case 'X':
+			two_filter.maxChiSquared = atof(optarg);
+			if(two_filter.maxChiSquared <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter X cannot be <= 0" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+
+		case 'm':
+			two_filter.minPmodel = atof(optarg);
+			if(two_filter.minPmodel < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter m cannot be negative" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+		case 'M':
+			two_filter.maxPmodel = atof(optarg);
+			if(two_filter.maxPmodel <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter M cannot be <= 0" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+
 		case 'a':
-			two_filter.minMHF = atoi(optarg);
+			two_filter.minMHF = atof(optarg);
 			if(two_filter.minMHF < 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter a cannot be negative" << std::endl;
 				return(1);
@@ -205,18 +246,21 @@ int view(int argc, char** argv){
 			break;
 
 		case 'A':
-			two_filter.maxMHF = atoi(optarg);
+			two_filter.maxMHF = atof(optarg);
 			if(two_filter.maxMHF < 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter A cannot be negative" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 
 		case 'f':
 			two_filter.filterValueInclude = atoi(optarg);
+			two_filter.trigger();
 			break;
 		case 'F':
 			two_filter.filterValueExclude = atoi(optarg);
+			two_filter.trigger();
 			break;
 		case 's':
 			SILENT = 1;
@@ -281,9 +325,6 @@ int view(int argc, char** argv){
 		filter_regions.push_back(param);
 	}
 
-	Tomahawk::IO::TomahawkOutputReader reader;
-	Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
-
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
 		Tomahawk::TomahawkReader tomahawk;
 		tomahawk.setDropGenotypes(dropGenotypes);
@@ -297,7 +338,10 @@ int view(int argc, char** argv){
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
+		Tomahawk::IO::TomahawkOutputReader reader;
 		reader.setWriteHeader(outputHeader);
+		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
+		filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
 
 		if(!reader.setWriterType(outputType))
 			return 1;

@@ -28,11 +28,13 @@ DEALINGS IN THE SOFTWARE.
 void calc_usage(void){
 	programMessage();
 	std::cerr <<
-	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] <in.twk>\n"
-	"\n"
+	"About:  Calculate LD\n"
+	"        Force phased -p or unphased -u for faster calculations if\n"
+	"        the entire file is guaranteed to have that phasing.\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file\n"
+	"  -o FILE  output file (required)\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n"
 	"  -c INT   number of parts to split problem into (default: 1)\n"
 	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"

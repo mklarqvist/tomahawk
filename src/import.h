@@ -26,8 +26,9 @@ DEALINGS IN THE SOFTWARE.
 void import_usage(void){
 	programMessage();
 	std::cerr <<
-	"Usage: " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.vcf|in.bcf> -o <out_prefix> \n"
-	"\n"
+	"About:  Convert VCF/BCF->TWK/; subset and slice TWK/TWO data\n"
+	"        Only biallelic diploid genotypes from SNVs will be retained\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.vcf>/<in.bcf> -o <output.twk>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file prefix (required)\n"

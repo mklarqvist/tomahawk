@@ -30,9 +30,8 @@ void programHelpDetailed(void){
 	"concat       concatenate TWO files from the same set of samples\n"
 	"calc         calculate linkage disequilibrium (TWO/TOI format)\n"
 	"import       import VCF/BCF to TWK/TWI\n"
-	"stat         basic statistics of TWK/TWO\n"
+	"stats        basic statistics of TWK/TWO\n"
 	"sort         sort TWO file\n"
-    "merge        merge TWO files from non-overlapping sample sets\n"
     "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
 }
 

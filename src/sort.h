@@ -39,7 +39,7 @@ void sort_usage(void){
 	"  -o FILE  output file (required)\n"
 	"  -L INT   memory limit in MB (default: 100)\n"
 	"  -M       merge [null]\n"
-	"  -t INT   number of CPU threads (default: maximum available)\n";
+	"  -s       Hide all program messages [null]\n";
 }
 
 int sort(int argc, char** argv){

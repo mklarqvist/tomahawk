@@ -43,8 +43,10 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 bool TomahawkOutputReader::view(const std::string& input){
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
-	else
+	else if(this->filter.any_filter_user_set){
 		return(this->__viewFilter()); // Otherwise normal filter function
+	} else
+		return(this->__viewOnly());
 }
 
 bool TomahawkOutputReader::OpenWriter(void){
@@ -148,15 +150,24 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
-	// Todo: view when no filter parameters are set -> conversion only, e.g. two -> vcf
-	std::cerr << "illegal" << std::endl;
-	exit(1);
+	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=YES regions=FALSE";
 
-	const entry_type* entry;
-	//while(this->reader.nextEntry(entry)){
-	//	std::cout << *entry << '\n';
-		//std::cout.write(reinterpret_cast<const char*>(entry), sizeof(entry_type));
-	//}
+	if(!this->OpenWriter())
+		return false;
+
+	// Natural output required parsing
+	if(this->writer_output_type == WRITER_TYPE::natural){
+		const entry_type* entry;
+		while(this->nextVariant(entry))
+			*this->writer << entry;
+
+	}
+	// Binary output without filtering simply writes it back out
+	else if(this->writer_output_type == WRITER_TYPE::binary){
+		while(this->nextBlock())
+			this->writer->write(this->output_buffer);
+	}
 
 	return true;
 }
@@ -168,7 +179,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 	if(!this->OpenWriter())
 		return false;
 
-	const entry_type*  entry;
+	const entry_type* entry;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
 			*this->writer << entry;

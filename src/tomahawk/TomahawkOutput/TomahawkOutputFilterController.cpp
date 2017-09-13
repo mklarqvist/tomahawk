@@ -10,18 +10,18 @@ TomahawkOutputFilterController::TomahawkOutputFilterController() :
 	minP2(0),
 	minQ1(0),
 	minQ2(0),
-	maxP1(std::numeric_limits<U64>::max()),
-	maxP2(std::numeric_limits<U64>::max()),
-	maxQ1(std::numeric_limits<U64>::max()),
-	maxQ2(std::numeric_limits<U64>::max()),
+	maxP1(std::numeric_limits<double>::max()),
+	maxP2(std::numeric_limits<double>::max()),
+	maxQ1(std::numeric_limits<double>::max()),
+	maxQ2(std::numeric_limits<double>::max()),
 	minMHF(0),
-	maxMHF(std::numeric_limits<U64>::max()),
+	maxMHF(std::numeric_limits<double>::max()),
 	minD(-100), maxD(100),
 	minDprime(-100), maxDprime(100),
 	minR2(0), maxR2(100),
 	minP(0), maxP(100),
 	minChiSquared(0), maxChiSquared(std::numeric_limits<double>::max()),
-	minPmodel(0), maxPmodel(1),
+	minPmodel(0), maxPmodel(std::numeric_limits<double>::max()),
 	filterValueInclude(0),
 	filterValueExclude(0)
 {}
@@ -35,12 +35,12 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 				"minP2=" + std::to_string(this->minP2) + " " +
 				"minQ1=" + std::to_string(this->minQ1) + " " +
 				"minQ2=" + std::to_string(this->minQ2) + " " +
-				"maxP1=" + (this->maxP1 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxP1)) + " " +
-				"maxP2=" + (this->maxP2 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxP2)) + " " +
-				"maxQ1=" + (this->maxQ1 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxQ1)) + " " +
-				"maxQ2=" + (this->maxQ2 == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxQ2)) + " " +
+				"maxP1=" + (this->maxP1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP1)) + " " +
+				"maxP2=" + (this->maxP2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP2)) + " " +
+				"maxQ1=" + (this->maxQ1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ1)) + " " +
+				"maxQ2=" + (this->maxQ2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ2)) + " " +
 				"minMHF=" + std::to_string(this->minMHF) + " " +
-				"maxMHF=" + (this->maxMHF == std::numeric_limits<U64>::max() ? "U64_MAX" : std::to_string(this->maxMHF)) + " " +
+				"maxMHF=" + (this->maxMHF == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxMHF)) + " " +
 				"minD=" + std::to_string(this->minD) + " " +
 				"maxD=" + std::to_string(this->maxD) + " " +
 				"minDprime=" + std::to_string(this->minDprime) + " " +
@@ -62,18 +62,16 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 }
 
 bool TomahawkOutputFilterController::filter(const entry_type& target) const{
-	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0)){
-		//std::cerr << "failed bits" << std::endl;
+	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0))
 		return false;
-	}
+
 	if(!this->filter(target.R2, this->minR2, this->maxR2)) return false;
-	if(!this->filter(target.D, this->minD, this->maxD)) return false;
 	if(!this->filter(target.P, this->minP, this->maxP)) return false;
+	if(!this->filter(target.D, this->minD, this->maxD)) return false;
 	if(!this->filter(target.Dprime, this->minDprime, this->maxDprime)) return false;
 	if(!this->filter(target.chiSqModel, this->minChiSquared, this->maxChiSquared)) return false;
+	if(!this->filter(target.chiSqFisher, this->minPmodel, this->maxPmodel)) return false;
 	if(!this->filterJointHF(target)) return false;
-	//if(!this->filterHF(target)) return false;
-
 	if(!this->filter(target.p1, this->minP1, this->maxP1)) return false;
 	if(!this->filter(target.p2, this->minP2, this->maxP2)) return false;
 	if(!this->filter(target.q1, this->minQ1, this->maxQ1)) return false;
@@ -103,7 +101,7 @@ bool TomahawkOutputFilterController::filterJointHF(const entry_type& target) con
 	return(total > this->minMHF);
 }
 
-bool TomahawkOutputFilterController::setFilterTable(const S32& a, const S32& b, const S32& c, const S32& d){
+bool TomahawkOutputFilterController::setFilterTable(const double& a, const double& b, const double& c, const double& d){
 	if(a < 0 || b < 0 || c < 0 || d < 0){
 		std::cerr << "cannot have negative filter values" << std::endl;
 		return false;
@@ -122,7 +120,7 @@ bool TomahawkOutputFilterController::setFilterTable(const S32& a, const S32& b, 
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterTable(const S32& all){
+bool TomahawkOutputFilterController::setFilterTable(const double& all){
 	if(all < 0){
 		std::cerr << "cannot have negative filter values" << std::endl;
 		return false;
@@ -255,7 +253,7 @@ bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, cons
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterMHF(const int64_t& min, const int64_t& max){
+bool TomahawkOutputFilterController::setFilterMHF(const double& min, const double& max){
 	if(min < 0){
 		std::cerr << "min < 0" << std::endl;
 		return false;
