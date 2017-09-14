@@ -70,17 +70,7 @@ public:
 	bool concat(const std::vector<std::string>& files, const std::string& output);
 
 	//
-	bool setWriterType(const int type){
-		if(type == 0)
-			this->writer_output_type = WRITER_TYPE::binary;
-		else if(type == 1)
-			this->writer_output_type = WRITER_TYPE::natural;
-		else {
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR","READER") << "Unknown writer type: " << type << std::endl;
-			return false;
-		}
-		return true;
-	}
+	bool setWriterType(const int type);
 	void setWriteHeader(const bool write){ this->output_header = write; }
 
 	filter_type& getFilter(void){ return this->filter; }

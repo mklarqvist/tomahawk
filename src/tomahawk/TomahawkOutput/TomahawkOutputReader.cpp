@@ -372,14 +372,14 @@ bool TomahawkOutputReader::OpenExtend(const std::string input){
 
 bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << "no input files" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files..." << std::endl;
 		return false;
 	}
 
 	// open first one
-	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << std::endl;
+	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
 	if(!this->Open(files[0])){
-		std::cerr << "failed to parse: " << files[0] << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
 		return false;
 	}
 
@@ -391,7 +391,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		this->literals += files[i] + ';';
 
 	if(!this->OpenWriter(output)){
-		std::cerr << "failed to open writer" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to open writer..." << std::endl;
 		return false;
 	}
 
@@ -400,10 +400,10 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 
 	for(U32 i = 1; i < files.size(); ++i){
-		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
 		this->stream.close();
 		if(!this->OpenExtend(files[i])){
-			std::cerr << "failed to parse: " << files[i] << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
 			return false;
 		}
 
@@ -419,7 +419,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << "no input files given" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files given..." << std::endl;
 		return false;
 	}
 
@@ -428,13 +428,13 @@ bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const s
 
 bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
 	if(file_list.size() == 0){
-		std::cerr << "no input file list given" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input file list given..." << std::endl;
 		return false;
 	}
 
 	std::ifstream file_list_read(file_list);
 	if(!file_list_read.good()){
-		std::cerr << "faild to get file_list" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
 		return false;
 	}
 
@@ -442,7 +442,7 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	std::string line;
 	while(getline(file_list_read, line)){
 		if(line.size() == 0){
-			std::cerr << "empty line" << std::endl;
+			std::cerr << Helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
 			break;
 		}
 		files.push_back(line);
@@ -493,7 +493,7 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 		this->stream >> this->contigs[i];
 		// std::cerr << this->contigs[i] << std::endl;
 		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
-			std::cerr << "Contig does not exist in other file" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","TWO") << "Contig does not exist in other file" << std::endl;
 			return false;
 		}
 	}
@@ -780,6 +780,20 @@ bool TomahawkOutputReader::javelinWeights(void){
 	for(U32 i = 0; i < 11; ++i){
 		std::cout << counts_within[i] << '\t' << counts_across[i] << '\t' << counts_global[i] << std::endl;
 	}
+
+	return true;
+}
+
+bool TomahawkOutputReader::setWriterType(const int type){
+	if(type == 0)
+		this->writer_output_type = WRITER_TYPE::binary;
+	else if(type == 1)
+		this->writer_output_type = WRITER_TYPE::natural;
+	else {
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","READER") << "Unknown writer type: " << type << std::endl;
+		return false;
+	}
+	return true;
 }
 
 
