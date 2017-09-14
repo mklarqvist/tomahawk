@@ -369,7 +369,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	if(line.isSimple()){
 		if(missing > this->filters.missingness){
 			//if(!SILENT)
-			//	std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing*100 << "%).  Dropping..." << std::endl;
+			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
 
 			this->sort_order_helper.previous_included = false;
 			goto next;
@@ -443,7 +443,7 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.IsSimple()){
 		// Only check missing if simple
-		const float missing = line.getMissingness(this->header_->samples);
+		const double missing = line.getMissingness(this->header_->samples);
 		if(line.position == this->sort_order_helper.previous_position && *this->sort_order_helper.contigID == this->sort_order_helper.prevcontigID){
 			if(this->sort_order_helper.previous_included){
 				//if(!SILENT)

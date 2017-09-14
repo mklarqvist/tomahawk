@@ -64,7 +64,7 @@ int import(int argc, char** argv){
 	SILENT = 0;
 	double hwe_p = 0;
 	double maf = 0;
-	double missingness = 0;
+	double missingness = 0.2;
 
 	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:s?", long_options, &option_index)) != -1){
 		switch (c){
@@ -83,12 +83,42 @@ int import(int argc, char** argv){
 			break;
 		case 'h':
 			hwe_p = atof(optarg);
+			if(hwe_p < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to < 0..." << std::endl;
+				return(1);
+			}
+
+			if(hwe_p > 1){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to > 1..." << std::endl;
+				return(1);
+			}
+
 			break;
 		case 'n':
 			missingness = atof(optarg);
+			if(missingness < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set missingness filter to < 0..." << std::endl;
+				return(1);
+			}
+
+			if(missingness > 1){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set missingness filter to > 1..." << std::endl;
+				return(1);
+			}
+
 			break;
 		case 'm':
 			maf = atof(optarg);
+			if(maf < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to < 0..." << std::endl;
+				return(1);
+			}
+
+			if(maf > 1){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to > 1..." << std::endl;
+				return(1);
+			}
+
 			break;
 		case 's':
 			SILENT = 1;
