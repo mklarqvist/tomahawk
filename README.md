@@ -9,8 +9,8 @@ The current specification (v.0) is available [TWKv0](spec/TWKv0.pdf)
 ### Installation instructions
 Compiling Tomahawk with default parameters is straightforward.
 ```bash
-git clone --recursive https://github.com/mklarqvist/Tomahawk_private
-cd Tomahawk_private
+git clone --recursive https://github.com/mklarqvist/Tomahawk
+cd Tomahawk
 cd build
 make
 ```
