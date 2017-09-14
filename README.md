@@ -16,15 +16,14 @@ make
 ```
 By default, Tomahawk compiles using extremely aggressive optimization flags and with
 native architecture-specific instructions
-(`-O3 -fno-strict-aliasing -march=native -mtune=native -ftree-vectorize -pipe
-  -fomit-frame-pointer -flto -frename-registers -funroll-loops -fuse-linker-plugin`)
+(`-march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops`)
 and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the compiled target.
 
 ### Brief usage instructions
-Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, `index`,
-`stats` and `concat`.
+Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
+The functions `index` and `stats` are disabled at the moment.
 Executing `tomahawk <command>` gives a list of commands with brief descriptions
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
