@@ -69,7 +69,7 @@ It is possible to filter `two` output data by: 1) either start or end contig e.g
 contig mapping `chr1,chr2`, or 4) a particular regional mapping in both contigs
 `chr1:10e3-10e6,chr2:0-10e6`
 ```bash
-tomahawk view -i file.two `chr1:10e3-10e6,chr2:0-10e6`
+tomahawk view -i file.two chr1:10e3-10e6,chr2:0-10e6
  ```
 
 Converting a `twk` file to `vcf`
