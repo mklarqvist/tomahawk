@@ -35,11 +35,11 @@ void sort_usage(void){
 	"        to perform a k-way merge sort using the partially block-sorted data.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (required)\n"
-	"  -L INT   memory limit in MB (default: 100)\n"
-	"  -M       merge [null]\n"
-	"  -s       Hide all program messages [null]\n";
+	"  -i FILE   input Tomahawk (required)\n"
+	"  -o FILE   output file (required)\n"
+	"  -L FLOAT  memory limit in MB (default: 100)\n"
+	"  -M        merge [null]\n"
+	"  -s        Hide all program messages [null]\n";
 }
 
 int sort(int argc, char** argv){
@@ -59,7 +59,7 @@ int sort(int argc, char** argv){
 
 	// Parameter defaults
 	std::string input, output;
-	S32 memory_limit = 100e6;
+	double memory_limit = 100e6;
 	bool merge = false;
 
 	int c = 0;
@@ -84,7 +84,7 @@ int sort(int argc, char** argv){
 			output = std::string(optarg);
 			break;
 		case 'L':
-			memory_limit = atoi(optarg) * 1e6;
+			memory_limit = atof(optarg) * 1e6;
 			if(memory_limit < 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
 				return(1);

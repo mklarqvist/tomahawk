@@ -59,19 +59,19 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 Viewing LD data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
 FLAG bits `4` set and map to any of these regions
- ```bash
- tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
+```bash
+tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
  ```
 
- Viewing a `two` file
- ```bash
+Viewing a `two` file
+```bash
 tomahawk view -i file.two
- ```
+```
 
 Converting a `twk` file to `vcf`
  ```bash
- tomahawk view -i file.twk -o file.vcf
- ```
+tomahawk view -i file.twk -o file.vcf
+```
 
 ### Sort `TWO` file
 Partially sort `two` file in 500 MB chunks
@@ -84,6 +84,5 @@ Perform k-way merge of partially sorted blocks
 tomahawk sort -i partial.two -o sorted.two -M
 ```
 
-
- ### License
- [MIT](LICENSE)
+### License
+[MIT](LICENSE)
