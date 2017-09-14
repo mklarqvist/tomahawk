@@ -24,7 +24,8 @@ computer farms/clouds with a hardware architecture that is different from the co
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
 The functions `index` and `stats` are disabled at the moment.
-Executing `tomahawk <command>` gives a list of commands with brief descriptions
+Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
+gives detailed details for that command.
 
 All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
 format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
@@ -58,15 +59,18 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 ### Converting between file formats and filtering
 Viewing LD data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
-FLAG bits `4` set and map to any of these regions
+FLAG bits `4` set
 ```bash
-tomahawk view -i file.two -P 1e-4 -a 5 -f 4 '000001F|quiver:10e3-10e6,000004F|quiver:0-10e6' '000006F|quiver' '000007F|quiver:000009F|quiver'
+tomahawk view -i file.two -P 1e-4 -a 5 -f 4
  ```
 
-Viewing a `two` file
+It is possible to filter `two` output data by: 1) either start or end contig e.g.
+`chr1`, 2) position in that contig `chr1:10e6-20e6`, or 3) or have a particular
+contig mapping `chr1,chr2`, or 4) a particular regional mapping in both contigs
+`chr1:10e3-10e6,chr2:0-10e6`
 ```bash
-tomahawk view -i file.two
-```
+tomahawk view -i file.two `chr1:10e3-10e6,chr2:0-10e6`
+ ```
 
 Converting a `twk` file to `vcf`
  ```bash
