@@ -8,6 +8,7 @@
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
 #include "TomahawkOutputWriter.h"
+#include "TomahawkOutputStats.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -372,14 +373,14 @@ bool TomahawkOutputReader::OpenExtend(const std::string input){
 
 bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << "no input files" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files..." << std::endl;
 		return false;
 	}
 
 	// open first one
-	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << std::endl;
+	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
 	if(!this->Open(files[0])){
-		std::cerr << "failed to parse: " << files[0] << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
 		return false;
 	}
 
@@ -391,7 +392,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		this->literals += files[i] + ';';
 
 	if(!this->OpenWriter(output)){
-		std::cerr << "failed to open writer" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to open writer..." << std::endl;
 		return false;
 	}
 
@@ -400,10 +401,10 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 
 	for(U32 i = 1; i < files.size(); ++i){
-		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << std::endl;
+		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
 		this->stream.close();
 		if(!this->OpenExtend(files[i])){
-			std::cerr << "failed to parse: " << files[i] << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
 			return false;
 		}
 
@@ -419,7 +420,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << "no input files given" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files given..." << std::endl;
 		return false;
 	}
 
@@ -428,13 +429,13 @@ bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const s
 
 bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
 	if(file_list.size() == 0){
-		std::cerr << "no input file list given" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input file list given..." << std::endl;
 		return false;
 	}
 
 	std::ifstream file_list_read(file_list);
 	if(!file_list_read.good()){
-		std::cerr << "faild to get file_list" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
 		return false;
 	}
 
@@ -442,7 +443,7 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	std::string line;
 	while(getline(file_list_read, line)){
 		if(line.size() == 0){
-			std::cerr << "empty line" << std::endl;
+			std::cerr << Helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
 			break;
 		}
 		files.push_back(line);
@@ -493,7 +494,7 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 		this->stream >> this->contigs[i];
 		// std::cerr << this->contigs[i] << std::endl;
 		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
-			std::cerr << "Contig does not exist in other file" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","TWO") << "Contig does not exist in other file" << std::endl;
 			return false;
 		}
 	}
@@ -675,9 +676,20 @@ bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 }
 
 
-bool TomahawkOutputReader::summary(const std::string& input){
-	//if(!this->reader.setup(input))
-	//	return false;
+bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
+	TWO::TomahawkOutputStatsContainer container(bins);
+
+	// Natural output required parsing
+	const entry_type* entry;
+	while(this->nextVariant(entry))
+		container += *entry;
+
+	std::cerr << "R2\t" << container.R2.within.getTotal() << '\t' << container.R2.across.getTotal() << '\t' << container.R2.global.getTotal()  << std::endl;
+	std::cerr << container.R2 << std::endl;
+	std::cerr << "D\t" << container.D.within.getTotal() << '\t' << container.D.across.getTotal() << '\t' << container.D.global.getTotal()  << std::endl;
+	std::cerr << container.D << std::endl;
+	std::cerr << "Dprime\t" << container.Dprime.within.getTotal() << '\t' << container.Dprime.across.getTotal() << '\t' << container.Dprime.global.getTotal()  << std::endl;
+	std::cerr << container.Dprime << std::endl;
 
 	return true;
 }
@@ -744,42 +756,16 @@ bool TomahawkOutputReader::index(const std::string& input){
 	return true;
 }
 
-bool TomahawkOutputReader::javelinWeights(void){
-	const entry_type* entry;
-
-	U64 counts_within[11];
-	U64 counts_across[11];
-	U64 counts_global[11];
-	memset(counts_within, 0, sizeof(U64)*11);
-	memset(counts_across, 0, sizeof(U64)*11);
-	memset(counts_global, 0, sizeof(U64)*11);
-	U64 cum_count = 0;
-	U64 count = 0;
-
-	while(this->nextVariant(entry)){
-		++cum_count;
-		if(count++ == 1000000){
-			std::cerr << Helpers::timestamp("PROGRESS","STATS") << Helpers::ToPrettyString(cum_count) << " entries parsed. " << this->stream.tellg() << '/' << this->filesize << std::endl;
-			count = 0;
-		}
-
-		//std::cerr << entry->R2 << '\t' << (BYTE)(entry->R2*100)/10 << std::endl;
-
-		if(entry->AcontigID == entry->BcontigID){
-			// not same contig
-			++counts_within[(BYTE)(entry->R2*100)/10];
-		} else {
-			// same contig
-			++counts_across[(BYTE)(entry->R2*100)/10];
-		}
-		++counts_global[(BYTE)(entry->R2*100)/10];
+bool TomahawkOutputReader::setWriterType(const int type){
+	if(type == 0)
+		this->writer_output_type = WRITER_TYPE::binary;
+	else if(type == 1)
+		this->writer_output_type = WRITER_TYPE::natural;
+	else {
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR","READER") << "Unknown writer type: " << type << std::endl;
+		return false;
 	}
-	std::cerr << Helpers::timestamp("LOG","STATS") << "Done (" << Helpers::ToPrettyString(cum_count) << " entries)" << std::endl;
-
-	std::cout << "Within\tAcross\Global" << std::endl;
-	for(U32 i = 0; i < 11; ++i){
-		std::cout << counts_within[i] << '\t' << counts_across[i] << '\t' << counts_global[i] << std::endl;
-	}
+	return true;
 }
 
 
