@@ -142,6 +142,18 @@ bool BCFEntry::parse(void){
 	return true;
 }
 
+double BCFEntry::getMissingness(const U64& samples) const{
+	U32 internal_pos = this->p_genotypes;
+	U64 n_missing = 0;
+	for(U32 i = 0; i < samples; ++i){
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		//std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
+		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2) ++n_missing;
+	}
+	return((double)n_missing/samples);
+}
+
 void BCFEntry::SetRefAlt(void){
 	this->ref_alt = 0;
 

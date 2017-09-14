@@ -94,6 +94,7 @@ struct BCFEntry{
 
 	bool parse(void);
 	void SetRefAlt(void);
+	double getMissingness(const U64& samples) const;
 
 public:
 	U32 pointer; // byte width

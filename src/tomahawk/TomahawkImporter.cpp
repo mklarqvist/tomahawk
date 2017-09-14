@@ -349,8 +349,9 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 
 	// Assess missingness
-	//const float missing = line.getMissingness(this->header_->samples);
-	const float missing = 0;
+	const double missing = line.getMissingness(this->header_->samples);
+	//std::cerr << missing << std::endl;
+	//const float missing = 0;
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
 			//if(!SILENT)
