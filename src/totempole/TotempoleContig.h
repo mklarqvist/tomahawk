@@ -20,7 +20,7 @@ public:
 		return stream;
 	}
 
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& base){
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& base){
 		stream.write(reinterpret_cast<const char*>(&base.bases), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&base.n_char), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size());
