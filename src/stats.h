@@ -20,12 +20,114 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
+#include <getopt.h>
+
 #include "utility.h"
+#include "totempole/TotempoleReader.h"
+#include "tomahawk/TomahawkReader.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputFilterController.h"
+#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
+
+void stats_usage(void){
+	programMessage();
+	std::cerr <<
+	"About:  Convert binary TWK->VCF or TWO->LD; subset and slice TWK/TWO data\n"
+	"        Data does not have to be indexed. However, operations are faster if they\n"
+	"        are.\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
+	"Options:\n"
+	"  -i FILE  input Tomahawk (required)\n"
+	"  -o FILE  output file (- for stdout)\n"
+	"  -h/H     (twk/two) header only / no header [null]\n"
+	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
+	"  -N       output in tab-delimited text format (see -O) [null]\n"
+	"  -B       output in binary TWO/TWK format (see -O, default)[null]\n"
+	"  -s       Hide all program messages [null]\n";
+}
 
 int stats(int argc, char** argv){
-	Tomahawk::IO::TomahawkOutputReader r;
-	r.Open("/Users/mk21/Desktop/Projects/Cichlid/Data/run_20170807/cichlid_V1.1__20170807.two");
-	r.javelinWeights();
+	if(argc < 3){
+		stats_usage();
+		return(1);
+	}
 
-	return(0);
+	static struct option long_options[] = {
+		{"input",		required_argument, 0, 'i' },
+		{"output",		optional_argument, 0, 'o' },
+		{0,0,0,0}
+	};
+
+	// Parameter defaults
+	std::string input, output;
+
+	int c = 0;
+	int long_index = 0;
+	int hits = 0;
+	while ((c = getopt_long(argc, argv, "i:o:", long_options, &long_index)) != -1){
+		hits += 2;
+		switch (c){
+		case ':':   /* missing option argument */
+			fprintf(stderr, "%s: option `-%c' requires an argument\n",
+					argv[0], optopt);
+			break;
+
+		case '?':
+		default:
+			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n",
+					argv[0], optopt);
+			break;
+
+		case 'i':
+			input = std::string(optarg);
+			break;
+		case 'o':
+			output = std::string(optarg);
+			break;
+		}
+	}
+
+	if(input.length() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		return(1);
+	}
+
+	if(!SILENT){
+		programMessage();
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling stats..." << std::endl;
+	}
+
+	// Todo: move out
+	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
+	std::string& end = inputFile_parts[inputFile_parts.size() - 1];
+	std::transform(end.begin(), end.end(), end.begin(), ::tolower); // transform chars to lower case
+
+	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
+
+
+	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
+		Tomahawk::IO::TomahawkOutputReader reader;
+		//reader.setWriteHeader(outputHeader);
+		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
+		//filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
+
+		//if(!reader.setWriterType(outputType))
+		//	return 1;
+
+		if(!reader.Open(input))
+			return 1;
+
+		//if(!reader.AddRegions(filter_regions)){
+		//	std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+		//	return 1;
+		//}
+
+		if(!reader.summary(input, 10))
+			return 1;
+
+	} else {
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
+		return 1;
+	}
+
+	return 0;
 }

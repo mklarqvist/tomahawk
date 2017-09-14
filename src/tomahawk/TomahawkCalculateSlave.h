@@ -605,17 +605,24 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 		return false;
 	}
 
+
 	// How many hets-hets is there? 0/1 0/1 or 1/0 1/0 or equivalent
 	const float number_of_hets = this->helper[17] + this->helper[20] + this->helper[65] + this->helper[68];
 
 	// If het-hets are 0 then do normal calculations
 	// There is no phase uncertainty
 	// Use phased math
+	/*
 	if(number_of_hets == 0){
-		this->helper[0] = 2*this->helper[0] + this->helper[1]  + this->helper[4]  + this->helper[5]  + this->helper[16] + this->helper[64] + this->helper[80];
-		this->helper[1] = this->helper[1]   + this->helper[16] + this->helper[21] + this->helper[81];
-		this->helper[4] = this->helper[4]   + this->helper[64] + this->helper[69] + this->helper[84];
-		this->helper[5] = this->helper[5]   + this->helper[21] + this->helper[69] + this->helper[80] + this->helper[81] + this->helper[84] + 2*this->helper[85];
+		const float p0 = 2*this->helper[0] + this->helper[1]  + this->helper[4]  + this->helper[5]  + this->helper[16] + this->helper[64] + this->helper[80];
+		const float p1 = this->helper[1]   + this->helper[16] + this->helper[21] + this->helper[81];
+		const float q0 = this->helper[4]   + this->helper[64] + this->helper[69] + this->helper[84];
+		const float q1 = this->helper[5]   + this->helper[21] + this->helper[69] + this->helper[80] + this->helper[81] + this->helper[84] + 2*this->helper[85];
+
+		this->helper[0] = p0;
+		this->helper[1] = p1;
+		this->helper[4] = q0;
+		this->helper[5] = q1;
 
 		// Update counter
 		++this->no_uncertainty;
@@ -626,6 +633,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 		// Use standard math
 		return(this->CalculateLDPhasedMath());
 	}
+	*/
+
 
 	const double p = ((this->helper[0] + this->helper[1]  + this->helper[4]  + this->helper[5])*2.0
 				   + (this->helper[16] + this->helper[17] + this->helper[20] + this->helper[21] + this->helper[64] + this->helper[65] + this->helper[68] + this->helper[69]))

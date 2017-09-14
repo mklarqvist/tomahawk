@@ -70,9 +70,9 @@ int main(int argc, char** argv){
 		return(concat(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
-		//return(stats(argc, argv));
-		std::cerr << "Not implemented" << std::endl;
-		return(1);
+		return(stats(argc, argv));
+		//std::cerr << "Not implemented" << std::endl;
+		//return(1);
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage(false);

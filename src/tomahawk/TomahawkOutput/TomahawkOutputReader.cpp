@@ -8,6 +8,7 @@
 #include "TomahawkOutputReader.h"
 #include "../../algorithm/sort/TomahawkOutputSort.h"
 #include "TomahawkOutputWriter.h"
+#include "TomahawkOutputStats.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -675,9 +676,20 @@ bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 }
 
 
-bool TomahawkOutputReader::summary(const std::string& input){
-	//if(!this->reader.setup(input))
-	//	return false;
+bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
+	TWO::TomahawkOutputStatsContainer container(bins);
+
+	// Natural output required parsing
+	const entry_type* entry;
+	while(this->nextVariant(entry))
+		container += *entry;
+
+	std::cerr << "R2\t" << container.R2.within.getTotal() << '\t' << container.R2.across.getTotal() << '\t' << container.R2.global.getTotal()  << std::endl;
+	std::cerr << container.R2 << std::endl;
+	std::cerr << "D\t" << container.D.within.getTotal() << '\t' << container.D.across.getTotal() << '\t' << container.D.global.getTotal()  << std::endl;
+	std::cerr << container.D << std::endl;
+	std::cerr << "Dprime\t" << container.Dprime.within.getTotal() << '\t' << container.Dprime.across.getTotal() << '\t' << container.Dprime.global.getTotal()  << std::endl;
+	std::cerr << container.Dprime << std::endl;
 
 	return true;
 }
@@ -740,46 +752,6 @@ bool TomahawkOutputReader::index(const std::string& input){
 		}
 	}
 	std::cerr << "Index would have: " << outputEntries << " entries..." << std::endl;
-
-	return true;
-}
-
-bool TomahawkOutputReader::javelinWeights(void){
-	const entry_type* entry;
-
-	U64 counts_within[11];
-	U64 counts_across[11];
-	U64 counts_global[11];
-	memset(counts_within, 0, sizeof(U64)*11);
-	memset(counts_across, 0, sizeof(U64)*11);
-	memset(counts_global, 0, sizeof(U64)*11);
-	U64 cum_count = 0;
-	U64 count = 0;
-
-	while(this->nextVariant(entry)){
-		++cum_count;
-		if(count++ == 1000000){
-			std::cerr << Helpers::timestamp("PROGRESS","STATS") << Helpers::ToPrettyString(cum_count) << " entries parsed. " << this->stream.tellg() << '/' << this->filesize << std::endl;
-			count = 0;
-		}
-
-		//std::cerr << entry->R2 << '\t' << (BYTE)(entry->R2*100)/10 << std::endl;
-
-		if(entry->AcontigID == entry->BcontigID){
-			// not same contig
-			++counts_within[(BYTE)(entry->R2*100)/10];
-		} else {
-			// same contig
-			++counts_across[(BYTE)(entry->R2*100)/10];
-		}
-		++counts_global[(BYTE)(entry->R2*100)/10];
-	}
-	std::cerr << Helpers::timestamp("LOG","STATS") << "Done (" << Helpers::ToPrettyString(cum_count) << " entries)" << std::endl;
-
-	std::cout << "Within\tAcross\Global" << std::endl;
-	for(U32 i = 0; i < 11; ++i){
-		std::cout << counts_within[i] << '\t' << counts_across[i] << '\t' << counts_global[i] << std::endl;
-	}
 
 	return true;
 }
