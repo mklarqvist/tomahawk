@@ -1,6 +1,8 @@
 #ifndef BCFENTRY_CPP_
 #define BCFENTRY_CPP_
 
+#include <cassert>
+
 #include "BCFEntry.h"
 #include "../../support/MagicConstants.h"
 
@@ -65,8 +67,8 @@ void BCFEntry::__parseID(U32& internal_pos){
 		S32 finalLength = 0;
 		switch(length.low){
 		case(1): finalLength = *reinterpret_cast<const SBYTE* const>(&this->data[internal_pos++]); break;
-		case(2): finalLength = *reinterpret_cast<const S16* const>(&this->data[internal_pos+=2]); break;
-		case(3): finalLength = *reinterpret_cast<const S32* const>(&this->data[internal_pos+=4]); break;
+		case(2): finalLength = *reinterpret_cast<const S16* const>(&this->data[internal_pos+=2]);  break;
+		case(3): finalLength = *reinterpret_cast<const S32* const>(&this->data[internal_pos+=4]);  break;
 		}
 		this->l_ID = finalLength;
 		this->ID = &this->data[internal_pos];
@@ -95,8 +97,8 @@ void BCFEntry::__parseRefAlt(U32& internal_pos){
 			S32 finalLength = 0;
 			switch(length.low){
 			case(1): finalLength = *reinterpret_cast<const SBYTE* const>(&this->data[internal_pos++]); break;
-			case(2): finalLength = *reinterpret_cast<const S16* const>(&this->data[internal_pos+=2]); break;
-			case(3): finalLength = *reinterpret_cast<const S32* const>(&this->data[internal_pos+=4]); break;
+			case(2): finalLength = *reinterpret_cast<const S16* const>(&this->data[internal_pos+=2]);  break;
+			case(3): finalLength = *reinterpret_cast<const S32* const>(&this->data[internal_pos+=4]);  break;
 			}
 
 			this->alleles[i].length = finalLength;
@@ -121,9 +123,19 @@ bool BCFEntry::parse(void){
 	case(3): case(5): internal_pos += 4; break;
 	}
 
+	// Format key
 	const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
 	//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
 
+	assert(fmt_type.high == 2);
+
+	/*
+	for(U32 i = 0; i < 44; ++i){
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
+		std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
+	}
+	*/
 	this->genotypes = &this->data[internal_pos];
 	this->p_genotypes = internal_pos;
 
