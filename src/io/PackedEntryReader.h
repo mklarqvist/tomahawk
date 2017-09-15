@@ -71,7 +71,7 @@ bool PackedEntryReader<T, Y>::setup(const std::string file, size_t chunk_size){
 	}
 
 	if(chunk_size == 0){
-		std::cerr << "illegal chunk size" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IO") << "Illegal chunk size" << std::endl;
 		return false;
 	}
 

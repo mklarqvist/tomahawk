@@ -127,7 +127,8 @@ bool VCFHeader::buildContigTable(void){
 	else
 		this->contigsHashTable = new hash_table(this->contigs.size() * 2);
 
-	std::cerr << Helpers::timestamp("LOG", "VCF") << "Constructing lookup table for " << this->contigs.size() << " contigs..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "VCF") << "Constructing lookup table for " << this->contigs.size() << " contigs..." << std::endl;
 
 	for(U32 i = 0; i < this->contigs.size(); ++i){
 		//std::cerr << this->contigs[i] << std::endl;

@@ -1,5 +1,6 @@
 #include <cassert>
 
+#include "../../support/MagicConstants.h" // for SILENT
 #include "TGZFControllerStream.h"
 
 namespace Tomahawk{
@@ -123,8 +124,10 @@ bool TGZFControllerStream::__Inflate(std::ifstream& stream, const BYTE* output, 
 		exit(1);
 	}
 
-	if(this->d_stream.total_out == 0)
-		std::cerr << Helpers::timestamp("LOG", "TGZF") << "Detected empty TGZF block" << std::endl;
+	if(this->d_stream.total_out == 0){
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "TGZF") << "Detected empty TGZF block" << std::endl;
+	}
 
 	this->STATE = TGZF_STATE::TGZF_END;
 	return false;

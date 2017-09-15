@@ -55,7 +55,7 @@ public:
 
 public:
 	U64 byte_offset;	// tellg() position in stream for start of record in Tomahawk file
-	U64 byte_offset_end;	// tellg() position in stream for start of record in Tomahawk file
+	U64 byte_offset_end;// tellg() position in stream for start of record in Tomahawk file
 	S32 contigID;		// contig identifier
 	U32 minPosition;	// smallest bp position in tomahawk block
 	U32 maxPosition;	// largest bp position in tomahawk block

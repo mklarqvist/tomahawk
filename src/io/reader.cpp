@@ -46,7 +46,8 @@ bool reader::open(void){
 	// Reset buffer pointer to 0
 	this->end_ = 0;
 
-	std::cerr << Tomahawk::Helpers::timestamp("LOG", "IO") << "Opened file: " << this->filename_ << " (" << this->filesize_ << " b)..." << std::endl;
+	if(!SILENT)
+		std::cerr << Tomahawk::Helpers::timestamp("LOG", "IO") << "Opened file: " << this->filename_ << " (" << this->filesize_ << " b)..." << std::endl;
 
 	return(true);
 }
@@ -107,7 +108,9 @@ bool reader::getLine(void){ // Read until finding a new line into buffer
 	}
 
 	if((this->stream_.fail()) && (this->capacity_ - this->end_ - 1 == 0)){
-		std::cerr << Tomahawk::Helpers::timestamp("LOG", "IO") << "Resizing buffer from: " << this->capacity_ << " -> " << this->capacity_*2 << std::endl;
+		if(!SILENT)
+			std::cerr << Tomahawk::Helpers::timestamp("LOG", "IO") << "Resizing buffer from: " << this->capacity_ << " -> " << this->capacity_*2 << std::endl;
+
 		this->resize();
 		this->stream_.clear();
 		this->getLine();

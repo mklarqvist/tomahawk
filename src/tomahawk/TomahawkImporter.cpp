@@ -41,7 +41,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 
 	TomahawkReader tReader;
 	if(!tReader.Open(extendFile)){
-		std::cerr << Helpers::timestamp("ERROR","TOMAHAWK") <<  "Failed to read file..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") <<  "Failed to read file..." << std::endl;
 		return false;
 	}
 
@@ -83,7 +83,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 
 	// This only happens if there are no valid entries in the file
 	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -93,7 +93,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	this->writer_.WriteFinal();
 
 	if(this->writer_.GetVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -110,7 +110,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 bool TomahawkImporter::Build(){
 	std::ifstream temp(this->inputFile, std::ios::binary | std::ios::in);
 	if(!temp.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK")  << "Failed to open file..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT")  << "Failed to open file..." << std::endl;
 		return false;
 	}
 	char tempData[2];
@@ -119,16 +119,16 @@ bool TomahawkImporter::Build(){
 
 	if(tempData[0] == '#' && tempData[1] == '#'){
 		if(!this->BuildVCF()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
 			return false;
 		}
 	} else if((BYTE)tempData[0] == IO::Constants::GZIP_ID1 && (BYTE)tempData[1] == IO::Constants::GZIP_ID2){
 		if(!this->BuildBCF()){
-			std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed build!" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
 			return false;
 		}
 	} else {
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Unknown file format!" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Unknown file format!" << std::endl;
 		return false;
 	}
 	return true;
@@ -148,7 +148,7 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	if(this->header_->samples == 1){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
 		return false;
 	}
 
@@ -195,7 +195,7 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// This only happens if there are no valid entries in the file
 	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","BCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -206,7 +206,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->writer_.WriteFinal();
 
 	if(this->writer_.GetVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","BCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -236,12 +236,12 @@ bool TomahawkImporter::BuildVCF(void){
 	}
 
 	if(this->header_->samples == 0){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "No samples detected..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "No samples detected..." << std::endl;
 		return false;
 	}
 
 	if(this->header_->samples == 1){
-		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Cannot run " << Tomahawk::Constants::PROGRAM_NAME << " with a single sample..." << std::endl;
 		return false;
 	}
 
@@ -291,7 +291,7 @@ bool TomahawkImporter::BuildVCF(void){
 
 	// This only happens if there are no valid entries in the file
 	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -302,7 +302,7 @@ bool TomahawkImporter::BuildVCF(void){
 	this->writer_.WriteFinal();
 
 	if(this->writer_.GetVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Did not import any variants..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
@@ -319,11 +319,13 @@ bool TomahawkImporter::BuildVCF(void){
 bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	if(this->sort_order_helper.prevcontigID != line.body->CHROM){
 		if(line.body->CHROM < this->sort_order_helper.prevcontigID){
-			std::cerr << Helpers::timestamp("ERROR", "BCF") << "Contigs are not sorted (" << (*this->header_)[this->sort_order_helper.prevcontigID].name << " > " << (*this->header_)[line.body->CHROM].name << ")..." << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Contigs are not sorted (" << (*this->header_)[this->sort_order_helper.prevcontigID].name << " > " << (*this->header_)[line.body->CHROM].name << ")..." << std::endl;
 			exit(1);
 		}
 
-		//std::cerr << Helpers::timestamp("DEBUG", "BCF") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(line.body->CHROM).name << "..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "IMPORT") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(line.body->CHROM).name << "..." << std::endl;
+
 		this->sort_order_helper.previous_position = 0;
 
 		// Get new contig value from header
@@ -337,13 +339,13 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Assert position is in range
 	if(line.body->POS+1 > this->header_->getContig(line.body->CHROM).length){
-		std::cerr << Helpers::timestamp("ERROR", "BCF") << (*this->header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > reported max size of contig (" << (*this->header_)[line.body->CHROM].length << ")..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << (*this->header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > reported max size of contig (" << (*this->header_)[line.body->CHROM].length << ")..." << std::endl;
 		return false;
 	}
 
 	// Assert file is ordered
 	if(line.body->POS < this->sort_order_helper.previous_position){
-		std::cerr << Helpers::timestamp("ERROR", "BCF") << "File is not sorted by coordinates (" << (*this->header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > " << (*this->header_)[line.body->CHROM].name << ':' << this->sort_order_helper.previous_position << ")..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "File is not sorted by coordinates (" << (*this->header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > " << (*this->header_)[line.body->CHROM].name << ':' << this->sort_order_helper.previous_position << ")..." << std::endl;
 		return false;
 	}
 
@@ -416,7 +418,9 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 			exit(1);
 		}
 
-		std::cerr << Helpers::timestamp("DEBUG", "VCF") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(*this->sort_order_helper.contigID).name << "..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "VCF") << "Switch detected: " << this->header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->header_->getContig(*this->sort_order_helper.contigID).name << "..." << std::endl;
+
 		this->sort_order_helper.previous_position = 0;
 
 		// Get new contig value from header

@@ -153,7 +153,7 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 
 bool TomahawkOutputReader::__viewOnly(void){
 	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
-	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=YES regions=FALSE";
+	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=NO regions=FALSE";
 
 	if(!this->OpenWriter())
 		return false;
@@ -378,7 +378,9 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 
 	// open first one
-	std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
+
 	if(!this->Open(files[0])){
 		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
 		return false;
@@ -389,7 +391,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	this->literals += "\n##tomahawk_concatCommand=" + Helpers::program_string(true);
 	this->literals += "\n##tomahawk_concatFiles=";
 	for(U32 i = 0; i < files.size(); ++i)
-		this->literals += files[i] + ';';
+		this->literals += files[i] + ',';
 
 	if(!this->OpenWriter(output)){
 		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to open writer..." << std::endl;
@@ -401,7 +403,9 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 
 	for(U32 i = 1; i < files.size(); ++i){
-		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
+
 		this->stream.close();
 		if(!this->OpenExtend(files[i])){
 			std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;

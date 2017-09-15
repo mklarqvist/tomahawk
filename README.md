@@ -1,57 +1,78 @@
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
 ### Synopsis
+Tomahawk efficiently represents genotypic data by exploiting basic genetic properties
+and we directly query this compressed representation to calculate linkage disequilibrium
+for all pairwise alleles/genotypes in large-scale cohorts.
+In order to achieve speed, Tomahawk combines primarily two efficient algorithms
+exploiting different concepts: 1) low genetic diversity, and 2) the large memory
+registers on modern processors. The first algorithm directly compares a run-length
+encoded representation of genotypes from two vectors. The other precomputes
+the run-length encodings as 1-bit encodings and use SIMD-instructions and the
+large registers on modern CPUs to directly compare two bit-vectors.
+This algorithm also exploits the relatively low genetic divergence within species.
+Both algortihms are embarrassingly parallel.
 
-Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
+The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, and `TGZF`
+are available [TWKv0](spec/TWKv0.pdf)
 
-The current specification (v.0) is available [TWKv0](spec/TWKv0.pdf)
+Contact: Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
 ### Installation instructions
-Compiling Tomahawk with default parameters is straightforward.
+Compiling Tomahawk with default parameters is straightforward. `make` moves the
+binary to the `bin` directory.
 ```bash
 git clone --recursive https://github.com/mklarqvist/Tomahawk
 cd Tomahawk
 cd build
 make
 ```
-By default, Tomahawk compiles using extremely aggressive optimization flags and with
-native architecture-specific instructions
-(`-march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops`)
-and internally compiles for the most recent SIMD-instruction set available.
+By default, Tomahawk is compiled using aggressive optimization flags and with
+native architecture-specific instructions (`-march=native -mtune=native
+  -ftree-vectorize -pipe -frename-registers -funroll-loops`).
 This might result in additional effort when submitting jobs to
-computer farms/clouds with a hardware architecture that is different from the compiled target.
+computer farms/clouds with a hardware architecture that is different from the
+compiled target.
 
 ### Brief usage instructions
-Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
-The functions `index` and `stats` are disabled at the moment.
-Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
-gives detailed details for that command.
+Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and
+`concat`. The functions `index` and `stats` are disabled at the moment.
+Executing `tomahawk` gives a list of commands with brief descriptions and
+`tomahawk <command>` gives detailed details for that command.
 
-All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
-format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
-commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
-disequilibrium data is written out in `two` and `toi` format.
+All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole
+`twi` file format. Interconversions between `twk` and `vcf`/`bcf` is supported
+through the commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`.
+Linkage disequilibrium data is written out in `two`/`toi` format.
 
 ### Importing to Tomahawk
 By design Tomahawk only operates on bi-allelic SNVs and as such filters out
 indels and complex variants. Tomahawk does not support mixed phasing of genotypes
 in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found in a line,
-all genotypes in that line are converted to unphased. Importing a variant document (`vcf`/`bcf`)
-to Tomahawk requires the `import` command.
+all genotypes in that line are converted to unphased. Importing a variant document
+(`vcf`/`bcf`) to Tomahawk requires the `import` command.
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
+tomahawk import -i file.vcf -o outPrefix -m 0.2 -h 1e-3
 ```
 
 ### Import-extend
-If you have split up your `vcf`/`bcf` files into multiple disjoint files (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
+If you have split up your `vcf`/`bcf` files into multiple disjoint files
+(such as one per chromosome) it is possible to iteratively import and extend a
+`twk` file:
 ```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
+tomahawk import -i file.bcf -e extend.twk -m 0.2 -h 1e-3
 ```
 
 ### Calculating linkage disequilibrium
+Calculate genome-wide linkage disequilibrium from phased (`-p`) data and output
+a real-time progress bar (`-d`) and output data with a minor haplotype count
+(`-a`) >= 5 and a minimum R-squared threshold (`-r`) >= 0.1 and a Fisher's exact
+test P-value (`-P`) <= 0.1. Split the workload into 990 (`-c`) chunks and select
+(`-C`) the first one to calculate with 28 threads (`-t`).
+
 ```bash
 tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28
 ```
@@ -69,7 +90,7 @@ It is possible to filter `two` output data by: 1) either start or end contig e.g
 contig mapping `chr1,chr2`, or 4) a particular regional mapping in both contigs
 `chr1:10e3-10e6,chr2:0-10e6`
 ```bash
-tomahawk view -i file.two chr1:10e3-10e6,chr2:0-10e6
+tomahawk view -i file.two 'chr1:10e3-10e6,chr2:0-10e6'
  ```
 
 Converting a `twk` file to `vcf`
@@ -77,7 +98,7 @@ Converting a `twk` file to `vcf`
 tomahawk view -i file.twk -o file.vcf
 ```
 
-### Sort `TWO` file
+### Sort a `TWO` file
 Partially sort `two` file in 500 MB chunks
 ```bash
 tomahawk sort -i file.two -o partial.two -L 500

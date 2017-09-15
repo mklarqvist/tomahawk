@@ -315,7 +315,7 @@ int view(int argc, char** argv){
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
 
-		std::cerr << param << std::endl;
+		//std::cerr << param << std::endl;
 
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal parse of input string: " << param << std::endl;

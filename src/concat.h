@@ -82,6 +82,9 @@ int concat(int argc, char** argv){
 		case 'F':
 			files = std::string(optarg);
 			break;
+		case 's':
+			SILENT = 1;
+			break;
 		}
 	}
 

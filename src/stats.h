@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 void stats_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Convert binary TWK->VCF or TWO->LD; subset and slice TWK/TWO data\n"
+	"About:  Calculates basic summary statistics for a TWK/TWO file.\n"
 	"        Data does not have to be indexed. However, operations are faster if they\n"
 	"        are.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
@@ -54,6 +54,7 @@ int stats(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",		required_argument, 0, 'i' },
 		{"output",		optional_argument, 0, 'o' },
+		{"silent",		no_argument, 0, 's' },
 		{0,0,0,0}
 	};
 
@@ -63,7 +64,7 @@ int stats(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:s", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -82,6 +83,9 @@ int stats(int argc, char** argv){
 			break;
 		case 'o':
 			output = std::string(optarg);
+			break;
+		case 's':
+			SILENT = 1;
 			break;
 		}
 	}

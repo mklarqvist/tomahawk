@@ -43,7 +43,9 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 	bool trigger_break = false;
 	while(true){
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Reading..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG","SORT") << "Reading..." << std::endl;
+
 		if(!this->reader.nextBlockUntil(memory_limit))
 			trigger_break = true;
 
@@ -54,12 +56,15 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
+
 		std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
 				  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size()]));
 
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
 
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
 		const entry_type* entry;
 		if(!this->reader.nextVariantLimited(entry)){
 			std::cerr << Helpers::timestamp("ERROR","SORT") << "No data" << std::endl;
@@ -111,7 +116,9 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		totempole.byte_offset_end = stream.getNativeStream().tellp();
 		toi_writer.getNativeStream() << totempole;
 
-		std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
+
 		if(trigger_break) break;
 	}
 
@@ -148,19 +155,24 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	std::ifstream* streams = new std::ifstream[n_toi_entries];
 	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
 
-	std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
+
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
 		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
 	}
-	std::cerr << " Done!" << std::endl;
+
+	if(!SILENT)
+		std::cerr << " Done!" << std::endl;
 
 	// queue
 	queue_type outQueue;
 
 	//
-	std::cerr << Helpers::timestamp("LOG", "SORT") << "Merging..." << std::endl;
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "SORT") << "Merging..." << std::endl;
 
 	// draw one from each
 	const entry_type* e;

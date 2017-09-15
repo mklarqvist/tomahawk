@@ -32,8 +32,8 @@ void import_usage(void){
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file prefix (required)\n"
-	"  -h FLOAT Hardy-Weinberg P-value cutoff\n"
-	"  -m FLOAT Minor-allele frequency (MAF) cutoff\n"
+	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
+	"  -m FLOAT Minor-allele frequency (MAF) cutoff (default: 0)\n"
 	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
 	"  -s       Hide all program messages [null]\n";
 }

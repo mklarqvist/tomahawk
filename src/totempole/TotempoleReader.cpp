@@ -99,7 +99,7 @@ bool TotempoleReader::Open(const std::string filename){
 
 	// Parse literal block
 	if(!this->tgzf_controller.InflateBlock(this->stream, buffer)){
-		std::cerr << "Failed to get literal tgzf block" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 		return false;
 	}
 
@@ -253,7 +253,7 @@ bool TotempoleReader::writeLiterals(std::ofstream& stream){
 
 	this->tgzf_controller.Clear();
 	if(!this->tgzf_controller.Deflate(buffer)){
-		std::cerr << "Failed to deflate literal tgzf block" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 		return false;
 	}
 	stream.write(&this->tgzf_controller.buffer.data[0], this->tgzf_controller.buffer.pointer);

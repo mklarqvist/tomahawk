@@ -8,7 +8,9 @@ struct TomahawkOutputStatsData{
 	typedef TomahawkOutputStatsData self_type;
 
 	TomahawkOutputStatsData() : n_bins(0), bins(nullptr){}
-	TomahawkOutputStatsData(const U32 bins) : n_bins(bins), bins(new U64[bins]){}
+	TomahawkOutputStatsData(const U32 bins) : n_bins(bins), bins(new U64[bins]){
+		memset(this->bins, 0, sizeof(U64)*bins);
+	}
 	~TomahawkOutputStatsData(){ delete [] this->bins; }
 
 	bool setBins(const U32& bins){
@@ -21,6 +23,8 @@ struct TomahawkOutputStatsData{
 		}
 
 		this->bins = new U64[bins];
+		memset(this->bins, 0, sizeof(U64)*bins);
+
 		return true;
 	}
 
@@ -66,7 +70,7 @@ struct TomahawkOutputStats{
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		for(U32 i = 0; i < entry.n_bins; ++i)
-			stream << i*(1/((float)entry.n_bins-1)) << '-' << (i+1)*(1/((float)entry.n_bins-1)) << '\t' << entry.within[i] << '\t' << entry.across[i] << '\t' << entry.global[i] << '\n';
+			stream << i << '\t' << entry.within[i] << '\t' << entry.across[i] << '\t' << entry.global[i] << '\n';
 
 		return(stream);
 	}
@@ -81,7 +85,7 @@ struct TomahawkOutputStatsContainer{
 	typedef TomahawkOutputStats stats_type;
 	typedef IO::TomahawkOutputEntry entry_type;
 
-	TomahawkOutputStatsContainer(const U32& bins) : n_bins(bins), R2(this->n_bins + 1), D(this->n_bins + 1), Dprime(this->n_bins + 1){}
+	TomahawkOutputStatsContainer(const U32& bins) : n_bins(bins), R2(this->n_bins), D(this->n_bins), Dprime(this->n_bins){}
 
 	void operator+=(const entry_type& entry){
 		float R2 = entry.R2;

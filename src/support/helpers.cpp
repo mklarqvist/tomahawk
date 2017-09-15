@@ -99,6 +99,9 @@ std::string timestamp(const std::string type){
 	ret << "[" << datetime() << "]";
 	ret << "[" << type << "] ";
 
+	// Restore colour if terminated here
+	if(type == "ERROR" || type == "WARNING") ret << "\e[0m";
+
 	return(ret.str());
 }
 
@@ -112,6 +115,9 @@ std::string timestamp(const std::string type, const std::string type2){
 	ret << "[" << datetime() << "]";
 	ret << "[" << type << "]";
 	ret << "[" << type2 << "] ";
+
+	// Restore colour if terminated here
+	if(type == "ERROR" || type == "WARNING") ret << "\e[0m";
 
 	return(ret.str());
 }
@@ -201,15 +207,15 @@ bool parsePositionalStringTWO(const std::string& param){
 	if(found != std::string::npos){
 		std::vector<std::string> ret = Tomahawk::Helpers::split(param, ',');
 		if(ret.size() != 2){
-			std::cerr << "illegal format" << std::endl;
+			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format!" << std::endl;
 			return 1;
 		}
 		if(!matchPositionalStringTWO(ret[0])){
-			std::cerr << "failed 1 " << std::endl;
+			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format: part 1!" << std::endl;
 			return false;
 		}
 		if(!matchPositionalStringTWO(ret[1])){
-			std::cerr << "failed 2 " << std::endl;
+			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format: part 2!" << std::endl;
 			return false;
 		}
 		return true;

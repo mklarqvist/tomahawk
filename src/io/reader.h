@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstring>
 
+#include "../support/MagicConstants.h" // for SILENT
+
 #ifndef READER_H_
 #define READER_H_
 

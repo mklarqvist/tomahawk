@@ -85,7 +85,6 @@ int calc(int argc, char** argv){
 	Tomahawk::TomahawkCalcParameters& parameters = tomahawk.getParameters();
 	std::string input;
 	std::string output;
-	SILENT = 0;
 
 	S32 windowBases = -1, windowPosition = -1; // not implemented
 
