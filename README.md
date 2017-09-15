@@ -1,22 +1,13 @@
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
 ### Synopsis
-Tomahawk efficiently represents genotypic data by exploiting basic genetic properties
-and we directly query this compressed representation to calculate linkage disequilibrium
-for all pairwise alleles/genotypes in large-scale cohorts.
-In order to achieve speed, Tomahawk combines primarily two efficient algorithms
-exploiting different concepts: 1) low genetic diversity, and 2) the large memory
-registers on modern processors. The first algorithm directly compares a run-length
-encoded representation of genotypes from two vectors. The other precomputes
-the run-length encodings as 1-bit encodings and use SIMD-instructions and the
-large registers on modern CPUs to directly compare two bit-vectors.
-This algorithm also exploits the relatively low genetic divergence within species.
-Both algortihms are embarrassingly parallel.
+Tomahawk efficiently represents genotypic data by exploiting basic genetic properties and we directly query this compressed representation to calculate linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity, and 2) the large memory registers on modern processors. The first algorithm directly compares run-length encoded representation of genotypes from two vectors. The other precomputes the run-length encodings as 1-bit encodings and use SIMD-instructions to directly compare two bit-vectors. This algorithm also exploits the relatively low genetic diversity within species. Both algorithms are embarrassingly parallel.
+
 
 The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, and `TGZF`
 are available [TWKv0](spec/TWKv0.pdf)
 
-Contact: Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
+Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 
 ### Installation instructions
 Compiling Tomahawk with default parameters is straightforward. `make` moves the
@@ -55,7 +46,7 @@ The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -h 1e-3
+tomahawk import -i file.bcf -o outPrefix -m 0.2 -h 1e-3
 ```
 
 ### Import-extend
