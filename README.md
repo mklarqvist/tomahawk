@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.org/mklarqvist/Tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/Tomahawk)
+[![Release](https://img.shields.io/badge/Release-beta_0.1-blue.svg)](https://github.com/mklarqvist/Tomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE.txt)
+
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
 ### Synopsis
@@ -7,19 +11,24 @@ Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
 The current specification (v.0) is available [TWKv0](spec/TWKv0.pdf)
 
 ### Installation instructions
-Compiling Tomahawk with default parameters is straightforward.
+For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
+directory. If you see compilation errors, you most likely do not have `SSE4.2`.
+At the present time, we do not support non-x86 CPUs or old CPU architecture.
 ```bash
 git clone --recursive https://github.com/mklarqvist/Tomahawk
 cd Tomahawk
 cd build
 make
 ```
-By default, Tomahawk compiles using extremely aggressive optimization flags and with
-native architecture-specific instructions
+By default, Tomahawk compiles using extremely aggressive optimization flags and
+with native architecture-specific instructions
 (`-march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops`)
 and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
-computer farms/clouds with a hardware architecture that is different from the compiled target.
+computer farms/clouds with a hardware architecture that is different from the
+compiled target.
+
+Tomahawk requires
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
