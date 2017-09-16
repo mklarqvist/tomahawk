@@ -142,7 +142,7 @@ void TomahawkImportWriter::WriteHeaders(void){
 		temp += this->vcf_header_->literal_lines[i] + '\n';
 
 	const std::string command = "##tomahawk_importCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
-		+ "; VERSION=" + std::string(Tomahawk::Constants::PROGRAM_VERSION_BACK)
+		+ "; VERSION=" + std::string(VERSION)
 		+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
 
 	temp += command;

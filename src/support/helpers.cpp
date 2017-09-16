@@ -63,9 +63,9 @@ std::vector<std::string> splitLastOf(const std::string& s, const char delim, con
 	return(ret);
 }
 
-std::string program_string(const bool back){
+std::string program_string(){
 	return(std::string(Constants::LITERAL_COMMAND_LINE)
-			+ "; VERSION=" + std::string(back ? Tomahawk::Constants::PROGRAM_VERSION_BACK : Tomahawk::Constants::PROGRAM_VERSION_FRONT)
+			+ "; VERSION=" + VERSION
 			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION]);
 }
 

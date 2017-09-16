@@ -38,7 +38,7 @@ const std::vector<std::string> SIMD_MAPPING = {"NONE","SSE","SSE2","SSE3","AVX",
 #define SIMD_VERSION	4
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
-#elif defined(__SSE3__) && __SSE3__ == 1
+#elif defined(__SSE4_1__) && __SSE4_1__ == 1
 #define SIMD_AVAILABLE	1
 #define SIMD_VERSION	3
 #define SIMD_ALIGNMENT	16

@@ -33,7 +33,7 @@ std::string baseName(const std::string& input);
 std::string extensionName(const std::string& input);
 std::vector<std::string> filePathBaseExtension(const std::string& input);
 
-std::string program_string(const bool back = false);
+std::string program_string();
 
 template <class T>
 T roundUp(T numToRound, int multiple){

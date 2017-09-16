@@ -48,6 +48,7 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
 
 # All Target
 all: tomahawk

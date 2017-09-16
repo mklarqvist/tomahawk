@@ -16,18 +16,6 @@ extern std::string INTERPRETED_COMMAND;
 const float PROGRAM_VERSION = 0.1; // major
 const U32 PROGRAM_VERSION_MINOR = 0;
 
-// Todo: fix inject in makefile
-// Get commit since last tag
-// git rev-list  `git rev-list --tags --no-walk --max-count=1`..HEAD --count
-const U32 GIT_COMMITS_SINCE_TAG = 0;
-// Get last git hash
-// git rev-parse HEAD
-const std::string PROGRAM_GIT_HASH = "88e5d79e61d914aa5051285c709eb912ea069eb7";
-extern char PROGRAM_VERSION_FRONT[5048];
-extern char PROGRAM_VERSION_BACK[5048];
-const U32 x = sprintf(PROGRAM_VERSION_FRONT,"beta-%.2f.%u-%u-%.7s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
-const U32 y = sprintf(PROGRAM_VERSION_BACK,"beta-%.2f.%u-%u-%s", PROGRAM_VERSION, PROGRAM_VERSION_MINOR, GIT_COMMITS_SINCE_TAG, &PROGRAM_GIT_HASH[0]);
-
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
 const std::string PROGRAM_NAME = "tomahawk";

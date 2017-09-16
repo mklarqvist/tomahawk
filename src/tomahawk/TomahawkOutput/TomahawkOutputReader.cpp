@@ -152,7 +152,7 @@ bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
-	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string();
 	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=NO regions=FALSE";
 
 	if(!this->OpenWriter())
@@ -175,7 +175,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_viewCommand=" + Helpers::program_string();
 	this->literals += "\n##tomahawk_viewFilters=" + this->filter.getInterpretedString() + " filter=YES regions=FALSE";
 
 	if(!this->OpenWriter())
@@ -388,7 +388,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 	this->setWriterType(0);
 	this->setWriteHeader(true);
-	this->literals += "\n##tomahawk_concatCommand=" + Helpers::program_string(true);
+	this->literals += "\n##tomahawk_concatCommand=" + Helpers::program_string();
 	this->literals += "\n##tomahawk_concatFiles=";
 	for(U32 i = 0; i < files.size(); ++i)
 		this->literals += files[i] + ',';

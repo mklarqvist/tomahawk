@@ -229,14 +229,19 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 #define PHASED_REFALT_MASK(A,B,M)	_mm_and_si128(PHASED_REFALT(A, B), M)
 #define MASK_MERGE(A,B)		_mm_xor_si128(_mm_or_si128(A, B), ONE_MASK)
 
-// Todo: SSE2 legacy code
-// extract_epi_64 is available AVX and later
-// popcnt64 is AVX and later
-
+#if SIMD_VERSION >= 3
 #define POPCOUNT(A, B) {								\
 	A += POPCOUNT_ITER(_mm_extract_epi64(B, 0));		\
 	A += POPCOUNT_ITER(_mm_extract_epi64(B, 1));		\
 }
+#else
+#define POPCOUNT(A, B) { \
+	U64 temp = _mm_extract_epi16(B, 0) << 6 | _mm_extract_epi16(B, 1) << 4 | _mm_extract_epi16(B, 2) << 2 | _mm_extract_epi16(B, 3); \
+	A += POPCOUNT_ITER(temp);		\
+	temp = _mm_extract_epi16(B, 4) << 6 | _mm_extract_epi16(B, 5) << 4 | _mm_extract_epi16(B, 6) << 2 | _mm_extract_epi16(B, 7); \
+	A += POPCOUNT_ITER(temp);		\
+}
+#endif
 
 #define FILTER_UNPHASED(A, B)			 _mm_and_si128(_mm_slli_epi64(_mm_and_si128(_mm_or_si128(_mm_and_si128(A, maskUnphasedHigh),_mm_and_si128(B, maskUnphasedLow)), maskUnphasedLow), 1), A)
 #define FILTER_UNPHASED_PAIR(A, B, C, D) _mm_or_si128(_mm_srli_epi64(FILTER_UNPHASED(A, B), 1), FILTER_UNPHASED(C, D))
@@ -266,10 +271,10 @@ class TomahawkCalculateSlave{
 
 public:
 	TomahawkCalculateSlave(const manager_type& manager,
-						output_manager_type& writer,
-						Interface::ProgressBar& progress,
-						const TomahawkCalcParameters& parameters,
-						const work_order& orders);
+		output_manager_type& writer,
+		Interface::ProgressBar& progress,
+		const TomahawkCalcParameters& parameters,
+		const work_order& orders);
 
 	~TomahawkCalculateSlave();
 
@@ -356,9 +361,9 @@ private:
 template <class T>
 TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 		output_manager_type& writer,
-					   Interface::ProgressBar& progress,
-					   const TomahawkCalcParameters& parameters,
-					   const work_order& orders) :
+		Interface::ProgressBar& progress,
+		const TomahawkCalcParameters& parameters,
+		const work_order& orders) :
 	parameters(parameters),
 	block_comparisons(0),
 	variant_comparisons(0),
@@ -406,7 +411,6 @@ TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkC
 
 	return(*this);
 }
-
 
 template <class T>
 void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const controller_type& b){
