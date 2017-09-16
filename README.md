@@ -1,14 +1,15 @@
 [![Build Status](https://travis-ci.org/mklarqvist/Tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/Tomahawk)
 [![Release](https://img.shields.io/badge/Release-beta_0.1-blue.svg)](https://github.com/mklarqvist/Tomahawk/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE.txt)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
 
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
-### Synopsis
+Tomahawk efficiently represents genotypic data by exploiting basic genetic properties and we directly query this compressed representation to calculate linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity, and 2) the large memory registers on modern processors. The first algorithm directly compares run-length encoded representation of genotypes from two vectors. The other precomputes the run-length encodings as 1-bit encodings and use SIMD-instructions to directly compare two bit-vectors. This algorithm also exploits the relatively low genetic diversity within species. Both algorithms are embarrassingly parallel.
+
+The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, and `TGZF`
+are available [TWKv0](spec/TWKv0.pdf)
 
 Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
-
-The current specification (v.0) is available [TWKv0](spec/TWKv0.pdf)
 
 ### Installation instructions
 For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
@@ -27,8 +28,6 @@ and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
 compiled target.
-
-Tomahawk requires
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
@@ -55,7 +54,8 @@ tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
 ```
 
 ### Import-extend
-If you have split up your `vcf`/`bcf` files into multiple disjoint files (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
+If you have split up your `vcf`/`bcf` files into multiple disjoint files
+(such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
 tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
 ```
