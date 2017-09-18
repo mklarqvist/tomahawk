@@ -84,15 +84,14 @@ struct TomahawkImportRLEHelper{
 		this->MGF = (double)curMax2/this->expectedSamples;
 	}
 
-	void determinePhase(const char& separator){
-		switch(separator){
-		case '/': this->phased = false; break;
-		case '|': this->phased = true; break;
-		default:
-			std::cerr << Helpers::timestamp("ERROR") << "Unrecognised separator!" << std::endl;
-			exit(1);
-			break;
-		}
+	bool determinePhase(const char& separator){
+		if(separator == '/'){
+			this->phased = false;
+			return true;
+		} else if(separator == '|'){
+			this->phased = true;
+			return true;
+		} else return false;
 	}
 
 	/*
@@ -314,17 +313,15 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicB
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-	//assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
-	//std::cerr << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) << '\t' << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) << std::endl;
+	assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
 
 	this->helper.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-		const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-		//assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
-		//std::cerr << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) << '\t' << (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 2) << std::endl;
+		BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+		assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
 
 		if(packed != packed_internal){
 			__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;

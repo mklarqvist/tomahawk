@@ -15,6 +15,7 @@ BCFEntry::BCFEntry(void):
 	l_ID(0),
 	p_genotypes(0),
 	ref_alt(0),
+	isGood(false),
 	data(new char[this->limit]),
 	body(reinterpret_cast<body_type*>(this->data)),
 	alleles(new string_type[100]),
@@ -126,8 +127,15 @@ bool BCFEntry::parse(void){
 	// Format key
 	const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
 	//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
+	//std::cerr << (int)fmt_type_value2 << '\t' << (int)fmt_type_value1 << std::endl;
+	//assert(fmt_type.high == 2);
 
-	assert(fmt_type.high == 2);
+	if(fmt_type.high != 2){
+		this->isGood = false;
+		return false;
+	}
+
+	this->isGood = true;
 
 	/*
 	for(U32 i = 0; i < 44; ++i){
@@ -143,12 +151,19 @@ bool BCFEntry::parse(void){
 }
 
 double BCFEntry::getMissingness(const U64& samples) const{
+	if(!this->good())
+		return(1);
+
 	U32 internal_pos = this->p_genotypes;
 	U64 n_missing = 0;
 	for(U32 i = 0; i < samples; ++i){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		//std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
+
+		if(fmt_type_value1 < 0 || fmt_type_value2 < 0)
+			return(2);
+
 		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2) ++n_missing;
 	}
 	return((double)n_missing/samples);

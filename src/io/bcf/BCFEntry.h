@@ -80,7 +80,7 @@ struct BCFEntry{
 
 	void resize(const U32 size);
 	void add(const char* const data, const U32 length);
-	inline void reset(void){ this->pointer = 0; }
+	inline void reset(void){ this->pointer = 0; this->isGood = false; }
 	inline const U32& size(void) const{ return(this->pointer); }
 	inline const U32& capacity(void) const{ return(this->limit); }
 	inline U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
@@ -95,6 +95,7 @@ struct BCFEntry{
 	bool parse(void);
 	void SetRefAlt(void);
 	double getMissingness(const U64& samples) const;
+	const bool& good(void) const{ return(this->isGood); }
 
 public:
 	U32 pointer; // byte width
@@ -102,7 +103,7 @@ public:
 	U32 l_ID;
 	U32 p_genotypes; // position genotype data begin
 	BYTE ref_alt; // parsed
-
+	bool isGood;
 	char* data; // hard copy data to buffer, interpret internally
 	body_type* body; // BCF2 body
 	string_type* alleles; // pointer to pointer of ref alleles and their lengths

@@ -164,10 +164,19 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Get a line
 	bcf_entry_type entry;
-	if(!reader.nextVariant(entry)){
-		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to get first variant..." << std::endl;
+	while(reader.nextVariant(entry)){
+		if(!entry.good()){
+			entry.reset();
+			continue;
+		}
+		break;
+	}
+
+	if(!entry.good()){
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "No valid variants..." << std::endl;
 		return false;
 	}
+	entry.reset();
 
 	S32 contigID = entry.body->CHROM;
 	this->sort_order_helper.previous_position = entry.body->POS;
@@ -182,9 +191,13 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 	entry.reset();
 
-	///
 	// Parse lines
 	while(reader.nextVariant(entry)){
+		if(!entry.good()){
+			entry.reset();
+			continue;
+		}
+
 		if(!this->parseBCFLine(entry)){
 			std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
 			return false;
@@ -352,7 +365,6 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Assess missingness
 	const double missing = line.getMissingness(this->header_->samples);
-	//std::cerr << missing << std::endl;
 	//const float missing = 0;
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
@@ -372,10 +384,10 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		if(missing > this->filters.missingness){
 			//if(!SILENT)
 			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
-
 			this->sort_order_helper.previous_included = false;
 			goto next;
 		}
+
 
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){

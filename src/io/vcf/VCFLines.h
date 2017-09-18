@@ -113,6 +113,15 @@ public:
 	VCFLine(const U32 samples): simple_(samples), complex_(samples){}
 	~VCFLine(void){}
 
+	inline const bool checkSeparator(const char& separator) const{
+		if(separator == '/')
+			return true;
+		else if(separator == '|')
+			return true;
+		else return false;
+	}
+
+
 	bool Parse(const char* source, const U32 sourceLength){
 		BYTE found = 0;
 		U32 sourceLastPosition = 0;
@@ -195,11 +204,17 @@ public:
 		U64 total = 0;
 		if(this->getComplex()){
 			for(U32 i = 0; i < samples; ++i){
+				if(!this->checkSeparator(this->complex_.data_[i]->separator))
+					return(2);
+
 				if(this->complex_.data_[i]->snpA == '.' || this->complex_.data_[i]->snpB == '.')
 					++total;
 			}
 		} else {
 			for(U32 i = 0; i < samples; ++i){
+				if(!this->checkSeparator(this->simple_.data_[i].separator))
+					return(2);
+
 				if(this->simple_[i].snpA == '.' || this->simple_.data_[i].snpB == '.')
 					++total;
 			}

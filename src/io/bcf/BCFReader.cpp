@@ -40,11 +40,10 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 	}
 
 	if(this->current_pointer + 8 > this->bgzf_controller.buffer.size()){
-		const U32 partial = this->bgzf_controller.buffer.size() - this->current_pointer;
+		const S32 partial = (S32)this->bgzf_controller.buffer.size() - this->current_pointer;
 		entry.add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
 		if(!this->nextBlock()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block in partial" << std::endl;
-			std::cerr << this->current_pointer << '/' << this->bgzf_controller.buffer.size() << std::endl;
 			return false;
 		}
 
@@ -60,10 +59,9 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 		if(this->current_pointer + remainder > this->bgzf_controller.buffer.size()){
 			entry.add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
 			remainder -= this->bgzf_controller.buffer.size() - this->current_pointer;
-			if(!this->nextBlock()){
-				//std::cerr << "failed to get next block" << std::endl;
+			if(!this->nextBlock())
 				return false;
-			}
+
 		} else {
 			entry.add(&this->bgzf_controller.buffer[this->current_pointer], remainder);
 			this->current_pointer += remainder;

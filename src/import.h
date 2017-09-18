@@ -157,15 +157,13 @@ int import(int argc, char** argv){
 	importer.getFilters().missingness = missingness;
 
 	if(!extension_mode){
-		if(!importer.Build()){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+		if(!importer.Build())
 			return 1;
-		}
+
 	} else {
-		if(!importer.Extend(extend)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed extension!" << std::endl;
+		if(!importer.Extend(extend))
 			return 1;
-		}
+
 	}
 
 	return 0;

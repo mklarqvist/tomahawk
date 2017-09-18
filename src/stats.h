@@ -37,12 +37,7 @@ void stats_usage(void){
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout)\n"
-	"  -h/H     (twk/two) header only / no header [null]\n"
-	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
-	"  -N       output in tab-delimited text format (see -O) [null]\n"
-	"  -B       output in binary TWO/TWK format (see -O, default)[null]\n"
-	"  -s       Hide all program messages [null]\n";
+	"  -b INT   number of bins (default: 10)\n";
 }
 
 int stats(int argc, char** argv){
@@ -53,7 +48,7 @@ int stats(int argc, char** argv){
 
 	static struct option long_options[] = {
 		{"input",		required_argument, 0, 'i' },
-		{"output",		optional_argument, 0, 'o' },
+		{"bins",		optional_argument, 0, 'b' },
 		{"silent",		no_argument, 0, 's' },
 		{0,0,0,0}
 	};
@@ -63,9 +58,8 @@ int stats(int argc, char** argv){
 
 	int c = 0;
 	int long_index = 0;
-	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:s", long_options, &long_index)) != -1){
-		hits += 2;
+	S32 bins = 10;
+	while ((c = getopt_long(argc, argv, "i:b:s", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -81,8 +75,12 @@ int stats(int argc, char** argv){
 		case 'i':
 			input = std::string(optarg);
 			break;
-		case 'o':
-			output = std::string(optarg);
+		case 'b':
+			bins = atoi(optarg);
+			if(bins <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set bins to <= 0..." << std::endl;
+				return(1);
+			}
 			break;
 		case 's':
 			SILENT = 1;
@@ -106,12 +104,13 @@ int stats(int argc, char** argv){
 	std::transform(end.begin(), end.end(), end.begin(), ::tolower); // transform chars to lower case
 
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
-
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unsupported" << std::endl;
+		return(1);
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::IO::TomahawkOutputReader reader;
 		//reader.setWriteHeader(outputHeader);
-		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
+		//Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
 		//filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
 
 		//if(!reader.setWriterType(outputType))
@@ -125,7 +124,7 @@ int stats(int argc, char** argv){
 		//	return 1;
 		//}
 
-		if(!reader.summary(input, 10))
+		if(!reader.summary(input, bins))
 			return 1;
 
 	} else {

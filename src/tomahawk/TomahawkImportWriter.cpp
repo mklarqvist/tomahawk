@@ -273,7 +273,7 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 // flush and write
 bool TomahawkImportWriter::flush(void){
 	if(this->buffer_meta_.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR", "Writer") << "Cannot flush writer with 0 entries..." << std::endl;
+		//std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot flush writer with 0 entries..." << std::endl;
 		return false;
 	}
 
