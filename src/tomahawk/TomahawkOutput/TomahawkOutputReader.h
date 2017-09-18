@@ -49,13 +49,13 @@ public:
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
 	bool getBlocks(void);
 	bool AddRegions(std::vector<std::string>& positions);
-
 	bool Open(const std::string input);
 	bool OpenExtend(const std::string input);
 	bool nextBlock(void);
 	bool nextVariant(const entry_type*& entry);
 	bool nextVariantLimited(const entry_type*& entry);
 	bool nextBlockUntil(const U32 limit);
+	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	// Other
 	bool view(const std::string& filename);

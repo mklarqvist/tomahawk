@@ -35,7 +35,6 @@ public:
 		this->Run = true;
 		this->WorkerThread__ = std::thread(&self_type::__run, this);
 		this->WorkerThread__.detach(); // detach tread (do not wait for join)
-		//return this->WorkerThread__;
 	}
 
 	void Stop(void){
@@ -115,9 +114,6 @@ private:
 };
 
 }
-
 }
-
-
 
 #endif /* PROGRESSBAR_H_ */

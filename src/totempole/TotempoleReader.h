@@ -63,6 +63,7 @@ public:
 	}
 	inline const header_type& getHeader(void) const{ return(this->header); }
 	inline const contig_base_type* getContigBase(const U32 contigID) const{ return(reinterpret_cast<const contig_base_type*>(&this->contigs[contigID])); }
+	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	hash_table* getContigHTablePointer(void) const{ return(this->contigsHashTable); }
 	hash_table* getSampleHTablePointer(void) const{ return(this->sampleHashTable); }

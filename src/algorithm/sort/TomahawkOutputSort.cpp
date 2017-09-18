@@ -27,7 +27,7 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 	//
 	this->reader.setWriterType(0);
-	this->reader.literals += "\n##tomahawk_partialSortCommand=" + Helpers::program_string();
+	this->reader.addLiteral("\n##tomahawk_partialSortCommand=" + Helpers::program_string());
 	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
 	IO::WriterFile toi_writer;
 	toi_writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
@@ -142,7 +142,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		return false;
 	}
 
-	this->reader.literals += "\n##tomahawk_mergeSortCommand=" + Helpers::program_string();
+	this->reader.addLiteral("\n##tomahawk_mergeSortCommand=" + Helpers::program_string());
 
 	writer_type writer(this->reader.contigs, &this->reader.header);
 	if(!writer.open(destinationPrefix)){
