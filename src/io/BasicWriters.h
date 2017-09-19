@@ -33,10 +33,14 @@ public:
 	virtual void operator<<(const buffer_type& buffer) =0;
 	virtual void operator<<(void* entry) =0;
 
-	virtual const U64& write(const char* data, const U64& length) =0;
+	virtual const size_t write(const char* data, const U64& length) =0;
 	virtual std::ostream& getStream(void) =0;
 	virtual void flush(void) =0;
 	virtual bool close(void) =0;
+	inline lock_type* getLock(void){ return(&this->lock); }
+
+	virtual inline const size_t writeNoLock(const char* data, const U32 length) =0;
+	virtual inline const size_t writeNoLock(const buffer_type& buffer) =0;
 
 protected:
 	lock_type lock;
@@ -59,11 +63,21 @@ public:
 	inline bool close(void){ return true; }
 	inline std::ostream& getStream(void){ return(std::cout); }
 
-	const U64& write(const char* data, const U64& length){
+	const size_t write(const char* data, const U64& length){
 		this->lock.lock();
 		std::cout.write(&data[0], length);
 		this->lock.unlock();
 		return(length);
+	}
+
+	inline const size_t writeNoLock(const char* data, const U32 length){
+		std::cout.write(&data[0], length);
+		return(length);
+	}
+
+	inline const size_t writeNoLock(const buffer_type& buffer){
+		std::cout.write(&buffer.data[0], buffer.pointer);
+		return(buffer.pointer);
 	}
 
 	void operator<<(void* entry){}
@@ -126,22 +140,22 @@ public:
 	}
 
 	void operator<<(void* entry){}
-	const U64& write(const char* data, const U64& length){
+	const size_t write(const char* data, const U64& length){
 		this->lock.lock();
 		this->stream.write(&data[0], length);
 		this->lock.unlock();
 		return(length);
 	}
 
-	inline void writeNoLock(const char* data, const U32 length){
+	inline const size_t writeNoLock(const char* data, const U32 length){
 		this->stream.write(&data[0], length);
+		return(length);
 	}
 
-	inline void writeNoLock(const buffer_type& buffer){
+	inline const size_t writeNoLock(const buffer_type& buffer){
 		this->stream.write(&buffer.data[0], buffer.pointer);
+		return(buffer.pointer);
 	}
-
-	lock_type* getLock(void){ return(&this->lock); }
 
 private:
 	std::string outFile;

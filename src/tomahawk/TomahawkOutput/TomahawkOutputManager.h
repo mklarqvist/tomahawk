@@ -119,44 +119,6 @@ public:
 		this->buffer << helper;
 		++this->outCount;
 		++this->progressCount;
-
-		// First one
-		if(this->entry.entries == 0){
-			this->entry.contigIDA = a.support->contigID;
-			this->entry.contigIDB = b.support->contigID;
-			this->entry.minPositionA = a.meta[a.metaPointer].position;
-			this->entry.minPositionB = b.meta[b.metaPointer].position;
-		}
-
-		//
-		if(this->entry.contigIDA != -1){
-			if(a.meta[a.metaPointer].position < this->entry_track.maxPositionA || a.meta[a.metaPointer].position > this->entry.minPositionA){
-				this->entry.minPositionA = -1;
-				this->entry.maxPositionA = -1;
-			} else this->entry.maxPositionA = a.meta[a.metaPointer].position;
-
-			if(this->entry.contigIDA != a.support->contigID){
-				this->entry.contigIDA = -1;
-				this->entry.minPositionA = -1;
-				this->entry.maxPositionA = -1;
-			}
-		}
-
-		if(this->entry.contigIDB != -1){
-			if(b.meta[b.metaPointer].position < this->entry_track.maxPositionB || b.meta[b.metaPointer].position > this->entry.minPositionB){
-				this->entry.minPositionB = -1;
-				this->entry.maxPositionB = -1;
-			} else this->entry.maxPositionB = b.meta[b.metaPointer].position;
-
-			if(this->entry.contigIDB != b.support->contigID){
-				this->entry.contigIDB = -1;
-				this->entry.minPositionB = -1;
-				this->entry.maxPositionB = -1;
-			}
-		}
-
-		this->entry_track.maxPositionA = a.meta[a.metaPointer].position;
-		this->entry_track.maxPositionB = b.meta[b.metaPointer].position;
 		++this->entry.entries;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){

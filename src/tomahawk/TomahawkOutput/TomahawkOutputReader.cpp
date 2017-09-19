@@ -247,12 +247,17 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 				return false;
 
 			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+			if(this->toi_reader.size() > 0){
+				this->toi_reader.findOverlap(interval.contigID);
+				std::cerr << "has toi index" << std::endl;
+				//this->toi_reader.
+			}
+
 		}
 	}
 
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		if(this->interval_tree_entries[i].size() != 0){
-			//std::cerr << "constructing itree for id: " << i << " n: " << this->interval_tree_entries[i].size() << std::endl;
 			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
 		} else
 			this->interval_tree[i] = nullptr;

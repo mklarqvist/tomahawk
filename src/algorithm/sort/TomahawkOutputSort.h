@@ -1,11 +1,15 @@
 #ifndef TOMAHAWKOUTPUTSORT_H_
 #define TOMAHAWKOUTPUTSORT_H_
 
+#include <thread>
 #include <queue>
 
+#include "../../io/compression/TGZFEntryIterator.h"
+#include "../../totempole/TotempoleOutputEntry.h"
 #include "../../tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 #include "../../tomahawk/TomahawkOutput/TomahawkOutputManager.h"
 #include "TomahawkOutputSortMergeQueueContainer.h"
+#include "TomahawkOutputSortSlave.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -19,18 +23,28 @@ class TomahawkOutputSorter{
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
 	typedef std::priority_queue< queue_entry > queue_type; // prio queue
 	typedef IO::TomahawkOutputReader two_reader_type;
-	typedef Totempole::TotempoleOutputEntry totempoly_entry;
+	typedef Totempole::TotempoleOutputEntry totempole_entry;
 	typedef IO::TomahawkOutputWriterIndex writer_type;
+	typedef IO::WriterFile basic_writer_type;
+	typedef TomahawkOutputSortSlave slave_sorter;
+	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
 
 public:
-	TomahawkOutputSorter(){}
+	TomahawkOutputSorter() : n_threads(std::thread::hardware_concurrency()){}
 	~TomahawkOutputSorter(){}
 
 	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
 	bool sortMerge(const std::string& input, const std::string& destinationPrefix, const U32 block_size);
 
 private:
+	bool __sortUnindexed();
+	bool __sortIndexed(basic_writer_type& toi_writer, const std::string& input, const U32 memory_limit);
+
+private:
 	two_reader_type reader;
+
+public:
+	U32 n_threads;
 };
 
 

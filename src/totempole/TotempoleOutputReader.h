@@ -28,7 +28,9 @@ public:
 	inline const U32& size(void) const{ return(this->n_entries); }
 
 	// Find data blocks mapping to these regions
-	//bool findOverlap();
+	bool findOverlap(const S32 contigID);
+	bool findOverlap(const S32 contigID, const U32 position);
+	bool findOverlap(const S32 contigID, const U32 from, const U32 to);
 
 
 public:

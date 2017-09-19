@@ -45,6 +45,25 @@ bool TotempoleOutputReader::Open(const std::string& input){
 	return true;
 }
 
+bool TotempoleOutputReader::findOverlap(const S32 contigID){
+	if(this->ERROR_STATE != TOI_OK){
+		std::cerr << "no toi" << std::endl;
+		return false;
+	}
+
+	if(!this->header.controller.sorted){
+		std::cerr << "controller not sorted" << std::endl;
+		return false;
+	}
+
+	std::cerr << "searching for: " << contigID << std::endl;
+	for(U32 i = 0; i < this->size(); ++i){
+
+	}
+
+	return true;
+}
+
 
 } /* namespace Totempole */
 } /* namespace Tomahawk */

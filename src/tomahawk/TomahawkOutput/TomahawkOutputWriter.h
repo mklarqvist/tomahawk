@@ -24,6 +24,9 @@ protected:
 	typedef Totempole::TotempoleContigBase contig_type;
 
 public:
+	typedef Algorithm::SpinLock lock_type;
+
+public:
 	TomahawkOutputWriterInterface(const contig_type* contigs, const header_type* header) :
 		stream(nullptr),
 		header(header),
@@ -59,9 +62,12 @@ public:
 	virtual inline bool close(void){ this->stream->close(); return true; }
 	virtual void operator<<(const entry_type* const entryentry) =0;
 	virtual void operator<<(const entry_type& entryentry) =0;
-	inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
-	virtual inline const U64 write(buffer_type& buffer){ return(this->stream->write(&buffer.data[0], buffer.size())); }
+	virtual inline void write(const char* data, const U32 length){ this->stream->write(&data[0], length); }
+	virtual inline void writeNoLock(const char* data, const U32 length){ this->stream->writeNoLock(&data[0], length); }
+	virtual inline const size_t write(buffer_type& buffer){ return(this->stream->write(&buffer.data[0], buffer.size())); }
+	virtual inline const size_t writeNoLock(buffer_type& buffer){ return(this->stream->writeNoLock(&buffer.data[0], buffer.size())); }
 	inline stream_type* getStream(void){ return(this->stream); }
+	inline lock_type* getLock(void){ return(this->stream->getLock()); }
 
 	template<class T>
 	void write(const T& data){
@@ -155,10 +161,17 @@ public:
 		}
 	}
 
-	virtual inline const U64 write(buffer_type& buffer){
+	virtual inline const size_t write(buffer_type& buffer){
 		this->controller.Clear();
 		this->controller.Deflate(buffer);
 		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+		return(this->controller.buffer.size());
+	}
+
+	virtual inline const size_t writeNoLock(buffer_type& buffer){
+		this->controller.Clear();
+		this->controller.Deflate(buffer);
+		this->stream->writeNoLock(&this->controller.buffer[0], this->controller.buffer.size());
 		return(this->controller.buffer.size());
 	}
 
@@ -177,6 +190,8 @@ public:
 		__stream.write(&this->controller.buffer.data[0], this->controller.buffer.pointer);
 		this->controller.Clear();
 	};
+
+	U64 getUncompressedSize(void) const{ return(this->controller.buffer.size()); }
 
 	// There is no EOF
 	void writeEOF(void){};
@@ -254,10 +269,7 @@ public:
 	}
 
 	void setPrevEntryFirst(const entry_type& entry){
-		this->totempole_entry.contigIDA = entry.AcontigID;
-		this->totempole_entry.contigIDB = entry.BcontigID;
-		this->totempole_entry.minPositionA = entry.Aposition;
-		this->totempole_entry.minPositionB = entry.Bposition;
+		// TODO
 	}
 
 	inline void setPrevEntry(const entry_type* entry){
@@ -278,33 +290,6 @@ public:
 		if(this->totempole_entry.entries == 0)
 			this->setPrevEntryFirst(*entry);
 
-		// A
-		if(this->totempole_entry.contigIDA != -1){
-			if(entry->Aposition < entry_prev.Aposition || entry->Aposition < this->totempole_entry.minPositionA){
-				this->totempole_entry.minPositionA = -1;
-				this->totempole_entry.maxPositionA = -1;
-			} else if(this->totempole_entry.minPositionA != -1) this->totempole_entry.maxPositionA = entry->Aposition;
-
-			if(this->totempole_entry.contigIDA != entry->AcontigID){
-				this->totempole_entry.contigIDA = -1;
-				this->totempole_entry.minPositionA = -1;
-				this->totempole_entry.maxPositionA = -1;
-			}
-		}
-
-		// B
-		if(this->totempole_entry.contigIDB != -1){
-			if(entry->Bposition < this->entry_prev.Bposition || entry->Bposition < this->totempole_entry.minPositionB){
-				this->totempole_entry.minPositionB = -1;
-				this->totempole_entry.maxPositionB = -1;
-			} else if(this->totempole_entry.minPositionB != -1) this->totempole_entry.maxPositionB = entry->Bposition;
-
-			if(this->totempole_entry.contigIDB != entry->BcontigID){
-				this->totempole_entry.contigIDB = -1;
-				this->totempole_entry.minPositionB = -1;
-				this->totempole_entry.maxPositionB = -1;
-			}
-		}
 		++this->totempole_entry.entries;
 
 		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
@@ -328,48 +313,11 @@ public:
 		if(this->totempole_entry.entries == 0)
 			this->setPrevEntryFirst(entry);
 
-		// A
-		if(this->totempole_entry.contigIDA != -1){
-			if(entry.Aposition < this->entry_prev.Aposition || entry.Aposition < this->totempole_entry.minPositionA){
-				this->totempole_entry.minPositionA = -1;
-				this->totempole_entry.maxPositionA = -1;
-			} else if(this->totempole_entry.minPositionA != -1) this->totempole_entry.maxPositionA = entry.Aposition;
-
-			if(this->totempole_entry.contigIDA != entry.AcontigID){
-				this->totempole_entry.contigIDA = -1;
-				this->totempole_entry.minPositionA = -1;
-				this->totempole_entry.maxPositionA = -1;
-			}
-		}
-
-		// B
-		if(this->totempole_entry.contigIDB != -1){
-			if(entry.Bposition < this->entry_prev.Bposition || entry.Bposition < this->totempole_entry.minPositionB){
-				this->totempole_entry.minPositionB = -1;
-				this->totempole_entry.maxPositionB = -1;
-			} else if(this->totempole_entry.minPositionB != -1) this->totempole_entry.maxPositionB = entry.Bposition;
-
-			if(this->totempole_entry.contigIDB != entry.BcontigID){
-				this->totempole_entry.contigIDB = -1;
-				this->totempole_entry.minPositionB = -1;
-				this->totempole_entry.maxPositionB = -1;
-			}
-		}
 		++this->totempole_entry.entries;
 
 		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
-		if(this->buffer.size() > this->flush_limit){
-			IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
-			this->controller.Deflate(this->buffer);
-			this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
-			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
-			this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
-			this->totempole_entry.uncompressed_size = this->controller.buffer.size();
-			this->controller.Clear();
-			this->buffer.reset();
-			this->stream_index.getNativeStream() << this->totempole_entry;
-			this->totempole_entry.reset();
-		}
+		if(this->buffer.size() > this->flush_limit)
+			this->flushBlock();
 
 		// Update previous entry
 		this->setPrevEntry(entry);
@@ -379,6 +327,22 @@ public:
 		parent_type::writeHeader(literals);
 		stream_index.getNativeStream() << toi_header;
 	};
+
+	void flushBlock(void){
+		if(this->buffer.size() == 0)
+			return;
+
+		IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
+		this->controller.Deflate(this->buffer);
+		this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
+		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
+		this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
+		this->totempole_entry.uncompressed_size = this->controller.buffer.size();
+		this->controller.Clear();
+		this->buffer.reset();
+		this->stream_index.getNativeStream() << this->totempole_entry;
+		this->totempole_entry.reset();
+	}
 
 private:
 	toi_header_type toi_header;

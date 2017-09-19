@@ -32,13 +32,7 @@ public:
 		byte_offset(0),
 		byte_offset_end(0),
 		entries(0),
-		uncompressed_size(0),
-		contigIDA(-1),
-		minPositionA(-1),
-		maxPositionA(-1),
-		contigIDB(-1),
-		minPositionB(-1),
-		maxPositionB(-1)
+		uncompressed_size(0)
 	{}
 	~TotempoleOutputEntry(){}
 
@@ -47,9 +41,7 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.byte_offset << '-' << entry.byte_offset_end << '\t' << entry.entries << '\t'
-				<< entry.uncompressed_size << '\t'
-				<< entry.contigIDA << '\t' << entry.minPositionA << '-' << entry.maxPositionA << '\t'
-				<< entry.contigIDB << '\t' << entry.minPositionB << '-' << entry.maxPositionB;
+				<< entry.uncompressed_size;
 		return stream;
 	}
 
@@ -58,12 +50,6 @@ public:
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset_end), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.entries),    sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&entry.uncompressed_size), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&entry.contigIDA),    sizeof(S32));
-		stream.write(reinterpret_cast<const char*>(&entry.minPositionA), sizeof(S32));
-		stream.write(reinterpret_cast<const char*>(&entry.maxPositionA), sizeof(S32));
-		stream.write(reinterpret_cast<const char*>(&entry.contigIDB),    sizeof(S32));
-		stream.write(reinterpret_cast<const char*>(&entry.minPositionB), sizeof(S32));
-		stream.write(reinterpret_cast<const char*>(&entry.maxPositionB), sizeof(S32));
 		return stream;
 	}
 
@@ -72,12 +58,6 @@ public:
 		stream.read(reinterpret_cast<char*>(&entry.byte_offset_end), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&entry.entries),    sizeof(U32));
 		stream.read(reinterpret_cast<char*>(&entry.uncompressed_size), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&entry.contigIDA),    sizeof(S32));
-		stream.read(reinterpret_cast<char*>(&entry.minPositionA), sizeof(S32));
-		stream.read(reinterpret_cast<char*>(&entry.maxPositionA), sizeof(S32));
-		stream.read(reinterpret_cast<char*>(&entry.contigIDB),    sizeof(S32));
-		stream.read(reinterpret_cast<char*>(&entry.minPositionB), sizeof(S32));
-		stream.read(reinterpret_cast<char*>(&entry.maxPositionB), sizeof(S32));
 
 		return(stream);
 	}
@@ -87,12 +67,6 @@ public:
 		this->byte_offset_end = 0;
 		this->entries = 0;
 		this->uncompressed_size = 0;
-		this->contigIDA = -1;
-		this->minPositionA = -1;
-		this->maxPositionA = -1;
-		this->contigIDB = -1;
-		this->minPositionB = -1;
-		this->maxPositionB = -1;
 	}
 
 public:
@@ -100,12 +74,61 @@ public:
 	U64 byte_offset_end;	// tellg() position in stream for start of record in Tomahawk file
 	U32 entries; 			// number of variants in this block
 	U32 uncompressed_size;	// uncompressed size of this block
-	S32 contigIDA; 			// if contigID >= 0 then all entries belong to this contigID
-	S32 minPositionA; 		// minPosition of entries. 0 if contigID = -1 or not sorted
-	S32 maxPositionA;		// maxPosition of entries, 0 if contigID = -1 or not sorted
-	S32 contigIDB;			// if contigID >= 0 then all entries belong to this contigID
-	S32 minPositionB;		// minPosition of entries. 0 if contigID = -1 or not sorted
-	S32 maxPositionB;		// maxPosition of entries, 0 if contigID = -1 or not sorted
+};
+
+#pragma pack(1)
+struct TotempoleOutputSortedEntry{
+	typedef TotempoleOutputSortedEntry self_type;
+
+public:
+	TotempoleOutputSortedEntry() :
+		contigID(0),
+		fromBlock(0),
+		fromBlock_entries_offset(0),
+		toBlock(0),
+		toBlock_entries_offset(0)
+	{}
+	~TotempoleOutputSortedEntry(){}
+
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
+		stream << entry.contigID << '\t' << entry.fromBlock << ':' << entry.fromBlock_entries_offset << "->"
+				<< entry.toBlock << ':' << entry.toBlock_entries_offset;
+		return stream;
+	}
+
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
+		stream.write(reinterpret_cast<const char*>(&entry.contigID), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.fromBlock), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.fromBlock_entries_offset), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.toBlock), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.toBlock_entries_offset), sizeof(U32));
+		return stream;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& entry){
+		stream.read(reinterpret_cast<char*>(&entry.contigID), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.fromBlock), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.fromBlock_entries_offset), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.toBlock), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.toBlock_entries_offset), sizeof(U32));
+
+		return(stream);
+	}
+
+	void reset(void){
+		this->contigID = 0;
+		this->fromBlock = 0;
+		this->fromBlock_entries_offset = 0;
+		this->toBlock = 0;
+		this->toBlock_entries_offset = 0;
+	}
+
+public:
+	U32 contigID;		// tellg() position in stream for start of record in Tomahawk file
+	U32 fromBlock;	// tellg() position in stream for start of record in Tomahawk file
+	U32 fromBlock_entries_offset;
+	U32 toBlock; 			// number of variants in this block
+	U32 toBlock_entries_offset;
 };
 
 }
