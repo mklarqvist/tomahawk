@@ -252,10 +252,6 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		return false;
 	}
 
-	// index
-	writer.setPrevEntry(outQueue.top().data);
-	writer.setPrevEntryFirst(outQueue.top().data);
-
 	// Secondary TOI index
 	/*
 	U32 currentAID = outQueue.top().data.AcontigID;
@@ -272,6 +268,9 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
 		writer << outQueue.top().data;
+
+		//std::cerr << outQueue.top().data.Aposition / (this->reader.contigs[outQueue.top().data.AcontigID].bases >> 9) << std::endl;
+		//assert((outQueue.top().data.Aposition / (this->reader.contigs[outQueue.top().data.AcontigID].bases >> 9)) < 1024);
 
 		//
 		/*
@@ -310,6 +309,8 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 				outQueue.push( queue_entry(e, id, IO::Support::TomahawkOutputEntryCompFuncConst) );
 				break;
 			}
+			//std::cerr << e->Aposition / (this->reader.contigs[e->AcontigID].bases >> 9) << std::endl;
+			//assert((e->Aposition / (this->reader.contigs[e->AcontigID].bases >> 9)) < 1024);
 			writer << *e;
 		}
 
@@ -341,6 +342,9 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	writer.flush();
 	writer.close();
+
+	index_type& index = writer.getIndex();
+	std::cerr << index << std::endl;
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)

@@ -82,52 +82,57 @@ struct TotempoleOutputSortedEntry{
 
 public:
 	TotempoleOutputSortedEntry() :
-		contigID(0),
-		fromBlock(0),
+		//contigID(0),
+		fromBlock(-1),
 		fromBlock_entries_offset(0),
-		toBlock(0),
+		toBlock(-1),
 		toBlock_entries_offset(0)
 	{}
 	~TotempoleOutputSortedEntry(){}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.contigID << '\t' << entry.fromBlock << ':' << entry.fromBlock_entries_offset << "->"
+		stream << entry.fromBlock << ':' << entry.fromBlock_entries_offset << "->"
 				<< entry.toBlock << ':' << entry.toBlock_entries_offset;
 		return stream;
 	}
 
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
-		stream.write(reinterpret_cast<const char*>(&entry.contigID), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&entry.fromBlock), sizeof(U32));
+		//stream.write(reinterpret_cast<const char*>(&entry.contigID), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.fromBlock), sizeof(S32));
 		stream.write(reinterpret_cast<const char*>(&entry.fromBlock_entries_offset), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&entry.toBlock), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.toBlock), sizeof(S32));
 		stream.write(reinterpret_cast<const char*>(&entry.toBlock_entries_offset), sizeof(U32));
 		return stream;
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& entry){
-		stream.read(reinterpret_cast<char*>(&entry.contigID), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&entry.fromBlock), sizeof(U32));
+		//stream.read(reinterpret_cast<char*>(&entry.contigID), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.fromBlock), sizeof(S32));
 		stream.read(reinterpret_cast<char*>(&entry.fromBlock_entries_offset), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&entry.toBlock), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.toBlock), sizeof(S32));
 		stream.read(reinterpret_cast<char*>(&entry.toBlock_entries_offset), sizeof(U32));
 
 		return(stream);
 	}
 
 	void reset(void){
-		this->contigID = 0;
-		this->fromBlock = 0;
+		//this->contigID = 0;
+		this->fromBlock = -1;
 		this->fromBlock_entries_offset = 0;
-		this->toBlock = 0;
+		this->toBlock = -1;
 		this->toBlock_entries_offset = 0;
 	}
 
+	inline void update(const U32& block, const U32& offset){
+		this->toBlock = block;
+		this->toBlock_entries_offset = offset;
+	}
+
 public:
-	U32 contigID;		// tellg() position in stream for start of record in Tomahawk file
-	U32 fromBlock;	// tellg() position in stream for start of record in Tomahawk file
+	//U32 contigID;	// tellg() position in stream for start of record in Tomahawk file
+	S32 fromBlock;	// tellg() position in stream for start of record in Tomahawk file
 	U32 fromBlock_entries_offset;
-	U32 toBlock; 			// number of variants in this block
+	S32 toBlock; 	// number of variants in this block
 	U32 toBlock_entries_offset;
 };
 

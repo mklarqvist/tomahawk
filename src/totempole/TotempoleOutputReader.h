@@ -5,6 +5,7 @@
 #include "../support/MagicConstants.h"
 #include "TotempoleMagic.h"
 #include "../io/BasicBuffer.h"
+#include "TotempoleOutputSortedIndex.h"
 
 namespace Tomahawk {
 namespace Totempole {

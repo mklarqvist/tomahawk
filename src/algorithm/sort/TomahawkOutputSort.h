@@ -28,6 +28,7 @@ class TomahawkOutputSorter{
 	typedef IO::WriterFile basic_writer_type;
 	typedef TomahawkOutputSortSlave slave_sorter;
 	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
+	typedef Totempole::TotempoleOutputSortedIndex index_type;
 
 public:
 	TomahawkOutputSorter() : n_threads(std::thread::hardware_concurrency()){}
