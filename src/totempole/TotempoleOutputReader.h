@@ -33,6 +33,7 @@ public:
 	bool findOverlap(const S32 contigID, const U32 position);
 	bool findOverlap(const S32 contigID, const U32 from, const U32 to);
 
+	header_type& getHeader(void){ return(this->header); }
 
 public:
 	TOI_ERROR ERROR_STATE;

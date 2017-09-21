@@ -22,9 +22,14 @@ public:
 	TomahawkOutputSortSlave(two_writer_interface* writer, writer_type& toi_writer, const U32 memory_limit) :
 		memory_limit(memory_limit),
 		writer(reinterpret_cast<two_writer_type*>(writer)),
-		toi_writer(toi_writer)
+		toi_writer(toi_writer),
+		reverse_entries(true)
 	{}
 	~TomahawkOutputSortSlave(){}
+
+	inline void reverse(const bool yes = true){
+		this->reverse_entries = true;
+	}
 
 	bool open(const std::string& input){
 		if(!this->reader.Open(input)){
@@ -66,26 +71,22 @@ private:
 
 			assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
+			const entry_type* entry;
+			totempole.entries += 2*((this->reader.output_buffer.size() % sizeof(entry_type)));
+			while(this->reader.nextVariantLimited(entry)){
+				// Flip cA,pA with cB,pB
+				entry_type temp(entry);
+				temp.swapDirection();
+				//std::cerr << *entry << '\n' << temp << "\n\n";
+				this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+			}
+
 			std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
 					  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size()]));
-
-			const entry_type* entry;
-			if(!this->reader.nextVariantLimited(entry)){
-				std::cerr << Helpers::timestamp("ERROR","SORT") << "No data!" << std::endl;
-				return false;
-			}
 
 			totempole.reset();
 			totempole.entries = 1;
 			totempole.uncompressed_size = this->reader.output_buffer.size();
-
-			const entry_type* prev;
-			std::swap(prev, entry);
-
-			while(this->reader.nextVariantLimited(entry)){
-				++totempole.entries;
-				std::swap(prev, entry);
-			}
 
 			this->controller.Clear();
 			this->controller.Deflate(this->reader.output_buffer);
@@ -110,6 +111,7 @@ private:
 	two_reader_type reader;
 	std::thread thread;
 	tgzf_controller_type controller;
+	bool reverse_entries;
 };
 
 

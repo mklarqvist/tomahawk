@@ -29,23 +29,25 @@ class TomahawkOutputSorter{
 	typedef TomahawkOutputSortSlave slave_sorter;
 	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
 	typedef Totempole::TotempoleOutputSortedIndex index_type;
+	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 
 public:
-	TomahawkOutputSorter() : n_threads(std::thread::hardware_concurrency()){}
+	TomahawkOutputSorter() : n_threads(std::thread::hardware_concurrency()), reverse_entries(true){}
 	~TomahawkOutputSorter(){}
 
-	bool sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit);
+	bool sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit);
 	bool sortMerge(const std::string& input, const std::string& destinationPrefix, const U32 block_size);
 
 private:
 	bool __sortUnindexed();
-	bool __sortIndexed(basic_writer_type& toi_writer, const std::string& input, const U32 memory_limit);
+	bool __sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit);
 
 private:
 	two_reader_type reader;
 
 public:
 	U32 n_threads;
+	bool reverse_entries;
 };
 
 

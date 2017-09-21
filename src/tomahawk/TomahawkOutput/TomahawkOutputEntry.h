@@ -12,9 +12,9 @@ struct TomahawkOutputEntry{
 	typedef TomahawkOutputEntry self_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 
-	TomahawkOutputEntry(){}; 	// has no ctor
-	~TomahawkOutputEntry(){};	// has no dtor
-	TomahawkOutputEntry(const self_type* other){
+	TomahawkOutputEntry(){};
+	~TomahawkOutputEntry(){};
+	TomahawkOutputEntry(const self_type* const other){
 		memcpy(this, other, sizeof(self_type));
 	}
 
@@ -58,6 +58,15 @@ struct TomahawkOutputEntry{
 	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& b, const self_type& entry){
 		b.Add(reinterpret_cast<const char*>(&entry), sizeof(self_type));
 		return(b);
+	}
+
+	// Swaps cA,pA with cB,pB
+	// used in sorting for indices
+	void swapDirection(void){
+		std::swap(this->AcontigID, this->BcontigID);
+		U32& A = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + sizeof(U32)));
+		U32& B = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + 3*sizeof(U32)));
+		std::swap(A,B);
 	}
 
 	U16 FLAGS;

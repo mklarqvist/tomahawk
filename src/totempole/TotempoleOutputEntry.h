@@ -10,7 +10,7 @@ namespace Totempole {
 struct TotempoleOutputEntryController{
 	typedef TotempoleOutputEntryController self_type;
 
-	BYTE sorted: 1, unused: 7;
+	BYTE sorted: 1, expanded: 1, unused: 6;
 
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write((const char*)reinterpret_cast<const char*>(&entry), 1);

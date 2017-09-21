@@ -64,18 +64,16 @@ class TotempoleOutputSortedIndex {
 	typedef TotempoleOutputSortedIndexBin chunk_type;
 
 public:
-	TotempoleOutputSortedIndex(const U32 n_contigs, const contig_type* contigs) :
+	TotempoleOutputSortedIndex(const U32 n_contigs, const contig_type* const contigs) :
 		n_contigs(n_contigs),
 		prev_contigIDA(n_contigs + 1), // init to impossible id
-		prev_contigIDB(n_contigs + 1),
 		prev_chunk(0),
 		contigs(contigs),
 		linear_index(new chunk_type[n_contigs]),
-		secondary_index(new chunk_type[n_contigs])
+		secondary_index(new totempole_entry[n_contigs])
 	{
 		for(U32 i = 0; i < this->n_contigs; ++i){
 			this->linear_index[i].allocate(TOTEMPOLE_OUTPUT_SORT_CHUNKS);
-			this->secondary_index[i].allocate(this->n_contigs - i);
 		}
 	}
 
@@ -105,14 +103,10 @@ public:
 				temp2.fromBlock_entries_offset = blockOffset;
 
 				// Secondary
-				// If contigIDA switches then trigger flush for self-self
-				this->secondary_index[entry.AcontigID][0].toBlock = block;
-				this->secondary_index[entry.AcontigID][0].toBlock_entries_offset = blockOffset;
-				// Make sure BSwitch is not triggered
-
-				std::cerr << "secondary switch: " << this->prev_contigIDA << ":" << prev_contigIDB << "->" << entry.AcontigID << ":" << entry.BcontigID << std::endl;
-				this->prev_contigIDB = entry.BcontigID;
-
+				this->secondary_index[this->prev_contigIDA].toBlock = block;
+				this->secondary_index[this->prev_contigIDA].toBlock_entries_offset = blockOffset;
+				this->secondary_index[entry.AcontigID].fromBlock = block;
+				this->secondary_index[entry.AcontigID].fromBlock_entries_offset = blockOffset;
 				std::cerr << "switch in contigID: " << this->prev_contigIDA << "->" << entry.AcontigID << std::endl;
 			} else {
 				// For the first entry
@@ -121,9 +115,8 @@ public:
 				temp.fromBlock = block;
 				temp.fromBlock_entries_offset = blockOffset;
 
-				this->secondary_index[entry.AcontigID][entry.BcontigID - entry.AcontigID].fromBlock = block;
-				this->secondary_index[entry.AcontigID][entry.BcontigID - entry.AcontigID].fromBlock_entries_offset = blockOffset;
-				this->prev_contigIDB = entry.BcontigID;
+				this->secondary_index[entry.AcontigID].fromBlock = block;
+				this->secondary_index[entry.AcontigID].fromBlock_entries_offset = blockOffset;
 			}
 		}
 		// Switch in chunk
@@ -136,20 +129,12 @@ public:
 			std::cerr << "switch in chunk: " << this->prev_chunk << "->" << chunk << std::endl;
 		}
 
-		/*
-		if(this->prev_contigIDB != entry.BcontigID){
-			this->secondary_index[this->prev_contigIDA][this->prev_contigIDB - this->prev_contigIDA].toBlock = block;
-			this->secondary_index[this->prev_contigIDA][this->prev_contigIDB - this->prev_contigIDA].toBlock_entries_offset = blockOffset;
-			std::cerr << "secondary switch: " << this->prev_contigIDA << ":" << prev_contigIDB << "->" << entry.AcontigID << ":" << entry.BcontigID << std::endl;
-		}
-		*/
-
 		// secondary index
-
-		// in case there is no switch then last entry is +1
+		// in case there is no switch then last entry is +1 (non-closed interval)
 		this->linear_index[entry.AcontigID][chunk].update(block, blockOffset + 1);
+		this->secondary_index[entry.AcontigID].update(block, blockOffset + 1);
 		this->prev_contigIDA = entry.AcontigID;
-		this->prev_contigIDB = entry.BcontigID;
+		//this->prev_contigIDB = entry.BcontigID;
 		this->prev_chunk = chunk;
 	}
 
@@ -159,18 +144,20 @@ public:
 		for(U32 i = 0; i < 2; ++i)
 			stream << "contig: " << i << "\n" << self.linear_index[i] << std::endl;
 
+		for(U32 i = 0; i < self.n_contigs; ++i)
+			stream << self.secondary_index[i] << std::endl;
+
 		return stream;
 	}
 
 private:
 	const U32 n_contigs;
 	U32 prev_contigIDA;
-	U32 prev_contigIDB;
 	U32 prev_chunk;
 
 	const contig_type* const contigs;
 	chunk_type* linear_index;
-	chunk_type* secondary_index;
+	totempole_entry* secondary_index;
 };
 
 } /* namespace Totempole */

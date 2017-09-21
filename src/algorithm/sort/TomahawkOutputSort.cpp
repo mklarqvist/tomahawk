@@ -6,8 +6,9 @@ namespace Tomahawk{
 namespace Algorithm{
 namespace Output{
 
-bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, const U32 memory_limit){
+bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit){
 	std::cerr << Helpers::timestamp("SORT") << "Index found..." << std::endl;
+
 	std::vector< totempole_entry > blocks;
 
 	totempole_entry totempole;
@@ -67,9 +68,10 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	for(U32 i = 0; i < this->n_threads; ++i){
 		instances[i] = new slave_sorter(this->reader.writer, toi_writer, memory_limit);
 		if(!instances[i]->open(input)){
-			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed reopening file..." << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to reopen file..." << std::endl;
 			exit(1);
 		}
+		instances[i]->reverse(this->reverse_entries);
 	}
 
 	for(U32 i = 0; i < this->n_threads; ++i){
@@ -96,7 +98,7 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	return true;
 }
 
-bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit){
+bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit){
 	if(!this->reader.Open(input)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 		return false;
@@ -118,14 +120,29 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	this->reader.setWriterType(0);
 	this->reader.addLiteral("\n##tomahawk_partialSortCommand=" + Helpers::program_string());
 	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
+
 	basic_writer_type toi_writer;
 	toi_writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
-	IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
+	toi_header_type headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
+	headIndex.controller.sorted = false;
+	headIndex.controller.expanded = this->reverse_entries ? 1 : 0;
+
 	toi_writer.getNativeStream() << headIndex;
 	// writer
 	basic_writer_type& stream = *reinterpret_cast<basic_writer_type*>(this->reader.writer->getStream());
 
-	//
+	if(memory_limit < 10e6){
+		memory_limit = 10e6;
+		std::cerr << Helpers::timestamp("SORT") << "Setting memory limit to 10 MB..." << std::endl;
+	}
+
+	if(this->reverse_entries){
+		std::cerr << Helpers::timestamp("SORT") << "Reversing entries..." << std::endl;
+		memory_limit /= 2;
+	} else
+		std::cerr << Helpers::timestamp("SORT") << "Not reversing..." << std::endl;
+
+	// Perform indexed sorting if possible
 	if(this->reader.hasIndex){
 		return(this->__sortIndexed(toi_writer, input, memory_limit));
 	}
@@ -147,6 +164,21 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
+		totempole_entry totempole;
+		if(this->reverse_entries)
+			totempole.entries = 2*(this->reader.output_buffer.size() / sizeof(entry_type));
+		else
+			totempole.entries = this->reader.output_buffer.size() / sizeof(entry_type);
+
+		if(this->reverse_entries){
+			const entry_type* entry;
+			while(this->reader.nextVariantLimited(entry)){
+				entry_type temp(entry);
+				temp.swapDirection();
+				this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+			}
+		}
+
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
 
@@ -156,23 +188,8 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
 
-		const entry_type* entry;
-		if(!this->reader.nextVariantLimited(entry)){
-			std::cerr << Helpers::timestamp("ERROR","SORT") << "No data!" << std::endl;
-			return false;
-		}
-		totempole_entry totempole;
-		totempole.entries = 1;
 		totempole.byte_offset = stream.getNativeStream().tellp();
 		totempole.uncompressed_size = this->reader.output_buffer.size();
-
-		const entry_type* prev;
-		std::swap(prev, entry);
-
-		while(this->reader.nextVariantLimited(entry)){
-			++totempole.entries;
-			std::swap(prev, entry);
-		}
 
 		this->reader.writer->write(this->reader.output_buffer);
 		totempole.byte_offset_end = stream.getNativeStream().tellp();
@@ -206,7 +223,11 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	this->reader.addLiteral("\n##tomahawk_mergeSortCommand=" + Helpers::program_string());
 
-	writer_type writer(this->reader.contigs, &this->reader.header);
+	toi_header_type toi_header = this->reader.toi_reader.getHeader();
+	toi_header.controller.sorted = true;
+	writer_type writer(this->reader.contigs, &this->reader.header, toi_header);
+
+
 	if(!writer.open(destinationPrefix)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open!" << std::endl;
 		return false;

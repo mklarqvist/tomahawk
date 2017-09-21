@@ -38,7 +38,10 @@ void sort_usage(void){
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (required)\n"
 	"  -L FLOAT  memory limit in MB (default: 100)\n"
+	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
+	"  -D        expand data (requires O(2n) memory). Is required for indexing [null]\n"
+	"  -d        do NOT expand data (see -D)[null]\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
@@ -52,6 +55,9 @@ int sort(int argc, char** argv){
 		{"input",		required_argument, 0, 'i' },
 		{"output",		required_argument, 0, 'o' },
 		{"memory",		optional_argument, 0, 'L' },
+		{"threads",		optional_argument, 0, 't' },
+		{"expand",		no_argument, 0, 'D' },
+		{"no-expand",	no_argument, 0, 'd' },
 		{"merge",		no_argument, 0, 'M' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
@@ -61,10 +67,12 @@ int sort(int argc, char** argv){
 	std::string input, output;
 	double memory_limit = 100e6;
 	bool merge = false;
+	bool expand = true;
+	int threads = std::thread::hardware_concurrency();
 
 	int c = 0;
 	int long_index = 0;
-	while ((c = getopt_long(argc, argv, "i:o:L:Ms", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:L:t:dDMs", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -90,9 +98,23 @@ int sort(int argc, char** argv){
 				return(1);
 			}
 			break;
+		case 't':
+			threads = atoi(optarg);
+			if(threads <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter t cannot be <= 0" << std::endl;
+				return(1);
+			}
+			break;
 
 		case 'M':
 			merge = true;
+			break;
+
+		case 'D':
+			expand = true;
+			break;
+		case 'd':
+			expand = false;
 			break;
 		}
 	}
@@ -115,6 +137,9 @@ int sort(int argc, char** argv){
 	}
 
 	Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
+	reader.n_threads = threads;
+	reader.reverse_entries = expand;
+
 	if(!merge){
 		if(!reader.sort(input, output, memory_limit)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
