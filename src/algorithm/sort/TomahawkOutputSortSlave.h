@@ -21,6 +21,7 @@ class TomahawkOutputSortSlave{
 public:
 	TomahawkOutputSortSlave(two_writer_interface* writer, writer_type& toi_writer, const U32 memory_limit) :
 		memory_limit(memory_limit),
+		blocks_written(0),
 		writer(reinterpret_cast<two_writer_type*>(writer)),
 		toi_writer(toi_writer),
 		reverse_entries(true)
@@ -45,6 +46,8 @@ public:
 		return(&this->thread);
 	}
 
+	inline const U32& getBlocksWritten(void) const{ return(this->blocks_written); }
+
 private:
 	bool sort(const totempole_entry& workload){
 		bool trigger_break = false;
@@ -59,7 +62,6 @@ private:
 		while(true){
 			if(this->reader.stream.tellg() == workload.byte_offset_end)
 				break;
-
 
 			if(!this->reader.nextBlockUntil(memory_limit))
 				trigger_break = true;
@@ -94,6 +96,7 @@ private:
 			this->writer->getLock()->lock();
 			totempole.byte_offset = stream.getNativeStream().tellp();
 			this->writer->getStream()->writeNoLock(this->controller.buffer.data, this->controller.buffer.pointer);
+			++this->blocks_written;
 			totempole.byte_offset_end = stream.getNativeStream().tellp();
 			toi_writer.getNativeStream() << totempole;
 			this->writer->getLock()->unlock();
@@ -106,6 +109,7 @@ private:
 
 private:
 	const U32 memory_limit;
+	U32 blocks_written;
 	two_writer_type* writer;
 	writer_type& toi_writer;
 	two_reader_type reader;

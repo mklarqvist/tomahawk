@@ -33,9 +33,9 @@ class TomahawkOutputReader {
 	typedef IO::TGZFController tgzf_controller_type;
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
-	typedef Totempole::TotempoleOutputReader toi_reader_type;
 
 public:
+	typedef Totempole::TotempoleOutputReader toi_reader_type;
 	enum WRITER_TYPE {binary, natural};
 
 public:
@@ -82,7 +82,7 @@ private:
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
-	bool __checkRegion(const entry_type* const entry);
+	bool __checkRegionNoIndex(const entry_type* const entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
 public:

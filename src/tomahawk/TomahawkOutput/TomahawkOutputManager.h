@@ -32,6 +32,7 @@ public:
 	TomahawkOutputManager() :
 		outCount(0),
 		progressCount(0),
+		totempole_blocks_written(0),
 		writer(nullptr),
 		writer_index(nullptr),
 		buffer(2*SLAVE_FLUSH_LIMIT),
@@ -41,7 +42,7 @@ public:
 	}
 
 	~TomahawkOutputManager(){
-		this->Finalise();
+		this->flushBlock();
 		this->buffer.deleteAll();
 		delete [] this->sprintf_buffer;
 	}
@@ -49,6 +50,7 @@ public:
 	TomahawkOutputManager(const self_type& other) :
 		outCount(0),
 		progressCount(0),
+		totempole_blocks_written(0),
 		writer(other.writer),
 		writer_index(other.writer_index),
 		buffer(2*SLAVE_FLUSH_LIMIT),
@@ -56,9 +58,21 @@ public:
 	{
 	}
 
+	self_type& operator+=(const self_type& other){
+		this->outCount += other.outCount;
+		this->totempole_blocks_written += other.totempole_blocks_written;
+		return(*this);
+	}
+
+	self_type& operator=(const U32 totempole_blocks){
+		this->totempole_blocks_written = totempole_blocks;
+		return(*this);
+	}
+
 	inline const U64& GetCounts(void) const{ return this->outCount; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
+	inline const U32& getTotempoleBlocks(void) const{ return(this->totempole_blocks_written); }
 
 	bool Open(const std::string output, Totempole::TotempoleReader& totempole){
 		if(output.size() == 0)
@@ -87,7 +101,7 @@ public:
 		return true;
 	}
 
-	void Finalise(void){
+	void flushBlock(void){
 		if(this->buffer.size() > 0){
 			if(!this->compressor.Deflate(this->buffer)){
 				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -99,6 +113,7 @@ public:
 			this->writer->writeNoLock(compressor.buffer);
 			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
 			this->writer_index->getNativeStream() << this->entry;
+			++this->totempole_blocks_written;
 			//std::cerr << this->entry << std::endl;
 			this->writer->getLock()->unlock();
 
@@ -106,6 +121,28 @@ public:
 			this->compressor.Clear();
 			this->entry.reset();
 		}
+	}
+
+	bool finalise(void){
+		// Update blocks written
+		std::fstream re(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
+			return false;
+		}
+		re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
+			return false;
+		}
+		re.write((char*)&this->totempole_blocks_written, sizeof(U32));
+		std::cerr << "writing blocks: " << this->totempole_blocks_written << std::endl;
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
+			return false;
+		}
+
+		return true;
 	}
 
 	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
@@ -121,26 +158,8 @@ public:
 		++this->progressCount;
 		++this->entry.entries;
 
-		if(this->buffer.size() > SLAVE_FLUSH_LIMIT){
-			if(!this->compressor.Deflate(this->buffer)){
-				std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed deflate DATA..." << std::endl;
-				exit(1);
-			}
-
-			this->writer->getLock()->lock();
-			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
-			this->entry.uncompressed_size = this->buffer.size();
-			this->writer->writeNoLock(compressor.buffer);
-			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
-			//std::cerr << this->entry << std::endl;
-
-			this->writer_index->getNativeStream() << this->entry;
-			this->writer->getLock()->unlock();
-			this->buffer.reset();
-			this->compressor.Clear();
-			this->entry.reset();
-			this->entry_track.reset();
-		}
+		if(this->buffer.size() > SLAVE_FLUSH_LIMIT)
+			this->flushBlock();
 	}
 
 	void close(void){
@@ -195,6 +214,7 @@ private:
 
 	U64 outCount;			// lines written
 	U32 progressCount;		// lines added since last flush
+	U32 totempole_blocks_written;
 	totempoly_entry entry; // track stuff
 	totempoly_entry entry_track; // track stuff
 	writer_type* writer;	// writer

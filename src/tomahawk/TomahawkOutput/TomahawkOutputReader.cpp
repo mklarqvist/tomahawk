@@ -87,17 +87,27 @@ bool TomahawkOutputReader::__viewRegion(void){
 	if(!this->OpenWriter())
 		return false;
 
+	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK){
+		if(this->toi_reader.getIsSortedExpanded()){
+			std::cerr << "has sorted and expanded index" << std::endl;
+		} else
+			std::cerr << "has partial index only" << std::endl;
+	} else {
+		std::cerr << "no index" << std::endl;
+	}
+
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry;
 
 		while(this->nextVariant(entry)){
-			this->__checkRegion(entry);
+			this->__checkRegionNoIndex(entry);
 		} // end while next variant
 	}
 
 	return true;
 }
-bool TomahawkOutputReader::__checkRegion(const entry_type* const entry){
+
+bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type* const entry){
 	// If iTree for contigA exists
 	if(this->interval_tree[entry->AcontigID] != nullptr){
 		std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);

@@ -32,7 +32,9 @@ void sort_usage(void){
 	"About:  Sort TWO files: provides two basic subroutines. If the file is too big to\n"
 	"        be sorted in available memory, use the -L option to split the file into\n"
 	"        sorted chunks no larger than -L MB in size. Then rerun sort with the -M option\n"
-	"        to perform a k-way merge sort using the partially block-sorted data.\n"
+	"        to perform a k-way merge sort using the partially block-sorted data. Use -d to\n"
+	"        expand A->B to A->B and B->A for accelerated queries.\n"
+	"        Note that combining -L and -t incur O(L*t) memory!\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
@@ -147,7 +149,7 @@ int sort(int argc, char** argv){
 		}
 	} else {
 		if(!reader.sortMerge(input, output, 10e6)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "failed merge" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
 			return 1;
 		}
 	}

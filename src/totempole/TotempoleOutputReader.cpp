@@ -14,19 +14,19 @@ bool TotempoleOutputReader::Open(const std::string& input){
 		return false;
 	}
 
-	U32 filesize = this->stream.tellg();
+	U64 filesize = this->stream.tellg();
 	this->stream.seekg(0);
 
 	this->stream >> this->header;
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC)){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header!" << std::endl;
 		//std::cerr << this->header.
 		this->ERROR_STATE = TOI_CORRUPTED;
 		exit(1);
 	}
 
 	this->buffer.resize(filesize);
-	const U32 readUntil = filesize - (U32)this->stream.tellg();
+	const U64 readUntil = this->header.n_entries * sizeof(entry_type);
 
 	if(readUntil % sizeof(entry_type) != 0){
 		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Corrupted data!" << std::endl;
@@ -38,6 +38,11 @@ bool TotempoleOutputReader::Open(const std::string& input){
 	this->entries = reinterpret_cast<const entry_type*>(this->buffer.data);
 	this->n_entries = readUntil / sizeof(entry_type);
 
+	if(this->stream.tellg() != filesize){
+		this->ERROR_STATE = TOI_CORRUPTED;
+		return false;
+	}
+
 	//for(U32 i = 0; i < this->n_entries; ++i)
 	//	std::cerr << this->entries[i] << std::endl;
 
@@ -47,12 +52,12 @@ bool TotempoleOutputReader::Open(const std::string& input){
 
 bool TotempoleOutputReader::findOverlap(const S32 contigID){
 	if(this->ERROR_STATE != TOI_OK){
-		std::cerr << "no toi" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No index available..." << std::endl;
 		return false;
 	}
 
 	if(!this->header.controller.sorted){
-		std::cerr << "controller not sorted" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Index is not sorted..." << std::endl;
 		return false;
 	}
 

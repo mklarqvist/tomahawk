@@ -48,6 +48,8 @@ private:
 public:
 	U32 n_threads;
 	bool reverse_entries;
+	std::string baseName;
+	std::string basePath;
 };
 
 

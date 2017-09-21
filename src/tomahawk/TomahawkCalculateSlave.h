@@ -292,6 +292,7 @@ public:
 	inline const U64& getNoHets(void) const{ return this->no_uncertainty; }
 	inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
 	inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
+	output_manager_type& getOutputManager(void){ return(this->output_manager); }
 
 private:
 	bool Calculate();
@@ -408,7 +409,7 @@ TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkC
 	this->insufficent_alleles += other.insufficent_alleles;
 	//this->false_positive += other.false_positive;
 	//this->false_negative += other.false_negative;
-
+	this->output_manager += other.output_manager;
 	return(*this);
 }
 
@@ -1486,7 +1487,7 @@ bool TomahawkCalculateSlave<T>::Calculate(void){
 	}
 
 	// Finish the output manager
-	this->output_manager.Finalise();
+	this->output_manager.flushBlock();
 
 	return true;
 }

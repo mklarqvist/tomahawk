@@ -177,6 +177,8 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
+	writer = slaves[0]->getOutputManager().getTotempoleBlocks();
+
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
 		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*totempole.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
@@ -186,7 +188,11 @@ bool TomahawkCalc::Calculate(){
 	delete [] slaves;
 
 	// Flush writer
-	writer.Finalise();
+	writer.flushBlock();
+	if(!writer.finalise()){
+		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
+		return false;
+	}
 	writer.close();
 
 	return true;

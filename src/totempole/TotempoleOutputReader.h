@@ -16,6 +16,7 @@ class TotempoleOutputReader {
 	typedef TotempoleOutputEntry entry_type;
 	typedef IO::BasicBuffer buffer_type;
 
+public:
 	enum TOI_ERROR {TOI_OK, TOI_NO_EXIST, TOI_CORRUPTED};
 
 public:
@@ -26,6 +27,7 @@ public:
 
 	inline const entry_type& operator[](const U32 p) const{ return(this->entries[p]); }
 	inline bool getIsSorted(void) const{ return(this->header.controller.sorted); }
+	inline bool getIsSortedExpanded(void) const{ return(this->header.controller.sorted && this->header.controller.expanded); }
 	inline const U32& size(void) const{ return(this->n_entries); }
 
 	// Find data blocks mapping to these regions

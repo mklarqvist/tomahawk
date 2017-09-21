@@ -269,18 +269,8 @@ public:
 	}
 
 	inline void flush(void){
-		if(this->buffer.size() > 0){
-			IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
-			this->controller.Deflate(this->buffer);
-			this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
-			this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
-			this->totempole_entry.byte_offset_end = stream.getNativeStream().tellp();
-			this->totempole_entry.uncompressed_size = this->controller.buffer.size();
-			this->controller.Clear();
-			this->buffer.reset();
-			this->stream_index.getNativeStream() << this->totempole_entry;
-			this->totempole_entry.reset();
-		}
+		this->flushBlock();
+		this->stream_index.flush();
 		this->stream->flush();
 	}
 
@@ -288,7 +278,7 @@ public:
 		++this->totempole_entry.entries;
 
 		this->index.update(*entry, this->current_blockID, this->buffer.size() / sizeof(entry_type));
-		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
+		this->buffer.Add(reinterpret_cast<const char* const>(&entry), sizeof(entry_type));
 
 		if(this->buffer.size() > this->flush_limit)
 			this->flushBlock();
@@ -298,7 +288,7 @@ public:
 		++this->totempole_entry.entries;
 
 		this->index.update(entry, this->current_blockID, this->buffer.size() / sizeof(entry_type));
-		this->buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(entry_type));
+		this->buffer.Add(reinterpret_cast<const char* const>(&entry), sizeof(entry_type));
 
 		if(this->buffer.size() > this->flush_limit)
 			this->flushBlock();
@@ -306,7 +296,7 @@ public:
 
 	void writeHeader(std::string& literals){
 		parent_type::writeHeader(literals);
-		stream_index.getNativeStream() << toi_header;
+		this->stream_index.getNativeStream() << toi_header;
 	};
 
 	void flushBlock(void){
@@ -327,6 +317,30 @@ public:
 	}
 
 	index_type& getIndex(void){ return(this->index); }
+
+	bool finalize(void){
+		// Totempole Output Index
+		// Update blocks written
+		std::fstream re(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
+			return false;
+		}
+		re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
+			return false;
+		}
+
+		re.write((char*)&current_blockID, sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
+			return false;
+		}
+		re.close();
+
+		return true;
+	}
 
 private:
 	U32 current_blockID;
