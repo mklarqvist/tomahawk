@@ -107,6 +107,11 @@ bool TomahawkOutputReader::__viewRegion(void){
 bool TomahawkOutputReader::__viewRegionIndexed(void){
 	std::cerr << "in indexed view region" << std::endl;
 
+	// Todo
+	// sort entries
+	// merge
+	// for i in entries: seek and jump
+
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry = nullptr;
 
@@ -251,7 +256,6 @@ bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions
 
 bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positions){
 	for(U32 i = 0; i < positions.size(); ++i){
-		//std::cerr << i << ": " << positions[i] << std::endl;
 		// Pattern cA:pAf-pAt;cB:pBf-pBt
 		if(positions[i].find(',') != std::string::npos){
 			//std::cerr << "linked intervals" << std::endl;
@@ -339,7 +343,6 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 		}
 
 		// is contigID only
-		//std::cerr << "contigONly" << std::endl;
 		U32* contigID;
 		if(!this->contig_htable->GetItem(&region[0], &region, contigID, region.size())){
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
@@ -359,21 +362,17 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 		if(retPos.size() == 1){
 			// only one pos
 			const double pos = std::stod(retPos[0]);
-			//std::cerr << "single position: " << pos << std::endl;
 			interval(pos, pos, *contigID);
 
 		} else if(retPos.size() == 2){
 			// is two positions
 			double posA = std::stod(retPos[0]);
 			double posB = std::stod(retPos[1]);
-			if(posB < posA){
-				//std::cerr << "end position > start position: swapping" << std::endl;
+
+			if(posB < posA)
 				std::swap(posA, posB);
-			}
-			//std::cerr << (U64)posA << '\t' << (U64)posB << std::endl;
-			//std::cerr << "full region: " << this->contigs[*contigID].name << ":" << posA << '-' << posB << std::endl;
+
 			interval(posA, posB, *contigID);
-			//std::cerr << interval << std::endl;
 
 		} else {
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
@@ -386,19 +385,6 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 
 	return true;
 }
-
-/*
-std::vector<totempole_sorted_entry_type> entries;
-if(this->toi_reader.findOverlap(intervalLeft.contigID, intervalLeft.start, intervalLeft.stop, entries)){
-	if(entries.size() == 0)
-		continue;
-
-	for(U32 i = 0; i < entries.size(); ++i){
-		std::cerr << "found: " << entries[i] << std::endl;
-		this->interval_totempole_enties->push_back(entries[i]);
-	}
-}
-*/
 
 bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, interval_type& interval){
 	std::vector<std::string> ret = Helpers::split(region, ':');
@@ -742,8 +728,8 @@ bool TomahawkOutputReader::nextBlock(void){
 
 bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 	// Check if resize required
-	if(this->output_buffer.capacity() < limit + 500536)
-		this->output_buffer.resize(limit + 500536);
+	if(this->output_buffer.capacity() < limit + 1024)
+		this->output_buffer.resize(limit + 1024);
 
 
 	this->position = 0;
@@ -840,7 +826,6 @@ bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 
 	return true;
 }
-
 
 bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
 	TWO::TomahawkOutputStatsContainer container(bins);
