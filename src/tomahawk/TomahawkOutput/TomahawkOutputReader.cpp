@@ -41,6 +41,7 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	this->buffer.deleteAll();
 	this->output_buffer.deleteAll();
 	delete this->writer;
+	delete [] this->interval_totempole_enties;
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
@@ -224,16 +225,13 @@ bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions
 			} else if(ret.size() == 2){
 				// parse left
 				interval_type intervalLeft;
-				if(!__ParseRegionIndexed(ret[0], intervalLeft))
-					return false;
+				if(this->__ParseRegionIndexed(ret[0], intervalLeft))
+					this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
 
 				// parse right
 				interval_type intervalRight;
-				if(!__ParseRegionIndexed(ret[1], intervalRight))
-					return false;
-
-				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
-				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+				if(this->__ParseRegionIndexed(ret[1], intervalRight))
+					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
 
 			} else {
 				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
@@ -243,14 +241,12 @@ bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions
 		// Has no comma in string
 		else {
 			interval_type interval;
-			if(!__ParseRegionIndexed(positions[i], interval))
-				return false;
-
-			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+			if(this->__ParseRegionIndexed(positions[i], interval))
+				this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
 		}
 	}
 
-	return true;
+	return(this->interval_totempole_enties->size() > 0);
 }
 
 bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positions){
