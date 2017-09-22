@@ -90,11 +90,9 @@ public:
 	U64 position;
 	U64 size;
 	bool hasIndex;
-
 	std::ifstream stream; // reader stream
 	header_type header; // header
 	bool output_header;
-
 	IO::BasicBuffer buffer; // internal buffer
 	IO::BasicBuffer output_buffer; // internal buffer
 	tgzf_controller_type gzip_controller; // TGZF controller
@@ -102,7 +100,6 @@ public:
 	WRITER_TYPE writer_output_type;
 	std::string literals; // header literals
 	writer_type* writer; // writer interface
-
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;

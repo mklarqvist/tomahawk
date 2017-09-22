@@ -28,9 +28,7 @@ public:
 	{}
 	~TomahawkOutputSortSlave(){}
 
-	inline void reverse(const bool yes = true){
-		this->reverse_entries = true;
-	}
+	inline void reverseEntries(const bool yes = true){ this->reverse_entries = yes; }
 
 	bool open(const std::string& input){
 		if(!this->reader.Open(input)){
@@ -73,21 +71,25 @@ private:
 
 			assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
-			const entry_type* entry = nullptr;
-			totempole.entries += 2*((this->reader.output_buffer.size() % sizeof(entry_type)));
-			while(this->reader.nextVariantLimited(entry)){
-				// Flip cA,pA with cB,pB
-				entry_type temp(entry);
-				temp.swapDirection();
-				//std::cerr << *entry << '\n' << temp << "\n\n";
-				this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+			if(this->reverse_entries){
+				const entry_type* entry = nullptr;
+				totempole.entries += 2*((this->reader.output_buffer.size() % sizeof(entry_type)));
+				while(this->reader.nextVariantLimited(entry)){
+					// Flip cA,pA with cB,pB
+					entry_type temp(entry);
+					temp.swapDirection();
+					//std::cerr << *entry << '\n' << temp << "\n\n";
+					this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+				}
+			} else {
+				// Do not reverse
+				totempole.entries = (this->reader.output_buffer.size() % sizeof(entry_type));
 			}
 
 			std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
 					  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size()]));
 
 			totempole.reset();
-			totempole.entries = 1;
 			totempole.uncompressed_size = this->reader.output_buffer.size();
 
 			this->controller.Clear();

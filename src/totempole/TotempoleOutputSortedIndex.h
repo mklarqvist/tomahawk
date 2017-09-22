@@ -52,19 +52,19 @@ struct TotempoleOutputSortedIndexBin{
 		return stream;
 	}
 
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
-		stream.write(reinterpret_cast<const char*>(&entry.n_chunks), sizeof(U32));
-		for(U32 i = 0; i < entry.n_chunks; ++i)
-			stream << entry.chunks[i];
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
+		stream.write(reinterpret_cast<const char*>(&index.n_chunks), sizeof(U32));
+		for(U32 i = 0; i < index.n_chunks; ++i)
+			stream << index.chunks[i];
 
 		return stream;
 	}
 
-	friend std::istream& operator>>(std::istream& stream, self_type& entry){
-		stream.read(reinterpret_cast<char*>(&entry.n_chunks), sizeof(U32));
-		entry.allocate(entry.n_chunks); // allocate memory
-		for(U32 i = 0; i < entry.n_chunks; ++i)
-			stream >> entry.chunks[i];
+	friend std::istream& operator>>(std::istream& stream, self_type& index){
+		stream.read(reinterpret_cast<char*>(&index.n_chunks), sizeof(U32));
+		index.allocate(index.n_chunks); // allocate memory
+		for(U32 i = 0; i < index.n_chunks; ++i)
+			stream >> index.chunks[i];
 
 		return(stream);
 	}
@@ -81,115 +81,62 @@ class TotempoleOutputSortedIndex {
 	typedef TotempoleOutputSortedIndexBin chunk_type;
 
 public:
-	TotempoleOutputSortedIndex(const U32 n_contigs, const contig_type* const contigs) :
-		n_contigs(n_contigs),
-		prev_contigIDA(n_contigs + 1), // init to impossible id
-		prev_chunk(0),
-		contigs(contigs),
-		linear_index(new chunk_type[n_contigs]),
-		secondary_index(new totempole_entry[n_contigs])
-	{
-		for(U32 i = 0; i < this->n_contigs; ++i){
-			this->linear_index[i].allocate(TOTEMPOLE_OUTPUT_SORT_CHUNKS);
-		}
-	}
+	enum TOI_SORTED_ERROR {TOI_SORTED_OK, TOI_SORTED_NO_EXIST, TOI_SORTED_CORRUPTED, TOI_SORTED_INIT};
 
-	~TotempoleOutputSortedIndex(){
-		delete [] this->linear_index;
-		delete [] this->secondary_index;
-	}
+public:
+	TotempoleOutputSortedIndex(const U32 n_contigs, const contig_type* const contigs);
+	~TotempoleOutputSortedIndex();
 
-	bool parse(std::ifstream& stream);
-	chunk_type& operator[](const U32 p){ return(this->linear_index[p]); }
-
-	inline void update(const two_entry& entry, const U32& block, const U32& blockOffset){
-		const U32 chunk = this->getBin(entry.AcontigID, entry.Aposition);
-
-		// Switch in chromosome
-		if(entry.AcontigID != this->prev_contigIDA){
-			// This is only ever NOT TRUE for the first entry
-			if(prev_contigIDA != this->n_contigs + 1){
-				// Update previous block data with end positions
-				totempole_entry& temp = this->linear_index[this->prev_contigIDA][this->prev_chunk];
-				temp.toBlock = block;
-				temp.toBlock_entries_offset = blockOffset;
-
-				// Update current block data with start positions
-				totempole_entry& temp2 = this->linear_index[entry.AcontigID][chunk];
-				temp2.fromBlock = block;
-				temp2.fromBlock_entries_offset = blockOffset;
-
-				// Secondary
-				this->secondary_index[this->prev_contigIDA].toBlock = block;
-				this->secondary_index[this->prev_contigIDA].toBlock_entries_offset = blockOffset;
-				this->secondary_index[entry.AcontigID].fromBlock = block;
-				this->secondary_index[entry.AcontigID].fromBlock_entries_offset = blockOffset;
-				std::cerr << "switch in contigID: " << this->prev_contigIDA << "->" << entry.AcontigID << std::endl;
-			} else {
-				// For the first entry
-				const U32 chunk = this->getBin(entry.AcontigID, entry.Aposition);
-				totempole_entry& temp = this->linear_index[entry.AcontigID][chunk];
-				temp.fromBlock = block;
-				temp.fromBlock_entries_offset = blockOffset;
-
-				this->secondary_index[entry.AcontigID].fromBlock = block;
-				this->secondary_index[entry.AcontigID].fromBlock_entries_offset = blockOffset;
-			}
-		}
-		// Switch in chunk
-		else if(chunk != this->prev_chunk){
-			this->linear_index[this->prev_contigIDA][this->prev_chunk].toBlock = block;
-			this->linear_index[this->prev_contigIDA][this->prev_chunk].toBlock_entries_offset = blockOffset;
-
-			this->linear_index[entry.AcontigID][chunk].fromBlock = block;
-			this->linear_index[entry.AcontigID][chunk].fromBlock_entries_offset = blockOffset;
-			std::cerr << "switch in chunk: " << this->prev_chunk << "->" << chunk << std::endl;
-		}
-
-		// secondary index
-		// in case there is no switch then last entry is +1 (non-closed interval)
-		this->linear_index[entry.AcontigID][chunk].update(block, blockOffset + 1);
-		this->secondary_index[entry.AcontigID].update(block, blockOffset + 1);
-		this->prev_contigIDA = entry.AcontigID;
-		//this->prev_contigIDB = entry.BcontigID;
-		this->prev_chunk = chunk;
-	}
-
+	inline chunk_type& operator[](const U32 p){ return(this->linear_index[p]); }
 	inline U32 getBin(const U32& contigID, const U32& position) const{ return(position / (this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT)); }
+	inline const TOI_SORTED_ERROR& getState(void) const{ return(this->state); }
+
+	void update(const two_entry& entry, const U32& block, const U32& blockOffset);
+
+	bool findOverlap(const U32 contigID, totempole_entry& intervals);
+	bool findOverlap(const U32 contigID, const U32 position, totempole_entry& intervals);
+	bool findOverlap(const U32 contigID, const U32 from, const U32 to, std::vector<totempole_entry>& intervals);
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& self){
-		for(U32 i = 0; i < 2; ++i)
+		// linear index
+		for(U32 i = 0; i < self.n_contigs; ++i)
 			stream << "contig: " << i << "\n" << self.linear_index[i] << std::endl;
 
+		// secondary index
 		for(U32 i = 0; i < self.n_contigs; ++i)
 			stream << self.secondary_index[i] << std::endl;
 
 		return stream;
 	}
 
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
 		// secondary
-		for(U32 i = 0; i < entry.n_contigs; ++i)
-			stream << entry.secondary_index[i];
+		for(U32 i = 0; i < index.n_contigs; ++i)
+			stream << index.secondary_index[i];
 
 		// linear
-		for(U32 i = 0; i < entry.n_contigs; ++i)
-			stream << entry.linear_index[i];
+		for(U32 i = 0; i < index.n_contigs; ++i)
+			stream << index.linear_index[i];
 
 		return stream;
 	}
 
-	friend std::istream& operator>>(std::istream& stream, self_type& entry){
+	friend std::istream& operator>>(std::istream& stream, self_type& index){
 		// secondary
-		for(U32 i = 0; i < entry.n_contigs; ++i)
-			stream >> entry.secondary_index[i];
+		for(U32 i = 0; i < index.n_contigs; ++i)
+			stream >> index.secondary_index[i];
 
 		// linear
-		for(U32 i = 0; i < entry.n_contigs; ++i)
-			stream >> entry.linear_index[i];
+		for(U32 i = 0; i < index.n_contigs; ++i)
+			stream >> index.linear_index[i];
+
+		index.state = TOI_SORTED_OK;
 
 		return(stream);
 	}
+
+public:
+	TOI_SORTED_ERROR state;
 
 private:
 	const U32 n_contigs;

@@ -208,7 +208,9 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to reopen file..." << std::endl;
 			exit(1);
 		}
-		instances[i]->reverse(this->reverse_entries);
+
+		// Trigger reverse if applicable
+		instances[i]->reverseEntries(this->reverse_entries);
 	}
 
 	for(U32 i = 0; i < this->n_threads; ++i)

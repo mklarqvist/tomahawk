@@ -209,15 +209,14 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 		if(this->toi_reader.getIsSortedExpanded()){
 			std::cerr << "has sorted and expanded index" << std::endl;
 
-			/*
-			if(this->toi_reader.size() > 0){
-				this->toi_reader.findOverlap(interval.contigID);
-				std::cerr << "has toi index" << std::endl;
-				//this->toi_reader.
+			std::vector<Totempole::TotempoleOutputSortedEntry> entries;
+			if(this->toi_reader.findOverlap(19, 60419, 1328401, entries)){
+				for(U32 i = 0; i < entries.size(); ++i)
+					std::cerr << "found: " << entries[i] << std::endl;
 			}
-			*/
+
 		} else
-			std::cerr << "has partial index only" << std::endl;
+			std::cerr << "has block index only" << std::endl;
 	} else {
 		std::cerr << "no index" << std::endl;
 	}
@@ -366,10 +365,6 @@ bool TomahawkOutputReader::__Open(const std::string input){
 		return false;
 	}
 
-	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, this->contigs)){
-		this->hasIndex = true;
-	}
-
 	return true;
 }
 
@@ -380,6 +375,10 @@ bool TomahawkOutputReader::Open(const std::string input){
 	if(!this->ParseHeader()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to parse header!" << std::endl;
 		return false;
+	}
+
+	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, this->contigs)){
+		this->hasIndex = true;
 	}
 
 	return true;

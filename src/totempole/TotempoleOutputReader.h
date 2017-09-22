@@ -17,6 +17,7 @@ class TotempoleOutputReader {
 	typedef IO::BasicBuffer buffer_type;
 	typedef TotempoleOutputSortedIndex index_type;
 	typedef Totempole::TotempoleContigBase contig_type;
+	typedef TotempoleOutputSortedEntry totempole_entry;
 
 public:
 	enum TOI_ERROR {TOI_OK, TOI_NO_EXIST, TOI_CORRUPTED, TOI_INIT};
@@ -32,12 +33,14 @@ public:
 	inline bool getIsSortedExpanded(void) const{ return(this->header.controller.sorted && this->header.controller.expanded); }
 	inline const U32& size(void) const{ return(this->n_entries); }
 
+	// TOI dispatchers
 	// Find data blocks mapping to these regions
-	bool findOverlap(const S32 contigID);
-	bool findOverlap(const S32 contigID, const U32 position);
-	bool findOverlap(const S32 contigID, const U32 from, const U32 to);
+	bool findOverlap(const U32 contigID, totempole_entry& intervals);
+	bool findOverlap(const U32 contigID, const U32 position, totempole_entry& intervals);
+	bool findOverlap(const U32 contigID, const U32 from, const U32 to, std::vector<totempole_entry>& intervals);
 
 	header_type& getHeader(void){ return(this->header); }
+	const index_type* const getIndex(void) const{ return(this->index); }
 
 public:
 	TOI_ERROR ERROR_STATE;
