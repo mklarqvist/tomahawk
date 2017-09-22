@@ -204,6 +204,16 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 	if(positions.size() == 0)
 		return true;
 
+	// Todo
+	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK){
+		if(this->toi_reader.getIsSortedExpanded()){
+			std::cerr << "has sorted and expanded index" << std::endl;
+		} else
+			std::cerr << "has partial index only" << std::endl;
+	} else {
+		std::cerr << "no index" << std::endl;
+	}
+
 	if(this->interval_tree == nullptr){
 		this->interval_tree = new tree_type*[this->header.n_contig];
 		for(U32 i = 0; i < this->header.n_contig; ++i)
