@@ -73,7 +73,7 @@ private:
 
 			assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
-			const entry_type* entry;
+			const entry_type* entry = nullptr;
 			totempole.entries += 2*((this->reader.output_buffer.size() % sizeof(entry_type)));
 			while(this->reader.nextVariantLimited(entry)){
 				// Flip cA,pA with cB,pB

@@ -41,6 +41,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 
 	if(!(this->header.controller.sorted && this->header.controller.expanded)){
 		if(this->stream.tellg() != filesize){
+			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
 			this->ERROR_STATE = TOI_CORRUPTED;
 			exit(1);
 		}
@@ -48,7 +49,6 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 		std::cerr << "is sorted and expanded" << std::endl;
 		this->index = new index_type(this->header.n_contig, contigs);
 		stream >> *this->index;
-		//std::cerr << *this->index << std::endl;
 
 		if(!stream.good()){
 			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Corrupted data!" << std::endl;
@@ -60,9 +60,6 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 			exit(1);
 		}
 	}
-
-	//for(U32 i = 0; i < this->n_entries; ++i)
-	//	std::cerr << this->entries[i] << std::endl;
 
 	this->ERROR_STATE = TOI_OK;
 	return true;

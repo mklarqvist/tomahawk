@@ -97,7 +97,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 	}
 
 	if(this->interval_tree != nullptr){
-		const entry_type*  entry;
+		const entry_type*  entry = nullptr;
 
 		while(this->nextVariant(entry)){
 			this->__checkRegionNoIndex(entry);
@@ -170,7 +170,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	// Natural output required parsing
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		const entry_type* entry;
+		const entry_type* entry = nullptr;
 		while(this->nextVariant(entry))
 			*this->writer << entry;
 
@@ -191,7 +191,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 	if(!this->OpenWriter())
 		return false;
 
-	const entry_type* entry;
+	const entry_type* entry = nullptr;
 	while(this->nextVariant(entry)){
 		if(this->filter.filter(*entry))
 			*this->writer << entry;
@@ -208,6 +208,14 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK){
 		if(this->toi_reader.getIsSortedExpanded()){
 			std::cerr << "has sorted and expanded index" << std::endl;
+
+			/*
+			if(this->toi_reader.size() > 0){
+				this->toi_reader.findOverlap(interval.contigID);
+				std::cerr << "has toi index" << std::endl;
+				//this->toi_reader.
+			}
+			*/
 		} else
 			std::cerr << "has partial index only" << std::endl;
 	} else {
@@ -267,12 +275,6 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 				return false;
 
 			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
-			if(this->toi_reader.size() > 0){
-				this->toi_reader.findOverlap(interval.contigID);
-				std::cerr << "has toi index" << std::endl;
-				//this->toi_reader.
-			}
-
 		}
 	}
 
@@ -350,11 +352,6 @@ bool TomahawkOutputReader::__Open(const std::string input){
 		return false;
 	}
 
-	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, this->contigs)){
-		//std::cerr << "could not open index" << std::endl;
-		this->hasIndex = true;
-	}
-
 	this->filesize = this->stream.tellg();
 	this->stream.seekg(0);
 
@@ -367,6 +364,10 @@ bool TomahawkOutputReader::__Open(const std::string input){
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 		return false;
+	}
+
+	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, this->contigs)){
+		this->hasIndex = true;
 	}
 
 	return true;
@@ -709,7 +710,7 @@ bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
 	TWO::TomahawkOutputStatsContainer container(bins);
 
 	// Natural output required parsing
-	const entry_type* entry;
+	const entry_type* entry = nullptr;
 	while(this->nextVariant(entry))
 		container += *entry;
 
@@ -727,7 +728,7 @@ bool TomahawkOutputReader::index(const std::string& input){
 	//if(!this->reader.setup(input))
 	//	return false;
 
-	const entry_type* entry;
+	const entry_type* entry = nullptr;
 	//if(!this->reader.nextEntry(entry))
 	//	return false;
 
