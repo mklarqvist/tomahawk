@@ -33,6 +33,7 @@ class TomahawkOutputReader {
 	typedef IO::TGZFController tgzf_controller_type;
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
 
 public:
 	typedef Totempole::TotempoleOutputReader toi_reader_type;
@@ -79,9 +80,11 @@ private:
 	bool ParseHeader(void);
 	bool ParseHeaderExtend(void);
 	bool __ParseRegion(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
+	bool __viewRegionIndexed(void);
 	bool __checkRegionNoIndex(const entry_type* const entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
@@ -107,6 +110,7 @@ public:
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
+	std::vector<totempole_sorted_entry_type>* interval_totempole_enties;
 	toi_reader_type toi_reader;
 };
 
