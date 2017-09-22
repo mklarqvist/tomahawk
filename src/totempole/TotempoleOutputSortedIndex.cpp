@@ -86,7 +86,7 @@ bool TotempoleOutputSortedIndex::findOverlap(const U32 contigID, const U32 posit
 	if(this->secondary_index[contigID].fromBlock == -1)
 		return false;
 
-	const U32 chunk = position / (this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT);
+	const U32 chunk = position / ((this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1);
 
 	// Impossible chunk
 	if(chunk >= TOTEMPOLE_OUTPUT_SORT_CHUNKS)
@@ -103,8 +103,8 @@ bool TotempoleOutputSortedIndex::findOverlap(const U32 contigID, const U32 from,
 	if(this->secondary_index[contigID].fromBlock == -1)
 		return false;
 
-	const U32 chunkFrom = from / (this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT);
-	U32 chunkTo         = to   / (this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT);
+	const U32 chunkFrom = from / ((this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1);
+	U32 chunkTo         = to   / ((this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1);
 
 	if(chunkFrom >= TOTEMPOLE_OUTPUT_SORT_CHUNKS)
 		return false;
