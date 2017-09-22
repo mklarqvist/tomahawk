@@ -48,11 +48,10 @@ public:
 	// Streaming functions
 	bool getBlock(const U32 blockID);
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
-	bool getBlocks(void);
 	bool AddRegions(std::vector<std::string>& positions);
 	bool Open(const std::string input);
 	bool OpenExtend(const std::string input);
-	bool nextBlock(void);
+	bool nextBlock(const bool clear = true);
 	bool nextVariant(const entry_type*& entry);
 	bool nextVariantLimited(const entry_type*& entry);
 	bool nextBlockUntil(const U32 limit);
@@ -85,6 +84,7 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 	bool __viewRegionIndexed(void);
+	bool __checkRegionIndex(const entry_type* const entry);
 	bool __checkRegionNoIndex(const entry_type* const entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 

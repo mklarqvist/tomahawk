@@ -41,7 +41,7 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	this->buffer.deleteAll();
 	this->output_buffer.deleteAll();
 	delete this->writer;
-	delete [] this->interval_totempole_enties;
+	delete this->interval_totempole_enties;
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
@@ -89,6 +89,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 	if(!this->OpenWriter())
 		return false;
 
+	// If indexed and expanded
 	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK && (this->toi_reader.getIsSortedExpanded())){
 		return(this->__viewRegionIndexed());
 	}
@@ -107,20 +108,117 @@ bool TomahawkOutputReader::__viewRegion(void){
 bool TomahawkOutputReader::__viewRegionIndexed(void){
 	std::cerr << "in indexed view region" << std::endl;
 
+	if(this->interval_tree == nullptr){
+		std::cerr << "intval not set" << std::endl;
+		return false;
+	}
+
+	// Init
+	const entry_type* two_entry = nullptr;
+
 	// Todo
 	// sort entries
 	// merge
-	// for i in entries: seek and jump
+	// for i in entries: seek, uncompress, and jump or limit
+	for(U32 i = 0; i < this->interval_totempole_enties->size(); ++i){
+		const totempole_sorted_entry_type& entry = this->interval_totempole_enties->at(i);
+		const U32 block_length = entry.toBlock - entry.fromBlock;
 
-	if(this->interval_tree != nullptr){
-		const entry_type*  entry = nullptr;
+		// 1 entry
+		if(block_length == 0){
+			if(!this->getBlock(entry.fromBlock)){
+				std::cerr << "could not get block" << std::endl;
+				return false;
+			}
+			this->position = entry.fromBlock_entries_offset;
 
-		while(this->nextVariant(entry)){
-			this->__checkRegionNoIndex(entry);
-		} // end while next variant
+			while(this->nextVariantLimited(two_entry)){
+				this->__checkRegionIndex(two_entry);
+			} // end while next variant
+		}
+		// 2 entries
+		else if(block_length == 1){
+			// First one
+			if(!this->getBlock(entry.fromBlock)){
+				std::cerr << "could not get block" << std::endl;
+				return false;
+			}
+			this->position = entry.fromBlock_entries_offset;
+
+			while(this->nextVariantLimited(two_entry)){
+				this->__checkRegionIndex(two_entry);
+			} // end while next variant
+
+			// Second one
+			if(!this->getBlock(entry.toBlock)){
+				std::cerr << "could not get block" << std::endl;
+				return false;
+			}
+			//this->position = entry.toBlock_entries_offset;
+
+			while(this->nextVariantLimited(two_entry)){
+				this->__checkRegionIndex(two_entry);
+			} // end while next variant
+
+		}
+		// > 2 entries
+		else {
+			// First block
+			U32 j = entry.fromBlock;
+			if(!this->getBlock(j)){
+				std::cerr << "could not get block" << std::endl;
+				return false;
+			}
+			this->position = entry.fromBlock_entries_offset;
+
+			while(this->nextVariantLimited(two_entry)){
+				this->__checkRegionIndex(two_entry);
+			} // end while next variant
+			++j;
+
+			for(; j < entry.toBlock - 1; ++j){
+				if(!this->getBlock(j)){
+					std::cerr << "could not get block" << std::endl;
+					return false;
+				}
+				std::cerr << "got block " << j << std::endl;
+				while(this->nextVariantLimited(two_entry)){
+					this->__checkRegionIndex(two_entry);
+				} // end while next variant
+			}
+
+			// last block
+			if(!this->getBlock(j)){
+				std::cerr << "could not get block" << std::endl;
+				return false;
+			}
+			//this->position = entry.toBlock_entries_offset;
+
+			while(this->nextVariantLimited(two_entry)){
+				this->__checkRegionIndex(two_entry);
+			} // end while next variant
+		}
 	}
 
 	return true;
+}
+
+bool TomahawkOutputReader::__checkRegionIndex(const entry_type* const entry){
+	// If iTree for contigA exists
+	if(this->interval_tree[entry->AcontigID] != nullptr){
+		std::vector<interval_type> rets = this->interval_tree[entry->AcontigID]->findOverlapping(entry->Aposition, entry->Aposition);
+		if(rets.size() > 0){
+			for(U32 i = 0; i < rets.size(); ++i){
+				if(this->filter.filter(*entry))
+					//entry->write(std::cout, this->contigs);
+					*this->writer << entry;
+
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type* const entry){
@@ -617,7 +715,6 @@ bool TomahawkOutputReader::ParseHeader(void){
 	U32* ret;
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		this->stream >> this->contigs[i];
-		// std::cerr << this->contigs[i] << std::endl;
 		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
 			// Add to hash table
 			this->contig_htable->SetItem(&this->contigs[i].name[0], &this->contigs[i].name, i, this->contigs[i].name.size());
@@ -659,7 +756,32 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 	return true;
 }
 
-bool TomahawkOutputReader::nextBlock(void){
+bool TomahawkOutputReader::getBlock(const U32 blockID){
+	if(this->toi_reader.ERROR_STATE != toi_reader_type::TOI_OK){
+		std::cerr << "toi bad" << std::endl;
+		return false;
+	}
+
+	if(blockID > this->toi_reader.size()){
+		std::cerr << "blockid too big" << std::endl;
+		return false;
+	}
+
+	if(!this->stream.good()){
+		std::cerr << "stream bad" << std::endl;
+		return false;
+	}
+
+	this->stream.seekg(this->toi_reader[blockID].byte_offset);
+	if(!this->stream.good()){
+		std::cerr << "stream bad after seek" << std::endl;
+		return false;
+	}
+
+	return(this->nextBlock());
+}
+
+bool TomahawkOutputReader::nextBlock(const bool clear){
 	// Stream died
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -667,10 +789,8 @@ bool TomahawkOutputReader::nextBlock(void){
 	}
 
 	// EOF
-	if(this->stream.tellg() == this->filesize){
-		//std::cerr << "eof" << std::endl;
+	if(this->stream.tellg() == this->filesize)
 		return false;
-	}
 
 	buffer.resize(sizeof(tgzf_type));
 	this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
@@ -696,7 +816,10 @@ bool TomahawkOutputReader::nextBlock(void){
 	buffer.pointer = h->BSIZE;
 	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
 	output_buffer.resize(uncompressed_size);
-	this->output_buffer.reset();
+
+	// Clear output buffer
+	if(clear)
+		this->output_buffer.reset();
 
 	if(!this->gzip_controller.Inflate(buffer, output_buffer)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
@@ -721,24 +844,19 @@ bool TomahawkOutputReader::nextBlock(void){
 		return false;
 	}
 
-	//std::cerr << this->position << '/' << this->size << '\t' << this->output_buffer.size() << '/' << this->output_buffer.capacity() << std::endl;
-
 	return true;
 }
 
 bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 	// Check if resize required
-	if(this->output_buffer.capacity() < limit + 1024)
-		this->output_buffer.resize(limit + 1024);
-
+	if(this->output_buffer.capacity() < limit + 65536)
+		this->output_buffer.resize(limit + 65536);
 
 	this->position = 0;
 	this->output_buffer.reset();
 
 	// Keep inflating DATA until bounds is reached
 	while(this->output_buffer.size() <= limit){
-		//std::cerr << this->stream.tellg() << '/' << this->filesize << std::endl;
-
 		// Stream died
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -798,9 +916,6 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 			return false;
 		}
 	}
-
-	//std::cerr << "Loaded: " << this->output_buffer.size() << " pos " << this->stream.tellg() << std::endl;
-
 	return true;
 }
 
@@ -816,6 +931,7 @@ bool TomahawkOutputReader::nextVariant(const entry_type*& entry){
 	return true;
 }
 
+// Do NOT get a new variant when reaching end of data
 bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 	if(this->position == this->size){
 		return false;
