@@ -42,6 +42,9 @@ public:
 	header_type& getHeader(void){ return(this->header); }
 	const index_type* const getIndex(void) const{ return(this->index); }
 
+private:
+	bool __stateCheck(void) const;
+
 public:
 	TOI_ERROR ERROR_STATE;
 

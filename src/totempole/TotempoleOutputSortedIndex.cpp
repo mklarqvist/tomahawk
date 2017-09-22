@@ -45,7 +45,6 @@ void TotempoleOutputSortedIndex::update(const two_entry& entry, const U32& block
 			this->secondary_index[this->prev_contigIDA].toBlock_entries_offset = blockOffset;
 			this->secondary_index[entry.AcontigID].fromBlock = block;
 			this->secondary_index[entry.AcontigID].fromBlock_entries_offset = blockOffset;
-			std::cerr << "switch in contigID: " << this->prev_contigIDA << "->" << entry.AcontigID << std::endl;
 		} else {
 			// For the first entry
 			const U32 chunk = this->getBin(entry.AcontigID, entry.Aposition);
@@ -61,10 +60,8 @@ void TotempoleOutputSortedIndex::update(const two_entry& entry, const U32& block
 	else if(chunk != this->prev_chunk){
 		this->linear_index[this->prev_contigIDA][this->prev_chunk].toBlock = block;
 		this->linear_index[this->prev_contigIDA][this->prev_chunk].toBlock_entries_offset = blockOffset;
-
 		this->linear_index[entry.AcontigID][chunk].fromBlock = block;
 		this->linear_index[entry.AcontigID][chunk].fromBlock_entries_offset = blockOffset;
-		std::cerr << "switch in chunk: " << this->prev_chunk << "->" << chunk << std::endl;
 	}
 
 	// secondary index
@@ -72,7 +69,6 @@ void TotempoleOutputSortedIndex::update(const two_entry& entry, const U32& block
 	this->linear_index[entry.AcontigID][chunk].update(block, blockOffset + 1);
 	this->secondary_index[entry.AcontigID].update(block, blockOffset + 1);
 	this->prev_contigIDA = entry.AcontigID;
-	//this->prev_contigIDB = entry.BcontigID;
 	this->prev_chunk = chunk;
 }
 

@@ -85,6 +85,9 @@ private:
 	bool __checkRegionNoIndex(const entry_type* const entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
+	bool AddRegionsIndexed(std::vector<std::string>& positions);
+	bool AddRegionsUnindexed(std::vector<std::string>& positions);
+
 public:
 	U64 filesize;	// input file size
 	U64 position;

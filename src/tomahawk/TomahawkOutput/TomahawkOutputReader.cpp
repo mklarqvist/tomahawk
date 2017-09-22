@@ -87,15 +87,6 @@ bool TomahawkOutputReader::__viewRegion(void){
 	if(!this->OpenWriter())
 		return false;
 
-	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK){
-		if(this->toi_reader.getIsSortedExpanded()){
-			std::cerr << "has sorted and expanded index" << std::endl;
-		} else
-			std::cerr << "has partial index only" << std::endl;
-	} else {
-		std::cerr << "no index" << std::endl;
-	}
-
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry = nullptr;
 
@@ -200,36 +191,55 @@ bool TomahawkOutputReader::__viewFilter(void){
 	return true;
 }
 
-bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
-	if(positions.size() == 0)
-		return true;
+bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions){
+	std::cerr << "has sorted and expanded index" << std::endl;
 
-	// Todo
-	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK){
-		if(this->toi_reader.getIsSortedExpanded()){
-			std::cerr << "has sorted and expanded index" << std::endl;
+	/*
+	std::vector<Totempole::TotempoleOutputSortedEntry> entries;
+	if(this->toi_reader.findOverlap(19, 60419, 1328401, entries)){
+		for(U32 i = 0; i < entries.size(); ++i)
+			std::cerr << "found: " << entries[i] << std::endl;
+	}
+	*/
 
-			std::vector<Totempole::TotempoleOutputSortedEntry> entries;
-			if(this->toi_reader.findOverlap(19, 60419, 1328401, entries)){
-				for(U32 i = 0; i < entries.size(); ++i)
-					std::cerr << "found: " << entries[i] << std::endl;
+	for(U32 i = 0; i < positions.size(); ++i){
+		if(positions[i].find(',') != std::string::npos){
+			std::vector<std::string> ret = Helpers::split(positions[i], ',');
+			if(ret.size() == 1){
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
+				return false;
+
+			} else if(ret.size() == 2){
+				// parse left
+				interval_type intervalLeft;
+				if(!__ParseRegion(ret[0], intervalLeft))
+					return false;
+
+				// parse right
+				interval_type intervalRight;
+				if(!__ParseRegion(ret[1], intervalRight))
+					return false;
+
+				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
+				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+
+			} else {
+				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
+				return false;
 			}
+		} else {
+			interval_type interval;
+			if(!__ParseRegion(positions[i], interval))
+				return false;
 
-		} else
-			std::cerr << "has block index only" << std::endl;
-	} else {
-		std::cerr << "no index" << std::endl;
+			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+		}
 	}
 
-	if(this->interval_tree == nullptr){
-		this->interval_tree = new tree_type*[this->header.n_contig];
-		for(U32 i = 0; i < this->header.n_contig; ++i)
-			this->interval_tree[i] = nullptr;
-	}
+	return true;
+}
 
-	if(this->interval_tree_entries == nullptr)
-		this->interval_tree_entries = new std::vector<interval_type>[this->header.n_contig];
-
+bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positions){
 	for(U32 i = 0; i < positions.size(); ++i){
 		//std::cerr << i << ": " << positions[i] << std::endl;
 		// Pattern cA:pAf-pAt;cB:pBf-pBt
@@ -275,6 +285,29 @@ bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
 
 			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
 		}
+	}
+	return true;
+}
+
+bool TomahawkOutputReader::AddRegions(std::vector<std::string>& positions){
+	if(positions.size() == 0)
+		return true;
+
+	if(this->interval_tree_entries == nullptr)
+		this->interval_tree_entries = new std::vector<interval_type>[this->header.n_contig];
+
+	if(this->interval_tree == nullptr){
+		this->interval_tree = new tree_type*[this->header.n_contig];
+		for(U32 i = 0; i < this->header.n_contig; ++i)
+			this->interval_tree[i] = nullptr;
+	}
+
+	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK && (this->toi_reader.getIsSortedExpanded())){
+		if(!this->AddRegionsIndexed(positions))
+			return false;
+	} else {
+		if(!this->AddRegionsUnindexed(positions))
+			return false;
 	}
 
 	for(U32 i = 0; i < this->header.n_contig; ++i){

@@ -46,7 +46,6 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 			exit(1);
 		}
 	} else {
-		std::cerr << "is sorted and expanded" << std::endl;
 		this->index = new index_type(this->header.n_contig, contigs);
 		stream >> *this->index;
 
@@ -65,7 +64,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 	return true;
 }
 
-bool TotempoleOutputReader::findOverlap(const U32 contigID, totempole_entry& intervals){
+bool TotempoleOutputReader::__stateCheck(void) const{
 	if(this->ERROR_STATE != TOI_OK){
 		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No primary index available..." << std::endl;
 		return false;
@@ -80,45 +79,21 @@ bool TotempoleOutputReader::findOverlap(const U32 contigID, totempole_entry& int
 		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No sorted index available..." << std::endl;
 		return false;
 	}
+	return true;
+}
 
+bool TotempoleOutputReader::findOverlap(const U32 contigID, totempole_entry& intervals){
+	if(!this->__stateCheck()) return false;
 	return(this->index->findOverlap(contigID, intervals));
 }
 
 bool TotempoleOutputReader::findOverlap(const U32 contigID, const U32 position, totempole_entry& intervals){
-	if(this->ERROR_STATE != TOI_OK){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No primary index available..." << std::endl;
-		return false;
-	}
-
-	if(!this->header.controller.sorted){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Index is not sorted..." << std::endl;
-		return false;
-	}
-
-	if(this->index->getState() != TotempoleOutputSortedIndex::TOI_SORTED_ERROR::TOI_SORTED_OK){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No sorted index available..." << std::endl;
-		return false;
-	}
-
+	if(!this->__stateCheck()) return false;
 	return(this->index->findOverlap(contigID, position, intervals));
 }
 
 bool TotempoleOutputReader::findOverlap(const U32 contigID, const U32 from, const U32 to, std::vector<totempole_entry>& intervals){
-	if(this->ERROR_STATE != TOI_OK){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No primary index available..." << std::endl;
-		return false;
-	}
-
-	if(!this->header.controller.sorted){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Index is not sorted..." << std::endl;
-		return false;
-	}
-
-	if(this->index->getState() != TotempoleOutputSortedIndex::TOI_SORTED_ERROR::TOI_SORTED_OK){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "No sorted index available..." << std::endl;
-		return false;
-	}
-
+	if(!this->__stateCheck()) return false;
 	return(this->index->findOverlap(contigID, from, to, intervals));
 }
 
