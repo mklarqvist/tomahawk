@@ -340,7 +340,7 @@ bool TomahawkOutputReader::__Open(const std::string input){
 		return false;
 	}
 
-	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+	if(this->toi_reader.Open(input + "." + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, this->contigs)){
 		//std::cerr << "could not open index" << std::endl;
 		this->hasIndex = true;
 	}

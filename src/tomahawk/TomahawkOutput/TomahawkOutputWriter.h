@@ -339,6 +339,9 @@ public:
 		}
 		re.close();
 
+		// Write sorted index
+		this->stream_index.getNativeStream() << this->index;
+
 		return true;
 	}
 

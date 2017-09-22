@@ -15,15 +15,17 @@ class TotempoleOutputReader {
 	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> header_type;
 	typedef TotempoleOutputEntry entry_type;
 	typedef IO::BasicBuffer buffer_type;
+	typedef TotempoleOutputSortedIndex index_type;
+	typedef Totempole::TotempoleContigBase contig_type;
 
 public:
-	enum TOI_ERROR {TOI_OK, TOI_NO_EXIST, TOI_CORRUPTED};
+	enum TOI_ERROR {TOI_OK, TOI_NO_EXIST, TOI_CORRUPTED, TOI_INIT};
 
 public:
 	TotempoleOutputReader();
 	~TotempoleOutputReader();
 
-	bool Open(const std::string& input);
+	bool Open(const std::string& input, const contig_type* contigs);
 
 	inline const entry_type& operator[](const U32 p) const{ return(this->entries[p]); }
 	inline bool getIsSorted(void) const{ return(this->header.controller.sorted); }
@@ -46,6 +48,7 @@ private:
 	header_type header;
 	buffer_type buffer;
 	const entry_type* entries;
+	index_type* index;
 };
 
 } /* namespace Totempole */

@@ -3,10 +3,12 @@
 namespace Tomahawk {
 namespace Totempole {
 
-TotempoleOutputReader::TotempoleOutputReader() : n_entries(0), ERROR_STATE(TOI_OK), entries(nullptr){}
-TotempoleOutputReader::~TotempoleOutputReader(){}
+TotempoleOutputReader::TotempoleOutputReader() : ERROR_STATE(TOI_INIT), n_entries(0), entries(nullptr), index(nullptr){}
+TotempoleOutputReader::~TotempoleOutputReader(){
+	delete this->index;
+}
 
-bool TotempoleOutputReader::Open(const std::string& input){
+bool TotempoleOutputReader::Open(const std::string& input, const contig_type* contigs){
 	this->stream.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream.good()){
 		//std::cerr << "failed does not exist" << std::endl;
@@ -20,7 +22,6 @@ bool TotempoleOutputReader::Open(const std::string& input){
 	this->stream >> this->header;
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC)){
 		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header!" << std::endl;
-		//std::cerr << this->header.
 		this->ERROR_STATE = TOI_CORRUPTED;
 		exit(1);
 	}
@@ -29,7 +30,7 @@ bool TotempoleOutputReader::Open(const std::string& input){
 	const U64 readUntil = this->header.n_entries * sizeof(entry_type);
 
 	if(readUntil % sizeof(entry_type) != 0){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Corrupted data!" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
 		this->ERROR_STATE = TOI_CORRUPTED;
 		exit(1);
 	}
@@ -38,9 +39,26 @@ bool TotempoleOutputReader::Open(const std::string& input){
 	this->entries = reinterpret_cast<const entry_type*>(this->buffer.data);
 	this->n_entries = readUntil / sizeof(entry_type);
 
-	if(this->stream.tellg() != filesize){
-		this->ERROR_STATE = TOI_CORRUPTED;
-		return false;
+	if(!(this->header.controller.sorted && this->header.controller.expanded)){
+		if(this->stream.tellg() != filesize){
+			this->ERROR_STATE = TOI_CORRUPTED;
+			exit(1);
+		}
+	} else {
+		std::cerr << "is sorted and expanded" << std::endl;
+		this->index = new index_type(this->header.n_contig, contigs);
+		stream >> *this->index;
+		//std::cerr << *this->index << std::endl;
+
+		if(!stream.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Corrupted data!" << std::endl;
+			exit(1);
+		}
+
+		if(!stream.tellg() == filesize){
+			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
+			exit(1);
+		}
 	}
 
 	//for(U32 i = 0; i < this->n_entries; ++i)

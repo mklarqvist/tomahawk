@@ -52,6 +52,23 @@ struct TotempoleOutputSortedIndexBin{
 		return stream;
 	}
 
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
+		stream.write(reinterpret_cast<const char*>(&entry.n_chunks), sizeof(U32));
+		for(U32 i = 0; i < entry.n_chunks; ++i)
+			stream << entry.chunks[i];
+
+		return stream;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& entry){
+		stream.read(reinterpret_cast<char*>(&entry.n_chunks), sizeof(U32));
+		entry.allocate(entry.n_chunks); // allocate memory
+		for(U32 i = 0; i < entry.n_chunks; ++i)
+			stream >> entry.chunks[i];
+
+		return(stream);
+	}
+
 	U32 n_chunks;
 	totempole_entry* chunks;
 };
@@ -150,11 +167,34 @@ public:
 		return stream;
 	}
 
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
+		// secondary
+		for(U32 i = 0; i < entry.n_contigs; ++i)
+			stream << entry.secondary_index[i];
+
+		// linear
+		for(U32 i = 0; i < entry.n_contigs; ++i)
+			stream << entry.linear_index[i];
+
+		return stream;
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& entry){
+		// secondary
+		for(U32 i = 0; i < entry.n_contigs; ++i)
+			stream >> entry.secondary_index[i];
+
+		// linear
+		for(U32 i = 0; i < entry.n_contigs; ++i)
+			stream >> entry.linear_index[i];
+
+		return(stream);
+	}
+
 private:
 	const U32 n_contigs;
 	U32 prev_contigIDA;
 	U32 prev_chunk;
-
 	const contig_type* const contigs;
 	chunk_type* linear_index;
 	totempole_entry* secondary_index;
