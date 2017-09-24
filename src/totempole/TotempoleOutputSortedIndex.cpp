@@ -142,17 +142,20 @@ bool TotempoleOutputSortedIndex::findOverlap(const U32 contigID, const U32 from,
 				entry.toBlock = this->linear_index[contigID][i].toBlock;
 				entry.toBlock_entries_offset = this->linear_index[contigID][i].toBlock_entries_offset;
 				prevHit = i;
-			} else {
-				intervals.push_back(entry);
-				entry = this->linear_index[contigID][i];
 			}
+		} else {
+			if(entry.fromBlock != -1){
+				entry.toBlock = this->linear_index[contigID][i - 1].toBlock;
+				entry.toBlock_entries_offset = this->linear_index[contigID][i - 1].toBlock_entries_offset;
+				intervals.push_back(entry);
+			}
+			entry.reset();
 		}
 	}
 
-	// push back last
-	if(i - prevHit == 1){
-		entry.toBlock = this->linear_index[contigID][i].toBlock;
-		entry.toBlock_entries_offset = this->linear_index[contigID][i].toBlock_entries_offset;
+	if(entry.fromBlock != -1){
+		entry.toBlock = this->linear_index[contigID][i - 1].toBlock;
+		entry.toBlock_entries_offset = this->linear_index[contigID][i - 1].toBlock_entries_offset;
 		intervals.push_back(entry);
 	}
 

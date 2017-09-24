@@ -120,6 +120,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 	// sort entries
 	// merge
 	// for i in entries: seek, uncompress, and jump or limit
+	std::cerr << Helpers::timestamp("LOG") << "Slicing..." << std::endl;
 	for(U32 i = 0; i < this->interval_totempole_enties->size(); ++i){
 		const totempole_sorted_entry_type& entry = this->interval_totempole_enties->at(i);
 		const U32 block_length = entry.toBlock - entry.fromBlock;
@@ -181,7 +182,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 					std::cerr << "could not get block" << std::endl;
 					return false;
 				}
-				std::cerr << "got block " << j << std::endl;
+				//std::cerr << "got block " << j << std::endl;
 				while(this->nextVariantLimited(two_entry)){
 					this->__checkRegionIndex(two_entry);
 				} // end while next variant
@@ -486,6 +487,8 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 
 bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, interval_type& interval){
 	std::vector<std::string> ret = Helpers::split(region, ':');
+
+	// If vector does not contain a colon
 	if(ret.size() == 1){
 		if(ret[0].find('-') != std::string::npos){
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
@@ -508,7 +511,9 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 		std::cerr << "contigID found: " << entry << std::endl;
 		this->interval_totempole_enties->push_back(entry);
 
-	} else if(ret.size() == 2){
+	}
+	// If vector contain colon
+	else if(ret.size() == 2){
 		// is contigID:pos-pos
 		U32* contigID;
 		if(!this->contig_htable->GetItem(&ret[0][0], &ret[0], contigID, ret[0].size())){
@@ -557,7 +562,10 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 			return false;
 		}
-	} else {
+	}
+	// contains > 1 colons
+	// illegal
+	else {
 		std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 		return false;
 	}
