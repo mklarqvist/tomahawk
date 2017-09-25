@@ -107,10 +107,11 @@ public:
 				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 				exit(1);
 			}
+
 			this->writer->getLock()->lock();
 			this->entry.byte_offset = (U64)this->writer->getNativeStream().tellp();
 			this->entry.uncompressed_size = this->buffer.size();
-			this->writer->writeNoLock(compressor.buffer);
+			this->writer->writeNoLock(this->compressor.buffer);
 			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
 			this->writer_index->getNativeStream() << this->entry;
 			++this->totempole_blocks_written;
@@ -223,7 +224,6 @@ private:
 	U32 progressCount;		// lines added since last flush
 	U32 totempole_blocks_written;
 	totempoly_entry entry; // track stuff
-	totempoly_entry entry_track; // track stuff
 	writer_type* writer;	// writer
 	writer_type* writer_index;	// writer index
 	buffer_type buffer;		// internal buffer

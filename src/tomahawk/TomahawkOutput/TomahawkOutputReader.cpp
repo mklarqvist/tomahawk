@@ -91,8 +91,13 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	// If indexed and expanded
 	if(this->toi_reader.ERROR_STATE == toi_reader_type::TOI_OK && (this->toi_reader.getIsSortedExpanded())){
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "TWO") << "Indexed query..." << std::endl;
 		return(this->__viewRegionIndexed());
 	}
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "TWO") << "Unindexed query..." << std::endl;
 
 	if(this->interval_tree != nullptr){
 		const entry_type*  entry = nullptr;
@@ -107,12 +112,12 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 bool TomahawkOutputReader::__viewRegionIndexed(void){
 	if(this->interval_tree == nullptr){
-		std::cerr << "intval not set" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Interval tree not set!" << std::endl;
 		return false;
 	}
 
 	if(!this->__ParseRegionIndexedBlocks()){
-		std::cerr << "no valid entries" << std::endl;
+		std::cerr << Helpers::timestamp("LOG","TOI") << "No valid entries..." << std::endl;
 		return false;
 	}
 
@@ -130,7 +135,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 		// 1 entry
 		if(block_length == 0){
 			if(!this->getBlock(entry.fromBlock)){
-				std::cerr << "could not get block" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
 			this->position = entry.fromBlock_entries_offset;
@@ -143,7 +148,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 		else if(block_length == 1){
 			// First one
 			if(!this->getBlock(entry.fromBlock)){
-				std::cerr << "could not get block" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
 			this->position = entry.fromBlock_entries_offset;
@@ -154,7 +159,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 
 			// Second one
 			if(!this->getBlock(entry.toBlock)){
-				std::cerr << "could not get block" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
 			//this->position = entry.toBlock_entries_offset;
@@ -169,7 +174,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 			// First block
 			U32 j = entry.fromBlock;
 			if(!this->getBlock(j)){
-				std::cerr << "could not get block" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
 			this->position = entry.fromBlock_entries_offset;
@@ -182,7 +187,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 			// Middle blocks
 			for(; j < entry.toBlock - 1; ++j){
 				if(!this->getBlock(j)){
-					std::cerr << "could not get block" << std::endl;
+					std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 					return false;
 				}
 
@@ -193,7 +198,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 
 			// last block
 			if(!this->getBlock(j)){
-				std::cerr << "could not get block" << std::endl;
+				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
 			//this->position = entry.toBlock_entries_offset;
@@ -549,7 +554,7 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 
 bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
 	if(this->interval_tree_entries == nullptr){
-		std::cerr << "no data set" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No data is set" << std::endl;
 		return false;
 	}
 
@@ -792,23 +797,23 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 
 bool TomahawkOutputReader::getBlock(const U32 blockID){
 	if(this->toi_reader.ERROR_STATE != toi_reader_type::TOI_OK){
-		std::cerr << "toi bad" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TOI") << "Index is bad!" << std::endl;
 		return false;
 	}
 
 	if(blockID > this->toi_reader.size()){
-		std::cerr << "blockid too big" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->toi_reader.size() << ")!" << std::endl;
 		return false;
 	}
 
 	if(!this->stream.good()){
-		std::cerr << "stream bad" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
 		return false;
 	}
 
 	this->stream.seekg(this->toi_reader[blockID].byte_offset);
 	if(!this->stream.good()){
-		std::cerr << "stream bad after seek" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
 		return false;
 	}
 
@@ -891,6 +896,78 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 
 	// Keep inflating DATA until bounds is reached
 	while(this->output_buffer.size() <= limit){
+		// Stream died
+		if(!this->stream.good()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
+			return false;
+		}
+
+		// EOF
+		// Casting stream to U64 is safe as this point is not
+		// reached if above good() return fails
+		if((U64)this->stream.tellg() == this->filesize){
+			//std::cerr << "eof" << std::endl;
+			return false;
+		}
+
+		buffer.resize(sizeof(tgzf_type));
+		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		if(!h->Validate()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
+			return false;
+		}
+
+		buffer.resize(h->BSIZE); // make sure all data will fit
+
+		// Recast because if buffer is resized then the pointer address is incorrect
+		// resulting in segfault
+		h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+
+		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		if(!this->stream.good()){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
+			return false;
+		}
+
+		buffer.pointer = h->BSIZE;
+
+		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
+			return false;
+		}
+
+		if(this->output_buffer.size() == 0){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
+			return false;
+		}
+
+		// Reset buffer
+		this->buffer.reset();
+
+		// Reset iterator position and size
+		this->size = this->output_buffer.size() / sizeof(entry_type);
+
+		// Validity check
+		if(this->output_buffer.size() % sizeof(entry_type) != 0){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
+			return false;
+		}
+	}
+	return true;
+}
+
+bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_offset){
+	// Check if resize required
+	if(this->output_buffer.capacity() < limit + 65536)
+		this->output_buffer.resize(limit + 65536);
+
+	this->position = 0;
+	this->output_buffer.reset();
+
+	// Keep inflating DATA until bounds is reached
+	while(this->output_buffer.size() <= limit && this->stream.tellg() != (U64)virtual_offset){
 		// Stream died
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;

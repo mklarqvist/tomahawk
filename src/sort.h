@@ -43,7 +43,7 @@ void sort_usage(void){
 	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
 	"  -D        expand data (requires O(2n) memory). Is required for indexing [null]\n"
-	"  -d        do NOT expand data (see -D)[null]\n"
+	"  -d        do NOT expand data (see -D, default)[null]\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
@@ -69,7 +69,7 @@ int sort(int argc, char** argv){
 	std::string input, output;
 	double memory_limit = 100e6;
 	bool merge = false;
-	bool expand = true;
+	bool expand = false;
 	int threads = std::thread::hardware_concurrency();
 
 	int c = 0;

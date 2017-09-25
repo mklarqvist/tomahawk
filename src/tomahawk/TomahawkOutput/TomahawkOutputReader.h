@@ -55,6 +55,7 @@ public:
 	bool nextVariant(const entry_type*& entry);
 	bool nextVariantLimited(const entry_type*& entry);
 	bool nextBlockUntil(const U32 limit);
+	bool nextBlockUntil(const U32 limit, const U64 virtual_offset);
 	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	// Other

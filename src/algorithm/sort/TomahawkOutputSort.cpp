@@ -155,8 +155,6 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	for(U32 i = totempole.uncompressed_size; i < this->reader.toi_reader.size(); ++i){
 		if(totempole.uncompressed_size > memory_limit){
 			totempole.byte_offset_end = this->reader.toi_reader[i].byte_offset;
-
-
 			blocks.push_back(totempole);
 			totempole.byte_offset = this->reader.toi_reader[i].byte_offset;
 			totempole.entries = 0;
@@ -165,6 +163,12 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 		totempole.entries += this->reader.toi_reader[i].entries;
 		totempole.uncompressed_size += this->reader.toi_reader[i].uncompressed_size;
 		n_entries += totempole.entries;
+	}
+
+	// Have to add final
+	if(totempole.byte_offset != blocks.back().byte_offset){
+		totempole.byte_offset_end = this->reader.toi_reader[this->reader.toi_reader.size() - 1].byte_offset_end;
+		blocks.push_back(totempole);
 	}
 
 	if(totempole.entries != 0)
@@ -363,7 +367,6 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	// Temp
 	index_type& index = writer.getIndex();
-	std::cerr << index << std::endl;
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)

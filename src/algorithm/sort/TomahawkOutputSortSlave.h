@@ -61,8 +61,9 @@ private:
 			if(this->reader.stream.tellg() == workload.byte_offset_end)
 				break;
 
-			if(!this->reader.nextBlockUntil(memory_limit))
+			if(!this->reader.nextBlockUntil(this->memory_limit, workload.byte_offset_end))
 				trigger_break = true;
+
 
 			if(this->reader.output_buffer.size() == 0){
 				trigger_break = true;
@@ -78,7 +79,6 @@ private:
 					// Flip cA,pA with cB,pB
 					entry_type temp(entry);
 					temp.swapDirection();
-					//std::cerr << *entry << '\n' << temp << "\n\n";
 					this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
 				}
 			} else {
