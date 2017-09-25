@@ -156,7 +156,6 @@ bool TotempoleOutputSortedIndex::findOverlap(const U32 contigID, const U32 from,
 	if(entry.fromBlock != -1){
 		entry.toBlock = this->linear_index[contigID][i - 1].toBlock;
 		entry.toBlock_entries_offset = this->linear_index[contigID][i - 1].toBlock_entries_offset;
-		std::cerr << entry << std::endl;
 		intervals.push_back(entry);
 	}
 
