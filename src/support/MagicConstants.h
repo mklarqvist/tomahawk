@@ -12,8 +12,8 @@ namespace Constants{
 extern std::string LITERAL_COMMAND_LINE;
 extern std::string INTERPRETED_COMMAND;
 
-// Revision versioning
-const float PROGRAM_VERSION = 0.1; // major
+// Versioning
+const float PROGRAM_VERSION = 0.2; // major
 const U32 PROGRAM_VERSION_MINOR = 0;
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;

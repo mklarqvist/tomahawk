@@ -54,10 +54,10 @@ The Tomahawk data structure described below uses different integer types based o
 \begin{tabular}{|l|l|}
   \cline{1-2}
   {\bf Field} & {\bf Description} \\ \cline{1-2}
-  {\sf uint8\_t} & {\sf 0 $<$ n\_samples $<$ 16 ($2^4$)} \\ \cline{1-2}
-  {\sf uint16\_t} & {\sf 16 $<$ n\_samples $<$ 4096 ($2^{12}$)} \\ \cline{1-2}
-  {\sf uint32\_t} & {\sf 4096 $<$ n\_samples $<$ 268435456 ($2^{28}$)} \\ \cline{1-2}
-  {\sf uint64\_t} & {\sf 268435456 $<$ n\_samples $<$ 1152921504606846976 ($2^{60}$)} \\ \cline{1-2}
+  {\sf uint8\_t} & {\sf 0 $<$ n\_samples $<$ $2^4$} \\ \cline{1-2}
+  {\sf uint16\_t} & {\sf $2^4$ $<$ n\_samples $<$ $2^{12}$} \\ \cline{1-2}
+  {\sf uint32\_t} & {\sf $2^{12}$ $<$ n\_samples $<$ $2^{28}$} \\ \cline{1-2}
+  {\sf uint64\_t} & {\sf $2^{28}$ $<$ n\_samples $<$ $2^{60}$} \\ \cline{1-2}
   \end{tabular}}
 \end{table}
 Using this approach, Tomahawk run-length encodes genotypes with the lowest 4 bits being the alleles and the remainder $\text{sizeof(Template)} * 8 - 4$ bits as the run-length.
@@ -159,8 +159,7 @@ TWO entry
   & {\sf contig\_name} & Contig name & {\tt char[l\_contig]} & \\\cline{2-5}
 
    \multicolumn{2}{|l|}{\sf TGZF\_block} & \begin{tabular}{@{}l@{}}Compressed DATA by {\sf zlib::deflate()}. DATA keeping \\ VCF header and any changes made to the file\end{tabular} &  & \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf EOF\_string} & End-of-file marker & {\tt char*} & \\\cline{1-5}
-   \multicolumn{5}{|c|}{\textcolor{gray}{\it TGZF blocks of TWO entries until EOF}} \\\cline{1-5}
+   \multicolumn{5}{|c|}{\textcolor{gray}{\it TGZF blocks of TWO entries until end-of-file}} \\\cline{1-5}
 \end{tabular}}
 \end{table}
 
@@ -201,8 +200,8 @@ The TWO FLAG
   \multicolumn{1}{|l|}{\sf 4} & There are multiple possible biological solutions (valid roots in cubic equation) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 5} & Both variants are on the same contig \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 6} & There is $>$ 1 million base pairs between the variants \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 7} & Variant A failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
-  \multicolumn{1}{|l|}{\sf 8} & Variant B failed Hardy-Weinberg test (P $<$ 1E-6) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 7} & Variant A failed Hardy-Weinberg test ($P$ $<$ $10^{-6}$) \\ \cline{1-2}
+  \multicolumn{1}{|l|}{\sf 8} & Variant B failed Hardy-Weinberg test ($P$ $<$ $10^{-6}$) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 9} & Variant A has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 10} & Variant B has a low minor allele frequency ($<$ 1\%) \\ \cline{1-2}
   \multicolumn{1}{|l|}{\sf 11} & Currently unused \\ \cline{1-2}
@@ -217,28 +216,34 @@ The TWO FLAG
 \subsection{TOI format}
 \begin{table}[H]
 {\small
-\begin{tabular}{|l|l|l|l|r|}
-  \cline{1-5}
-  \multicolumn{2}{|l|}{\bf Field} & \multicolumn{1}{l|}{\bf Description} & \multicolumn{1}{l|}{\bf Type} & \multicolumn{1}{r|}{\bf Value} \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf MAGIC} & Start of file identifier string & {\tt char[9]} & {\tt TOMAHAWK\char`\~OUTPUT\char`\~INDEX\char92 1} \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf version} & Tomahawk major version & {\tt float} & \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf samples} & Number of samples & {\tt uint64\_t} & \\\cline{1-5}
-  \multicolumn{2}{|l|}{\sf controller} & \tt{\sf missing}\char60\char60 7\char124\tt{\sf unused} & {\tt uint64\_t} & \\\cline{1-5}
+\begin{tabular}{|l|l|l|l|l|l|r|}
+  \cline{1-7}
+  \multicolumn{4}{|l|}{\bf Field} & \multicolumn{1}{l|}{\bf Description} & \multicolumn{1}{l|}{\bf Type} & \multicolumn{1}{r|}{\bf Value} \\\cline{1-6}
+  \multicolumn{4}{|l|}{\sf MAGIC} & Start of file identifier string & {\tt char[9]} & {\tt TOMAHAWK\char`\~OUTPUT\char`\~INDEX\char92 1} \\\cline{1-7}
+  \multicolumn{4}{|l|}{\sf version} & Tomahawk major version & {\tt float} & \\\cline{1-7}
+  \multicolumn{4}{|l|}{\sf n\_samples} & Number of samples & {\tt uint64\_t} & \\\cline{1-7}
+  \multicolumn{4}{|l|}{\sf n\_entries} & Number of \tt{TOI} entries & {\tt uint32\_t} & \\\cline{1-7}
+  \multicolumn{4}{|l|}{\sf controller} & \tt{\sf sorted}\char60\char60 7\char124\tt{\sf expanded}\char60\char60 6\char124\tt{\sf partial\_sort}\char60\char60 5\char124\tt{\sf unused} & {\tt uint8\_t} & \\\cline{1-7}
+  \multicolumn{7}{|c|}{\textcolor{gray}{\it List of {\tt TOI} entries until {\tt n\_entries } }} \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf byte\_offset} & Virtual data offset into {\tt TWO} & {\tt uint64\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf byte\_offset\_end} & Virtual data offset end {\tt TWO} & {\tt uint64\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf n\_entries} & Number of {\tt TWO} entries & {\tt uint32\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf uncompressed\_size} & {\tt TGZF DATA} uncompressed size & {\tt uint32\_t} & \\\cline{2-7}
+  \multicolumn{7}{|c|}{\textcolor{gray}{\it Extra subfield(s) if {\tt controller} is sorted and expanded }} \\\cline{2-7}
+  & \multicolumn{6}{|c|}{\textcolor{gray}{\it List of TOI sorted entries for {\tt n\_contigs } }} \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf from\_block} & BlockID start offset in {\tt TWO} & {\tt int32\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf fromBlock\_entries\_offset} & Start position in block at {\tt TWO} position & {\tt uint32\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf to\_block} & BlockID end offset in {\tt TWO} & {\tt int32\_t} & \\\cline{2-7}
+  & \multicolumn{3}{|l|}{\sf toBlock\_entries\_offset} & End position in block at {\tt TWO} position & {\tt uint32\_t} & \\\cline{2-7}
+  & \multicolumn{6}{c|}{\textcolor{gray}{\it List of TOI sorted entry bins for {\tt n\_contigs } }} \\\cline{3-7}
+  & & \multicolumn{5}{c|}{\textcolor{gray}{\it List of TOI sorted entries for 1024 iterations}} \\\cline{3-7}
+  & & \multicolumn{2}{l|}{\sf from\_block} & BlockID start offset in {\tt TWO} & {\tt int32\_t} & \\\cline{3-7}
+  & & \multicolumn{2}{l|}{\sf fromBlock\_entries\_offset} & Start position in block at {\tt TWO} position & {\tt uint32\_t} & \\\cline{3-7}
+  & & \multicolumn{2}{l|}{\sf to\_block} & BlockID end offset in {\tt TWO} & {\tt int32\_t} & \\\cline{3-7}
+  & & \multicolumn{2}{l|}{\sf toBlock\_entries\_offset} & End position in block at {\tt TWO} position & {\tt uint32\_t} & \\\cline{3-7}
 
-  \multicolumn{5}{|c|}{\textcolor{gray}{\it List of TOI entries until end-of-file marker}} \\\cline{2-5}
-  & {\sf byte\_offset} & Virtual data offset into {\tt TWO} & {\tt uint64\_t} & \\\cline{2-5}
-  & {\sf byte\_offset\_end} & Virtual data offset end {\tt TWO} & {\tt uint64\_t} & \\\cline{2-5}
-  & {\sf n\_entries} & Number of {\tt TWO} entries & {\tt uint32\_t} & \\\cline{2-5}
-  & {\sf uncompressed\_size} & {\tt TGZF DATA} uncompressed size & {\tt uint32\_t} & \\\cline{2-5}
-  & {\sf contig\_IDA} & All entries belong to this {\tt AcontigID} & {\tt int32\_t} & \\\cline{2-5}
-  & {\sf min\_posA} & Smallest {\tt Aposition} & {\tt int32\_t} & \\\cline{2-5}
-  & {\sf max\_posA} & Largest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
-  & {\sf contig\_IDB} & All entries belong to this {\tt BcontigID} & {\tt int32\_t} & \\\cline{2-5}
-  & {\sf min\_posB} & Smallest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
-  & {\sf max\_posB} & Largest {\tt Bposition} & {\tt int32\_t} & \\\cline{2-5}
+  \hline
 
-\hline
-  \multicolumn{2}{|l|}{\sf EOF\_string} & End-of-file marker & {\tt char*} & \\\cline{1-5}
 \end{tabular}}
 \end{table}
 

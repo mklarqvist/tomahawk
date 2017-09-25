@@ -16,6 +16,7 @@ struct MAGICBase{
 public:
 	MAGICBase(){}	// for reading
 	MAGICBase(const char* target){ memcpy(&this->MAGIC[0], target, length); } // for writing
+	MAGICBase(const self_type& other){ memcpy(&this->MAGIC[0], &other.MAGIC[0], length); }
 	virtual ~MAGICBase(){}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& base){
@@ -71,10 +72,11 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 	typedef TomahawkOutputHeader self_type;
 	typedef TomahawkHeader<length> parent_type;
 
-	TomahawkOutputHeader() : n_contig(0){} // for reading
+	TomahawkOutputHeader() : n_contig(0), n_entries(0){} // for reading
 	TomahawkOutputHeader(const char* target, const U64 samples, const U32 n_contigs) :
 		parent_type(target, samples),
-		n_contig(n_contigs)
+		n_contig(n_contigs),
+		n_entries(0)
 	{
 		memcpy(&this->MAGIC[0], target, length);
 	} // for writing
@@ -84,6 +86,7 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contig), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&header.n_entries), sizeof(U32));
 		return stream;
 	}
 
@@ -92,11 +95,13 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
 		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contig), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
 		return(stream);
 	}
 
 public:
 	U32 n_contig;
+	U32 n_entries;
 };
 
 template <U16 length>
@@ -117,6 +122,7 @@ struct TomahawkOutputSortHeader : public TomahawkOutputHeader<length>{
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contig), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&header.n_entries), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(BYTE));
 		return stream;
 	}
@@ -126,6 +132,7 @@ struct TomahawkOutputSortHeader : public TomahawkOutputHeader<length>{
 		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
 		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contig), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
 		stream.read(reinterpret_cast<char*>(&header.controller), sizeof(BYTE));
 		return(stream);
 	}

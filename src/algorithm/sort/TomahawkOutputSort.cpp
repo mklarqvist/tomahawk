@@ -1,13 +1,12 @@
 #include <cassert>
 
 #include "TomahawkOutputSort.h"
-#include "../../io/compression/TGZFEntryIterator.h"
 
 namespace Tomahawk{
 namespace Algorithm{
 namespace Output{
 
-bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, const U64 memory_limit){
+bool TomahawkOutputSorter::sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit){
 	if(!this->reader.Open(input)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 		return false;
@@ -15,33 +14,50 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 	//
 	std::vector<std::string> paths = Helpers::filePathBaseExtension(destinationPrefix);
-	std::string basePath = paths[0];
-	if(basePath.size() > 0)
-		basePath += '/';
+	this->basePath = paths[0];
+	if(this->basePath.size() > 0)
+		this->basePath += '/';
 
-	std::string baseName;
 	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() &&
 	   strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
-		 baseName = paths[2];
-	else baseName = paths[1];
+		this-> baseName = paths[2];
+	else this->baseName = paths[1];
 
-	//
+	// Writing
 	this->reader.setWriterType(0);
 	this->reader.addLiteral("\n##tomahawk_partialSortCommand=" + Helpers::program_string());
 	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
-	IO::WriterFile toi_writer;
+
+	basic_writer_type toi_writer;
 	toi_writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
-	IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
+	toi_header_type headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
+	headIndex.controller.sorted = 0;
+	headIndex.controller.expanded = this->reverse_entries ? 1 : 0;
+	headIndex.controller.partial_sort = 1;
 	toi_writer.getNativeStream() << headIndex;
-
-	// if index
-	// split into thread parts
-	// write each
-
 	// writer
-	IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->reader.writer->getStream());
+	basic_writer_type& stream = *reinterpret_cast<basic_writer_type*>(this->reader.writer->getStream());
+
+	if(memory_limit < 10e6){
+		memory_limit = 10e6;
+		std::cerr << Helpers::timestamp("SORT") << "Setting memory limit to 10 MB..." << std::endl;
+	}
+
+	if(this->reverse_entries){
+		std::cerr << Helpers::timestamp("SORT") << "Reversing entries..." << std::endl;
+		memory_limit /= 2;
+	} else
+		std::cerr << Helpers::timestamp("SORT") << "Not reversing..." << std::endl;
+
+	// Perform indexed sorting if possible
+	if(this->reader.hasIndex){
+		return(this->__sortIndexed(toi_writer, input, memory_limit));
+	}
+
+	std::cerr << Helpers::timestamp("SORT") << "No index found..." << std::endl;
 
 	bool trigger_break = false;
+	U32 totempole_blocks_written = 0;
 	while(true){
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Reading..." << std::endl;
@@ -56,6 +72,21 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 
 		assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
 
+		totempole_entry totempole;
+		if(this->reverse_entries)
+			totempole.entries = 2*(this->reader.output_buffer.size() / sizeof(entry_type));
+		else
+			totempole.entries = this->reader.output_buffer.size() / sizeof(entry_type);
+
+		if(this->reverse_entries){
+			const entry_type* entry = nullptr;
+			while(this->reader.nextVariantLimited(entry)){
+				entry_type temp(entry);
+				temp.swapDirection();
+				this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+			}
+		}
+
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.output_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
 
@@ -65,52 +96,8 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
 
-		const entry_type* entry;
-		if(!this->reader.nextVariantLimited(entry)){
-			std::cerr << Helpers::timestamp("ERROR","SORT") << "No data" << std::endl;
-			return false;
-		}
-		totempoly_entry totempole;
-		totempole.contigIDA = entry->AcontigID;
-		totempole.contigIDB = entry->BcontigID;
-		totempole.minPositionA = entry->Aposition;
-		totempole.minPositionB = entry->Bposition;
-		totempole.entries = 1;
 		totempole.byte_offset = stream.getNativeStream().tellp();
 		totempole.uncompressed_size = this->reader.output_buffer.size();
-
-		const entry_type* prev;
-		std::swap(prev, entry);
-
-		while(this->reader.nextVariantLimited(entry)){
-			if(totempole.contigIDA != -1){
-				if(entry->Aposition < prev->Aposition || entry->Aposition < totempole.minPositionA){
-					totempole.minPositionA = -1;
-					totempole.maxPositionA = -1;
-				} else if(totempole.minPositionA != -1) totempole.maxPositionA = entry->Aposition;
-
-				if(totempole.contigIDA != entry->AcontigID){
-					totempole.contigIDA = -1;
-					totempole.minPositionA = -1;
-					totempole.maxPositionA = -1;
-				}
-			}
-
-			if(totempole.contigIDB != -1){
-				if(entry->Bposition < prev->Bposition || entry->Bposition < totempole.minPositionB){
-					totempole.minPositionB = -1;
-					totempole.maxPositionB = -1;
-				} else if(totempole.minPositionB != -1) totempole.maxPositionB = entry->Bposition;
-
-				if(totempole.contigIDB != entry->BcontigID){
-					totempole.contigIDB = -1;
-					totempole.minPositionB = -1;
-					totempole.maxPositionB = -1;
-				}
-			}
-			++totempole.entries;
-			std::swap(prev, entry);
-		}
 
 		this->reader.writer->write(this->reader.output_buffer);
 		totempole.byte_offset_end = stream.getNativeStream().tellp();
@@ -119,14 +106,163 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
 
+		++totempole_blocks_written;
+
 		if(trigger_break) break;
 	}
 
+	// Make sure TOI is flushed before re-opening and seeking
 	toi_writer.flush();
+
+	// TOI
+	// Update blocks written
+	std::fstream re(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
+		return false;
+	}
+
+	re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
+		return false;
+	}
+
+	re.write((char*)&totempole_blocks_written, sizeof(U32));
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
+		return false;
+	}
+	re.close();
+
 	toi_writer.close();
 
 	this->reader.writer->flush();
 	this->reader.writer->close();
+
+	return true;
+}
+
+bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit){
+	std::cerr << Helpers::timestamp("SORT") << "Index found..." << std::endl;
+
+	std::vector< totempole_entry > blocks;
+
+	totempole_entry totempole;
+	totempole.byte_offset = this->reader.toi_reader[0].byte_offset;
+
+	U64 n_entries = 0;
+	for(U32 i = totempole.uncompressed_size; i < this->reader.toi_reader.size(); ++i){
+		if(totempole.uncompressed_size > memory_limit){
+			totempole.byte_offset_end = this->reader.toi_reader[i].byte_offset;
+			blocks.push_back(totempole);
+			totempole.byte_offset = this->reader.toi_reader[i].byte_offset;
+			totempole.entries = 0;
+			totempole.uncompressed_size = 0;
+		}
+		totempole.entries += this->reader.toi_reader[i].entries;
+		totempole.uncompressed_size += this->reader.toi_reader[i].uncompressed_size;
+		n_entries += totempole.entries;
+	}
+
+	// Have to add final
+	if(totempole.byte_offset != blocks.back().byte_offset){
+		totempole.byte_offset_end = this->reader.toi_reader[this->reader.toi_reader.size() - 1].byte_offset_end;
+		blocks.push_back(totempole);
+	}
+
+	if(totempole.entries != 0)
+		blocks.push_back(totempole);
+
+	// Todo: if n_threads > blocks.size()
+	// set n_threads to block.size() and give each thread 1 block
+
+	// Split workload into different threads
+	// Each thread get approximately 1/threads amount of work
+	std::vector< totempole_entry > thread_workload(this->n_threads);
+	const U64 limit_thread = (U64)((double)blocks.size()/this->n_threads);
+	U32 current_thread_target = 0;
+	U64 n_blocks_loaded = 0;
+	totempole.reset();
+	totempole.byte_offset = blocks[0].byte_offset;
+
+	for(U32 i = 0; i < blocks.size(); ++i){
+		if(n_blocks_loaded >= limit_thread && current_thread_target + 1 != this->n_threads){
+			n_blocks_loaded = 0;
+			totempole.byte_offset_end = blocks[i].byte_offset;
+			thread_workload[current_thread_target] = totempole;
+			totempole.byte_offset = blocks[i].byte_offset;
+			++current_thread_target;
+		}
+		++n_blocks_loaded;
+	}
+
+	// Add final
+	if(current_thread_target != this->n_threads){
+		totempole.byte_offset_end = blocks.back().byte_offset_end;
+		thread_workload[this->n_threads-1] = totempole;
+	}
+
+	std::cerr << Helpers::timestamp("SORT") << "Spawning " << this->n_threads << " threads..." << std::endl;
+	std::thread** slaves = new std::thread*[this->n_threads];
+	slave_sorter** instances = new slave_sorter*[this->n_threads];
+	for(U32 i = 0; i < this->n_threads; ++i){
+		instances[i] = new slave_sorter(this->reader.writer, toi_writer, memory_limit);
+		if(!instances[i]->open(input)){
+			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to reopen file..." << std::endl;
+			exit(1);
+		}
+
+		// Trigger reverse if applicable
+		instances[i]->reverseEntries(this->reverse_entries);
+	}
+
+	for(U32 i = 0; i < this->n_threads; ++i)
+		slaves[i] = instances[i]->start(thread_workload[i]);
+
+	for(U32 i = 0; i < this->n_threads; ++i)
+		slaves[i]->join();
+
+	U32 totempole_blocks_written = 0;
+	for(U32 i = 0; i < this->n_threads; ++i)
+		totempole_blocks_written += instances[i]->getBlocksWritten();
+
+	// TOI
+	// Update blocks written
+	// Make sure TOI is flushed before re-opening and seeking
+	toi_writer.flush();
+
+	std::fstream re(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
+		return false;
+	}
+
+	re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
+		return false;
+	}
+
+	re.write((char*)&totempole_blocks_written, sizeof(U32));
+	if(!re.good()){
+		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
+		return false;
+	}
+	re.close();
+
+	toi_writer.close();
+
+	this->reader.writer->flush();
+	this->reader.writer->close();
+
+	// Cleanup
+	for(U32 i = 0; i < this->n_threads; ++i){
+		delete instances[i];
+		slaves[i] = nullptr;
+	}
+	delete [] instances;
+	delete [] slaves;
 
 	return true;
 }
@@ -138,22 +274,35 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	}
 
 	if(!this->reader.hasIndex){
-		std::cerr << Helpers::timestamp("ERROR","SORT") << "Does not have TOI index" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "File is not indexed!" << std::endl;
 		return false;
 	}
 
 	this->reader.addLiteral("\n##tomahawk_mergeSortCommand=" + Helpers::program_string());
 
-	writer_type writer(this->reader.contigs, &this->reader.header);
+	toi_header_type toi_header = this->reader.toi_reader.getHeader();
+	if(toi_header.controller.sorted == true){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "File is already sorted!" << std::endl;
+		return false;
+	}
+
+	if(toi_header.controller.partial_sort == false){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "File is not partially sorted!" << std::endl;
+		return false;
+	}
+
+	toi_header.controller.sorted = true;
+	writer_type writer(this->reader.contigs, &this->reader.header, toi_header);
+
 	if(!writer.open(destinationPrefix)){
-		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed open" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open!" << std::endl;
 		return false;
 	}
 	writer.writeHeader(this->reader.literals);
 
 	const U32 n_toi_entries = this->reader.toi_reader.size();
 	std::ifstream* streams = new std::ifstream[n_toi_entries];
-	IO::TGZFEntryIterator<entry_type>** iterators = new IO::TGZFEntryIterator<entry_type>*[n_toi_entries];
+	tgzf_iterator** iterators = new tgzf_iterator*[n_toi_entries];
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
@@ -161,7 +310,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.toi_reader[i].byte_offset);
-		iterators[i] = new IO::TGZFEntryIterator<entry_type>(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
+		iterators[i] = new tgzf_iterator(streams[i], 65536, this->reader.toi_reader[i].byte_offset, this->reader.toi_reader[i].byte_offset_end);
 	}
 
 	if(!SILENT)
@@ -175,11 +324,13 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		std::cerr << Helpers::timestamp("LOG", "SORT") << "Merging..." << std::endl;
 
 	// draw one from each
-	const entry_type* e;
+	const entry_type* e = nullptr;
 	for(U32 i = 0; i < n_toi_entries; ++i){
-		iterators[i]->nextEntry(e);
-		entry_type hard_copy(e); // invoke copy ctor to avoid pointer errors when modifying internal buffer
-		outQueue.push( queue_entry(hard_copy, i, IO::Support::TomahawkOutputEntryCompFuncConst) );
+		if(!iterators[i]->nextEntry(e)){
+			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to get an entry..." << std::endl;
+			return false;
+		}
+		outQueue.push( queue_entry(e, i, IO::Support::TomahawkOutputEntryCompFuncConst) );
 	}
 
 	if(outQueue.empty()){
@@ -187,69 +338,40 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		return false;
 	}
 
-	// index
-	writer.setPrevEntry(outQueue.top().data);
-	writer.setPrevEntryFirst(outQueue.top().data);
-
-	// Secondary TOI index
-	/*
-	U32 currentAID = outQueue.top().data.AcontigID;
-	U32 currentAPos = outQueue.top().data.Aposition;
-	U64 AIDSteps = 0;
-	U64 APosSteps = 0;
-	double AposStepsR = 0;
-	U64 outputEntries = 0;
-	*/
-	//
-
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
 		writer << outQueue.top().data;
 
-		//
-		/*
-		const entry_type& ent = outQueue.top().data;
-		++AIDSteps;
-		++APosSteps;
-		AposStepsR += ent.R2;
-
-		if(ent.Aposition != currentAPos || ent.AcontigID != currentAID){
-			std::cout << "2switch: " << currentAID << '\t' << currentAPos << '\t' << APosSteps << '\t' << AposStepsR/APosSteps << '\n';
-			currentAPos = ent.Aposition;
-			APosSteps = 0;
-			AposStepsR = 0;
-			++outputEntries;
-		}
-
-		if(ent.AcontigID != currentAID){
-			std::cerr << "1switch: " << currentAID << "->" << ent.AcontigID << '\t' << AIDSteps << std::endl;
-			currentAID = ent.AcontigID;
-			AIDSteps = 0;
-			++outputEntries;
-		}
-		*/
-		//
-
 		// remove this record from the queue
 		outQueue.pop();
 
-		// Replace value from target stream
-		if(iterators[id]->nextEntry(e)){
-			// Push new entry into priority queue
-			entry_type hard_copy(e);
-			outQueue.push( queue_entry(hard_copy, id, IO::Support::TomahawkOutputEntryCompFuncConst) );
+
+		while(iterators[id]->nextEntry(e)){
+			if(!(*e < outQueue.top().data)){
+				outQueue.push( queue_entry(e, id, IO::Support::TomahawkOutputEntryCompFuncConst) );
+				break;
+			}
+			writer << *e;
 		}
 	}
-	//std::cerr << "Total output entries: " << outputEntries << std::endl;
 
 	writer.flush();
+	if(!writer.finalize()){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to finalize index..." << std::endl;
+		return false;
+	}
+
 	writer.close();
+
+	// Temp
+	index_type& index = writer.getIndex();
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)
 		delete iterators[i];
+
 	delete [] iterators;
 	delete [] streams;
 

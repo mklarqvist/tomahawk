@@ -11,11 +11,11 @@ struct TomahawkOutputSortMergeQueueContainer {
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> self_type;
 
 public:
-	TomahawkOutputSortMergeQueueContainer(const entry_type& data,
+	TomahawkOutputSortMergeQueueContainer(const entry_type* data,
 										  U32 streamID,
 										  bool (*compFunc)(const entry_type& a, const entry_type& b) = T::operator<)
 	: streamID(streamID)
-	, data(data)
+	, data(*data)
 	, compFunc(compFunc)
     {}
 
