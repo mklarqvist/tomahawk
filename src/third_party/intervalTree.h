@@ -108,11 +108,21 @@ class ContigInterval : public Interval<ContigInterval*, S32> {
 	typedef ContigInterval self_type;
 
 public:
-	ContigInterval() : Interval<self_type*, S32>(-1, -1, nullptr), contigID(-1){}
+	enum INTERVAL_TYPE {INTERVAL_CONTIG_ONLY, INTERVAL_POSITION, INTERVAL_FULL};
+
+public:
+	ContigInterval() :
+		Interval<self_type*, S32>(-1, -1, nullptr),
+		contigID(-1),
+		state(INTERVAL_TYPE::INTERVAL_FULL)
+	{}
+
 	~ContigInterval() noexcept{}
+
 	ContigInterval(const self_type& other) :
 		Interval<self_type*, S32>(other),
-		contigID(other.contigID)
+		contigID(other.contigID),
+		state(other.state)
 	{
 	}
 
@@ -127,19 +137,36 @@ public:
 		this->stop = other.stop;
 		this->value = other.value;
 		this->contigID = other.contigID;
+		this->state = other.state;
 		return *this;
 	}
 
 	ContigInterval(self_type&& other) noexcept :
 		Interval<self_type*, S32>(std::move(other)),
-		contigID(other.contigID)
+		contigID(other.contigID),
+		state(other.state)
 	{
 	}
 
-    void operator()(S32 s, S32 e, S32 id){
+	void operator()(S32 id){
+		this->start = 0;
+		this->stop  = std::numeric_limits<S32>::max(); // arbitrary large value
+		this->contigID = id;
+		this->state = INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
+	}
+
+	void operator()(S32 id, S32 position){
+		this->start = position;
+		this->stop  = position;
+		this->contigID = id;
+		this->state = INTERVAL_TYPE::INTERVAL_POSITION;
+	}
+
+    void operator()(S32 id, S32 s, S32 e){
     	this->start = s;
     	this->stop  = e;
     	this->contigID = id;
+    	this->state = INTERVAL_TYPE::INTERVAL_FULL;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const self_type& i){
@@ -156,6 +183,7 @@ public:
 
 public:
     S32 contigID;
+    INTERVAL_TYPE state;
 };
 
 static inline S32 intervalStart(const ContigInterval& i) {

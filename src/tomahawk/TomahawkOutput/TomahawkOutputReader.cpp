@@ -106,10 +106,13 @@ bool TomahawkOutputReader::__viewRegion(void){
 }
 
 bool TomahawkOutputReader::__viewRegionIndexed(void){
-	std::cerr << "in indexed view region" << std::endl;
-
 	if(this->interval_tree == nullptr){
 		std::cerr << "intval not set" << std::endl;
+		return false;
+	}
+
+	if(!this->__ParseRegionIndexedBlocks()){
+		std::cerr << "no valid entries" << std::endl;
 		return false;
 	}
 
@@ -120,7 +123,6 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 	// sort entries
 	// merge
 	// for i in entries: seek, uncompress, and jump or limit
-	std::cerr << Helpers::timestamp("LOG") << "Slicing..." << std::endl;
 	for(U32 i = 0; i < this->interval_totempole_enties->size(); ++i){
 		const totempole_sorted_entry_type& entry = this->interval_totempole_enties->at(i);
 		const U32 block_length = entry.toBlock - entry.fromBlock;
@@ -177,12 +179,13 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 			} // end while next variant
 			++j;
 
+			// Middle blocks
 			for(; j < entry.toBlock - 1; ++j){
 				if(!this->getBlock(j)){
 					std::cerr << "could not get block" << std::endl;
 					return false;
 				}
-				//std::cerr << "got block " << j << std::endl;
+
 				while(this->nextVariantLimited(two_entry)){
 					this->__checkRegionIndex(two_entry);
 				} // end while next variant
@@ -211,7 +214,6 @@ bool TomahawkOutputReader::__checkRegionIndex(const entry_type* const entry){
 		if(rets.size() > 0){
 			for(U32 i = 0; i < rets.size(); ++i){
 				if(this->filter.filter(*entry))
-					//entry->write(std::cout, this->contigs);
 					*this->writer << entry;
 
 				return true;
@@ -316,9 +318,6 @@ bool TomahawkOutputReader::__viewFilter(void){
 }
 
 bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions){
-	if(this->interval_totempole_enties == nullptr)
-		this->interval_totempole_enties = new std::vector<totempole_sorted_entry_type>;
-
 	for(U32 i = 0; i < positions.size(); ++i){
 		if(positions[i].find(',') != std::string::npos){
 			std::vector<std::string> ret = Helpers::split(positions[i], ',');
@@ -350,7 +349,7 @@ bool TomahawkOutputReader::AddRegionsIndexed(std::vector<std::string>& positions
 		}
 	}
 
-	return(this->interval_totempole_enties->size() > 0);
+	return true;
 }
 
 bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positions){
@@ -366,12 +365,12 @@ bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positio
 			} else if(ret.size() == 2){
 				// parse left
 				interval_type intervalLeft;
-				if(!__ParseRegion(ret[0], intervalLeft))
+				if(!this->__ParseRegion(ret[0], intervalLeft))
 					return false;
 
 				// parse right
 				interval_type intervalRight;
-				if(!__ParseRegion(ret[1], intervalRight))
+				if(!this->__ParseRegion(ret[1], intervalRight))
 					return false;
 
 				// Todo: WARNING
@@ -393,7 +392,7 @@ bool TomahawkOutputReader::AddRegionsUnindexed(std::vector<std::string>& positio
 			}
 		} else {
 			interval_type interval;
-			if(!__ParseRegion(positions[i], interval))
+			if(!this->__ParseRegion(positions[i], interval))
 				return false;
 
 			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
@@ -447,7 +446,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
-		interval(0, this->contigs[*contigID].bases, *contigID);
+		interval(*contigID, 0, this->contigs[*contigID].bases);
 
 	} else if(ret.size() == 2){
 		// is contigID:pos-pos
@@ -461,7 +460,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 		if(retPos.size() == 1){
 			// only one pos
 			const double pos = std::stod(retPos[0]);
-			interval(pos, pos, *contigID);
+			interval(*contigID, pos, pos);
 
 		} else if(retPos.size() == 2){
 			// is two positions
@@ -471,7 +470,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 			if(posB < posA)
 				std::swap(posA, posB);
 
-			interval(posA, posB, *contigID);
+			interval(*contigID, posA, posB);
 
 		} else {
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
@@ -501,16 +500,8 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
-		interval(0, this->contigs[*contigID].bases, *contigID);
-
-		totempole_sorted_entry_type entry;
-		if(!this->toi_reader.findOverlap(interval.contigID, entry)){
-			std::cerr << "could not find: " << interval << std::endl;
-			return false;
-		}
-		std::cerr << "contigID found: " << entry << std::endl;
-		this->interval_totempole_enties->push_back(entry);
-
+		interval(*contigID, 0, this->contigs[*contigID].bases);
+		interval.state = interval_type::INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
 	}
 	// If vector contain colon
 	else if(ret.size() == 2){
@@ -526,15 +517,8 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			// only one pos
 			const double pos = std::stod(retPos[0]);
 			//std::cerr << "single position: " << pos << std::endl;
-			interval(pos, pos, *contigID);
-
-			totempole_sorted_entry_type entry;
-			if(!this->toi_reader.findOverlap(interval.contigID, interval.start, entry)){
-				std::cerr << "could not find: " << interval << std::endl;
-				return false;
-			}
-			std::cerr << "contigID:pos found: " << entry << std::endl;
-			this->interval_totempole_enties->push_back(entry);
+			interval(*contigID, pos, pos);
+			interval.state = interval_type::INTERVAL_TYPE::INTERVAL_POSITION;
 
 		} else if(retPos.size() == 2){
 			// is two positions
@@ -545,18 +529,8 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			if(posB < posA)
 				std::swap(posA, posB);
 
-			interval(posA, posB, *contigID);
-
-			std::vector<totempole_sorted_entry_type> entries;
-			if(!this->toi_reader.findOverlap(interval.contigID, interval.start, interval.stop, entries)){
-				std::cerr << "could not find: " << interval << std::endl;
-				return false;
-			}
-
-			for(U32 i = 0; i < entries.size(); ++i){
-				std::cerr << "contigID:pos-pos found: " << entries[i] << std::endl;
-				this->interval_totempole_enties->push_back(entries[i]);
-			}
+			interval(*contigID, posA, posB);
+			interval.state = interval_type::INTERVAL_TYPE::INTERVAL_FULL;
 
 		} else {
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
@@ -571,6 +545,58 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 	}
 
 	return true;
+}
+
+bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
+	if(this->interval_tree_entries == nullptr){
+		std::cerr << "no data set" << std::endl;
+		return false;
+	}
+
+	if(this->interval_totempole_enties == nullptr)
+		this->interval_totempole_enties = new std::vector<totempole_sorted_entry_type>;
+
+	for(U32 k = 0; k < this->header.n_contig; ++k){
+		for(U32 i = 0; i < this->interval_tree_entries[k].size(); ++i){
+			const interval_type& interval = this->interval_tree_entries[k][i];
+			if(interval.state == interval_type::INTERVAL_TYPE::INTERVAL_CONTIG_ONLY){
+				// Contig only
+				//std::cerr << "contig only: " << interval << std::endl;
+				totempole_sorted_entry_type entry;
+				if(!this->toi_reader.findOverlap(interval.contigID, entry)){
+					//std::cerr << "could not find: " << interval << std::endl;
+					continue;
+				}
+				//std::cerr << "contigID found: " << entry << std::endl;
+				this->interval_totempole_enties->push_back(entry);
+
+			} else if(interval.state == interval_type::INTERVAL_TYPE::INTERVAL_POSITION){
+				//std::cerr << "contig:posiiton only: " << interval << std::endl;
+				totempole_sorted_entry_type entry;
+				if(!this->toi_reader.findOverlap(interval.contigID, interval.start, entry)){
+					//std::cerr << "could not find: " << interval << std::endl;
+					continue;
+				}
+				//std::cerr << "contigID:pos found: " << entry << std::endl;
+				this->interval_totempole_enties->push_back(entry);
+
+			} else {
+				//std::cerr << "full interval: " << interval << std::endl;
+				std::vector<totempole_sorted_entry_type> entries;
+				if(!this->toi_reader.findOverlap(interval.contigID, interval.start, interval.stop, entries)){
+					//std::cerr << "could not find: " << interval << std::endl;
+					continue;
+				}
+
+				for(U32 i = 0; i < entries.size(); ++i){
+					//std::cerr << "contigID:pos-pos found: " << entries[i] << std::endl;
+					this->interval_totempole_enties->push_back(entries[i]);
+				}
+			}
+		}
+	}
+
+	return(this->interval_totempole_enties->size() > 0);
 }
 
 bool TomahawkOutputReader::__Open(const std::string input){

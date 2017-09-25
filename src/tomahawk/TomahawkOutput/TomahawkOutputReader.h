@@ -80,6 +80,7 @@ private:
 	bool ParseHeaderExtend(void);
 	bool __ParseRegion(const std::string& region, interval_type& interval);
 	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexedBlocks(void);
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
