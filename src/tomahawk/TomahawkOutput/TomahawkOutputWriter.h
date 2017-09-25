@@ -318,7 +318,7 @@ public:
 
 	index_type& getIndex(void){ return(this->index); }
 
-	bool finalize(void){
+	bool finalize(bool output_index){
 		// Totempole Output Index
 		// Update blocks written
 		std::fstream re(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
@@ -340,7 +340,8 @@ public:
 		re.close();
 
 		// Write sorted index
-		this->stream_index.getNativeStream() << this->index;
+		if(output_index)
+			this->stream_index.getNativeStream() << this->index;
 
 		return true;
 	}

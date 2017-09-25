@@ -291,6 +291,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 		return false;
 	}
 
+	toi_header.controller.partial_sort = false;
 	toi_header.controller.sorted = true;
 	writer_type writer(this->reader.contigs, &this->reader.header, toi_header);
 
@@ -358,7 +359,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	}
 
 	writer.flush();
-	if(!writer.finalize()){
+	if(!writer.finalize(toi_header.controller.expanded)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to finalize index..." << std::endl;
 		return false;
 	}
@@ -366,7 +367,8 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 	writer.close();
 
 	// Temp
-	index_type& index = writer.getIndex();
+	//index_type& index = writer.getIndex();
+	//std::cerr << index << std::endl;
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)
