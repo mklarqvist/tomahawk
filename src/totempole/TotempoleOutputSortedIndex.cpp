@@ -64,7 +64,6 @@ void TotempoleOutputSortedIndex::update(const two_entry& entry, const U32& block
 		this->linear_index[entry.AcontigID][chunk].fromBlock_entries_offset = blockOffset;
 	}
 
-	// secondary index
 	// in case there is no switch then last entry is +1 (non-closed interval)
 	this->linear_index[entry.AcontigID][chunk].update(block, blockOffset + 1);
 	this->secondary_index[entry.AcontigID].update(block, blockOffset + 1);

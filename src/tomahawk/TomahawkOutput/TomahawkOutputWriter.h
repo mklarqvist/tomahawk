@@ -98,6 +98,46 @@ protected:
 	const contig_type* contigs;
 };
 
+class TotempoleOutputIndexWriter : public TomahawkOutputWriterInterface{
+	typedef TotempoleOutputIndexWriter self_type;
+	typedef TomahawkOutputWriterInterface parent_type;
+	typedef Totempole::TotempoleOutputEntry totempole_type;
+	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+	typedef Totempole::TotempoleOutputSortedIndex index_type;
+
+public:
+	TotempoleOutputIndexWriter();
+	~TotempoleOutputIndexWriter();
+
+	bool Open(const std::string& input);
+
+	// Add entire block
+	void update(const entry_type* entry, const U32 length, totempole_type& totempole){
+		const entry_type* prev = entry;
+		for(U32 i = 0; i < length; ++i, ++entry){
+			if(prev->AcontigID < entry->AcontigID || prev->Aposition <= entry->Aposition){
+				std::cerr << Helpers::timestamp("ERROR", "TOI") << "File is not sorted" << std::endl;
+				exit(1);
+			}
+			this->index.update(*entry, this->current_blockID, i);
+			std::swap(prev, entry);
+		}
+
+		// flush block
+		file_type& stream = *reinterpret_cast<file_type*>(this->stream);
+		stream.getNativeStream() << totempole;
+	}
+
+	void writeHeader(std::string& literals){
+		//this->stream_index.getNativeStream() << toi_header;
+	};
+
+private:
+	U32 current_blockID;
+	toi_header_type toi_header;
+	index_type index;
+};
+
 // case binary
 class TomahawkOutputWriter : public TomahawkOutputWriterInterface {
 private:
@@ -303,7 +343,7 @@ public:
 		if(this->buffer.size() == 0)
 			return;
 
-		IO::WriterFile& stream = *reinterpret_cast<IO::WriterFile*>(this->stream);
+		file_type& stream = *reinterpret_cast<file_type*>(this->stream);
 		this->controller.Deflate(this->buffer);
 		this->totempole_entry.byte_offset = stream.getNativeStream().tellp();
 		this->stream->write(&this->controller.buffer[0], this->controller.buffer.size());
@@ -350,7 +390,6 @@ private:
 	U32 current_blockID;
 	toi_header_type toi_header;
 	totempole_type totempole_entry;
-	entry_type entry_prev;
 	file_type stream_index;
 	index_type index;
 };

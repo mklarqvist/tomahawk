@@ -34,6 +34,9 @@ class TomahawkOutputReader {
 	typedef Tomahawk::Algorithm::ContigInterval interval_type;
 	typedef Tomahawk::Algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
+	typedef IO::TomahawkOutputWriterIndex twoi_writer_type;
+	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+
 
 public:
 	typedef Totempole::TotempoleOutputReader toi_reader_type;
