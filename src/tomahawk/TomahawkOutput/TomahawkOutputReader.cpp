@@ -752,6 +752,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 
 	this->contigs = new contig_type[this->header.n_contig];
 	U32* ret;
+
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		this->stream >> this->contigs[i];
 		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
@@ -1073,63 +1074,29 @@ bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
 }
 
 bool TomahawkOutputReader::index(const std::string& input){
-	//if(!this->reader.setup(input))
-	//	return false;
+	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+	std::string basePath = paths[0];
+	std::string baseName;
 
-	const entry_type* entry = nullptr;
-	//if(!this->reader.nextEntry(entry))
-	//	return false;
+	if(basePath.size() > 0)
+		basePath += '/';
 
-	//const entry_type* previous = entry;
-	U32 currentAID = entry->AcontigID;
-	U32 currentAPos = entry->Aposition;
-	U32 currentBID = entry->BcontigID;
-	U64 AIDSteps = 0;
-	U64 APosSteps = 0;
-	U64 BIDSteps = 0;
+	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() &&
+	   strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+		baseName = paths[2];
+	else baseName = paths[1];
 
-	double AposStepsR = 0;
-	U64 outputEntries = 0;
+	// Open writer
+	// Set controller
+	toi_header_type toi_header(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->header.samples, this->header.n_contig);
+	// We assume data is expanded and sorted
+	toi_header.controller.sorted = 1;
+	toi_header.controller.expanded = 1;
+	toi_header.controller.partial_sort = 0;
 
-	//while(this->reader.nextEntry(entry)){
-	while(true){
-		/*
-		if(!(*previous < *entry)){
-			std::cerr << "file is not sorted" << std::endl;
-			std::cerr << previous->AcontigID << '\t' << previous->Aposition << '\t' << previous->BcontigID << '\t' << previous->Bposition << std::endl;
-			std::cerr << entry->AcontigID << '\t' << entry->Aposition << '\t' << entry->BcontigID << '\t' << entry->Bposition << std::endl;
-			return false;
-		}
-		std::swap(entry, previous);
-		*/
-		++AIDSteps;
-		++APosSteps;
-		++BIDSteps;
-		AposStepsR += entry->R2;
+	twoi_writer_type writer(this->contigs, &this->header, toi_header);
+	writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
 
-		if(entry->BcontigID != currentBID || entry->Aposition != currentAPos || entry->AcontigID != currentAID){
-			std::cerr << "switch: " << currentAID << ',' << currentAPos << ',' << currentBID << '\t' << entry->AcontigID << ',' << entry->Aposition << ',' << entry->BcontigID << '\t' << BIDSteps << std::endl;
-			currentBID = entry->BcontigID;
-			BIDSteps = 0;
-			++outputEntries;
-		}
-
-		if(entry->Aposition != currentAPos || entry->AcontigID != currentAID){
-			std::cout << currentAID << '\t' << currentAPos << '\t' << APosSteps << '\t' << AposStepsR/APosSteps << '\n';
-			currentAPos = entry->Aposition;
-			APosSteps = 0;
-			AposStepsR = 0;
-			++outputEntries;
-		}
-
-		if(entry->AcontigID != currentAID){
-			std::cerr << "switch: " << currentAID << "->" << entry->AcontigID << '\t' << AIDSteps << std::endl;
-			currentAID = entry->AcontigID;
-			AIDSteps = 0;
-			++outputEntries;
-		}
-	}
-	std::cerr << "Index would have: " << outputEntries << " entries..." << std::endl;
 
 	return true;
 }
