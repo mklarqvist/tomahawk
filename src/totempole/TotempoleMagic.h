@@ -1,6 +1,7 @@
 #ifndef TOTEMPOLEMAGIC_H_
 #define TOTEMPOLEMAGIC_H_
 
+#include <iostream>
 #include <fstream>
 #include <cstring>
 #include "TotempoleOutputEntry.h"
@@ -95,7 +96,13 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
 		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contig), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
+
+		// Legacy fix
+		if(header.version >= 0.2)
+			stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
+		else
+			header.n_entries = 0;
+
 		return(stream);
 	}
 

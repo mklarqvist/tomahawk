@@ -752,6 +752,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 
 	this->contigs = new contig_type[this->header.n_contig];
 	U32* ret;
+
 	for(U32 i = 0; i < this->header.n_contig; ++i){
 		this->stream >> this->contigs[i];
 		if(!this->contig_htable->GetItem(&this->contigs[i].name[0], &this->contigs[i].name, ret, this->contigs[i].name.size())){
