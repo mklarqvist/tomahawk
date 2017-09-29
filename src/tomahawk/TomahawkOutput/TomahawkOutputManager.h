@@ -7,7 +7,7 @@
 #include "../../totempole/TotempoleContig.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../totempole/TotempoleOutputEntry.h"
-#include "../TomahawkBlockManager.h"
+#include "../TomahawkIteratorManager.h"
 #include "TomahawkOutputEntry.h"
 #include "TomahawkOutputLD.h"
 
@@ -20,7 +20,7 @@ template <class T>
 struct TomahawkOutputManager{
 	typedef TomahawkOutputManager self_type;
 	typedef IO::WriterFile writer_type;
-	typedef TomahawkBlock<const T> controller_type;
+	typedef TomahawkIterator<const T> controller_type;
 	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef TGZFController tgzf_controller;

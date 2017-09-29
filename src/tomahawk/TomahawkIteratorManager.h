@@ -11,7 +11,7 @@
 namespace Tomahawk{
 
 template <class T, class Y = Support::TomahawkRun<T>>
-struct TomahawkBlock; // forward declare: required for build function
+struct TomahawkIterator; // forward declare: required for build function
 
 template <int T = SIMD_ALIGNMENT>
 struct TomahawkBlockPackedPair{
@@ -88,7 +88,7 @@ public:
 	}
 
 	template <class T>
-	bool Build(TomahawkBlock<T>& controller, const U64& samples);
+	bool Build(TomahawkIterator<T>& controller, const U64& samples);
 
 	inline const pair_type& getData(const U32 p) const{ return(*this->data[p]); }
 
@@ -99,34 +99,28 @@ public:
 
 
 template <class T, class Y>
-struct TomahawkBlock{
-	typedef Y		  	  type;
-	typedef type          value_type;
-	typedef type         *pointer;
-	typedef const type   *const_pointer;
-	typedef type         &reference;
-	typedef const type   &const_reference;
-	typedef size_t        size_type;
-	typedef ptrdiff_t     difference_type;
-
+struct TomahawkIterator{
 	typedef TomahawkEntryMeta<T> meta_type;
+	typedef Totempole::TotempoleEntry totempole_type;
 
 public:
-	TomahawkBlock(const char* target, const Totempole::TotempoleEntry& support) :
+	TomahawkIterator(const char* target, const totempole_type& support) :
+		position(0),
 		metaPointer(0),
 		runsPointer(0),
 		support(&support),
 		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
-		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
+		runs(reinterpret_cast<const Y* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
 		packed(new TomahawkBlockPacked)
 	{
 
 	}
 
-	~TomahawkBlock() noexcept{}
+	~TomahawkIterator() noexcept{}
 
 	// copy constructor
-	TomahawkBlock(const TomahawkBlock& other) :
+	TomahawkIterator(const TomahawkIterator& other) :
+		position(other.position),
 		metaPointer(other.metaPointer),
 		runsPointer(other.runsPointer),
 		support(other.support),
@@ -137,13 +131,15 @@ public:
 
 	}
 
-	void operator=(const TomahawkBlock& other){
+	void operator=(const TomahawkIterator& other){
+		this->position = other.position;
 		this->metaPointer = other.metaPointer;
 		this->runsPointer = other.runsPointer;
 	}
 
 	// move constructor
-	TomahawkBlock(TomahawkBlock&& other) noexcept :
+	TomahawkIterator(TomahawkIterator&& other) noexcept :
+		position(other.position),
 		metaPointer(other.metaPointer),
 		runsPointer(other.runsPointer),
 		support(other.support),
@@ -154,23 +150,47 @@ public:
 
 	}
 
-	inline void updatePacked(const TomahawkBlock& self){
+	inline void updatePacked(const TomahawkIterator& self){
 		this->packed = new TomahawkBlockPacked(self.packed);
 	}
 
 
 	inline void operator++(void){
+		++this->position;
 		this->runsPointer += this->meta[this->metaPointer].runs;
 		++this->metaPointer;
 	}
 
 	inline void operator--(void){
+		--this->position;
 		--this->metaPointer;
 		this->runsPointer -= this->meta[this->metaPointer].runs;
 	}
 
+	bool nextVariant(const Support::TomahawkRun<T>*& run, const meta_type*& meta){
+		if(this->position == this->support->variants)
+			return false;
+
+		run = &runs[this->runsPointer];
+		meta = &this->meta[this->metaPointer];
+		++(*this);
+
+		return true;
+	}
+
+	bool nextVariant(const Support::TomahawkRunPacked<T>*& run, const meta_type*& meta){
+		if(this->position == this->support->variants)
+			return false;
+
+		run = reinterpret_cast<const Support::TomahawkRunPacked<T>*>(&runs[this->runsPointer]);
+		meta = &this->meta[this->metaPointer];
+		++(*this);
+
+		return true;
+	}
+
 	inline const meta_type& currentMeta(void) const{ return(this->meta[this->metaPointer]); }
-	inline const_reference operator[](const U32 p) const{ return this->runs[this->runsPointer + p]; }
+	inline const Y& operator[](const U32 p) const{ return this->runs[this->runsPointer + p]; }
 
 	const U16& size(void) const{ return this->support->variants; }
 	void reset(void){
@@ -249,21 +269,22 @@ public:
 	void clearPacked(void){ delete this->packed; }
 
 public:
+	U32 position;
 	U32 metaPointer;
 	U32 runsPointer;
-	const Totempole::TotempoleEntry* const support; // parent Totempole information
+	const totempole_type* const support; // parent Totempole information
 	const meta_type* const meta;
-	const type* const runs;
+	const Y* const runs;
 	TomahawkBlockPacked* packed;
 };
 
 template <class T>
-bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples){
+bool TomahawkBlockPacked::Build(TomahawkIterator<T>& controller, const U64& samples){
 	if(controller.support->variants == 0)
 		return false;
 
 	controller.reset();
-	TomahawkBlock<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkBlock<T, Support::TomahawkRunPacked<T>>*>(&controller);
+	TomahawkIterator<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkIterator<T, Support::TomahawkRunPacked<T>>*>(&controller);
 
 	this->width = c.support->variants;
 	this->data = new pair_type*[c.support->variants];
@@ -318,7 +339,7 @@ bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples
 }
 
 template <class T, class Y>
-bool TomahawkBlock<T, Y>::buildPacked(const U64& samples){
+bool TomahawkIterator<T, Y>::buildPacked(const U64& samples){
 	return(this->packed->Build(*this, samples));
 }
 
@@ -326,7 +347,7 @@ bool TomahawkBlock<T, Y>::buildPacked(const U64& samples){
 template <class T>
 class TomahawkBlockManager{
 	typedef TomahawkBlockManager<T> self_type;
-	typedef TomahawkBlock<const T> controller_type;
+	typedef TomahawkIterator<const T> controller_type;
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 
 public:

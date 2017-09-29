@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 #include "index.h"
 #include "concat.h"
 #include "stats.h"
+#include "tajima.h"
 
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){
@@ -71,6 +72,9 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
 		return(stats(argc, argv));
+
+	} else if(strncmp(&argv[1][0], "tajima", 6) == 0){
+		return(tajida(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage(false);
