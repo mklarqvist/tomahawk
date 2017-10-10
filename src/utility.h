@@ -18,7 +18,7 @@ void programMessage(const bool separator = true){
 
 void programHelp(void){
 	std::cerr << "Usage: " << Tomahawk::Constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, index, stats, concat" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, index, stats, concat, tajima, fst, abba, sfs" << std::endl;
 }
 
 void programHelpDetailed(void){
@@ -30,7 +30,9 @@ void programHelpDetailed(void){
 	"import       import VCF/BCF to TWK/TWI\n"
 	"stats        basic statistics of TWK/TWO\n"
 	"sort         sort TWO file\n"
-    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
+    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
+	"tajima       calculate Tajima's D, nucleotide diversity, and mean AF\n"
+	"sfs          calculate the site frequency spectrum (SFS); a.k.a AFS" << std::endl;
 }
 
 #endif /* TOMAHAWK_UTILITY_H_ */

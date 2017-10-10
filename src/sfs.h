@@ -26,29 +26,25 @@ DEALINGS IN THE SOFTWARE.
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkCalculations.h"
 
-void tajima_usage(void){
+void sfs_usage(void){
 	programMessage();
 	std::cerr <<
 	"About:  Calculates Tajima's D, mean nucleotide diversity, mean minor allele frequency\n"
 	"        from Tomahawk file"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " tajima [options] -i <in.twk>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
-	"  -b INT   bin-size in bases (default: 1000)\n"
-	"  -B       do not bin (output by chromosome)\n";
+	"  -i FILE  input Tomahawk (required)\n";
 }
 
-int tajida(int argc, char** argv){
+int sfs(int argc, char** argv){
 	if(argc < 3){
-		tajima_usage();
+		sfs_usage();
 		return(1);
 	}
 
 	static struct option long_options[] = {
 		{"input",		required_argument, 0, 'i' },
 		{"silent",		no_argument, 0, 's' },
-		{"bin_size",	optional_argument, 0, 'b' },
-		{"no_bin",	optional_argument, 0, 'B' },
 		{0,0,0,0}
 	};
 
@@ -57,8 +53,7 @@ int tajida(int argc, char** argv){
 
 	int c = 0;
 	int long_index = 0;
-	S32 bin_size = 1000;
-	while ((c = getopt_long(argc, argv, "i:b:sB", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:s", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -74,19 +69,6 @@ int tajida(int argc, char** argv){
 		case 'i':
 			input = std::string(optarg);
 			break;
-
-		case 'B':
-			bin_size = std::numeric_limits<S32>::max();
-			break;
-
-		case 'b':
-			bin_size = atoi(optarg);
-			if(bin_size <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Number of bins must be non-negative!" << std::endl;
-				return(1);
-			}
-			break;
-
 		case 's':
 			SILENT = 1;
 			break;
@@ -100,7 +82,7 @@ int tajida(int argc, char** argv){
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling tajima..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sfs..." << std::endl;
 	}
 
 	Tomahawk::TomahawkCalculations tomahawk;
@@ -109,7 +91,7 @@ int tajida(int argc, char** argv){
 		return 1;
 	}
 
-	if(!tomahawk.calculateTajimaD(bin_size)){
+	if(!tomahawk.calculateSFS()){
 		std::cerr << "failed" << std::endl;
 		return 1;
 	}
