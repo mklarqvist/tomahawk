@@ -29,7 +29,7 @@ class TomahawkOutputSorter{
 	typedef TomahawkOutputSortSlave slave_sorter;
 	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
 	typedef Totempole::TotempoleOutputSortedIndex index_type;
-	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+	typedef Tomahawk::IO::TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 
 public:
 	TomahawkOutputSorter() : n_threads(std::thread::hardware_concurrency()), reverse_entries(true){}

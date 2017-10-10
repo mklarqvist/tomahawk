@@ -72,54 +72,13 @@ template <U16 length>
 struct TomahawkOutputHeader : public TomahawkHeader<length>{
 	typedef TomahawkOutputHeader self_type;
 	typedef TomahawkHeader<length> parent_type;
+	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 
 	TomahawkOutputHeader() : n_contig(0), n_entries(0){} // for reading
 	TomahawkOutputHeader(const char* target, const U64 samples, const U32 n_contigs) :
 		parent_type(target, samples),
 		n_contig(n_contigs),
 		n_entries(0)
-	{
-		memcpy(&this->MAGIC[0], target, length);
-	} // for writing
-
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		stream.write(header.MAGIC, length);
-		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION), sizeof(float));
-		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
-		stream.write(reinterpret_cast<const char*>(&header.n_contig), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&header.n_entries), sizeof(U32));
-		return stream;
-	}
-
-	friend std::istream& operator>>(std::istream& stream, self_type& header){
-		stream.read(header.MAGIC, length);
-		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
-		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
-		stream.read(reinterpret_cast<char*>(&header.n_contig), sizeof(U32));
-
-		// Legacy fix
-		if(header.version >= 0.2)
-			stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
-		else
-			header.n_entries = 0;
-
-		return(stream);
-	}
-
-public:
-	U32 n_contig;
-	U32 n_entries;
-};
-
-template <U16 length>
-struct TomahawkOutputSortHeader : public TomahawkOutputHeader<length>{
-	typedef TomahawkOutputSortHeader self_type;
-	typedef TomahawkOutputHeader<length> parent_type;
-	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
-
-	TomahawkOutputSortHeader(){} // for reading
-	TomahawkOutputSortHeader(const char* target, const U64 samples, const U32 n_contigs) :
-		parent_type(target, samples, n_contigs)
 	{
 		memcpy(&this->MAGIC[0], target, length);
 	} // for writing
@@ -139,14 +98,20 @@ struct TomahawkOutputSortHeader : public TomahawkOutputHeader<length>{
 		stream.read(reinterpret_cast<char *>(&header.version), sizeof(float));
 		stream.read(reinterpret_cast<char *>(&header.samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contig), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&header.controller), sizeof(BYTE));
+
+		// Legacy fix
+		if(header.version >= 0.2){
+			stream.read(reinterpret_cast<char*>(&header.n_entries), sizeof(U32));
+			stream.read(reinterpret_cast<char*>(&header.controller), sizeof(BYTE));
+		} else
+			header.n_entries = 0;
+
 		return(stream);
 	}
 
-	inline void setSorted(const bool yes){ this->controller.sorted = yes; }
-
 public:
+	U32 n_contig;
+	U32 n_entries;
 	totempole_controller_byte controller;
 };
 

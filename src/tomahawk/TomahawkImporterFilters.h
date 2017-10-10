@@ -4,10 +4,10 @@
 namespace Tomahawk{
 
 struct TomahawkImporterFilters{
-	TomahawkImporterFilters() : MAF(0), HWE_P(0), missingness(0.2){}
+	TomahawkImporterFilters() : MGF(0), HWE_P(0), missingness(0.2){}
 	~TomahawkImporterFilters(){}
 
-	double MAF;
+	double MGF;
 	double HWE_P;
 	double missingness;
 };

@@ -26,16 +26,16 @@ DEALINGS IN THE SOFTWARE.
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
-void tajida_usage(void){
+void tajima_usage(void){
 	programMessage();
 	std::cerr <<
 	"About:  Calculates basic summary statistics for a TWK/TWO file.\n"
 	"        Data does not have to be indexed. However, operations are faster if they\n"
 	"        are.\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " tajima [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -b INT   number of bins (default: 10)\n";
+	"  -b INT   bin-size in bases (default: 1000)\n";
 }
 
 int tajida(int argc, char** argv){
@@ -47,6 +47,7 @@ int tajida(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",		required_argument, 0, 'i' },
 		{"silent",		no_argument, 0, 's' },
+		{"bin_size",	optional_argument, 0, 'b' },
 		{0,0,0,0}
 	};
 
@@ -55,8 +56,8 @@ int tajida(int argc, char** argv){
 
 	int c = 0;
 	int long_index = 0;
-	S32 bins = 10;
-	while ((c = getopt_long(argc, argv, "i:s", long_options, &long_index)) != -1){
+	S32 bin_size = 1000;
+	while ((c = getopt_long(argc, argv, "i:b:s", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -72,6 +73,13 @@ int tajida(int argc, char** argv){
 		case 'i':
 			input = std::string(optarg);
 			break;
+		case 'b':
+			bin_size = atoi(optarg);
+			if(bin_size <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Number of bins must be non-negative!" << std::endl;
+				return(1);
+			}
+			break;
 
 		case 's':
 			SILENT = 1;
@@ -86,7 +94,7 @@ int tajida(int argc, char** argv){
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling tajida..." << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling tajima..." << std::endl;
 	}
 
 	Tomahawk::TomahawkReader tomahawk;
@@ -95,7 +103,7 @@ int tajida(int argc, char** argv){
 		return 1;
 	}
 
-	if(!tomahawk.calculateTajimaD()){
+	if(!tomahawk.calculateTajimaD(bin_size)){
 		std::cerr << "failed" << std::endl;
 		return 1;
 	}

@@ -40,8 +40,7 @@ public:
 	TotempoleHeader() :
 		controller(0),
 		blocks(0),
-		largest_uncompressed(0),
-		offset(0)
+		largest_uncompressed(0)
 	{}
 
 	// This ctor is used during construction
@@ -50,8 +49,7 @@ public:
 		TotempoleHeaderBase(samples),
 		controller(0),
 		blocks(0),
-		largest_uncompressed(0),
-		offset(0)
+		largest_uncompressed(0)
 	{}
 	~TotempoleHeader(){}
 
@@ -72,8 +70,7 @@ public:
 		"samples: " << block.samples << '\n' <<
 		"controller: " << std::bitset<8>(block.controller) << '\n' <<
 		"blocks: " << block.blocks << '\n' <<
-		"largest: " << block.largest_uncompressed << '\n' <<
-		"offset: " << block.offset;
+		"largest: " << block.largest_uncompressed;
 
 		return(os);
 	}
@@ -84,7 +81,6 @@ public:
 		stream.read(reinterpret_cast<char *>(&block.controller), sizeof(BYTE));
 		stream.read(reinterpret_cast<char *>(&block.blocks), sizeof(U32));
 		stream.read(reinterpret_cast<char *>(&block.largest_uncompressed), sizeof(U32));
-		stream.read(reinterpret_cast<char *>(&block.offset), sizeof(U32));
 
 		return(stream);
 	}
@@ -93,7 +89,6 @@ public:
 	BYTE controller;	// controller block
 	U32 blocks;			// number of blocks in Tomahawk
 	U32 largest_uncompressed;	// largest block-size in bytes
-	U32 offset;			// IO disk offset for start of data
 };
 
 }

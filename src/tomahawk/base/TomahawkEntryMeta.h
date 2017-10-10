@@ -21,22 +21,22 @@ public:
 		phased(0),
 		position(0),
 		ref_alt(0),
-		MAF(0),
+		MGF(0),
 		HWE_P(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
-	bool isSingleton(void) const{ return(this->MAF == 0); }
+	bool isSingleton(void) const{ return(this->MGF == 0); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MAF << '\t' << entry.HWE_P;
+		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P;
 		return(out);
 	}
 
 public:
 	const U32 missing: 1, phased: 1, position: 30;
 	const BYTE ref_alt;
-	const float MAF;
+	const float MGF;
 	const float HWE_P;
 };
 
@@ -63,13 +63,13 @@ public:
 		os.write(reinterpret_cast<const char*>(&writePos), sizeof(U32));
 		os.write(reinterpret_cast<const char*>(&entry.ref_alt), sizeof(BYTE));
 		os.write(reinterpret_cast<const char*>(&entry.runs), sizeof(U32));
-		os.write(reinterpret_cast<const char*>(&entry.MAF), sizeof(float));
+		os.write(reinterpret_cast<const char*>(&entry.MGF), sizeof(float));
 		os.write(reinterpret_cast<const char*>(&entry.HWE_P), sizeof(float));
 		return os;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MAF << '\t' << entry.HWE_P;
+		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MGF << '\t' << entry.HWE_P;
 		return(out);
 	}
 

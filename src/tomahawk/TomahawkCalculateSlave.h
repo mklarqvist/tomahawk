@@ -426,10 +426,10 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 		this->helper.setLongRange();
 
 	// Set FLAGs
-	if(mA.MAF < LOW_MAF_THRESHOLD)
+	if(mA.MGF < LOW_MAF_THRESHOLD)
 		this->helper.setLowMAFA();
 
-	if(mB.MAF < LOW_MAF_THRESHOLD)
+	if(mB.MGF < LOW_MAF_THRESHOLD)
 		this->helper.setLowMAFB();
 
 	if(mA.HWE_P < LOW_HWE_THRESHOLD)
@@ -444,9 +444,6 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, const controller_type& b){
-	if(a.meta[a.metaPointer].MAF == 0 || b.meta[b.metaPointer].MAF == 0)
-		return false;
-
 	this->helper.resetUnphased();
 
 	/////////////
@@ -1275,9 +1272,6 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, const controller_type& b){
-	if(a.currentMeta().MAF == 0 || b.currentMeta().MAF == 0)
-		return false;
-
 	this->helper.resetPhased();
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
@@ -1496,13 +1490,13 @@ template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& block1, const controller_type block2){
 #if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
 	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+		if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1510,7 +1504,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 				this->output_manager.Add(block1, block2, this->helper);
 		}
 	} else {
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+		if(block1.currentMeta().MGF+block2.currentMeta().MGF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1561,12 +1555,12 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controller_type& block1, const controller_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+	if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {
@@ -1579,12 +1573,12 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controll
 template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const controller_type& block1, const controller_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+	if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {

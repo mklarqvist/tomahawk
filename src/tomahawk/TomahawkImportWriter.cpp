@@ -109,11 +109,6 @@ void TomahawkImportWriter::WriteHeaders(void){
 	Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 	this->streamTomahawk << *hB;
 
-	// Write out dummy variable for IO offset
-	U32 nothing = 0; // Dummy variable
-	size_t posOffset = this->streamTotempole.tellp(); // remember current IO position
-	this->streamTotempole.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
-
 	// Write the number of contigs
 	const U32 n_contigs = this->vcf_header_->contigs.size();
 	this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
@@ -150,11 +145,6 @@ void TomahawkImportWriter::WriteHeaders(void){
 	this->streamTotempole.write(&this->gzip_controller_.buffer.data[0], this->gzip_controller_.buffer.pointer);
 	this->gzip_controller_.Clear();
 	temp.deleteAll();
-
-	U32 curPos = this->streamTotempole.tellp(); // remember current IO position
-	this->streamTotempole.seekp(posOffset); // seek to previous position
-	this->streamTotempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
-	this->streamTotempole.seekp(curPos); // seek back to current IO position
 }
 
 void TomahawkImportWriter::WriteFinal(void){
@@ -213,7 +203,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 		return false;
 	}
 
-	if(base_meta.MAF < this->filter.MAF){
+	if(base_meta.MGF < this->filter.MGF){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
 		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
@@ -254,7 +244,7 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 		return false;
 	}
 
-	if(base_meta.MAF < this->filter.MAF){
+	if(base_meta.MGF < this->filter.MGF){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
 		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;

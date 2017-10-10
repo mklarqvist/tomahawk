@@ -12,7 +12,7 @@ namespace Totempole {
 
 class TotempoleOutputReader {
 	typedef TotempoleOutputReader self_type;
-	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> header_type;
+	typedef Tomahawk::IO::TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> header_type;
 	typedef TotempoleOutputEntry entry_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef TotempoleOutputSortedIndex index_type;

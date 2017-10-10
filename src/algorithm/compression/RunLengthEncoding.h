@@ -29,14 +29,14 @@ inline int PACK3(const BYTE& ref, char* target, T length){
 }
 
 template <class T>
-inline int UNPACK3(char* target, T length, BYTE& ref){
+inline int UNPACK3(const char* target, T& length, BYTE& ref){
 	if((*target & 128) == 0){
 		length = *target & 7;
 		ref = *target >> 3;
 		return 1;
 	}
 
-	char* target0 = target;
+	const char* target0 = target;
 	length = *target & 7;
 	ref = (*target >> 3) & 15;
 	++target;
@@ -46,7 +46,10 @@ inline int UNPACK3(char* target, T length, BYTE& ref){
 		length |= (*target & 127) << offset;
 		offset += 7;
 
-		if((*target & 128) == 0) break;
+		if((*target & 128) == 0){
+			++target;
+			break;
+		}
 		++target;
 	}
 

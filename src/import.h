@@ -33,7 +33,7 @@ void import_usage(void){
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file prefix (required)\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
-	"  -m FLOAT Minor-allele frequency (MAF) cutoff (default: 0)\n"
+	"  -m FLOAT Minor-genotype frequency (MGF) cutoff (default: 0)\n"
 	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
 	"  -s       Hide all program messages [null]\n";
 }
@@ -63,7 +63,7 @@ int import(int argc, char** argv){
 	bool extension_mode = false;
 	SILENT = 0;
 	double hwe_p = 0;
-	double maf = 0;
+	double mgf = 0;
 	double missingness = 0.2;
 
 	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:s?", long_options, &option_index)) != -1){
@@ -108,13 +108,13 @@ int import(int argc, char** argv){
 
 			break;
 		case 'm':
-			maf = atof(optarg);
-			if(maf < 0){
+			mgf = atof(optarg);
+			if(mgf < 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to < 0..." << std::endl;
 				return(1);
 			}
 
-			if(maf > 1){
+			if(mgf > 1){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to > 1..." << std::endl;
 				return(1);
 			}
@@ -153,7 +153,7 @@ int import(int argc, char** argv){
 
 	Tomahawk::TomahawkImporter importer(input, output);
 	importer.getFilters().HWE_P = hwe_p;
-	importer.getFilters().MAF = maf;
+	importer.getFilters().MGF = mgf;
 	importer.getFilters().missingness = missingness;
 
 	if(!extension_mode){

@@ -102,7 +102,7 @@ class TotempoleOutputIndexWriter : public TomahawkOutputWriterInterface{
 	typedef TotempoleOutputIndexWriter self_type;
 	typedef TomahawkOutputWriterInterface parent_type;
 	typedef Totempole::TotempoleOutputEntry totempole_type;
-	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+	typedef Tomahawk::IO::TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 	typedef Totempole::TotempoleOutputSortedIndex index_type;
 
 public:
@@ -246,7 +246,7 @@ protected:
 class TomahawkOutputWriterIndex : public TomahawkOutputWriter{
 	typedef TomahawkOutputWriter parent_type;
 	typedef Totempole::TotempoleOutputEntry totempole_type;
-	typedef Tomahawk::IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+	typedef Tomahawk::IO::TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 	typedef Totempole::TotempoleOutputSortedIndex index_type;
 
 public:

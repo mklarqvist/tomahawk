@@ -221,8 +221,8 @@ public:
 		buffer += '\t';
 		buffer += std::string("HWE_P=");
 		buffer += std::to_string(this->currentMeta().HWE_P);
-		buffer += std::string(";MAF=");
-		buffer += std::to_string(this->currentMeta().MAF);
+		buffer += std::string(";MGF=");
+		buffer += std::to_string(this->currentMeta().MGF);
 
 		if(!dropGenotypes){
 			buffer += '\t';
