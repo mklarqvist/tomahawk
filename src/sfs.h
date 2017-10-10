@@ -91,6 +91,11 @@ int sfs(int argc, char** argv){
 		return 1;
 	}
 
+	if(!tomahawk.loadGroups("/media/klarqv01/NVMe/1kgp3/populations/integrated_call_samples_v3.20130502.ALL.panel")){
+		std::cerr << "could not load groups" << std::endl;
+		return 1;
+	}
+
 	if(!tomahawk.calculateSFS()){
 		std::cerr << "failed" << std::endl;
 		return 1;

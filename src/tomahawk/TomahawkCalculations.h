@@ -5,8 +5,35 @@
 
 namespace Tomahawk {
 
+struct GroupGenotypes{
+	GroupGenotypes(void) : count(0){
+		memset(&genotypes[0], 0, sizeof(U64)*16);
+	}
+
+	~GroupGenotypes(){}
+
+	void reset(void){
+		if(count == 0)
+			return;
+
+		memset(&genotypes[0], 0, sizeof(U64)*16);
+		count = 0;
+	}
+
+	void add(const BYTE& genotype, const U64& length){
+		this->genotypes[genotype] += length;
+		count += length;
+	}
+
+	U64 count;
+	U64 genotypes[16];
+};
+
 class TomahawkCalculations : public TomahawkReader{
 	typedef TomahawkCalculations self_type;
+	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
+	typedef std::vector<U64> occ_vector;
+	typedef std::vector<occ_vector> occ_matrix;
 
 public:
 	TomahawkCalculations();
@@ -24,13 +51,16 @@ private:
 	template <class T> bool __calculateTajimaD(const U32 bin_size);
 	template <class T> bool __calculateFST(void);
 	template <class T> bool __calculateSFS(void);
+	template <class T> bool __calculateSFSGrouped(void);
 	template <class T> bool __calculateIBS(void);
 	template <class T> bool __calculateROH(void);
 	template <class T> bool __calculateNucleotideDiversity(void);
 
 private:
 	// groups
-
+	occ_matrix Occ;
+	std::vector<std::string> groups;
+	hash_table* group_htable;
 };
 
 template <class T>
@@ -240,6 +270,69 @@ bool TomahawkCalculations::__calculateSFS(void){
 	}
 
 	delete [] lookup;
+	return true;
+}
+
+template <class T>
+bool TomahawkCalculations::__calculateSFSGrouped(void){
+	if(this->Occ.size() == 0){
+		std::cerr << "no occ matrix loaded" << std::endl;
+		return false;
+	}
+
+	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
+
+	// Params
+	std::vector<GroupGenotypes> lookup2(this->Occ[0].size());
+	std::vector< std::vector<U64> > sfs(this->Occ[0].size(), std::vector<U64>(2*this->samples,0));
+	U64 cumPos = 0;
+
+	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
+		if(!this->nextBlock()){
+			std::cerr << "failed to get next block" << std::endl;
+			return false;
+		}
+
+		// Now have data
+		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
+		const Support::TomahawkRunPacked<T>* runs = nullptr;
+		const TomahawkEntryMeta<T>* meta = nullptr;
+
+		// Cycle over variants in block
+		while(controller.nextVariant(runs, meta)){
+			// Cycle over runs
+			for(U32 i = 0; i < meta->runs; ++i){
+				for(U32 k = 0; k < this->Occ[0].size(); ++k)
+					lookup2[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
+
+				cumPos += runs[i].runs;
+			}
+
+			// Reset and update
+			for(U32 k = 0; k < this->Occ[0].size(); ++k){
+				const U64 f1 = 2*lookup2[k].genotypes[5] + lookup2[k].genotypes[1] + lookup2[k].genotypes[4];
+				++sfs[k][f1];
+				lookup2[k].reset();
+			}
+
+			cumPos = 0;
+		}
+	}
+
+	// Output
+	// Header
+	for(U32 i = 0; i < this->groups.size(); ++i){
+		std::cout << this->groups[i] << '\t';
+	}
+	std::cout << std::endl;
+
+	for(U32 i = 0; i < sfs[0].size(); ++i){
+		for(U32 k = 0; k < this->Occ[0].size(); ++k){
+			std::cout << sfs[k][i] << '\t';
+		}
+		std::cout << std::endl;
+	}
+
 	return true;
 }
 
