@@ -72,7 +72,6 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 		U32 inner_tabs = 0;
 		size_t pos = line.find('\t', prev_pos + 1);
 
-
 		const std::string sampleName = std::string(&line[prev_pos], pos - prev_pos);
 
 		if(!this->totempole.sampleHashTable->GetItem(&sampleName[0], &sampleName, sampleID, sampleName.length())){
@@ -97,13 +96,14 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 			const std::string group = std::string(&line[prev_pos], pos - prev_pos);
 			if(!this->group_htable->GetItem(&group[0], &group, groupID_lookup, group.length())){
 				this->group_htable->SetItem(&group[0], &group, groupID, group.length());
-				this->groups.push_back(group);
+				this->groups.push_back(GroupPair(group));
 
 				//std::cerr << "added: " << group << " with id " << groupID << std::endl;
 				groupings[*sampleID].push_back(groupID);
 				++groupID;
 			} else {
 				groupings[*sampleID].push_back(*groupID_lookup);
+				++this->groups[*groupID_lookup];
 			}
 
 			//std::cerr << std::string(&line[prev_pos], pos - prev_pos) << '\t';
@@ -142,6 +142,9 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 
 		prev = &this->Occ[i + 1];
 	}
+
+	for(U32 i = 0; i < this->groups.size(); ++i)
+		std::cerr << i << '\t' << this->groups[i].name << '\t' << this->groups[i].n_entries << std::endl;
 
 	// Temp
 	// Dump

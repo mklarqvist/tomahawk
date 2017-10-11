@@ -36,6 +36,20 @@ class TomahawkCalculations : public TomahawkReader{
 	typedef std::vector<occ_vector> occ_matrix;
 
 public:
+	struct GroupPair{
+		GroupPair(const std::string& name) : n_entries(1), name(name){}
+		~GroupPair(){}
+
+		void operator++(void){ ++this->n_entries; }
+		void operator--(void){ --this->n_entries; }
+		void operator+=(const U32 p){ this->n_entries += p; }
+		void operator-=(const U32 p){ this->n_entries -= p; }
+
+		U32 n_entries;
+		std::string name;
+	};
+
+public:
 	TomahawkCalculations();
 	~TomahawkCalculations();
 
@@ -59,7 +73,7 @@ private:
 private:
 	// groups
 	occ_matrix Occ;
-	std::vector<std::string> groups;
+	std::vector<GroupPair> groups;
 	hash_table* group_htable;
 };
 
@@ -283,9 +297,20 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
 
 	// Params
-	std::vector<GroupGenotypes> lookup2(this->Occ[0].size());
+	std::vector<GroupGenotypes> genotypes(this->Occ[0].size());
 	std::vector< std::vector<U64> > sfs(this->Occ[0].size(), std::vector<U64>(2*this->samples,0));
 	U64 cumPos = 0;
+
+	// Get reference group name
+	const std::string ref = "monkey"; // Todo: make external
+	S32* ref_groupID = nullptr;
+	if(!this->group_htable->GetItem(&ref[0], &ref, ref_groupID, ref.length())){
+		std::cerr << "ref: " << ref << " not defined" << std::endl;
+		return false;
+	}
+	std::cerr << "ref is: " << *ref_groupID << std::endl;
+	const S32 refID = *ref_groupID;
+	const U32 expected_n_ref = this->groups[refID].n_entries;
 
 	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
 		if(!this->nextBlock()){
@@ -303,17 +328,41 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 			// Cycle over runs
 			for(U32 i = 0; i < meta->runs; ++i){
 				for(U32 k = 0; k < this->Occ[0].size(); ++k)
-					lookup2[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
+					genotypes[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
 
 				cumPos += runs[i].runs;
 			}
 
+			const U32 ref_counts = genotypes[refID].genotypes[0] + genotypes[refID].genotypes[1] + genotypes[refID].genotypes[4] + genotypes[refID].genotypes[5];
+			if(ref_counts == 0){
+				cumPos = 0;
+
+				// Reset
+				for(U32 k = 0; k < this->Occ[0].size(); ++k)
+					genotypes[k].reset();
+
+				continue;
+			}
+
+			if(genotypes[refID].genotypes[1] > 0 || genotypes[refID].genotypes[4] > 0)
+				std::cerr << genotypes[refID].genotypes[0] << '\t' << genotypes[refID].genotypes[1] << '\t' << genotypes[refID].genotypes[4] << '\t' << genotypes[refID].genotypes[5] << std::endl;
+
 			// Reset and update
 			for(U32 k = 0; k < this->Occ[0].size(); ++k){
-				const U64 f1 = 2*lookup2[k].genotypes[5] + lookup2[k].genotypes[1] + lookup2[k].genotypes[4];
-				++sfs[k][f1];
-				lookup2[k].reset();
+				const U64 f0 = 2*genotypes[k].genotypes[0] + genotypes[k].genotypes[1] + genotypes[k].genotypes[4];
+				const U64 f1 = 2*genotypes[k].genotypes[5] + genotypes[k].genotypes[1] + genotypes[k].genotypes[4];
+
+				if(genotypes[refID].genotypes[0] == expected_n_ref)
+					++sfs[k][f1];
+				else if(genotypes[refID].genotypes[5] == expected_n_ref)
+					++sfs[k][f0];
+				else
+					continue;
 			}
+
+			// Reset
+			for(U32 k = 0; k < this->Occ[0].size(); ++k)
+				genotypes[k].reset();
 
 			cumPos = 0;
 		}
@@ -322,7 +371,7 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 	// Output
 	// Header
 	for(U32 i = 0; i < this->groups.size(); ++i){
-		std::cout << this->groups[i] << '\t';
+		std::cout << this->groups[i].name << '\t';
 	}
 	std::cout << std::endl;
 
