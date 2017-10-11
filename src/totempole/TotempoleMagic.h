@@ -83,6 +83,15 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 		memcpy(&this->MAGIC[0], target, length);
 	} // for writing
 
+	TomahawkOutputHeader(const self_type& other) :
+		parent_type(other.MAGIC, other.samples),
+		n_contig(other.n_contig),
+		n_entries(other.n_entries),
+		controller(other.controller)
+	{
+
+	}
+
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
 		stream.write(header.MAGIC, length);
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION), sizeof(float));

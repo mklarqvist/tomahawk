@@ -27,7 +27,7 @@ public:
 	typedef Algorithm::SpinLock lock_type;
 
 public:
-	TomahawkOutputWriterInterface(const contig_type* contigs, const header_type* header) :
+	TomahawkOutputWriterInterface(const contig_type* contigs, header_type* header) :
 		stream(nullptr),
 		header(header),
 		contigs(contigs)
@@ -68,6 +68,7 @@ public:
 	virtual inline const size_t writeNoLock(buffer_type& buffer){ return(this->stream->writeNoLock(&buffer.data[0], buffer.size())); }
 	inline stream_type* getStream(void){ return(this->stream); }
 	inline lock_type* getLock(void){ return(this->stream->getLock()); }
+	inline header_type* getHeader(void){ return(this->header); }
 
 	template<class T>
 	void write(const T& data){
@@ -94,7 +95,7 @@ protected:
 	std::string baseName;
 
 	stream_type* stream;
-	const header_type* header;
+	header_type* header;
 	const contig_type* contigs;
 };
 
@@ -148,8 +149,8 @@ protected:
 	typedef IO::TGZFController tgzf_controller_type;
 
 public:
-	TomahawkOutputWriter(const contig_type* contigs, const header_type* header) : TomahawkOutputWriterInterface(contigs, header), flush_limit(524288){}
-	TomahawkOutputWriter(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
+	TomahawkOutputWriter(const contig_type* contigs, header_type* header) : TomahawkOutputWriterInterface(contigs, header), flush_limit(524288){}
+	TomahawkOutputWriter(const contig_type* contigs, header_type* header, const U32 flush_limit) :
 		TomahawkOutputWriterInterface(contigs, header),
 		flush_limit(flush_limit),
 		buffer(flush_limit + 2048)
@@ -250,7 +251,7 @@ class TomahawkOutputWriterIndex : public TomahawkOutputWriter{
 	typedef Totempole::TotempoleOutputSortedIndex index_type;
 
 public:
-	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header, const toi_header_type& toi_header) :
+	TomahawkOutputWriterIndex(const contig_type* contigs, header_type* header, const toi_header_type& toi_header) :
 		TomahawkOutputWriter(contigs, header),
 		current_blockID(0),
 		toi_header(toi_header),
@@ -259,7 +260,7 @@ public:
 
 	}
 
-	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header) :
+	TomahawkOutputWriterIndex(const contig_type* contigs, header_type* header) :
 		TomahawkOutputWriter(contigs, header),
 		current_blockID(0),
 		index(header->n_contig, contigs)
@@ -267,7 +268,7 @@ public:
 		this->toi_header = toi_header_type(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, header->samples, header->n_contig);
 	}
 
-	TomahawkOutputWriterIndex(const contig_type* contigs, const header_type* header, const U32 flush_limit) :
+	TomahawkOutputWriterIndex(const contig_type* contigs, header_type* header, const U32 flush_limit) :
 		TomahawkOutputWriter(contigs, header, flush_limit),
 		current_blockID(0),
 		index(header->n_contig, contigs)
@@ -399,7 +400,7 @@ class TomahawkOutputWriterNatural : public TomahawkOutputWriterInterface {
 	typedef TomahawkOutputWriterNatural self_type;
 
 public:
-	TomahawkOutputWriterNatural(const contig_type* contigs, const header_type* header) : TomahawkOutputWriterInterface(contigs, header){}
+	TomahawkOutputWriterNatural(const contig_type* contigs, header_type* header) : TomahawkOutputWriterInterface(contigs, header){}
 	~TomahawkOutputWriterNatural(){
 		// Flush upon termination
 		this->flush();

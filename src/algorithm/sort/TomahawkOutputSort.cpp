@@ -26,6 +26,9 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	// Writing
 	this->reader.setWriterType(0);
 	this->reader.addLiteral("\n##tomahawk_partialSortCommand=" + Helpers::program_string());
+	this->reader.writer->getHeader()->controller.sorted = 0;
+	this->reader.writer->getHeader()->controller.expanded = this->reverse_entries ? 1 : 0;
+	this->reader.writer->getHeader()->controller.partial_sort = 1;
 	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
 
 	basic_writer_type toi_writer;
@@ -44,10 +47,10 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	}
 
 	if(this->reverse_entries){
-		std::cerr << Helpers::timestamp("SORT") << "Reversing entries..." << std::endl;
+		std::cerr << Helpers::timestamp("SORT") << "Expanding: Reversing entries..." << std::endl;
 		memory_limit /= 2;
 	} else
-		std::cerr << Helpers::timestamp("SORT") << "Not reversing..." << std::endl;
+		std::cerr << Helpers::timestamp("SORT") << "Maintaining: Not reversing..." << std::endl;
 
 	// Perform indexed sorting if possible
 	if(this->reader.hasIndex){

@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/mklarqvist/Tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/Tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.1-blue.svg)](https://github.com/mklarqvist/Tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.3-blue.svg)](https://github.com/mklarqvist/Tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
@@ -17,8 +17,7 @@ directory. If you see compilation errors, you most likely do not have `SSE4.2`.
 At the present time, we do not support non-x86 CPUs or old CPU architecture.
 ```bash
 git clone --recursive https://github.com/mklarqvist/Tomahawk
-cd Tomahawk
-cd build
+cd Tomahawk/build
 make
 ```
 By default, Tomahawk compiles using extremely aggressive optimization flags and
@@ -51,14 +50,14 @@ The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
+tomahawk import -i file.vcf -o outPrefix -m 0.2 -h 1e-3
 ```
 
 ### Import-extend
 If you have split up your `vcf`/`bcf` files into multiple disjoint files
 (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
+tomahawk import -i file.bcf -e extend.twk -m 0.2 -h 1e-3
 ```
 
 ### Calculating linkage disequilibrium

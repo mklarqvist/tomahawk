@@ -29,6 +29,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 	this->buffer.resize(filesize);
 	const U64 readUntil = this->header.n_entries * sizeof(entry_type);
 
+	// Check remainder
 	if(readUntil % sizeof(entry_type) != 0){
 		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
 		this->ERROR_STATE = TOI_CORRUPTED;
