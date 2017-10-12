@@ -13,21 +13,33 @@ plotLDRegion<-function(dataSource, ...){
 }
 
 # Tajima D
-d<-read.delim("~/Desktop/cichlids__tajima.txt",skip = 1,header = F)
-par(mfrow=c(3,1))
-plot(d$V5,-log10(d$V9),pch=20,cex=.3)
-plot(d$V5,d$V8,pch=20,cex=.3)
-plot(d$V5,d$V7,pch=20,cex=.3)
-
-plotD<-function(dataSource, ...){
+plotD<-function(dataSource, min_snps = 5, ...){
+  # Store plot parameters
+  temp<-par
+  
+  # Filter data
+  b<-dataSource[dataSource$n_snps>=min_snps,]
+  
+  # Plot  
   par(mfrow=c(4,1))
   par(mar=c(0, 5, 3, 3))
-  plot(dataSource$cumBinFrom,-log10(dataSource$meanMAF),pch=20,las=2,xaxt='n',ylab="mean MAF",...)
+  plot(b$cumBinFrom,b$n_snps,pch=20,las=2,xaxt='n',xaxs='i',ylab="#SNVs",...)
+  abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
   par(mar=c(0, 5, 0, 3))
-  plot(dataSource$cumBinFrom,dataSource$TajimaD,pch=20,las=2,xaxt='n',ylab="Tajima's D",...)
+  plot(b$cumBinFrom,-log10(b$meanMAF),pch=20,las=2,xaxt='n',xaxs='i',ylab="-log10(mean MAF)",...)
+  abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
+  par(mar=c(0, 5, 0, 3))
+  plot(-1,-1,xlim=c(min(b$cumBinFrom),max(b$cumBinFrom)), ylim=c(min(b$TajimaD),max(b$TajimaD)), las=2,xaxt='n',xaxs='i',ylab="Tajima's D",...)
+  rect(min(b$cumBinFrom),-2,max(b$cumBinFrom), 2, col="#F5DEB350",border = NA);
   abline(h=0,lwd=3,col="lightgrey")
-  par(mar=c(0, 5, 0, 3))
-  plot(dataSource$cumBinFrom,dataSource$meanPI,pch=20,las=2,xaxt='n',ylab="mean Pi",...)
+  points(b$cumBinFrom,b$TajimaD,pch=20, ...)
+  abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
   par(mar=c(3, 5, 0, 3))
-  plot(dataSource$cumBinFrom,dataSource$k_hat,pch=20,las=2,ylab="k_hat",xlab="Cumulative genomic position",...)
+  plot(b$cumBinFrom,b$meanPI,pch=20,las=2,ylab="mean Pi",xaxs='i',xlab="Cumulative genomic position",...)
+  abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
+  # Restore plot parameters
+  par(mfrow=temp$mfrow,mar=temp$mar)
 }
+
+d<-read.delim("~/Desktop/1000GP3/tajima_1kgp3.txt",skip = 1,header = F)
+plotD(d[d$n_snps>5,],cex=.1)
