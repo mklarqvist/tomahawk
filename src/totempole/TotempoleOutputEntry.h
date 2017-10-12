@@ -8,12 +8,20 @@ namespace Totempole {
 
 #pragma pack(1)
 struct TotempoleOutputEntryController{
+private:
 	typedef TotempoleOutputEntryController self_type;
 
-	BYTE sorted: 1, expanded: 1, partial_sort: 1, unused: 5;
+public:
+	TotempoleOutputEntryController(void) : sorted(0), expanded(0), partial_sort(0), unused(0){}
+	~TotempoleOutputEntryController(){}
 
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write((const char*)reinterpret_cast<const char*>(&entry), 1);
+		return(stream);
+	}
+
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
+		stream << "sorted=" << (int)entry.sorted << "; expanded=" << (int)entry.expanded << ";partial=" << (int)entry.partial_sort;
 		return(stream);
 	}
 
@@ -21,6 +29,12 @@ struct TotempoleOutputEntryController{
 		stream.read(reinterpret_cast<char*>(&entry), 1);
 		return(stream);
 	}
+
+public:
+	BYTE sorted: 1,
+	     expanded: 1,
+		 partial_sort: 1,
+		 unused: 5;
 };
 
 #pragma pack(1)

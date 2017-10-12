@@ -92,7 +92,7 @@ struct TomahawkOutputHeader : public TomahawkHeader<length>{
 
 	}
 
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& header){
 		stream.write(header.MAGIC, length);
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
