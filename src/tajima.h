@@ -30,10 +30,12 @@ void tajima_usage(void){
 	programMessage();
 	std::cerr <<
 	"About:  Calculates Tajima's D, mean nucleotide diversity, mean minor allele frequency\n"
-	"        from Tomahawk file"
+	"        from Tomahawk file. If groups are defined (-g) then all statistics will be computed\n"
+	"        for each group\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " tajima [options] -i <in.twk>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
+	"  -g FILE  input groups file\n"
 	"  -b INT   bin-size in bases (default: 1000)\n"
 	"  -B       do not bin (output by chromosome)\n";
 }
@@ -47,18 +49,19 @@ int tajida(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",		required_argument, 0, 'i' },
 		{"silent",		no_argument, 0, 's' },
+		{"groups",		optional_argument, 0, 'g' },
 		{"bin_size",	optional_argument, 0, 'b' },
-		{"no_bin",	optional_argument, 0, 'B' },
+		{"no_bin",		optional_argument, 0, 'B' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
-	std::string input, output;
+	std::string input, output, groups;
 
 	int c = 0;
 	int long_index = 0;
 	S32 bin_size = 1000;
-	while ((c = getopt_long(argc, argv, "i:b:sB", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:b:g:sB", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -87,6 +90,10 @@ int tajida(int argc, char** argv){
 			}
 			break;
 
+		case 'g':
+			groups = std::string(optarg);
+			break;
+
 		case 's':
 			SILENT = 1;
 			break;
@@ -109,10 +116,12 @@ int tajida(int argc, char** argv){
 		return 1;
 	}
 
-	const std::string temp = "/Users/mk21/Desktop/1000GP3/random_groups.txt";
-	if(!tomahawk.loadGroups(temp)){
-		std::cerr << "could not load groups" << std::endl;
-		return 1;
+	if(groups.size() > 0){
+	//const std::string temp = "/media/klarqv01/NVMe/1kgp3/populations/integrated_call_samples_v3.20130502.ALL.panel";
+		if(!tomahawk.loadGroups(groups)){
+			std::cerr << "could not load groups" << std::endl;
+			return 1;
+		}
 	}
 
 	if(!tomahawk.calculateTajimaD(bin_size)){

@@ -33,33 +33,12 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 
 
 	std::string line;
-	U32 n_lines = 1;
-
-	// Grab first line
-	if(!getline(stream, line)){
-		std::cerr << "failed to get first line" << std::endl;
-		return false;
-	}
-
-	// count tabs in first line
-	// Assert correct format
-	// Count tabs until out-of-range
-	size_t pos = -1;
-	U32 tabs = 0;
-	while(true){
-		pos = line.find('\t', pos + 1);
-		if(pos == std::string::npos)
-			break;
-
-		++tabs;
-	}
-	++tabs; // eof tab
-
 	std::vector< std::vector< S32 > > groupings(this->samples);
 
 	S32* sampleID = nullptr;
 	S32* groupID_lookup = nullptr;
 	S32 groupID = 0;
+	U32 n_lines = 0;
 
 	while(getline(stream, line)){
 		// Empty lines
@@ -69,36 +48,33 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 		// Assert correct format
 		// Count tabs until out-of-range
 		size_t prev_pos = 0;
-		U32 inner_tabs = 0;
 		size_t pos = line.find('\t', prev_pos + 1);
 
-		const std::string sampleName = std::string(&line[prev_pos], pos - prev_pos);
+		if(pos == std::string::npos){
+			std::cerr << "illegal: has no data for sample (" << n_lines << ")" << std::endl;
+			return(false);
+		}
 
+		// Make sure the sample name exists in this file
+		const std::string sampleName = std::string(&line[prev_pos], pos - prev_pos);
 		if(!this->totempole.sampleHashTable->GetItem(&sampleName[0], &sampleName, sampleID, sampleName.length())){
 			std::cerr << "sample does not exist" << std::endl;
 			return false;
 		}
-		//std::cerr << sampleName << '\t' << *sampleID << '\t';
 
+		// Cycle over lines
 		prev_pos = pos + 1;
-		++inner_tabs;
-
-		for(U32 i = 1; i < tabs; ++i){
-			size_t pos = line.find('\t', prev_pos + 1);
+		while(prev_pos != std::string::npos){
+			pos = line.find('\t', prev_pos + 1);
 			if(pos == std::string::npos){
-				if(i + 1 != tabs){
-					std::cerr << "mangled data" << std::endl;
-					return false;
-				}
 				pos = line.size();
 			}
-			//std::cerr << pos << '\t' << prev_pos << std::endl;
+
 			const std::string group = std::string(&line[prev_pos], pos - prev_pos);
 			if(!this->group_htable->GetItem(&group[0], &group, groupID_lookup, group.length())){
 				this->group_htable->SetItem(&group[0], &group, groupID, group.length());
 				this->groups.push_back(GroupPair(group));
 
-				//std::cerr << "added: " << group << " with id " << groupID << std::endl;
 				groupings[*sampleID].push_back(groupID);
 				++groupID;
 			} else {
@@ -106,20 +82,12 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 				++this->groups[*groupID_lookup];
 			}
 
-			//std::cerr << std::string(&line[prev_pos], pos - prev_pos) << '\t';
+			if(pos == line.size())
+				break;
+
 			prev_pos = pos + 1;
-
-			++inner_tabs;
 		}
 
-		if(tabs != inner_tabs){
-			std::cerr << Helpers::timestamp("ERROR") << "Illegal format! Expected " << tabs << " columns! Line: " << n_lines << "..." << std::endl;
-			return false;
-		}
-
-		//std::cerr << std::endl;
-
-		// do stuff
 		++n_lines;
 	}
 
