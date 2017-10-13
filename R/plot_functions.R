@@ -15,19 +15,24 @@ plotLDRegion<-function(dataSource, ...){
 # Tajima D
 plotD<-function(dataSource, min_snps = 5, ...){
   # Store plot parameters
-  temp<-par
+  temp<-par()
   
   # Filter data
   b<-dataSource[dataSource$n_snps>=min_snps,]
   
   # Plot  
-  par(mfrow=c(4,1))
+  par(mfrow=c(5,1))
   par(mar=c(0, 5, 3, 3))
-  plot(b$cumBinFrom,b$n_snps,pch=20,las=2,xaxt='n',xaxs='i',ylab="#SNVs",...)
+  plot(b$cumBinFrom,1/(b$n_snps/(b$cumBinTo-b$cumBinFrom)),pch=20,las=2,xaxt='n',xaxs='i',ylab="SNV/bp",...)
   abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
   par(mar=c(0, 5, 0, 3))
   plot(b$cumBinFrom,-log10(b$meanMAF),pch=20,las=2,xaxt='n',xaxs='i',ylab="-log10(mean MAF)",...)
   abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
+  
+  par(mar=c(0, 5, 0, 3))
+  plot(b$cumBinFrom,-log10(b$het),pch=20,las=2,xaxt='n',xaxs='i',ylab="-log10(mean het)",...)
+  abline(v=d[which(!duplicated(b$contigID)),"cumBinFrom"],lty="dashed",col="grey")
+  
   par(mar=c(0, 5, 0, 3))
   plot(-1,-1,xlim=c(min(b$cumBinFrom),max(b$cumBinFrom)), ylim=c(min(b$TajimaD),max(b$TajimaD)), las=2,xaxt='n',xaxs='i',ylab="Tajima's D",...)
   rect(min(b$cumBinFrom),-2,max(b$cumBinFrom), 2, col="#F5DEB350",border = NA);
@@ -41,5 +46,9 @@ plotD<-function(dataSource, min_snps = 5, ...){
   par(mfrow=temp$mfrow,mar=temp$mar)
 }
 
-d<-read.delim("~/Desktop/1000GP3/tajima_1kgp3.txt",skip = 1,header = F)
-plotD(d[d$n_snps>5,],cex=.1)
+d<-read.delim("~/Desktop/1000GP3/tajima_1kgp3.txt",header = T)
+plotD(d[d$n_snps>50,],cex=.1)
+
+
+# temp
+plot(-1,-1,ylim=c(min(d2[,-c(1:3,ncol(d2))]),max(d2[,-c(1:3,ncol(d2))])),xlim=c(min(d2$V2),max(d2$V2)))

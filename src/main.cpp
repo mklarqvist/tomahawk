@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 #include "stats.h"
 #include "tajima.h"
 #include "sfs.h"
+#include "sitestats.h"
 
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){
@@ -79,6 +80,9 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "sfs", 3) == 0){
 		return(sfs(argc, argv));
+
+	} else if(strncmp(&argv[1][0], "sitestats", 9) == 0){
+		return(sitestats(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage(false);
