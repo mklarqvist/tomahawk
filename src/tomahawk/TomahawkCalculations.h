@@ -7,28 +7,12 @@ namespace Tomahawk {
 namespace Stats{
 namespace Support{
 
-struct GroupGenotypes{
-	GroupGenotypes(void) : count(0){
-		memset(&genotypes[0], 0, sizeof(U64)*16);
-	}
+struct tajima_output{
+	tajima_output() : D(0), meanMAF(0), meanPI(0){}
+	~tajima_output(){}
 
-	~GroupGenotypes(){}
-
-	void reset(void){
-		if(count == 0)
-			return;
-
-		memset(&genotypes[0], 0, sizeof(U64)*16);
-		count = 0;
-	}
-
-	void add(const BYTE& genotype, const U64& length){
-		this->genotypes[genotype] += length;
-		count += length;
-	}
-
-	U64 count;
-	U64 genotypes[16];
+	// Output
+	double D, meanMAF, meanPI;
 };
 
 template <class T>
@@ -45,10 +29,7 @@ public:
 		pi_cum(0),
 		f0(0),
 		f1(0),
-		n_snps(0),
-		D(0),
-		meanMAF(0),
-		meanPI(0)
+		n_snps(0)
 	{
 	}
 
@@ -78,7 +59,7 @@ public:
 
 	void operator++(void){ ++this->n_snps; }
 
-	void update(const GroupGenotypes& g){
+	void update(const Tomahawk::Support::GroupGenotypes& g){
 		// Frequency for allele 0 and allele 1
 		this->f0 = 2*g.genotypes[0] + g.genotypes[1] + g.genotypes[4];
 		this->f1 = 2*g.genotypes[5] + g.genotypes[1] + g.genotypes[4];
@@ -104,11 +85,11 @@ public:
 		this->pi_cum += 2*this->f0*this->f1 / ((double)total * (total - 1));
 	}
 
-	void calc(void){
+	void calc(tajima_output& output){
 		if(this->n_snps == 0){
-			this->D = 0;
-			this->meanMAF = 0;
-			this->meanPI = 0;
+			output.D = 0;
+			output.meanMAF = 0;
+			output.meanPI = 0;
 			return;
 		}
 
@@ -116,9 +97,9 @@ public:
 		const double pi = 2.0*this->k_hat*this->n/double(this->n-1);
 		const double tw = double(S) / this->a1;
 		const double var = (this->e1*S) + this->e2*S*(S-1);
-		this->D = (pi - tw) / sqrt(var);
-		this->meanMAF = ((double)this->s_minor / (this->s_minor + this->s_major)) / S;
-		this->meanPI = pi_cum/S;
+		output.D = (pi - tw) / sqrt(var);
+		output.meanMAF = ((double)this->s_minor / (this->s_minor + this->s_major)) / S;
+		output.meanPI = pi_cum/S;
 	}
 
 public:
@@ -129,45 +110,108 @@ public:
 	double pi_cum;
 	U64 f0, f1;
 	U64 n_snps;
-
-	// Output
-	double D, meanMAF, meanPI;
 };
+
+/*
+// This code implements an exact SNP test of Hardy-Weinberg Equilibrium as described in
+// Wigginton, JE, Cutler, DJ, and Abecasis, GR (2005) A Note on Exact Tests of
+// Hardy-Weinberg Equilibrium. American Journal of Human Genetics. 76: 000 - 000
+//
+// Written by Jan Wigginton
+// Modified to use Tomahawk data
+*/
+static double calculateHardyWeinberg(const Tomahawk::Support::GroupGenotypes& g){
+	if(g[0] + g[1] + g[4] + g[5] == 0)
+		return 1;
+
+	U64 obs_hets = g[1] + g[4];
+	U64 obs_hom1 = g[0];
+	U64 obs_hom2 = g[5];
+
+	U64 obs_homc = obs_hom1 < obs_hom2 ? obs_hom2 : obs_hom1;
+	U64 obs_homr = obs_hom1 < obs_hom2 ? obs_hom1 : obs_hom2;
+
+	int64_t rare_copies = 2 * obs_homr + obs_hets;
+	int64_t genotypes   = obs_hets + obs_homc + obs_homr;
+
+	double* het_probs = new double[rare_copies + 1];
+
+	int64_t i;
+	for (i = 0; i <= rare_copies; ++i)
+		het_probs[i] = 0.0;
+
+	/* start at midpoint */
+	int64_t mid = rare_copies * (2 * genotypes - rare_copies) / (2 * genotypes);
+
+	/* check to ensure that midpoint and rare alleles have same parity */
+	if ((rare_copies & 1) ^ (mid & 1))
+		++mid;
+
+	int64_t curr_hets = mid;
+	int64_t curr_homr = (rare_copies - mid) / 2;
+	int64_t curr_homc = genotypes - curr_hets - curr_homr;
+
+	het_probs[mid] = 1.0;
+	double sum = het_probs[mid];
+	for (curr_hets = mid; curr_hets > 1; curr_hets -= 2){
+		het_probs[curr_hets - 2] = het_probs[curr_hets] * curr_hets * (curr_hets - 1.0)
+						   / (4.0 * (curr_homr + 1.0) * (curr_homc + 1.0));
+		sum += het_probs[curr_hets - 2];
+
+		/* 2 fewer heterozygotes for next iteration -> add one rare, one common homozygote */
+		++curr_homr;
+		++curr_homc;
+	}
+
+	curr_hets = mid;
+	curr_homr = (rare_copies - mid) / 2;
+	curr_homc = genotypes - curr_hets - curr_homr;
+	for (curr_hets = mid; curr_hets <= rare_copies - 2; curr_hets += 2){
+		het_probs[curr_hets + 2] = het_probs[curr_hets] * 4.0 * curr_homr * curr_homc
+						/((curr_hets + 2.0) * (curr_hets + 1.0));
+		sum += het_probs[curr_hets + 2];
+
+		/* add 2 heterozygotes for next iteration -> subtract one rare, one common homozygote */
+		--curr_homr;
+		--curr_homc;
+	}
+
+	for (i = 0; i <= rare_copies; i++)
+		het_probs[i] /= sum;
+
+	double p_hwe = 0.0;
+	/*  p-value calculation for p_hwe  */
+	for (i = 0; i <= rare_copies; i++){
+		if (het_probs[i] > het_probs[obs_hets])
+			continue;
+
+		p_hwe += het_probs[i];
+	}
+
+	p_hwe = p_hwe > 1.0 ? 1.0 : p_hwe;
+
+	delete [] het_probs;
+
+	return(p_hwe);
+}
 
 }
 }
 
 class TomahawkCalculations : public TomahawkReader{
 	typedef TomahawkCalculations self_type;
-	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
-	typedef std::vector<U64> occ_vector;
-	typedef std::vector<occ_vector> occ_matrix;
-
-public:
-	struct GroupPair{
-		GroupPair(const std::string& name) : n_entries(1), name(name){}
-		~GroupPair(){}
-
-		void operator++(void){ ++this->n_entries; }
-		void operator--(void){ --this->n_entries; }
-		void operator+=(const U32 p){ this->n_entries += p; }
-		void operator-=(const U32 p){ this->n_entries -= p; }
-
-		U32 n_entries;
-		std::string name;
-	};
 
 public:
 	TomahawkCalculations();
 	~TomahawkCalculations();
 
-	bool loadGroups(const std::string& file);
 	bool calculateTajimaD(const U32 bin_size);
 	bool calculateFST(void);
 	bool calculateSFS(void);
 	bool calculateIBS(void);
 	bool calculateROH(void);
 	bool calculateNucleotideDiversity(void);
+	bool calculateSiteStats(void);
 
 private:
 	template <class T> bool __calculateTajimaD(const U32 bin_size);
@@ -177,13 +221,9 @@ private:
 	template <class T> bool __calculateSFSGrouped(void);
 	template <class T> bool __calculateIBS(void);
 	template <class T> bool __calculateROH(void);
+	template <class T> bool __calculateSiteStats(void);
+	template <class T> bool __calculateSiteStatsGrouped(void);
 	template <class T> bool __calculateNucleotideDiversity(void);
-
-private:
-	// groups
-	occ_matrix Occ;
-	std::vector<GroupPair> groups;
-	hash_table* group_htable;
 };
 
 template <class T>
@@ -196,7 +236,8 @@ bool TomahawkCalculations::__calculateTajimaDGrouped(const U32 bin_size){
 	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
 
 	// Params
-	std::vector<Stats::Support::GroupGenotypes> genotypes(this->Occ[0].size());
+	std::vector<Tomahawk::Support::GroupGenotypes> genotypes(this->Occ[0].size());
+	std::vector<Stats::Support::tajima_output> output(genotypes.size());
 	std::vector< Stats::Support::tajima_helper<T> > helpers(genotypes.size());
 	for(U32 i = 0; i < genotypes.size(); ++i)
 		helpers[i](this->groups[i].n_entries);
@@ -259,13 +300,13 @@ bool TomahawkCalculations::__calculateTajimaDGrouped(const U32 bin_size){
 					toPos = this->totempole.contigs[previous_contigID].maxPosition;
 
 				for(U32 i = 0; i < genotypes.size(); ++i){
-					helpers[i].calc();
+					helpers[i].calc(output[i]);
 					if(helpers[i].n_snps == 0)
 						continue;
 
-					sumD += helpers[i].D;
-					if(helpers[i].D < minD) minD = helpers[i].D;
-					if(helpers[i].D > maxD) maxD = helpers[i].D;
+					sumD += output[i].D;
+					if(output[i].D < minD) minD = output[i].D;
+					if(output[i].D > maxD) maxD = output[i].D;
 					if(helpers[i].n_snps > 0) ++n_D;
 				}
 
@@ -277,10 +318,10 @@ bool TomahawkCalculations::__calculateTajimaDGrouped(const U32 bin_size){
 
 				if(n_D > 0){
 					for(U32 i = 0; i < genotypes.size() - 1; ++i){
-						std::cout << helpers[i].D << '\t';
+						std::cout << output[i].D << '\t';
 						helpers[i].reset();
 					}
-					std::cout << helpers[genotypes.size() - 1].D << '\n';
+					std::cout << output[genotypes.size() - 1].D << '\n';
 
 				} else {
 					// Cleanup
@@ -337,6 +378,7 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 
 	U64 f0 = 0;
 	U64 f1 = 0;
+	double het = 0;
 	double k_hat = 0;
 	double pi_cum = 0;
 
@@ -346,7 +388,7 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 	U64 cumSum = 0;
 	double s_minor = 0, s_major = 0;
 
-	std::cout << "n_snps\tcontigID\tbinFrom\tbinTo\tcumBinFrom\tcumBinTo\tTajimaD\tmeanPI\tmeanMAF\tk_hat" << std::endl;
+	std::cout << "n_snps\tcontigID\tbinFrom\tbinTo\tcumBinFrom\tcumBinTo\tTajimaD\tmeanPI\tmeanMAF\tk_hat\thet" << std::endl;
 	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
 		if(!this->nextBlock()){
 			std::cerr << "failed to get next block" << std::endl;
@@ -383,20 +425,21 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 						toPos = this->totempole.contigs[previous_contigID].maxPosition;
 
 					const double S = counts;
-					const double pi = 2.0*k_hat*n/double(n-1);
+					const double pi = n/double(n-1) * 2.0*k_hat; // unbiased estimator
 					const double tw = double(S) / a1;
 					const double var = (e1*S) + e2*S*(S-1);
 					const double D = (pi - tw) / sqrt(var);
 					const double meanMAF = ((double)s_minor / (s_minor + s_major)) / S;
 
 					std::cout << S << '\t' << previous_contigID << '\t' << current_bin << '\t' << toPos << '\t'
-							  << cumSum << '\t' << cumSum + (toPos - current_bin) << '\t' << D << '\t' << pi_cum/S << '\t' << meanMAF << '\t' << k_hat << std::endl;
+							  << cumSum << '\t' << cumSum + (toPos - current_bin) << '\t' << D << '\t' << pi_cum/S
+							  << '\t' << meanMAF << '\t' << k_hat << '\t' << het/S << std::endl;
 					cumSum += bin_size;
 				}
 
 				// Reset
 				counts = 0;
-				f0 = 0; f1 = 0;
+				f0 = 0; f1 = 0; het = 0;
 				k_hat = 0; pi_cum = 0;
 				previous_contigID = this->totempole[i].contigID;
 				s_minor = 0; s_major = 0;
@@ -406,6 +449,7 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 			f0 = 2*lookup[0] + lookup[1] + lookup[4];
 			f1 = 2*lookup[5] + lookup[1] + lookup[4];
 			const U32 total = f0 + f1;
+			het += ((double)lookup[1] + lookup[4]) / total;
 
 			// Update minor allele frequency
 			if(f0 < f1){ s_minor += (double)f0/total; s_major += (double)f1/total; }
@@ -441,9 +485,115 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 		const double meanMAF = ((double)s_minor / (s_minor + s_major)) / S;
 
 		std::cout << S << '\t' << previous_contigID << '\t' << current_bin << '\t' << toPos << '\t'
-				  << cumSum << '\t' << cumSum + (toPos - current_bin) << '\t' << D << '\t' << pi_cum/S << '\t' << meanMAF << '\t' << k_hat << std::endl;
+				  << cumSum << '\t' << cumSum + (toPos - current_bin) << '\t' << D << '\t' << pi_cum/S
+				  << '\t' << meanMAF << '\t' << k_hat << '\t' << het/S << std::endl;
 		cumSum += bin_size;
 	}
+	return true;
+}
+
+template <class T>
+bool TomahawkCalculations::__calculateSiteStats(void){
+	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
+
+	Tomahawk::Support::GroupGenotypes g;
+	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
+		if(!this->nextBlock()){
+			std::cerr << "failed to get next block" << std::endl;
+			return false;
+		}
+
+		// Reset array
+		g.reset();
+
+		// Now have data
+		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
+		const Support::TomahawkRunPacked<T>* runs = nullptr;
+		const TomahawkEntryMeta<T>* meta = nullptr;
+
+		const U32 currentContigID = this->totempole[i].contigID;
+		while(controller.nextVariant(runs, meta)){
+
+			// Count number of genotypes
+			for(U32 i = 0; i < meta->runs; ++i)
+				g.add(runs[i].alleles, runs[i].runs);
+
+			std::cout << currentContigID << '\t' << meta->position << '\t' << Stats::Support::calculateHardyWeinberg(g) << '\n';
+
+			g.reset();
+		}
+	}
+
+	return true;
+}
+
+template <class T>
+bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
+	if(this->Occ.size() == 0){
+		std::cerr << "no occ matrix loaded" << std::endl;
+		return false;
+	}
+
+	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
+
+	// Params
+	std::vector<Tomahawk::Support::GroupGenotypes> genotypes(this->Occ[0].size());
+	const U32 n_group = genotypes.size();
+	double* hwe_p = new double[n_group];
+	memset(hwe_p, 0, sizeof(double)*n_group);
+
+	std::cout << "contigID\tpos\t";
+	for(U32 i = 0; i < genotypes.size() - 1; ++i)
+		std::cout << this->groups[i].name << '\t';
+	std::cout << this->groups.back().name << std::endl;
+
+	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
+		if(!this->nextBlock()){
+			std::cerr << "failed to get next block" << std::endl;
+			return false;
+		}
+
+		// Reset array
+		for(U32 i = 0; i < genotypes.size(); ++i)
+			genotypes[i].reset();
+
+		// Now have data
+		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
+		const Support::TomahawkRunPacked<T>* runs = nullptr;
+		const TomahawkEntryMeta<T>* meta = nullptr;
+
+		const U32 currentContigID = this->totempole[i].contigID;
+		while(controller.nextVariant(runs, meta)){
+
+			// Count number of genotypes / group
+			U64 cumPos = 0;
+			for(U32 i = 0; i < meta->runs; ++i){
+				for(U32 k = 0; k < this->Occ[0].size(); ++k)
+					genotypes[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
+
+				cumPos += runs[i].runs;
+			}
+
+			double anyUnderLimit = false;
+			for(U32 i = 0; i < genotypes.size(); ++i){
+				hwe_p[i] = Stats::Support::calculateHardyWeinberg(genotypes[i]);
+				if(hwe_p[i] < 1e-4) anyUnderLimit = true;
+			}
+
+			if(anyUnderLimit){
+				std::cout << currentContigID << '\t' << meta->position << '\t';
+				for(U32 i = 0; i < genotypes.size() - 1; ++i)
+					std::cout << hwe_p[i] << '\t';
+				std::cout << hwe_p[n_group-1] << '\n';
+			}
+
+			for(U32 i = 0; i < genotypes.size(); ++i)
+				genotypes[i].reset();
+
+			memset(hwe_p, 0, sizeof(double)*n_group);
+		}
+	}
+
 	return true;
 }
 
@@ -537,7 +687,7 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 	this->buffer.resize(this->totempole.getLargestBlockSize() + 1);
 
 	// Params
-	std::vector<Stats::Support::GroupGenotypes> genotypes(this->Occ[0].size());
+	std::vector<Tomahawk::Support::GroupGenotypes> genotypes(this->Occ[0].size());
 	std::vector< std::vector<U64> > sfs(this->Occ[0].size(), std::vector<U64>(2*this->samples,0));
 	U64 cumPos = 0;
 
