@@ -29,7 +29,7 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 		return false;
 	}
 
-	this->group_htable = new hash_table(2048);
+	this->group_htable = new hash_table(10000);
 
 
 	std::string line;
@@ -162,12 +162,22 @@ bool TomahawkCalculations::loadGroups(const std::string& file){
 
 
 bool TomahawkCalculations::calculateTajimaD(const U32 bin_size){
-	switch(this->bit_width){
-	case 1: return(this->__calculateTajimaD<BYTE>(bin_size));
-	case 2: return(this->__calculateTajimaD<U16>(bin_size));
-	case 4: return(this->__calculateTajimaD<U32>(bin_size));
-	case 8: return(this->__calculateTajimaD<U64>(bin_size));
-	default: exit(1); break;
+	if(this->Occ.size() == 0){
+		switch(this->bit_width){
+		case 1: return(this->__calculateTajimaD<BYTE>(bin_size));
+		case 2: return(this->__calculateTajimaD<U16>(bin_size));
+		case 4: return(this->__calculateTajimaD<U32>(bin_size));
+		case 8: return(this->__calculateTajimaD<U64>(bin_size));
+		default: exit(1); break;
+		}
+	} else {
+		switch(this->bit_width){
+		case 1: return(this->__calculateTajimaDGrouped<BYTE>(bin_size));
+		case 2: return(this->__calculateTajimaDGrouped<U16>(bin_size));
+		case 4: return(this->__calculateTajimaDGrouped<U32>(bin_size));
+		case 8: return(this->__calculateTajimaDGrouped<U64>(bin_size));
+		default: exit(1); break;
+		}
 	}
 
 	return false;

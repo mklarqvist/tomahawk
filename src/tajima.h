@@ -109,6 +109,12 @@ int tajida(int argc, char** argv){
 		return 1;
 	}
 
+	const std::string temp = "/Users/mk21/Desktop/1000GP3/random_groups.txt";
+	if(!tomahawk.loadGroups(temp)){
+		std::cerr << "could not load groups" << std::endl;
+		return 1;
+	}
+
 	if(!tomahawk.calculateTajimaD(bin_size)){
 		std::cerr << "failed" << std::endl;
 		return 1;

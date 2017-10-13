@@ -26,6 +26,8 @@ DEALINGS IN THE SOFTWARE.
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkCalculations.h"
 
+#include "algorithm/GenotypeSampler.h"
+
 void sfs_usage(void){
 	programMessage();
 	std::cerr <<
@@ -85,16 +87,32 @@ int sfs(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sfs..." << std::endl;
 	}
 
+	// temp
+	/*
+	Tomahawk::Algorithm::GenotypeSampler<U32> sampler(32e3);
+	for(U32 i = 1; i < 32e3; ++i){
+		std::cerr << i << std::endl;
+		for(U32 j = 0; j < 20; ++j){
+			sampler.draw(i);
+			//std::cerr << sampler << std::endl;
+		}
+	}
+	*/
+
 	Tomahawk::TomahawkCalculations tomahawk;
 	if(!tomahawk.Open(input)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;
 	}
 
-	if(!tomahawk.loadGroups("/media/klarqv01/NVMe/1kgp3/populations/integrated_call_samples_v3.20130502.ALL.panel")){
+	//const std::string temp = "/media/klarqv01/NVMe/1kgp3/populations/integrated_call_samples_v3.20130502.ALL.panel";
+
+	const std::string temp = "/Users/mk21/Desktop/1000GP3/populations/integrated_call_samples_v3.20130502.ALL.panel";
+	if(!tomahawk.loadGroups(temp)){
 		std::cerr << "could not load groups" << std::endl;
 		return 1;
 	}
+
 
 	if(!tomahawk.calculateSFS()){
 		std::cerr << "failed" << std::endl;
