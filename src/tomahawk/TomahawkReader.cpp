@@ -364,14 +364,14 @@ void TomahawkReader::DetermineBitWidth(void){
 }
 
 bool TomahawkReader::outputBlocks(std::vector<U32>& blocks){
-	typedef bool (Tomahawk::TomahawkReader::*blockFunction)(const U32 blockID);
+	typedef bool (Tomahawk::TomahawkReader::*blockFunction)(const U32& blockID);
 	blockFunction func__ = nullptr;
 
 	switch(this->bit_width){
-	case 1: func__ = &TomahawkReader::outputBlock<BYTE>; break;
-	case 2: func__ = &TomahawkReader::outputBlock<U16>;  break;
-	case 4: func__ = &TomahawkReader::outputBlock<U32>;  break;
-	case 8: func__ = &TomahawkReader::outputBlock<U64>;  break;
+	case 1: func__ = &TomahawkReader::__outputBlock<BYTE>; break;
+	case 2: func__ = &TomahawkReader::__outputBlock<U16>;  break;
+	case 4: func__ = &TomahawkReader::__outputBlock<U32>;  break;
+	case 8: func__ = &TomahawkReader::__outputBlock<U64>;  break;
 	default: exit(1); break;
 	}
 
@@ -382,22 +382,23 @@ bool TomahawkReader::outputBlocks(std::vector<U32>& blocks){
 	if(this->showHeader)
 		std::cout << this->totempole.literals + "\n##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
 
-
-	for(U32 i = 0; i < blocks.size(); ++i)
+	for(U32 i = 0; i < blocks.size(); ++i){
+		this->getBlock(blocks[i]);
 		(*this.*func__)(blocks[i]);
+	}
 
 	return true;
 }
 
 bool TomahawkReader::outputBlocks(){
-	typedef bool (Tomahawk::TomahawkReader::*blockFunction)(const U32 blockID);
+	typedef bool (Tomahawk::TomahawkReader::*blockFunction)(const U32& blockID);
 	blockFunction func__ = nullptr;
 
 	switch(this->bit_width){
-	case 1: func__ = &TomahawkReader::outputBlock<BYTE>; break;
-	case 2: func__ = &TomahawkReader::outputBlock<U16>;  break;
-	case 4: func__ = &TomahawkReader::outputBlock<U32>;  break;
-	case 8: func__ = &TomahawkReader::outputBlock<U64>;  break;
+	case 1: func__ = &TomahawkReader::__outputBlock<BYTE>; break;
+	case 2: func__ = &TomahawkReader::__outputBlock<U16>;  break;
+	case 4: func__ = &TomahawkReader::__outputBlock<U32>;  break;
+	case 8: func__ = &TomahawkReader::__outputBlock<U64>;  break;
 	default:
 		std::cerr << Helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
 		exit(1);
@@ -419,8 +420,10 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << this->totempole.samples[this->totempole.header.samples - 1] << std::endl;
 	}
 
-	for(U32 i = 0; i < this->totempole.getBlocks(); ++i)
+	for(U32 i = 0; i < this->totempole.getBlocks(); ++i){
+		this->getBlock(i);
 		(*this.*func__)(i);
+	}
 
 	return true;
 }

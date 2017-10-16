@@ -19,6 +19,9 @@
 namespace Tomahawk {
 namespace Support{
 
+// Data structure used together with the Occ
+// function. Keeps diploid genotype lookups in
+// a simple data structure
 struct GroupGenotypes{
 	GroupGenotypes(void) : count(0){
 		memset(&genotypes[0], 0, sizeof(U64)*16);
@@ -117,21 +120,21 @@ public:
 
 private:
 	void DetermineBitWidth(void);
-	template <class T> bool outputBlock(const U32 blockID);
-	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	bool Validate(void);
 	bool ValidateHeader(std::ifstream& in) const;
 	template <class T> bool __calculateTajimaD(const U32 bin_size);
 	template <class T> bool __calculateFST(void);
 	template <class T> bool __calculateSFS(void);
+	template <class T> bool __outputBlock(const U32& id);
+	template <class T> bool __outputBlockGrouped(const U32& id);
 
 protected:
-	U64 samples;     // has to match header
-	float version;   // has to match header
+	U64 samples;    // has to match header
+	float version;  // has to match header
 	U64 filesize;   // filesize
 	BYTE bit_width; // bit width
 	bool dropGenotypes; // drop genotypes in view mode
-	bool showHeader; // flag to output header or not
+	bool showHeader;// flag to output header or not
 
 	U32 currentBlockID; // for iterator
 
@@ -152,54 +155,8 @@ protected:
 };
 
 template <class T>
-bool TomahawkReader::outputBlock(const U32 blockID){
-	if(!this->stream.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Stream bad " << blockID << std::endl;
-		return false;
-	}
-
-	//std::cerr << "getblock " << blockID  << " seek to " << this->totempole_[blockID].byte_offset << std::endl;
-	this->stream.seekg(this->totempole[blockID].byte_offset);
-	if(!this->stream.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed search..." << std::endl;
-		return false;
-	}
-
-	// Determine byte-width of data
-	const U32 readLength = this->totempole[blockID].byte_offset_end - this->totempole[blockID].byte_offset;
-
-	if(readLength > this->buffer.capacity()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Impossible: " << readLength << '/' << this->buffer.capacity() << std::endl;
-		exit(1);
-	}
-
-	// Read from start to start + byte-width
-	if(!this->stream.read(&this->buffer.data[0], readLength)){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed read: " << this->stream.good() << '\t' << this->stream.fail() << '/' << this->stream.eof() << std::endl;
-		std::cerr << this->stream.gcount() << '/' << readLength << std::endl;
-		return false;
-	}
-	// Set buffer byte-width to data loaded
-	this->buffer.pointer = readLength;
-
-	// Keep track of position because inflate function moves pointer
-	char* data_position = &this->data.data[this->data.pointer];
-
-	// Inflate TGZF block
-	if(!this->tgzf_controller.Inflate(this->buffer, this->data)){
-		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate DATA..." << std::endl;
-		return false;
-	}
-
-	// Todo: move to function
-	this->WriteBlock<T>(data_position, blockID);
-
-	return true;
-}
-
-template <class T>
-bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
-	TomahawkIterator<T> tomahawk_controller(data, this->totempole[blockID]);
+bool TomahawkReader::__outputBlock(const U32& id){
+	TomahawkIterator<T> tomahawk_controller(this->data.data, this->totempole[id]);
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
