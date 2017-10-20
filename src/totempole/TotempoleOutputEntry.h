@@ -15,6 +15,13 @@ public:
 	TotempoleOutputEntryController(void) : sorted(0), expanded(0), partial_sort(0), unused(0){}
 	~TotempoleOutputEntryController(){}
 
+	void operator=(const self_type& other){
+		this->sorted = other.sorted;
+		this->expanded = other.expanded;
+		this->partial_sort = other.partial_sort;
+		this->unused = other.unused;
+	}
+
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write((const char*)reinterpret_cast<const char*>(&entry), 1);
 		return(stream);

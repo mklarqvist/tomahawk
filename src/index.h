@@ -60,7 +60,7 @@ int index(int argc, char** argv){
 			return 1;
 		}
 	} else {
-		std::cerr << "Unknown file type" << std::endl;
+		std::cerr << "Unknown file type: " << files[1] << std::endl;
 	}
 
 	return 0;

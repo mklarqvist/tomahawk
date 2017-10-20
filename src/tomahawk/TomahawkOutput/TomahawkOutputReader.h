@@ -18,6 +18,7 @@
 #include "TomahawkOutputEntry.h"
 #include "TomahawkOutputFilterController.h"
 #include "TomahawkOutputWriter.h"
+#include "../../totempole/TotempoleOutputIndexWriter.h"
 
 namespace Tomahawk {
 namespace IO {

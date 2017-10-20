@@ -146,6 +146,10 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	return true;
 }
 
+/*
+ * If we have an index available we can speed up sorting
+ * by partitioning the data into N bins
+ */
 bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit){
 	std::cerr << Helpers::timestamp("SORT") << "Index found..." << std::endl;
 
@@ -169,16 +173,15 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	}
 
 	// Have to add final
-	if(totempole.byte_offset != blocks.back().byte_offset){
+	if(blocks.size() == 0 || (totempole.byte_offset != blocks.back().byte_offset)){
 		totempole.byte_offset_end = this->reader.toi_reader[this->reader.toi_reader.size() - 1].byte_offset_end;
+		totempole.entries = 0;
+		std::cerr << totempole << std::endl;
 		blocks.push_back(totempole);
 	}
 
 	if(totempole.entries != 0)
 		blocks.push_back(totempole);
-
-	// Todo: if n_threads > blocks.size()
-	// set n_threads to block.size() and give each thread 1 block
 
 	// Split workload into different threads
 	// Each thread get approximately 1/threads amount of work
@@ -192,24 +195,25 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	for(U32 i = 0; i < blocks.size(); ++i){
 		if(n_blocks_loaded >= limit_thread && current_thread_target + 1 != this->n_threads){
 			n_blocks_loaded = 0;
-			totempole.byte_offset_end = blocks[i].byte_offset;
+			totempole.byte_offset_end = blocks[i].byte_offset_end;
 			thread_workload[current_thread_target] = totempole;
-			totempole.byte_offset = blocks[i].byte_offset;
+			totempole.byte_offset = blocks[i].byte_offset_end;
 			++current_thread_target;
 		}
 		++n_blocks_loaded;
 	}
 
 	// Add final
-	if(current_thread_target != this->n_threads){
+	if(totempole.byte_offset != blocks.back().byte_offset_end){
 		totempole.byte_offset_end = blocks.back().byte_offset_end;
-		thread_workload[this->n_threads-1] = totempole;
+		++current_thread_target;
+		thread_workload[current_thread_target] = totempole;
 	}
 
-	std::cerr << Helpers::timestamp("SORT") << "Spawning " << this->n_threads << " threads..." << std::endl;
-	std::thread** slaves = new std::thread*[this->n_threads];
-	slave_sorter** instances = new slave_sorter*[this->n_threads];
-	for(U32 i = 0; i < this->n_threads; ++i){
+	std::cerr << Helpers::timestamp("SORT") << "Spawning " << current_thread_target << " threads..." << std::endl;
+	std::thread** slaves = new std::thread*[current_thread_target];
+	slave_sorter** instances = new slave_sorter*[current_thread_target];
+	for(U32 i = 0; i < current_thread_target; ++i){
 		instances[i] = new slave_sorter(this->reader.writer, toi_writer, memory_limit);
 		if(!instances[i]->open(input)){
 			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to reopen file..." << std::endl;
@@ -220,14 +224,14 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 		instances[i]->reverseEntries(this->reverse_entries);
 	}
 
-	for(U32 i = 0; i < this->n_threads; ++i)
+	for(U32 i = 0; i < current_thread_target; ++i)
 		slaves[i] = instances[i]->start(thread_workload[i]);
 
-	for(U32 i = 0; i < this->n_threads; ++i)
+	for(U32 i = 0; i < current_thread_target; ++i)
 		slaves[i]->join();
 
 	U32 totempole_blocks_written = 0;
-	for(U32 i = 0; i < this->n_threads; ++i)
+	for(U32 i = 0; i < current_thread_target; ++i)
 		totempole_blocks_written += instances[i]->getBlocksWritten();
 
 	// TOI
@@ -260,7 +264,7 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	this->reader.writer->close();
 
 	// Cleanup
-	for(U32 i = 0; i < this->n_threads; ++i){
+	for(U32 i = 0; i < current_thread_target; ++i){
 		delete instances[i];
 		slaves[i] = nullptr;
 	}
@@ -283,7 +287,7 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	this->reader.addLiteral("\n##tomahawk_mergeSortCommand=" + Helpers::program_string());
 
-	toi_header_type toi_header = this->reader.toi_reader.getHeader();
+	toi_header_type& toi_header = this->reader.toi_reader.getHeader();
 	if(toi_header.controller.sorted == true){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "File is already sorted!" << std::endl;
 		return false;
@@ -296,6 +300,8 @@ bool TomahawkOutputSorter::sortMerge(const std::string& inputFile, const std::st
 
 	toi_header.controller.partial_sort = false;
 	toi_header.controller.sorted = true;
+	this->reader.header.controller.partial_sort = false;
+	this->reader.header.controller.sorted = true;
 	writer_type writer(this->reader.contigs, &this->reader.header, toi_header);
 
 	if(!writer.open(destinationPrefix)){

@@ -65,9 +65,9 @@ int main(int argc, char** argv){
 		return(sort(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "index", 5) == 0){
-		//return(index(argc, argv));
-		std::cerr << "Not implemented" << std::endl;
-		return(1);
+		return(index(argc, argv));
+		//std::cerr << "Not implemented" << std::endl;
+		//return(1);
 
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));

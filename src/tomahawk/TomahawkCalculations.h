@@ -7,6 +7,18 @@ namespace Tomahawk {
 namespace Stats{
 namespace Support{
 
+struct hwe_f_helper{
+	typedef hwe_f_helper self_type;
+	typedef Tomahawk::Support::GroupGenotypes genotypes;
+
+	double hwe_p;
+	double diff_AA;
+	double diff_Aa;
+	double diff_aa;
+	double local_inbreeding;
+
+};
+
 struct tajima_output{
 	tajima_output() : D(0), meanMAF(0), meanPI(0){}
 	~tajima_output(){}
@@ -120,9 +132,10 @@ public:
 // Written by Jan Wigginton
 // Modified to use Tomahawk data
 */
-static double calculateHardyWeinberg(const Tomahawk::Support::GroupGenotypes& g){
-	if(g[0] + g[1] + g[4] + g[5] == 0)
-		return 1;
+static inline double calculateHardyWeinberg(const Tomahawk::Support::GroupGenotypes& g){
+	const U64 total = g[0] + g[1] + g[4] + g[5];
+	if(total == 0) return 1;
+	if(g[0] == total) return 1;
 
 	U64 obs_hets = g[1] + g[4];
 	U64 obs_hom1 = g[0];
@@ -539,8 +552,20 @@ bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
 	// Params
 	std::vector<Tomahawk::Support::GroupGenotypes> genotypes(this->Occ[0].size());
 	const U32 n_group = genotypes.size();
-	double* hwe_p = new double[n_group];
-	memset(hwe_p, 0, sizeof(double)*n_group);
+
+	struct __f_helper{
+		__f_helper(void) : hwe_p(0), f(0), p(0), q(0), het(0){}
+		~__f_helper(){}
+
+		double hwe_p;
+		double f;
+		double p;
+		double q;
+		double het;
+	};
+
+	__f_helper* hwe_p = new __f_helper[n_group];
+	//memset(hwe_p, 0, sizeof(double)*n_group);
 
 	std::cout << "contigID\tpos\t";
 	for(U32 i = 0; i < genotypes.size() - 1; ++i)
@@ -564,7 +589,6 @@ bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
 
 		const U32 currentContigID = this->totempole[i].contigID;
 		while(controller.nextVariant(runs, meta)){
-
 			// Count number of genotypes / group
 			U64 cumPos = 0;
 			for(U32 i = 0; i < meta->runs; ++i){
@@ -574,23 +598,44 @@ bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
 				cumPos += runs[i].runs;
 			}
 
-			double anyUnderLimit = false;
+			for(U32 i = 0; i < genotypes.size(); ++i)
+				hwe_p[i].hwe_p = Stats::Support::calculateHardyWeinberg(genotypes[i]);
+
+			std::cout << currentContigID << '\t' << meta->position << '\t';
+
+			U64 f0 = 0, f1 = 0, total_global = 0;
 			for(U32 i = 0; i < genotypes.size(); ++i){
-				hwe_p[i] = Stats::Support::calculateHardyWeinberg(genotypes[i]);
-				if(hwe_p[i] < 1e-4) anyUnderLimit = true;
-			}
+				const U64 total = 2*genotypes[i][0] + 2*genotypes[i][5] + genotypes[i][1] + genotypes[i][4];
+				const double p = (2.0*genotypes[i][0] + genotypes[i][1] + genotypes[i][4]) / total;
+				const double q = (2.0*genotypes[i][5] + genotypes[i][1] + genotypes[i][4]) / total;
+				const double het = ((double)genotypes[i][1] + genotypes[i][4]) / (genotypes[i][0] + genotypes[i][5] + genotypes[i][1] + genotypes[i][4]);
+				hwe_p[i].f = 0;
+				if(p > 0 & q > 0)
+					hwe_p[i].f = (2.0*p*q - het) / (2.0*p*q);
 
-			if(anyUnderLimit){
-				std::cout << currentContigID << '\t' << meta->position << '\t';
-				for(U32 i = 0; i < genotypes.size() - 1; ++i)
-					std::cout << hwe_p[i] << '\t';
-				std::cout << hwe_p[n_group-1] << '\n';
-			}
+				total_global += total;
+				f0 += 2.0*genotypes[i][0] + genotypes[i][1] + genotypes[i][4];
+				f1 += 2.0*genotypes[i][5] + genotypes[i][1] + genotypes[i][4];
 
+				//std::cout << p << '\t' << q << '\t' << total << '\t' << F << '\t' << 2*p*q << '\t' << het << std::endl;
+				//std::cout << hwe_p[i] << '\t' << hwe_p[i].f << '\t';
+			}
+			//std::cout << hwe_p[n_group-1] << '\n';
+			//std::cout << '\n';
+
+			const double p_bar = double(f0)/total_global;
+			const double q_bar = double(f1)/total_global;
+
+			// F_I
+
+			// F_S
+
+			// F_T
+
+			// Reset genotypes
 			for(U32 i = 0; i < genotypes.size(); ++i)
 				genotypes[i].reset();
 
-			memset(hwe_p, 0, sizeof(double)*n_group);
 		}
 	}
 

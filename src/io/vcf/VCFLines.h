@@ -65,7 +65,7 @@ public:
 	const VCFDiploidGenotype* data_;
 };
 
-class VCFLineDataComplex : public VCFLineDataInterface{
+class VCFLineDataComplex : public VCFLineDataInterface {
 public:
 	VCFLineDataComplex(const U32 samples) : VCFLineDataInterface(samples), data_(samples){}
 	~VCFLineDataComplex(){}

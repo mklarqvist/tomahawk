@@ -257,7 +257,6 @@ public:
 		toi_header(toi_header),
 		index(header->n_contig, contigs)
 	{
-
 	}
 
 	TomahawkOutputWriterIndex(const contig_type* contigs, header_type* header) :
@@ -271,9 +270,9 @@ public:
 	TomahawkOutputWriterIndex(const contig_type* contigs, header_type* header, const U32 flush_limit) :
 		TomahawkOutputWriter(contigs, header, flush_limit),
 		current_blockID(0),
+		toi_header(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, header->samples, header->n_contig),
 		index(header->n_contig, contigs)
 	{
-		this->toi_header = toi_header_type(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, header->samples, header->n_contig);
 	}
 
 	~TomahawkOutputWriterIndex(){}
@@ -383,6 +382,25 @@ public:
 		// Write sorted index
 		if(output_index)
 			this->stream_index.getNativeStream() << this->index;
+
+		// Update blocks written in TWO
+		re.open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen TWO..." << std::endl;
+			return false;
+		}
+		re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in TWO..." << std::endl;
+			return false;
+		}
+
+		re.write((char*)&current_blockID, sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in TWO..." << std::endl;
+			return false;
+		}
+		re.close();
 
 		return true;
 	}

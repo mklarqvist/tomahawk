@@ -35,9 +35,7 @@ void sitestats_usage(void){
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " tajima [options] -i <in.twk>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -g FILE  input groups file\n"
-	"  -b INT   bin-size in bases (default: 1000)\n"
-	"  -B       do not bin (output by chromosome)\n";
+	"  -g FILE  input groups file\n";
 }
 
 int sitestats(int argc, char** argv){
@@ -58,7 +56,6 @@ int sitestats(int argc, char** argv){
 
 	int c = 0;
 	int long_index = 0;
-	S32 bin_size = 1000;
 	while ((c = getopt_long(argc, argv, "i:g:s", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */

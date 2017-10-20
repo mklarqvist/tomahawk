@@ -21,7 +21,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 
 	this->stream >> this->header;
 	if(!this->header.validate(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC)){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header!" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Incorrect header! Failed validation..." << std::endl;
 		this->ERROR_STATE = TOI_CORRUPTED;
 		exit(1);
 	}
@@ -31,7 +31,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 
 	// Check remainder
 	if(readUntil % sizeof(entry_type) != 0){
-		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data! Truncated..." << std::endl;
 		this->ERROR_STATE = TOI_CORRUPTED;
 		exit(1);
 	}

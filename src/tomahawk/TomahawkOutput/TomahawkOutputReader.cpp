@@ -1086,17 +1086,48 @@ bool TomahawkOutputReader::index(const std::string& input){
 		baseName = paths[2];
 	else baseName = paths[1];
 
-	// Open writer
-	// Set controller
-	toi_header_type toi_header(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->header.samples, this->header.n_contig);
-	// We assume data is expanded and sorted
-	toi_header.controller.sorted = 1;
-	toi_header.controller.expanded = 1;
-	toi_header.controller.partial_sort = 0;
+	// Try to open file
+	if(!this->Open(input)){
+		std::cerr << "could not open " << input << std::endl;
+		return false;
+	}
 
-	twoi_writer_type writer(this->contigs, &this->header, toi_header);
-	writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
+	// If there is an index
+	if(this->hasIndex){
+		std::cerr << "already have index" << std::endl;
+		return false;
+	}
 
+	Totempole::TomahawkOutputWriterIndex writer(this->contigs, this->header.n_contig, this->header);
+	if(!writer.Open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
+		std::cerr << "failed to open" << std::endl;
+		return false;
+	}
+	writer.WriteHeader();
+
+	U64 fromPos = this->stream.tellg();
+	const entry_type* entry = nullptr;
+	const bool index_mode = this->header.controller.expanded == 1 && this->header.controller.sorted == 1;
+	std::cerr << index_mode << std::endl;
+	std::cerr << this->header.controller << std::endl;
+	while(this->nextBlock(true)){
+		U64 toPos = this->stream.tellg();
+		// If expanded and sorted write special index
+		if(index_mode){
+			while(this->nextVariantLimited(entry))
+				writer.UpdateIndexed(*entry);
+
+			writer.flushBlockIndexed(fromPos, toPos, this->output_buffer.size());
+		}
+		// Otherwise write standard index
+		else {
+			writer.flushBlock(fromPos, toPos, this->output_buffer.size(), this->output_buffer.size() / sizeof(entry_type));
+		}
+		fromPos = this->stream.tellg();
+	}
+
+	if(index_mode)
+		writer.writeIndex();
 
 	return true;
 }

@@ -150,6 +150,27 @@ public:
 		re.flush();
 		re.close();
 
+		// Update blocks written
+		re.open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen TWO..." << std::endl;
+			return false;
+		}
+
+		re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in TWO..." << std::endl;
+			return false;
+		}
+
+		re.write((char*)&this->totempole_blocks_written, sizeof(U32));
+		if(!re.good()){
+			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in TWO..." << std::endl;
+			return false;
+		}
+		re.flush();
+		re.close();
+
 		return true;
 	}
 
