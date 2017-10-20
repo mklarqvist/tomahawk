@@ -11,9 +11,10 @@ public:
 	TomahawkRun();	// Disallowed ctor
 	~TomahawkRun(); // Disallowed dtor
 
-	T alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
+	T phasing: 1,
+	  alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
 	  alleleB: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH - 1;
 };
 
 #pragma pack(1)
@@ -23,8 +24,9 @@ public:
 	TomahawkRunPacked();	// Disallowed ctor
 	~TomahawkRunPacked();	// Disallowed dtor
 
-	T alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+	T phasing: 1,
+	  alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
+	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH - 1;
 };
 
 } // end support

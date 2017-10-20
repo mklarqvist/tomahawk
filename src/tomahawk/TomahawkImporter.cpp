@@ -92,13 +92,13 @@ bool TomahawkImporter::Extend(std::string extendFile){
 
 	this->writer_.WriteFinal();
 
-	if(this->writer_.GetVariantsWritten() == 0){
+	if(this->writer_.getVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.getVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 
@@ -218,13 +218,13 @@ bool TomahawkImporter::BuildBCF(void){
 
 	this->writer_.WriteFinal();
 
-	if(this->writer_.GetVariantsWritten() == 0){
+	if(this->writer_.getVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.getVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 
@@ -314,13 +314,13 @@ bool TomahawkImporter::BuildVCF(void){
 
 	this->writer_.WriteFinal();
 
-	if(this->writer_.GetVariantsWritten() == 0){
+	if(this->writer_.getVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
 		return false;
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.getVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
 

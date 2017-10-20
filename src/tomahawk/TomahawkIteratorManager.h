@@ -200,7 +200,7 @@ public:
 
 	void WriteVariant(const Totempole::TotempoleReader& totempole, IO::BasicBuffer& buffer, bool dropGenotypes = false) const{
 		// All genotypes in this line will have the same phase
-		const char separator = this->currentMeta().phased == 1 ? '|' : '/';
+		//const char separator = this->currentMeta().phased == 1 ? '|' : '/';
 
 		// Note:
 		// Much faster to first write to a char buffer then flush
@@ -235,6 +235,7 @@ public:
 				const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[(*this)[i].alleleB];
 
 				// Repeat genotype run-length times
+				const char separator = (*this)[i].phasing == 1 ? '|' : '/';
 				for(U32 k = 0; k < (*this)[i].runs; ++k){
 					buffer += left;
 					buffer += separator;
@@ -249,6 +250,7 @@ public:
 
 			// Repeat genotype run-length - 1 times
 			// Do not put a tab delimiter last
+			const char separator = (*this)[this->currentMeta().runs - 1].phasing == 1 ? '|' : '/';
 			for(U32 k = 0; k < (*this)[this->currentMeta().runs - 1].runs - 1; ++k){
 				buffer += left;
 				buffer += separator;
@@ -284,10 +286,10 @@ bool TomahawkBlockPacked::Build(TomahawkIterator<T>& controller, const U64& samp
 		return false;
 
 	controller.reset();
-	TomahawkIterator<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkIterator<T, Support::TomahawkRunPacked<T>>*>(&controller);
+	TomahawkIterator<T, Support::TomahawkRunPacked<T> >& c = *reinterpret_cast<TomahawkIterator<T, Support::TomahawkRunPacked<T> >*>(&controller);
 
 	this->width = c.support->variants;
-	this->data = new pair_type*[c.support->variants];
+	this->data = new pair_type*[c.support->variants]; // Todo: fix this, poor locality
 
 	const U32 byte_width = ceil((double)samples/4);
 

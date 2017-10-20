@@ -67,7 +67,7 @@ public:
 	void CheckOutputNames(const std::string& input);
 
 
-	inline U32 GetVariantsWritten(void) const{ return this->variants_written_; }
+	inline U32 getVariantsWritten(void) const{ return this->variants_written_; }
 	inline Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:

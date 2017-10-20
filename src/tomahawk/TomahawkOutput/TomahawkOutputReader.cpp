@@ -1110,7 +1110,7 @@ bool TomahawkOutputReader::index(const std::string& input){
 		return false;
 	}
 
-	Totempole::TomahawkOutputWriterIndex writer(this->contigs, this->header.n_contig, this->header);
+	index_writer_type writer(this->contigs, this->header.n_contig, this->header);
 	const std::string index_name = basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX;
 	if(!writer.Open(index_name)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Could not open: " << index_name << "..." << std::endl;

@@ -330,20 +330,20 @@ bool TomahawkReader::Validate(void){
 }
 
 void TomahawkReader::DetermineBitWidth(void){
-	if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
+	if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_8B){
 		if(!SILENT){
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
 		}
 		this->bit_width = sizeof(BYTE);
-	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
+	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_16B){
 		if(!SILENT){
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
 		}
 		this->bit_width = sizeof(U16);
-	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
+	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_32B){
 		if(!SILENT){
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;

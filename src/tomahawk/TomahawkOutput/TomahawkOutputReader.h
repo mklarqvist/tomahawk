@@ -37,6 +37,7 @@ class TomahawkOutputReader {
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
 	typedef IO::TomahawkOutputWriterIndex twoi_writer_type;
 	typedef Tomahawk::IO::TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
+	typedef Totempole::TomahawkOutputWriterIndex index_writer_type;
 
 
 public:

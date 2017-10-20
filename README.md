@@ -3,8 +3,8 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
-## Fast genetics in large-scale cohorts
-Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encode for phasing, allele A and allele B and the remainder as the number of runs. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is determined by the number of samples in the matrix during run-time. Tomahawk has three primary internal functions: 1) iterate over RLE entries; 2) divide compressed genotypic vectors into groups; 3) computing the inner product of compressed genotypic vectors.
+## Fast genetics in large-scale human cohorts
+Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the number of runs. This encoding scheme is superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is determined by the number of samples in the matrix during run-time. Tomahawk has three primary internal functions: 1) iterate over RLE entries; 2) divide compressed genotypic vectors into groups; 3) computing the inner product of compressed genotypic vectors.
 
 We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
 
@@ -31,7 +31,7 @@ computer farms/clouds with a hardware architecture that is different from the
 compiled target.
 
 ### Brief usage instructions
-Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
+Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, `index`, and `concat`.
 The function `stats` have partial support: currently limited to basics for `two` files.
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
