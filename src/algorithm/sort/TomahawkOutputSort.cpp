@@ -176,7 +176,6 @@ bool TomahawkOutputSorter::__sortIndexed(basic_writer_type& toi_writer, const st
 	if(blocks.size() == 0 || (totempole.byte_offset != blocks.back().byte_offset)){
 		totempole.byte_offset_end = this->reader.toi_reader[this->reader.toi_reader.size() - 1].byte_offset_end;
 		totempole.entries = 0;
-		std::cerr << totempole << std::endl;
 		blocks.push_back(totempole);
 	}
 

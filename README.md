@@ -3,13 +3,15 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
-## Fast calculation of LD in large-scale cohorts
-Tomahawk efficiently represents genotypic data by exploiting basic genetic properties and we directly query this compressed representation to calculate linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity, and 2) the large memory registers on modern processors. The first algorithm directly compares run-length encoded representation of genotypes from two vectors. The other precomputes the run-length encodings as 1-bit encodings and use SIMD-instructions to directly compare two bit-vectors. This algorithm also exploits the relatively low genetic diversity within species. Both algorithms are embarrassingly parallel.
+## Fast genetics in large-scale cohorts
+Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encode for phasing, allele A and allele B and the remainder as the number of runs. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is determined by the number of samples in the matrix during run-time. Tomahawk has three primary internal functions: 1) iterate over RLE entries; 2) divide compressed genotypic vectors into groups; 3) computing the inner product of compressed genotypic vectors.
 
-The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, and `TGZF`
+We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
+
+The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, `LD`, and `TGZF`
 are available [TWKv0](spec/TWKv0.pdf)
 
-Marcus D. R. Klarqvist (<mk21@sanger.ac.uk>)
+Marcus D. R. Klarqvist (<mk819@cam.ac.uk>)
 
 ### Installation instructions
 For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
@@ -20,18 +22,17 @@ git clone --recursive https://github.com/mklarqvist/Tomahawk
 cd Tomahawk/build
 make
 ```
-By default, Tomahawk compiles using extremely aggressive optimization flags and
+By default, Tomahawk is compiled with aggressive optimization flags and
 with native architecture-specific instructions
-(`-march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops`)
+(`-march=native -mtune=native -ftree-vectorize -frename-registers -funroll-loops`)
 and internally compiles for the most recent SIMD-instruction set available.
-This might result in additional effort when submitting jobs to
+This could result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
 compiled target.
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
 The function `stats` have partial support: currently limited to basics for `two` files.
-The function `index` is disabled at the moment.
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
 

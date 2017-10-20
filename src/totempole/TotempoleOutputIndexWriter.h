@@ -22,17 +22,16 @@ public:
 	{
 		this->header.controller = header.controller;
 		this->header.n_entries = header.n_entries;
-		std::cerr << header.n_entries << " entries written" << std::endl;
 	}
 	~TomahawkOutputWriterIndex(){}
 
 	bool Open(const std::string filename){
 		this->stream.open(filename, std::ios::out | std::ios::binary);
 		if(!this->stream.good()){
-			std::cerr << "faile to open ouput" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TOI") << "Failed to open " << filename << "..." << std::endl;
 			return false;
 		}
-		std::cerr << "Opened: " << filename << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("LOG", "TOI") << "Opening: " << filename << "..." << std::endl;
 		return true;
 	}
 
@@ -58,7 +57,7 @@ public:
 	bool UpdateIndexed(const entry_type& entry){
 		++this->totempole_entry.entries;
 		this->index.update(entry, this->currentBlockID, this->currentOffset);
-		this->currentOffset += sizeof(entry_type);
+		++this->currentOffset;
 
 		return true;
 	}
@@ -68,7 +67,6 @@ public:
 		this->totempole_entry.byte_offset_end = toOffset;
 		this->totempole_entry.uncompressed_size = uncompressed_size;
 		this->stream << this->totempole_entry;
-		std::cerr << this->totempole_entry << std::endl;
 		this->totempole_entry.reset();
 		++this->currentBlockID;
 		this->currentOffset = 0;

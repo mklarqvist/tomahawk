@@ -25,7 +25,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		contig_htable(nullptr),
 		interval_tree(nullptr),
 		interval_tree_entries(nullptr),
-		interval_totempole_enties(nullptr)
+		interval_totempole_entries(nullptr)
 {}
 
 TomahawkOutputReader::~TomahawkOutputReader(){
@@ -41,10 +41,17 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	this->buffer.deleteAll();
 	this->output_buffer.deleteAll();
 	delete this->writer;
-	delete this->interval_totempole_enties;
+	delete this->interval_totempole_entries;
 }
 
 bool TomahawkOutputReader::view(const std::string& input){
+	if(!SILENT){
+		if(this->header.controller.expanded == true)
+			std::cerr << Helpers::timestamp("LOG") << "Data is expanded..." << std::endl;
+		else
+			std::cerr << Helpers::timestamp("LOG") << "Data is not expanded..." << std::endl;
+	}
+
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else if(this->filter.any_filter_user_set){
@@ -128,8 +135,8 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 	// sort entries
 	// merge
 	// for i in entries: seek, uncompress, and jump or limit
-	for(U32 i = 0; i < this->interval_totempole_enties->size(); ++i){
-		const totempole_sorted_entry_type& entry = this->interval_totempole_enties->at(i);
+	for(U32 i = 0; i < this->interval_totempole_entries->size(); ++i){
+		const totempole_sorted_entry_type& entry = this->interval_totempole_entries->at(i);
 		const U32 block_length = entry.toBlock - entry.fromBlock;
 
 		// 1 entry
@@ -162,7 +169,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			//this->position = entry.toBlock_entries_offset;
+			this->position = entry.toBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -185,7 +192,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 			++j;
 
 			// Middle blocks
-			for(; j < entry.toBlock - 1; ++j){
+			for(; j < entry.toBlock; ++j){
 				if(!this->getBlock(j)){
 					std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 					return false;
@@ -201,7 +208,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			//this->position = entry.toBlock_entries_offset;
+			this->size = entry.toBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -558,8 +565,8 @@ bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
 		return false;
 	}
 
-	if(this->interval_totempole_enties == nullptr)
-		this->interval_totempole_enties = new std::vector<totempole_sorted_entry_type>;
+	if(this->interval_totempole_entries == nullptr)
+		this->interval_totempole_entries = new std::vector<totempole_sorted_entry_type>;
 
 	for(U32 k = 0; k < this->header.n_contig; ++k){
 		for(U32 i = 0; i < this->interval_tree_entries[k].size(); ++i){
@@ -573,7 +580,7 @@ bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
 					continue;
 				}
 				//std::cerr << "contigID found: " << entry << std::endl;
-				this->interval_totempole_enties->push_back(entry);
+				this->interval_totempole_entries->push_back(entry);
 
 			} else if(interval.state == interval_type::INTERVAL_TYPE::INTERVAL_POSITION){
 				//std::cerr << "contig:posiiton only: " << interval << std::endl;
@@ -583,7 +590,7 @@ bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
 					continue;
 				}
 				//std::cerr << "contigID:pos found: " << entry << std::endl;
-				this->interval_totempole_enties->push_back(entry);
+				this->interval_totempole_entries->push_back(entry);
 
 			} else {
 				//std::cerr << "full interval: " << interval << std::endl;
@@ -595,13 +602,13 @@ bool TomahawkOutputReader::__ParseRegionIndexedBlocks(void){
 
 				for(U32 i = 0; i < entries.size(); ++i){
 					//std::cerr << "contigID:pos-pos found: " << entries[i] << std::endl;
-					this->interval_totempole_enties->push_back(entries[i]);
+					this->interval_totempole_entries->push_back(entries[i]);
 				}
 			}
 		}
 	}
 
-	return(this->interval_totempole_enties->size() > 0);
+	return(this->interval_totempole_entries->size() > 0);
 }
 
 bool TomahawkOutputReader::__Open(const std::string input){
@@ -1056,6 +1063,11 @@ bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
 }
 
 bool TomahawkOutputReader::summary(const std::string& input, const U32 bins){
+	if(bins == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Cannot partition summary into 0 bins!" << std::endl;
+		return false;
+	}
+
 	TWO::TomahawkOutputStatsContainer container(bins);
 
 	// Natural output required parsing
@@ -1088,19 +1100,20 @@ bool TomahawkOutputReader::index(const std::string& input){
 
 	// Try to open file
 	if(!this->Open(input)){
-		std::cerr << "could not open " << input << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Could not open: " << input << "..." << std::endl;
 		return false;
 	}
 
 	// If there is an index
 	if(this->hasIndex){
-		std::cerr << "already have index" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Already have an index!" << std::endl;
 		return false;
 	}
 
 	Totempole::TomahawkOutputWriterIndex writer(this->contigs, this->header.n_contig, this->header);
-	if(!writer.Open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX)){
-		std::cerr << "failed to open" << std::endl;
+	const std::string index_name = basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX;
+	if(!writer.Open(index_name)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Could not open: " << index_name << "..." << std::endl;
 		return false;
 	}
 	writer.WriteHeader();
@@ -1108,8 +1121,7 @@ bool TomahawkOutputReader::index(const std::string& input){
 	U64 fromPos = this->stream.tellg();
 	const entry_type* entry = nullptr;
 	const bool index_mode = this->header.controller.expanded == 1 && this->header.controller.sorted == 1;
-	std::cerr << index_mode << std::endl;
-	std::cerr << this->header.controller << std::endl;
+
 	while(this->nextBlock(true)){
 		U64 toPos = this->stream.tellg();
 		// If expanded and sorted write special index
@@ -1120,9 +1132,9 @@ bool TomahawkOutputReader::index(const std::string& input){
 			writer.flushBlockIndexed(fromPos, toPos, this->output_buffer.size());
 		}
 		// Otherwise write standard index
-		else {
+		else
 			writer.flushBlock(fromPos, toPos, this->output_buffer.size(), this->output_buffer.size() / sizeof(entry_type));
-		}
+
 		fromPos = this->stream.tellg();
 	}
 

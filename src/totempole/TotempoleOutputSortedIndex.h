@@ -88,7 +88,10 @@ public:
 	~TotempoleOutputSortedIndex();
 
 	inline chunk_type& operator[](const U32 p){ return(this->linear_index[p]); }
-	inline U32 getBin(const U32& contigID, const U32& position) const{ return(position / ((this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1)); }
+	inline U32 getBin(const U32& contigID, const U32& position) const{
+		if(this->contigs[contigID].bases < 1024) return(0);
+		return(position / (this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT));
+	}
 	inline const TOI_SORTED_ERROR& getState(void) const{ return(this->state); }
 
 	void update(const two_entry& entry, const U32& block, const U32& blockOffset);

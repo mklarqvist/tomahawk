@@ -25,16 +25,29 @@ DEALINGS IN THE SOFTWARE.
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
+void index_usage(void){
+	programMessage();
+	std::cerr <<
+	"About:  Indexes TWO files to support fast queries\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " index [options] <in.two>\n\n";
+}
+
 int index(int argc, char** argv){
 	argc -= 2; argv += 2;
-	programMessage();
-	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling index..." << std::endl;
 
 	if(argc < 1){
-		std::cerr << argc << std::endl;
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Missing parameters" << std::endl;
+		index_usage();
 		return(1);
 	}
+
+	if(argc > 1){
+		index_usage();
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Too many parameters" << std::endl;
+		return(1);
+	}
+
+	programMessage();
+	std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling index..." << std::endl;
 
 	std::string inputFile(&argv[0][0]);
 
@@ -44,7 +57,7 @@ int index(int argc, char** argv){
 
 	// Todo: if failed to read from file suffix: try to look into file header MAGIC
 	if(files[1].size() == 0){
-		std::cerr << "could not determine file type from suffix" << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Could not determine file type from suffix" << std::endl;
 		return false;
 	}
 
@@ -60,7 +73,7 @@ int index(int argc, char** argv){
 			return 1;
 		}
 	} else {
-		std::cerr << "Unknown file type: " << files[1] << std::endl;
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unknown file type: " << files[1] << std::endl;
 	}
 
 	return 0;
