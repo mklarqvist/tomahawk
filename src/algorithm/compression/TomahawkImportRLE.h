@@ -5,6 +5,7 @@
 #include <bitset>
 
 #include "../../math/FisherMath.h"
+#include "../../tomahawk/base/TomahawkEntryMeta.h"
 #include "../../io/bcf/BCFReader.h"
 #include "RunLengthEncoding.h"
 
@@ -197,8 +198,9 @@ class TomahawkImportRLE {
 	typedef IO::BasicBuffer buffer_type;
 	typedef VCF::VCFLine vcf_type;
 	typedef BCF::BCFEntry bcf_type;
+	typedef Support::TomahawkEntryMetaBase meta_base_type;
 	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*rleFunction)(const vcf_type& line, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
-	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*bcfFunction)(const bcf_type& line, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
+	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*bcfFunction)(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
 	typedef TomahawkImportRLEHelper helper_type;
 
 public:
@@ -274,8 +276,8 @@ public:
 			return((*this.*encodeComplex)(line, meta, runs));
 	}
 
-	inline bool RunLengthEncode(const bcf_type& line, buffer_type& meta, buffer_type& runs){
-		return((*this.*encodeBCF)(line, meta, runs));
+	inline bool RunLengthEncode(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs){
+		return((*this.*encodeBCF)(line, meta_base, meta, runs));
 	}
 
 	inline const BYTE& getBitWidth(void) const{ return this->bit_width; }
@@ -283,7 +285,7 @@ public:
 private:
 	template <class T> bool RunLengthEncodeSimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool RunLengthEncodeComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs);
-	template <class T> bool RunLengthEncodeBCF(const bcf_type& line, buffer_type& meta, buffer_type& runs);
+	template <class T> bool RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs);
 
 private:
 	U64 n_samples;
@@ -299,90 +301,133 @@ public:
 };
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, buffer_type& meta, buffer_type& runs){
-	meta += (U32)line.body->POS + 1; // Base-1
-	meta += line.ref_alt;
-
-	U32 internal_pos = line.p_genotypes;
-	U64 sumLength = 0;
-	T length = 1;
-	T __dump = 0;
+bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs){
+	// Update basic values for a meta entry
+	meta_base.position = (U32)line.body->POS + 1; // Base-1
+	meta_base.ref_alt = line.ref_alt;
+	meta_base.biallelic = true;
+	meta_base.simple = line.isSimple();
 	T n_runs = 0;
-	//const U64 runs_pointer_begin = runs.pointer;
 
-	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-	BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
-	//assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
+	// If the number of alleles == 2
+	if(line.body->n_allele == 2){
+		U32 internal_pos = line.p_genotypes; // virtual byte offset of genotype start
+		U64 sumLength = 0;
+		T length = 1;
+		T RLE = 0;
 
-	// MSB contains phasing information
-	// Keep true until observing otherwise
-	this->helper.phased = true;
-
-	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-		//BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-		BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
-		//assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
-		//std::cerr << (int)packed_internal << ',';
+		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 
-		if(packed != packed_internal){
-			__dump = length;
-			__dump <<= Constants::TOMAHAWK_SHIFT_SIZE;
-			__dump |= packed;
+		// MSB contains phasing information
+		this->helper.phased = (packed & 1);
 
-			if((packed & 1) != 1) this->helper.phased = false;
+		for(U32 i = 2; i < this->n_samples * 2; i += 2){
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 
-			//std::cerr << (int)__dump << '\t' << (int)packed << '\t' << length << std::endl;
-			runs += __dump;
+			if(packed != packed_internal){
+				// Prepare RLE
+				RLE = length;
+				RLE <<= Constants::TOMAHAWK_SHIFT_SIZE;
+				RLE |= packed;
 
-			this->helper[packed >> 1] += length;
-			this->helper.countsAlleles[packed >> 3] += length;
-			this->helper.countsAlleles[(packed >> 1) & 3]  += length;
+				// Set meta phased flag bit
+				if((packed & 1) != 1) this->helper.phased = false;
 
-			//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
+				// Push RLE to buffer
+				runs += RLE;
 
-			sumLength += length;
-			length = 1;
-			packed = packed_internal;
-			++n_runs;
-			continue;
+				// Update counts
+				this->helper[packed >> 1] += length;
+				this->helper.countsAlleles[packed >> 3] += length;
+				this->helper.countsAlleles[(packed >> 1) & 3]  += length;
+
+				// Reset and update
+				sumLength += length;
+				length = 1;
+				packed = packed_internal;
+				++n_runs;
+				continue;
+			}
+			++length;
 		}
-		++length;
+		// Last entry
+		// Prepare RLE
+		RLE = length;
+		RLE <<= Constants::TOMAHAWK_SHIFT_SIZE;
+		RLE |= packed;
+
+		// Set meta phased flag bit
+		if((packed & 1) != 1) this->helper.phased = false;
+
+		// Push RLE to buffer
+		runs += RLE;
+		++n_runs;
+
+		// Update counts
+		this->helper[packed >> 1] += length;
+		this->helper.countsAlleles[packed >> 3] += length;
+		this->helper.countsAlleles[(packed >> 1) & 3]  += length;
+
+		// Reset and update
+		sumLength += length;
+		assert(sumLength == this->n_samples);
+
+		// Calculate basic stats
+		this->helper.calculateMGF();
+		this->helper.calculateHardyWeinberg();
 	}
-	__dump = length;
-	__dump <<= Constants::TOMAHAWK_SHIFT_SIZE;
-	__dump |= packed;
-	if((packed & 1) != 1) this->helper.phased = false;
-	runs += __dump;
-	//std::cerr << (int)__dump << '\t' << (int)packed << '\t' << length << std::endl;
-	//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
-	++n_runs;
+	// If number of alleles != 2
+	// Revert back to no-encoding
+	else {
+		// We use ceil(log2(n_alleles + 1)) bits for each allele
+		// the + 1 represent the missing case
+		// MSB first bit encode for phasing between the diploid alleles
+		// The word size is then (2*bits + 1) / 8 where + 1 represent the phasing
+		// information
+		const U32 shift_size = ceil(log2(double(line.body->n_allele) + 1));
+		const BYTE bit_width = 2*shift_size + 1;
+		const BYTE word_size = ceil(float(bit_width) / 8);
+		meta_base.biallelic = false;
 
-	this->helper[packed >> 1] += length;
-	this->helper.countsAlleles[packed >> 3] += length;
-	this->helper.countsAlleles[(packed >> 1) & 3]  += length;
+		// Virtual byte offset into start of genotypes
+		// in BCF entry
+		U32 internal_pos = line.p_genotypes;
+		n_runs = this->n_samples;
 
-	sumLength += length;
-	//std::cerr << '\n' << n_runs << '\t' << sumLength << std::endl;
-	assert(sumLength == this->n_samples);
-	//assert(internal_pos == line.size());
+		// Todo: move to templated function
+		// If word size is BYTE
+		if(word_size == 1){
+			for(U32 i = 0; i < this->n_samples * 2; i += 2){
+				const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+				const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+				const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
+				runs += packed;
+			}
+		}
+		// If word_size is U16
+		else {
+			std::cerr << Helpers::timestamp("ERROR", "RLE") << "Not implemented word-size > 1..." << std::endl;
+			exit(1);
+		}
 
-	this->helper.calculateMGF();
-	this->helper.calculateHardyWeinberg();
+		this->helper.HWE_P = 1;
+		this->helper.MGF = 0;
+	}
 
-	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
-	position <<= 3;
-	position |= this->helper.phased << 1;
-	position |= this->helper.missingValues << 0;
-	position |= 1 << 2; // Todo: is biallelic
-	meta += this->helper.MGF;
-	meta += this->helper.HWE_P;
-	//n_runs = runs.pointer - runs_pointer_begin; // temp
+	// See meta for more information
+	meta_base.phased = this->helper.phased;
+	meta_base.missing = this->helper.missingValues;
+	meta_base.MGF = this->helper.MGF;
+	meta_base.HWE_P = this->helper.HWE_P;
+	meta_base.virtual_offset = runs.pointer; // position at end
+	meta += meta_base;
 	meta += n_runs;
 
+	// Reset and recycle helper
 	this->helper.reset();
 	return true;
 }

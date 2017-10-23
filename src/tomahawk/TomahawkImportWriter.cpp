@@ -6,7 +6,8 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
 	n_variants_limit(1024),
 	blocksWritten_(0),
-	variants_written_(0),
+	variants_written(0),
+	variants_complex_written(0),
 	largest_uncompressed_block_(0),
 	filter(filter),
 	rleController_(nullptr),
@@ -186,15 +187,8 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-	const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
-
-	if(n_runs == 1){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-		//std::cerr << "singleton" << std::endl;
-		return false;
-	}
+	//const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
+	const meta_base_type& base_meta = *reinterpret_cast<const meta_base_type* const>(&this->buffer_meta_[meta_start_pos]);
 
 	if(base_meta.HWE_P < this->filter.HWE_P){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
@@ -220,37 +214,40 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 }
 
 bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
-	const U32 meta_start_pos = this->buffer_meta_.pointer;
-	const U32 rle_start_pos  = this->buffer_rle_.pointer;
-	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
+	// Keep positions
+	// If the entry needs to be filtered out
+	// then we roll back to these positions
+	// In practice we simply move the pointer back
+	const U64 meta_start_pos = this->buffer_meta_.pointer;
+	const U64 rle_start_pos  = this->buffer_rle_.pointer;
+	meta_base_type meta;
+
+	// Perform run-length encoding
+	if(!this->rleController_->RunLengthEncode(line, meta, this->buffer_meta_, this->buffer_rle_)){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
 		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-	const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
-
-	if(n_runs == 1){
+	// If filtered out: reset pointers
+	if(meta.HWE_P < this->filter.HWE_P){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
 		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << meta.HWE_P << std::endl;
 		return false;
 	}
 
-	if(base_meta.HWE_P < this->filter.HWE_P){
+	if(meta.MGF < this->filter.MGF){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
 		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << std::endl;
+		//std::cerr << "MAF < " << this->filter.MGF << ": " << meta.MGF << std::endl;
 		return false;
 	}
 
-	if(base_meta.MGF < this->filter.MGF){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
-		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;
-		return false;
-	}
-
+	// If the current minPosition is 0
+	// then this is the first entry we've seen
+	// in this contig. Keep the current position
+	// as the last one we've seen
 	if(this->totempole_entry.minPosition == 0)
 		this->totempole_entry.minPosition = line.body->POS + 1;
 
@@ -262,10 +259,8 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 
 // flush and write
 bool TomahawkImportWriter::flush(void){
-	if(this->buffer_meta_.size() == 0){
-		//std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot flush writer with 0 entries..." << std::endl;
+	if(this->buffer_meta_.size() == 0)
 		return false;
-	}
 
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->gzip_controller_.Deflate(this->buffer_meta_, this->buffer_rle_); // Deflate block
@@ -280,7 +275,7 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->streamTotempole << this->totempole_entry; // Write totempole output
 	++this->blocksWritten_; // update number of blocks written
-	this->variants_written_ += this->totempole_entry.variants; // update number of variants written
+	this->variants_written += this->totempole_entry.variants; // update number of variants written
 
 	this->reset(); // reset buffers
 	return true;

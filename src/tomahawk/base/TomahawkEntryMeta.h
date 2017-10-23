@@ -2,8 +2,10 @@
 #define TOMAHAWKENTRYMETA_H_
 
 namespace Tomahawk{
+namespace Support{
+
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + 2*sizeof(float))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 2*sizeof(float) + sizeof(U32))
 
 /*
  TomahawkEntryMetaBase is used for reinterpreting
@@ -14,31 +16,56 @@ namespace Tomahawk{
 #pragma pack(1)
 struct TomahawkEntryMetaBase{
 	typedef TomahawkEntryMetaBase self_type;
+	typedef IO::BasicBuffer buffer_type;
 
 public:
 	TomahawkEntryMetaBase() :
 		missing(0),
 		phased(0),
 		biallelic(0),
+		simple(0),
+		unused(0),
 		position(0),
 		ref_alt(0),
 		MGF(0),
-		HWE_P(0)
+		HWE_P(0),
+		virtual_offset(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
-	bool isSingleton(void) const{ return(this->MGF == 0); }
+	inline bool isSingleton(void) const{ return(this->MGF == 0); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P;
+		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset;
 		return(out);
 	}
 
+	// Overload operator+= for basic buffer
+	friend buffer_type& operator+=(buffer_type& buffer, const self_type& entry){
+		BYTE controller = 0;
+		controller |= entry.simple << 3;
+		controller |= entry.biallelic << 2;
+		controller |= entry.phased << 1;
+		controller |= entry.missing;
+		buffer += controller;
+		buffer += entry.position;
+		buffer += entry.ref_alt;
+		buffer += entry.MGF;
+		buffer += entry.HWE_P;
+		buffer += entry.virtual_offset;
+		return(buffer);
+	}
+
 public:
-	const U32 missing: 1, phased: 1, biallelic: 1, position: 29;
-	const BYTE ref_alt;
-	const float MGF;
-	const float HWE_P;
+	BYTE missing: 1, phased: 1, biallelic: 1, simple: 1, unused: 4;
+	U32 position;
+	BYTE ref_alt; // most sites are bi-allelic SNV
+	// MGF and HWE is pre-computed as they are used in
+	// LD selection
+	float MGF;
+	float HWE_P;
+	// offset to the byte end of this entry in the stream
+	U32 virtual_offset;
 };
 
 /*
@@ -76,6 +103,7 @@ public:
 	T runs; // number of runs
 };
 
+}
 }
 
 #endif /* TOMAHAWKENTRYMETA_H_ */

@@ -163,6 +163,7 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	// Get a line
+	// BCF parse occurs in nextVariant
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
 		if(!entry.good()){
@@ -192,6 +193,7 @@ bool TomahawkImporter::BuildBCF(void){
 	entry.reset();
 
 	// Parse lines
+	// BCF parse occurs in nextVariant
 	while(reader.nextVariant(entry)){
 		if(!entry.good()){
 			entry.reset();
@@ -214,8 +216,6 @@ bool TomahawkImporter::BuildBCF(void){
 
 	++this->header_->getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
-	//		return false;
-
 	this->writer_.WriteFinal();
 
 	if(this->writer_.getVariantsWritten() == 0){
@@ -351,7 +351,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	}
 
 	// Assert position is in range
-	if(line.body->POS+1 > this->header_->getContig(line.body->CHROM).length){
+	if(line.body->POS + 1 > this->header_->getContig(line.body->CHROM).length){
 		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << (*this->header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > reported max size of contig (" << (*this->header_)[line.body->CHROM].length << ")..." << std::endl;
 		return false;
 	}
@@ -362,10 +362,10 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		return false;
 	}
 
-
 	// Assess missingness
 	const double missing = line.getMissingness(this->header_->samples);
 	//const float missing = 0;
+	/*
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
 			//if(!SILENT)
@@ -378,16 +378,16 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 		}
 	}
+	*/
 
 	// Execute only if the line is simple (biallelic and SNP)
-	if(line.isSimple()){
+	//if(line.isSimple()){
 		if(missing > this->filters.missingness){
 			//if(!SILENT)
 			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
 			this->sort_order_helper.previous_included = false;
 			goto next;
 		}
-
 
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
@@ -400,7 +400,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			this->sort_order_helper.previous_included = true;
 		else
 			this->sort_order_helper.previous_included = false;
-	} else
+	//}
+//else
 		this->sort_order_helper.previous_included = false;
 
 	next:

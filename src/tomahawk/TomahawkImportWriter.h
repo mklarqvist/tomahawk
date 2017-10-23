@@ -22,6 +22,7 @@ namespace Tomahawk {
 class TomahawkImportWriter {
 	typedef IO::BasicBuffer buffer_type;
 	typedef TomahawkImporterFilters filter_type;
+	typedef Support::TomahawkEntryMetaBase meta_base_type;
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -61,13 +62,12 @@ public:
 		return false;
 	}
 
-	inline const U32& blocksWritten(void) const{ return this->blocksWritten_; }
+	inline const U64& blocksWritten(void) const{ return this->blocksWritten_; }
 	inline const U64& size(void) const{ return this->buffer_rle_.size(); }
+	inline const U64& getVariantsWritten(void) const{ return this->variants_written; }
 
 	void CheckOutputNames(const std::string& input);
 
-
-	inline U32 getVariantsWritten(void) const{ return this->variants_written_; }
 	inline Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
@@ -75,8 +75,9 @@ public:
 	std::ofstream streamTotempole;	// stream
 	U32 flush_limit;
 	U32 n_variants_limit;
-	U32 blocksWritten_;				// number of blocks written
-	U32 variants_written_;			// number of variants written
+	U64 blocksWritten_;				// number of blocks written
+	U64 variants_written;			// number of variants written
+	U64 variants_complex_written;	// number of complex variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
 	const filter_type& filter;		// filters
 

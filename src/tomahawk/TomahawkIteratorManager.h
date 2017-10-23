@@ -3,10 +3,10 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/GenotypeBitPacker.h"
-#include "base/TomahawkSupport.h"
 #include "../tomahawk/base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
+#include "base/TomahawkRun.h"
 
 namespace Tomahawk{
 
@@ -100,7 +100,7 @@ public:
 
 template <class T, class Y>
 struct TomahawkIterator{
-	typedef TomahawkEntryMeta<T> meta_type;
+	typedef Support::TomahawkEntryMeta<T> meta_type;
 	typedef Totempole::TotempoleEntry totempole_type;
 
 public:
@@ -109,7 +109,7 @@ public:
 		metaPointer(0),
 		runsPointer(0),
 		support(&support),
-		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
+		meta(reinterpret_cast<const meta_type* const>(target)),
 		runs(reinterpret_cast<const Y* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
 		packed(new TomahawkBlockPacked)
 	{

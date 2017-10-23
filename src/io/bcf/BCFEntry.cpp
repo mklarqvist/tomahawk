@@ -116,7 +116,7 @@ bool BCFEntry::parse(void){
 
 	internal_pos = this->body->l_shared + sizeof(U32)*2;
 	const base_type& fmt_key = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-	const SBYTE& fmt_key_value = *reinterpret_cast<SBYTE*>(&this->data[internal_pos]);
+	//const SBYTE& fmt_key_value = *reinterpret_cast<SBYTE*>(&this->data[internal_pos]);
 
 	switch(fmt_key.low){
 	case(1): case(7): ++internal_pos; break;
@@ -126,24 +126,17 @@ bool BCFEntry::parse(void){
 
 	// Format key
 	const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-	//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
+	//if(this->body->n_allele != 2) std::cerr << this->body->CHROM << ':' << this->body->POS+1 << ';' << this->body->n_allele << "; fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
 	//std::cerr << (int)fmt_type_value2 << '\t' << (int)fmt_type_value1 << std::endl;
 	//assert(fmt_type.high == 2);
 
 	if(fmt_type.high != 2){
+		std::cerr << Helpers::timestamp("LOG","BCF") << "Dropping non-diploid variant: " << this->body->CHROM << ':' << this->body->POS+1 << std::endl;
 		this->isGood = false;
 		return false;
 	}
 
 	this->isGood = true;
-
-	/*
-	for(U32 i = 0; i < 44; ++i){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
-	}
-	*/
 	this->genotypes = &this->data[internal_pos];
 	this->p_genotypes = internal_pos;
 
@@ -162,7 +155,10 @@ double BCFEntry::getMissingness(const U64& samples) const{
 		//std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
 
 		if(fmt_type_value1 < 0 || fmt_type_value2 < 0)
-			return(2);
+			return(1);
+
+		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2)
+		std::cerr << (int)BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << '\t' << (int)BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << std::endl;
 
 		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2) ++n_missing;
 	}
@@ -171,6 +167,12 @@ double BCFEntry::getMissingness(const U64& samples) const{
 
 void BCFEntry::SetRefAlt(void){
 	this->ref_alt = 0;
+	if(this->alleles[0].length != 1 || this->alleles[1].length != 1){
+		//std::cerr << "setting mock refalt for: " << std::string(this->alleles[0].data, this->alleles[0].length) << '\t' << std::string(this->alleles[1].data, this->alleles[1].length) << std::endl;
+		this->ref_alt ^= Tomahawk::Constants::REF_ALT_N << 4;
+		this->ref_alt ^= Tomahawk::Constants::REF_ALT_N;
+		return;
+	}
 
 	switch(this->alleles[0].data[0]){
 	case 'A': this->ref_alt ^= Tomahawk::Constants::REF_ALT_A << 4; break;
@@ -178,6 +180,9 @@ void BCFEntry::SetRefAlt(void){
 	case 'G': this->ref_alt ^= Tomahawk::Constants::REF_ALT_G << 4; break;
 	case 'C': this->ref_alt ^= Tomahawk::Constants::REF_ALT_C << 4; break;
 	case '.': this->ref_alt ^= Tomahawk::Constants::REF_ALT_N << 4; break;
+	default:
+		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Illegal SNV reference..." << std::endl;
+		exit(1);
 	}
 
 	switch(this->alleles[1].data[0]){
@@ -186,6 +191,9 @@ void BCFEntry::SetRefAlt(void){
 	case 'G': this->ref_alt ^= Tomahawk::Constants::REF_ALT_G << 0; break;
 	case 'C': this->ref_alt ^= Tomahawk::Constants::REF_ALT_C << 0; break;
 	case '.': this->ref_alt ^= Tomahawk::Constants::REF_ALT_N << 0; break;
+	default:
+		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Illegal SNV alt..." << std::endl;
+		exit(1);
 	}
 }
 
