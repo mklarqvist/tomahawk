@@ -12,6 +12,7 @@
 #include "../io/vcf/VCFHeader.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
 #include "base/TomahawkEntryMeta.h"
+#include "base/TomahawkEntrySupport.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
@@ -38,8 +39,9 @@ public:
 	bool add(const BCF::BCFEntry& line);
 
 	inline void reset(void){
-		this->buffer_rle_.reset();
-		this->buffer_meta_.reset();
+		this->buffer_rle.reset();
+		this->buffer_meta.reset();
+		this->buffer_metaComplex.reset();
 	}
 
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
@@ -54,8 +56,8 @@ public:
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
 		// or if the number of entries written to buffer exceeds our set limit
-		if(this->totempole_entry.variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
-			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle_.size() << '/' << this->flush_limit << std::endl;
+		if(this->totempole_entry.variants >= this->n_variants_limit || this->buffer_rle.size() >= this->flush_limit){
+			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle.size() << '/' << this->flush_limit << std::endl;
 			return true;
 		}
 
@@ -63,7 +65,7 @@ public:
 	}
 
 	inline const U64& blocksWritten(void) const{ return this->blocksWritten_; }
-	inline const U64& size(void) const{ return this->buffer_rle_.size(); }
+	inline const U64& size(void) const{ return this->buffer_rle.size(); }
 	inline const U64& getVariantsWritten(void) const{ return this->variants_written; }
 
 	void CheckOutputNames(const std::string& input);
@@ -84,8 +86,9 @@ public:
 	Totempole::TotempoleEntry totempole_entry;
 	IO::TGZFController gzip_controller_;
 	Algorithm::TomahawkImportRLE* rleController_;
-	IO::BasicBuffer buffer_rle_;	// run lengths
-	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
+	IO::BasicBuffer buffer_rle;	// run lengths
+	IO::BasicBuffer buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
+	IO::BasicBuffer buffer_metaComplex; // complex meta data
 
 	VCF::VCFHeader* vcf_header_;
 

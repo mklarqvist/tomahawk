@@ -312,20 +312,20 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 	// If the number of alleles == 2
 	if(line.body->n_allele == 2){
 		U32 internal_pos = line.p_genotypes; // virtual byte offset of genotype start
-		U64 sumLength = 0;
+		T sumLength = 0;
 		T length = 1;
 		T RLE = 0;
 
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 		BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 
 		// MSB contains phasing information
 		this->helper.phased = (packed & 1);
 
 		for(U32 i = 2; i < this->n_samples * 2; i += 2){
-			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 			const BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 
 			if(packed != packed_internal){
@@ -402,8 +402,8 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 		// If word size is BYTE
 		if(word_size == 1){
 			for(U32 i = 0; i < this->n_samples * 2; i += 2){
-				const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-				const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+				const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+				const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 				const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 				runs += packed;
 			}

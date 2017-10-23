@@ -90,6 +90,12 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 }
 
 bool TGZFController::Deflate(const buffer_type& buffer){
+	if(buffer.pointer > std::numeric_limits<U32>::max()){
+		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Format is limited to 2^32 bits. Buffer overflow..." << std::endl;
+		return(false);
+	}
+
+	// Resize to fit
 	this->buffer.resize(buffer);
 
 	memset(this->buffer.data, 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
@@ -188,6 +194,12 @@ bool TGZFController::Deflate(const buffer_type& buffer){
 
 bool TGZFController::Deflate(buffer_type& meta, buffer_type& rle){
 	meta += rle;
+	return(this->Deflate(meta));
+}
+
+bool TGZFController::Deflate(buffer_type& meta, buffer_type& meta_complex, buffer_type& rle){
+	meta += rle;
+	meta += meta_complex;
 	return(this->Deflate(meta));
 }
 

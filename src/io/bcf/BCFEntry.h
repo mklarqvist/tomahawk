@@ -65,7 +65,7 @@ struct BCFEntryBody{
 struct BCFTypeString{
 	typedef BCFAtomicBase base_type;
 
-	U32 length;
+	U16 length;
 	char* data; // reinterpret me as char*
 };
 
