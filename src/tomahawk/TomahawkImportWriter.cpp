@@ -289,6 +289,7 @@ bool TomahawkImportWriter::flush(void){
 	this->variants_written += this->totempole_entry.variants; // update number of variants written
 
 	this->reset(); // reset buffers
+
 	return true;
 }
 

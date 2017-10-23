@@ -286,6 +286,7 @@ private:
 	template <class T> bool RunLengthEncodeSimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool RunLengthEncodeComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs);
+	template <class T> bool EncodeSingle(const bcf_type& line, buffer_type& runs);
 
 private:
 	U64 n_samples;
@@ -299,6 +300,23 @@ private:
 public:
 	U64 savings;
 };
+
+template <class T>
+bool TomahawkImportRLE::EncodeSingle(const bcf_type& line, buffer_type& runs){
+	const U32 shift_size = ceil(log2(double(line.body->n_allele) + 1));
+
+	// Virtual byte offset into start of genotypes
+	// in BCF entry
+	U32 internal_pos = line.p_genotypes;
+	for(U32 i = 0; i < this->n_samples * 2; i += 2){
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+		const T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
+		runs += packed;
+	}
+
+	return(true);
+}
 
 template <class T>
 bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs){
@@ -347,10 +365,9 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 
 				// Reset and update
 				sumLength += length;
-				length = 1;
+				length = 0;
 				packed = packed_internal;
 				++n_runs;
-				continue;
 			}
 			++length;
 		}
@@ -383,6 +400,9 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 	// If number of alleles != 2
 	// Revert back to no-encoding
 	else {
+		meta_base.biallelic = false;
+		n_runs = this->n_samples;
+
 		// We use ceil(log2(n_alleles + 1)) bits for each allele
 		// the + 1 represent the missing case
 		// MSB first bit encode for phasing between the diploid alleles
@@ -391,27 +411,12 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 		const U32 shift_size = ceil(log2(double(line.body->n_allele) + 1));
 		const BYTE bit_width = 2*shift_size + 1;
 		const BYTE word_size = ceil(float(bit_width) / 8);
-		meta_base.biallelic = false;
 
-		// Virtual byte offset into start of genotypes
-		// in BCF entry
-		U32 internal_pos = line.p_genotypes;
-		n_runs = this->n_samples;
-
-		// Todo: move to templated function
-		// If word size is BYTE
-		if(word_size == 1){
-			for(U32 i = 0; i < this->n_samples * 2; i += 2){
-				const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-				const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-				const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
-				runs += packed;
-			}
-		}
-		// If word_size is U16
+		if(word_size == 1) this->EncodeSingle<BYTE>(line, runs);
+		else if(word_size == 2) this->EncodeSingle<U16>(line, runs);
 		else {
-			std::cerr << Helpers::timestamp("ERROR", "RLE") << "Not implemented word-size > 1..." << std::endl;
-			exit(1);
+			std::cerr << "Illegal number of alleles" << std::endl;
+			return false;
 		}
 
 		this->helper.HWE_P = 1;
