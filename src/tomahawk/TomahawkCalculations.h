@@ -278,7 +278,7 @@ bool TomahawkCalculations::__calculateTajimaDGrouped(const U32 bin_size){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		// Cycle over variants
 		while(controller.nextVariant(runs, meta)){
@@ -414,7 +414,7 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		while(controller.nextVariant(runs, meta)){
 			// Assert file is sorted
@@ -522,7 +522,7 @@ bool TomahawkCalculations::__calculateSiteStats(void){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		const U32 currentContigID = this->totempole[i].contigID;
 		while(controller.nextVariant(runs, meta)){
@@ -585,7 +585,7 @@ bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		const U32 currentContigID = this->totempole[i].contigID;
 		while(controller.nextVariant(runs, meta)){
@@ -655,7 +655,7 @@ bool TomahawkCalculations::__calculateFST(void){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		while(controller.nextVariant(runs, meta)){
 			//
@@ -682,7 +682,7 @@ bool TomahawkCalculations::__calculateSFS(void){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		// Cycle over variants in block
 		while(controller.nextVariant(runs, meta)){
@@ -756,7 +756,7 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 		// Now have data
 		TomahawkIterator<T> controller(this->data.data, this->totempole[i]);
 		const Support::TomahawkRunPacked<T>* runs = nullptr;
-		const Support::TomahawkEntryMetaRLE<T>* meta = nullptr;
+		const Support::TomahawkEntryMeta<T>* meta = nullptr;
 
 		// Cycle over variants in block
 		while(controller.nextVariant(runs, meta)){

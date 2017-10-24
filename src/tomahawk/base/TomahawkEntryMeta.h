@@ -77,6 +77,7 @@ public:
 	// start position into the complex byte stream
 	U32 virtual_offset_complex;
 	// offset to the byte end of this entry in the stream
+	// (either RLE or simple stream depending on context)
 	// this allows fast iteration when switching between
 	// the two compression approaches
 	U32 virtual_offset;
@@ -89,12 +90,12 @@ public:
  */
 #pragma pack(1)
 template <class T>
-struct TomahawkEntryMetaRLE : public TomahawkEntryMetaBase{
-	typedef TomahawkEntryMetaRLE self_type;
+struct TomahawkEntryMeta : public TomahawkEntryMetaBase{
+	typedef TomahawkEntryMeta self_type;
 
 public:
-	TomahawkEntryMetaRLE() : runs(0){}
-	~TomahawkEntryMetaRLE(){}
+	TomahawkEntryMeta() : runs(0){}
+	~TomahawkEntryMeta(){}
 
 	inline bool isValid(void) const{ return(this->runs > 0); }
 

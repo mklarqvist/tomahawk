@@ -192,7 +192,7 @@ bool TomahawkReader::loadGroups(const std::string& file){
 bool TomahawkReader::getBlocks(void){
 	U64 buffer_size = 0;
 	for(U32 i = 0; i < this->totempole.header.blocks; ++i){
-		buffer_size += this->totempole[i].uncompressed_size;
+		buffer_size += this->totempole[i].l_uncompressed;
 	}
 
 	if(buffer_size == 0){
@@ -215,8 +215,8 @@ bool TomahawkReader::getBlocks(void){
 bool TomahawkReader::getBlocks(std::vector<U32>& blocks){
 	U64 buffer_size = 0;
 	for(U32 i = 0; i < blocks.size(); ++i){
-		std::cerr << i << '/' << blocks.size() << '\t' << this->totempole[i].uncompressed_size << std::endl;
-		buffer_size += this->totempole[i].uncompressed_size;
+		std::cerr << i << '/' << blocks.size() << '\t' << this->totempole[i].l_uncompressed << std::endl;
+		buffer_size += this->totempole[i].l_uncompressed;
 	}
 
 	if(buffer_size == 0)
@@ -238,7 +238,7 @@ bool TomahawkReader::getBlocks(std::vector< std::pair<U32, U32> >& blocks){
 	U64 buffer_size = 0;
 	for(U32 i = 0; i < blocks.size(); ++i){
 		for(U32 j = blocks[i].first; j < blocks[i].second; ++j){
-			buffer_size += this->totempole[j].uncompressed_size;
+			buffer_size += this->totempole[j].l_uncompressed;
 		}
 	}
 

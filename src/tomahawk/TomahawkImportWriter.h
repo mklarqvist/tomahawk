@@ -25,6 +25,10 @@ class TomahawkImportWriter {
 	typedef TomahawkImporterFilters filter_type;
 	typedef Support::TomahawkEntryMetaBase meta_base_type;
 	typedef Algorithm::TomahawkImportEncoder encoder_type;
+	typedef VCF::VCFHeader vcf_header_type;
+	typedef Totempole::TotempoleEntry totempole_entry_type;
+	typedef IO::TGZFController tgzf_controller_type;
+	typedef BCF::BCFEntry bcf_entry_type;
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -37,10 +41,11 @@ public:
 	void WriteFinal(void);
 	void setHeader(VCF::VCFHeader& header);
 	bool add(const VCF::VCFLine& line);
-	bool add(const BCF::BCFEntry& line);
+	bool add(const bcf_entry_type& line);
 
 	inline void reset(void){
-		this->buffer_rle.reset();
+		this->buffer_encode_rle.reset();
+		this->buffer_encode_simple.reset();
 		this->buffer_meta.reset();
 		this->buffer_metaComplex.reset();
 	}
@@ -57,7 +62,7 @@ public:
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
 		// or if the number of entries written to buffer exceeds our set limit
-		if(this->totempole_entry.variants >= this->n_variants_limit || this->buffer_rle.size() >= this->flush_limit){
+		if(this->totempole_entry.n_variantsRLE + this->totempole_entry.n_variantsComplex >= this->n_variants_limit || this->buffer_encode_rle.size() >= this->flush_limit){
 			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle.size() << '/' << this->flush_limit << std::endl;
 			return true;
 		}
@@ -66,7 +71,7 @@ public:
 	}
 
 	inline const U64& blocksWritten(void) const{ return this->blocksWritten_; }
-	inline const U64& size(void) const{ return this->buffer_rle.size(); }
+	inline const U64& size(void) const{ return this->buffer_encode_rle.size(); }
 	inline const U64& getVariantsWritten(void) const{ return this->variants_written; }
 
 	void CheckOutputNames(const std::string& input);
@@ -84,14 +89,15 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 	const filter_type& filter;		// filters
 
-	Totempole::TotempoleEntry totempole_entry;
-	IO::TGZFController gzip_controller_;
+	totempole_entry_type totempole_entry;
+	tgzf_controller_type gzip_controller_;
 	encoder_type* encoder;
-	IO::BasicBuffer buffer_rle;	// run lengths
-	IO::BasicBuffer buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
-	IO::BasicBuffer buffer_metaComplex; // complex meta data
+	buffer_type buffer_encode_rle; // run lengths
+	buffer_type buffer_encode_simple; // simple encoding
+	buffer_type buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
+	buffer_type buffer_metaComplex; // complex meta data
 
-	VCF::VCFHeader* vcf_header_;
+	vcf_header_type* vcf_header_;
 
 	std::string filename;
 	std::string basePath;

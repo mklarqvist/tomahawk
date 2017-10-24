@@ -23,6 +23,12 @@ public:
 		typedef __support_allele_info self_type;
 		typedef IO::BasicBuffer buffer_type;
 
+		explicit __support_allele_info(void) : l_allele(0), allele(nullptr){}
+		~__support_allele_info(){
+			// do not clear char pointer
+			// points to byte stream
+		}
+
 		friend buffer_type& operator+=(buffer_type& buffer, const self_type& entry){
 			// Write out allele
 			typed_value n_ID;

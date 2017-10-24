@@ -100,7 +100,7 @@ public:
 
 template <class T, class Y>
 struct TomahawkIterator{
-	typedef Support::TomahawkEntryMetaRLE<T> meta_type;
+	typedef Support::TomahawkEntryMeta<T> meta_type;
 	typedef Totempole::TotempoleEntry totempole_type;
 
 public:
@@ -110,7 +110,7 @@ public:
 		runsPointer(0),
 		support(&support),
 		meta(reinterpret_cast<const meta_type* const>(target)),
-		runs(reinterpret_cast<const Y* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
+		runs(reinterpret_cast<const Y* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.n_variantsRLE])),
 		packed(new TomahawkBlockPacked)
 	{
 
@@ -168,7 +168,7 @@ public:
 	}
 
 	bool nextVariant(const Support::TomahawkRun<T>*& run, const meta_type*& meta){
-		if(this->position == this->support->variants)
+		if(this->position == this->support->n_variantsRLE)
 			return false;
 
 		run = &runs[this->runsPointer];
@@ -179,7 +179,7 @@ public:
 	}
 
 	bool nextVariant(const Support::TomahawkRunPacked<T>*& run, const meta_type*& meta){
-		if(this->position == this->support->variants)
+		if(this->position == this->support->n_variantsRLE)
 			return false;
 
 		run = reinterpret_cast<const Support::TomahawkRunPacked<T>*>(&runs[this->runsPointer]);
@@ -192,7 +192,7 @@ public:
 	inline const meta_type& currentMeta(void) const{ return(this->meta[this->metaPointer]); }
 	inline const Y& operator[](const U32 p) const{ return this->runs[this->runsPointer + p]; }
 
-	const U16& size(void) const{ return this->support->variants; }
+	const U16& size(void) const{ return this->support->n_variantsRLE; }
 	void reset(void){
 		this->metaPointer = 0;
 		this->runsPointer = 0;
@@ -282,14 +282,14 @@ public:
 
 template <class T>
 bool TomahawkBlockPacked::Build(TomahawkIterator<T>& controller, const U64& samples){
-	if(controller.support->variants == 0)
+	if(controller.support->n_variantsRLE == 0)
 		return false;
 
 	controller.reset();
 	TomahawkIterator<T, Support::TomahawkRunPacked<T> >& c = *reinterpret_cast<TomahawkIterator<T, Support::TomahawkRunPacked<T> >*>(&controller);
 
-	this->width = c.support->variants;
-	this->data = new pair_type*[c.support->variants]; // Todo: fix this, poor locality
+	this->width = c.support->n_variantsRLE;
+	this->data = new pair_type*[c.support->n_variantsRLE]; // Todo: fix this, poor locality
 
 	const U32 byte_width = ceil((double)samples/4);
 
@@ -298,7 +298,7 @@ bool TomahawkBlockPacked::Build(TomahawkIterator<T>& controller, const U64& samp
 	const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 	const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-	for(U32 i = 0; i < c.support->variants; ++i){
+	for(U32 i = 0; i < c.support->n_variantsRLE; ++i){
 		this->data[i] = new pair_type(byte_width);
 		Algorithm::GenotypeBitPacker packerA(this->data[i]->data, 2);
 		Algorithm::GenotypeBitPacker packerB(this->data[i]->mask, 2);
@@ -314,7 +314,7 @@ bool TomahawkBlockPacked::Build(TomahawkIterator<T>& controller, const U64& samp
 	const U32 byteAlignedEnd  = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
 
 	// Search for zero runs in either end
-	for(U32 i = 0; i < c.support->variants; ++i){
+	for(U32 i = 0; i < c.support->n_variantsRLE; ++i){
 		S32 j = 0;
 
 		// Search from left->right

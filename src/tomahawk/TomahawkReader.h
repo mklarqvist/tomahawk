@@ -159,7 +159,7 @@ bool TomahawkReader::__outputBlock(const U32& id){
 	TomahawkIterator<T> tomahawk_controller(this->data.data, this->totempole[id]);
 
 	// For each variant in Tomahawk block
-	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
+	for(U32 j = 0; j < tomahawk_controller.support->n_variantsRLE; ++j){
 		tomahawk_controller.WriteVariant(this->totempole, this->outputBuffer, this->dropGenotypes);
 
 		// Next variant

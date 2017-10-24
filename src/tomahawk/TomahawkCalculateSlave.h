@@ -255,7 +255,7 @@ class TomahawkCalculateSlave{
 	typedef TomahawkCalculateSlave<T> self_type;
 	typedef TomahawkBlockManager<const T> manager_type;
 	typedef TomahawkIterator<const T> controller_type;
-	typedef const Tomahawk::Support::TomahawkEntryMetaRLE<const T> meta_type;
+	typedef const Tomahawk::Support::TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T> output_manager_type;

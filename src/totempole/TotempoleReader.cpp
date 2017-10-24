@@ -134,7 +134,7 @@ bool TotempoleReader::Open(const std::string filename){
 
 	U64 totalEntries = 0;
 	for(U32 i = 0; i < this->getBlocks(); ++i)
-		totalEntries += this->entries[i].variants;
+		totalEntries += this->entries[i].n_variantsRLE;
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(totalEntries)) << " variants..." << std::endl;

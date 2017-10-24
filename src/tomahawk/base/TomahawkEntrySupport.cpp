@@ -27,12 +27,14 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 	if(entry.l_ID < 63) offset += sizeof(BYTE);
 	else if(entry.l_ID < 256) offset += 2*sizeof(BYTE); // BYTE + BYTE
 	else offset += sizeof(BYTE) + sizeof(U16); // BYTE + U16
+	offset += entry.l_ID;
 
 	// Allele length
 	for(U32 i = 0; i < entry.body->n_allele; ++i){
 		if(entry.alleles[i].length < 63) offset += sizeof(BYTE);
 		else if(entry.alleles[i].length < 256) offset += 2*sizeof(BYTE); // BYTE + BYTE
 		else offset += sizeof(BYTE) + sizeof(U16); // BYTE + U16
+		offset += entry.alleles[i].length;
 	}
 
 	// Assert that data will fit in buffer
@@ -63,6 +65,7 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 		buffer += n_ID;
 		buffer += (U16)entry.l_ID;
 	}
+	buffer.Add(entry.ID, entry.l_ID);
 
 	// Write out alleles
 	for(U32 i = 0; i < entry.body->n_allele; ++i){
@@ -84,6 +87,7 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 			buffer += n_ID;
 			buffer += (U16)entry.alleles[i].length;
 		}
+		buffer.Add(entry.alleles[i].data, entry.alleles[i].length);
 	}
 
 	//std::cerr << "Expected: " << offset << "; observed: " << (S32)buffer.pointer - offset << std::endl;

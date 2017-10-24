@@ -65,7 +65,7 @@ private:
 	bool parseBCFLine(bcf_entry_type& line); // Import a BCF line
 	// Check if the current meta and RLE buffers exceeds
 	// the disk flush limit
-	bool checkSize(void) const{ return(this->meta_buffer.size() + this->rle_buffer.size() >= this->block_flush_limit); }
+	bool checkSize(void) const{ return(this->meta_buffer.size() + this->encode_rle_buffer.size() >= this->block_flush_limit); }
 
 private:
 	U32 block_flush_limit;    // limit in bytes when to flush to disk
@@ -74,7 +74,8 @@ private:
 	reader_type reader_;      // reader
 	writer_type writer_;      // writer
 	buffer_type meta_buffer;  // meta buffer
-	buffer_type rle_buffer;   // RLE buffer
+	buffer_type encode_rle_buffer;   // RLE buffer
+	buffer_type encode_simple_buffer;   // RLE buffer
 	totempole_entry_type totempole_entry;  // totempole entry for indexing
 	filter_type filters;
 	header_type* header_;     // header
