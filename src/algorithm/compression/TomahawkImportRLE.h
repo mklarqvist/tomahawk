@@ -303,7 +303,7 @@ public:
 
 template <class T>
 bool TomahawkImportRLE::EncodeSingle(const bcf_type& line, buffer_type& runs){
-	const U32 shift_size = ceil(log2(double(line.body->n_allele) + 1));
+	const U32 shift_size = ceil(log2(double(line.body->n_allele))) + 1;
 
 	// Virtual byte offset into start of genotypes
 	// in BCF entry
@@ -408,7 +408,7 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 		// MSB first bit encode for phasing between the diploid alleles
 		// The word size is then (2*bits + 1) / 8 where + 1 represent the phasing
 		// information
-		const U32 shift_size = ceil(log2(double(line.body->n_allele) + 1));
+		const U32 shift_size = ceil(log2(double(line.body->n_allele))) + 1;
 		const BYTE bit_width = 2*shift_size + 1;
 		const BYTE word_size = ceil(float(bit_width) / 8);
 

@@ -1,6 +1,11 @@
 #ifndef TOMAHAWK_BASE_TOMAHAWKENTRYSUPPORT_H_
 #define TOMAHAWK_BASE_TOMAHAWKENTRYSUPPORT_H_
 
+#include <cassert>
+
+#include "../../io/BasicBuffer.h"
+#include "../../io/bcf/BCFEntry.h"
+
 namespace Tomahawk{
 namespace Support{
 
@@ -13,6 +18,7 @@ private:
 	typedef BCF::BCFEntry bcf_type;
 	typedef IO::BasicBuffer buffer_type;
 
+public:
 	typedef struct __support_allele_info{
 		typedef __support_allele_info self_type;
 		typedef IO::BasicBuffer buffer_type;
@@ -67,18 +73,8 @@ private:
 	} typed_value;
 
 public:
-	explicit TomahawkSupport(void) :
-		l_body(0),
-		QUAL(0),
-		n_allele(0),
-		n_ID(0),
-		ID(nullptr),
-		alleles(nullptr)
-	{}
-
-	~TomahawkSupport(void){
-		delete [] this->alleles;
-	}
+	explicit TomahawkSupport(void);
+	~TomahawkSupport(void);
 
 	bool parse(void);
 	bool parseID(void);
@@ -86,87 +82,15 @@ public:
 
 	// Write out entry using BCF entry as template
 	// and injects into buffer
-	bool write(const bcf_type& entry, buffer_type& buffer){
-		// Determine offset
-		// Base length
-		// offset + QUAL + n_alleles
-		U32 offset = sizeof(U32) + sizeof(float) + sizeof(U16);
-		const U32 buffer_start = buffer.pointer;
-
-		// ID length
-		if(entry.l_ID < 63) offset += sizeof(BYTE);
-		else if(entry.l_ID < 256) offset += 2*sizeof(BYTE); // BYTE + BYTE
-		else offset += sizeof(BYTE) + sizeof(U16); // BYTE + U16
-
-		// Allele length
-		for(U32 i = 0; i < entry.body->n_allele; ++i){
-			if(entry.alleles[i].length < 63) offset += sizeof(BYTE);
-			else if(entry.alleles[i].length < 256) offset += 2*sizeof(BYTE); // BYTE + BYTE
-			else offset += sizeof(BYTE) + sizeof(U16); // BYTE + U16
-		}
-
-		// Assert that data will fit in buffer
-		if(buffer.pointer + offset > buffer.width)
-			buffer.resize(buffer.width * 1.2);
-
-		// Write out data
-		// offset is
-		buffer += offset;
-		buffer += entry.body->QUAL;
-		buffer += (U16)entry.body->n_allele;
-
-		// Write out ID
-		typed_value n_ID;
-		//std::cerr << (S32)entry.l_ID << std::endl;
-		if(entry.l_ID < 63){
-			n_ID.type = typed_value::BYTE_TYPE;
-			n_ID.length = entry.l_ID;
-			buffer += n_ID;
-		} else if(entry.l_ID < 256){
-			n_ID.type = typed_value::BYTE_TYPE;
-			n_ID.length = 63;
-			buffer += n_ID;
-			buffer += (BYTE)entry.l_ID;
-		} else{
-			n_ID.type = typed_value::U16_TYPE;
-			n_ID.length = 63;
-			buffer += n_ID;
-			buffer += (U16)entry.l_ID;
-		}
-
-		// Write out alleles
-		for(U32 i = 0; i < entry.body->n_allele; ++i){
-			//std::cerr << (S32)entry.alleles[i].length << std::endl;
-			// Write out allele
-			typed_value n_ID;
-			if(entry.alleles[i].length < 63){
-				n_ID.type = typed_value::BYTE_TYPE;
-				n_ID.length = entry.alleles[i].length;
-				buffer += n_ID;
-			} else if(entry.alleles[i].length < 256){
-				n_ID.type = typed_value::BYTE_TYPE;
-				n_ID.length = 63;
-				buffer += n_ID;
-				buffer += (BYTE)entry.alleles[i].length;
-			} else{
-				n_ID.type = typed_value::U16_TYPE;
-				n_ID.length = 63;
-				buffer += n_ID;
-				buffer += (U16)entry.alleles[i].length;
-			}
-		}
-
-		//std::cerr << "Expected: " << offset << "; observed: " << (S32)buffer.pointer - offset << std::endl;
-		assert((S32)buffer.pointer - (buffer_start + offset) == 0);
-
-		return true;
-	}
+	bool write(const bcf_type& entry, buffer_type& buffer);
 
 public:
-	// relative virtual offset to end of this value
-	// this is equivalent to its length
+	// Relative virtual offset to end of this
+	// (parsed) struct in the byte stream
+	// This is equivalent to its length
 	U32 l_body;
 	float QUAL;
+	// Number of alleles
 	U16 n_allele;
 	// ID
 	// byte length of ID

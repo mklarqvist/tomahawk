@@ -9,6 +9,7 @@ RM := rm
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include src/totempole/subdir.mk
+-include src/tomahawk/base/subdir.mk
 -include src/tomahawk/TomahawkOutput/subdir.mk
 -include src/tomahawk/subdir.mk
 -include src/third_party/zlib/subdir.mk
@@ -47,15 +48,13 @@ endif
 
 -include ../makefile.defs
 
-# Add inputs and outputs from these tool invocations to the build variables 
+# Add inputs and outputs from these tool invocations to the build variables
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ifneq ($BRANCH, master)
+ifneq ($BRANCH,master)
 GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
 else
 GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
 endif
-
-
 # All Target
 all: tomahawk
 

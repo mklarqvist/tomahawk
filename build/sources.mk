@@ -35,5 +35,6 @@ src/third_party/xxhash \
 src/third_party/zlib \
 src/tomahawk \
 src/tomahawk/TomahawkOutput \
+src/tomahawk/base \
 src/totempole \
 
