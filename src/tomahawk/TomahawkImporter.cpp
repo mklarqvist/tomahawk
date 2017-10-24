@@ -68,8 +68,8 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	this->sort_order_helper.prevcontigID = totempole.back().contigID;
 
 	this->writer_.setHeader(*this->header_);
-	this->writer_.blocksWritten_ = totempole.getHeader().blocks;
-	this->writer_.largest_uncompressed_block_ = totempole.getHeader().largest_uncompressed;
+	this->writer_.n_blocksWritten = totempole.getHeader().blocks;
+	this->writer_.largest_uncompressed_block = totempole.getHeader().largest_uncompressed;
 	if(!this->writer_.OpenExtend(extendFile))
 		return false;
 

@@ -70,38 +70,39 @@ public:
 		return false;
 	}
 
-	inline const U64& blocksWritten(void) const{ return this->blocksWritten_; }
+	inline const U64& blocksWritten(void) const{ return this->n_blocksWritten; }
 	inline const U64& size(void) const{ return this->buffer_encode_rle.size(); }
-	inline const U64& getVariantsWritten(void) const{ return this->variants_written; }
+	inline const U64& getVariantsWritten(void) const{ return this->n_variants_written; }
 
 	void CheckOutputNames(const std::string& input);
 
 	inline Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
-	std::ofstream streamTomahawk;	// stream
-	std::ofstream streamTotempole;	// stream
+	std::ofstream streamTomahawk;   // stream for data
+	std::ofstream streamTotempole;  // stream for index
+	std::string filename;
+	std::string basePath;
+	std::string baseName;
+
 	U32 flush_limit;
 	U32 n_variants_limit;
-	U64 blocksWritten_;				// number of blocks written
-	U64 variants_written;			// number of variants written
-	U64 variants_complex_written;	// number of complex variants written
-	U32 largest_uncompressed_block_;// size of largest block in b
-	const filter_type& filter;		// filters
+	U64 n_blocksWritten;            // number of blocks written
+	U64 n_variants_written;         // number of variants written
+	U64 n_variants_complex_written; // number of complex variants written
+	U32 largest_uncompressed_block; // size of largest block in b
+	const filter_type& filter;      // filters
 
 	totempole_entry_type totempole_entry;
-	tgzf_controller_type gzip_controller_;
-	encoder_type* encoder;
+	tgzf_controller_type gzip_controller;
+
 	buffer_type buffer_encode_rle; // run lengths
 	buffer_type buffer_encode_simple; // simple encoding
 	buffer_type buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
 	buffer_type buffer_metaComplex; // complex meta data
 
-	vcf_header_type* vcf_header_;
-
-	std::string filename;
-	std::string basePath;
-	std::string baseName;
+	encoder_type* encoder;
+	vcf_header_type* vcf_header;
 };
 
 } /* namespace Tomahawk */

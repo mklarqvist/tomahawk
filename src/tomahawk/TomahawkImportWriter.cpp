@@ -17,17 +17,17 @@ namespace Tomahawk {
 TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
 	n_variants_limit(1024),
-	blocksWritten_(0),
-	variants_written(0),
-	variants_complex_written(0),
-	largest_uncompressed_block_(0),
+	n_blocksWritten(0),
+	n_variants_written(0),
+	n_variants_complex_written(0),
+	largest_uncompressed_block(0),
 	filter(filter),
-	encoder(nullptr),
 	buffer_encode_rle(flush_limit*2),
 	buffer_encode_simple(flush_limit*2),
 	buffer_meta(flush_limit*2),
 	buffer_metaComplex(flush_limit*2),
-	vcf_header_(nullptr)
+	encoder(nullptr),
+	vcf_header(nullptr)
 {}
 
 TomahawkImportWriter::~TomahawkImportWriter(){
@@ -67,12 +67,12 @@ bool TomahawkImportWriter::Open(const std::string output){
 }
 
 void TomahawkImportWriter::DetermineFlushLimit(void){
-	this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
-	if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1)
+	this->flush_limit = this->vcf_header->samples * this->n_variants_limit / 10; // Worst case
+	if(this->vcf_header->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1)
 		this->flush_limit *= sizeof(BYTE);
-	else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1)
+	else if(this->vcf_header->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1)
 		this->flush_limit *= sizeof(U16);
-	else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1)
+	else if(this->vcf_header->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1)
 		this->flush_limit *= sizeof(U32);
 	else this->flush_limit *= sizeof(U64);
 }
@@ -110,7 +110,7 @@ bool TomahawkImportWriter::OpenExtend(const std::string output){
 }
 
 void TomahawkImportWriter::WriteHeaders(void){
-	if(this->vcf_header_ == nullptr){
+	if(this->vcf_header == nullptr){
 		std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
 		exit(1);
 	}
@@ -118,22 +118,22 @@ void TomahawkImportWriter::WriteHeaders(void){
 	this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 	this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
 
-	const U64& samples = this->vcf_header_->samples;
+	const U64& samples = this->vcf_header->samples;
 	Totempole::TotempoleHeader h(samples);
 	this->streamTotempole << h;
 	Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 	this->streamTomahawk << *hB;
 
 	// Write the number of contigs
-	const U32 n_contigs = this->vcf_header_->contigs.size();
+	const U32 n_contigs = this->vcf_header->contigs.size();
 	this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
 
 	// Write contig data to Totempole
 	// length | n_char | chars[0 .. n_char - 1]
-	for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
-		Totempole::TotempoleContigBase contig(this->vcf_header_->contigs[i].length,
-											  this->vcf_header_->contigs[i].name.size(),
-											  this->vcf_header_->contigs[i].name);
+	for(U32 i = 0; i < this->vcf_header->contigs.size(); ++i){
+		Totempole::TotempoleContigBase contig(this->vcf_header->contigs[i].length,
+											  this->vcf_header->contigs[i].name.size(),
+											  this->vcf_header->contigs[i].name);
 
 		this->streamTotempole << contig;
 	}
@@ -141,24 +141,24 @@ void TomahawkImportWriter::WriteHeaders(void){
 	// Write sample names
 	// n_char | chars[0..n_char - 1]
 	for(U32 i = 0; i < samples; ++i){
-		const U32 n_char = this->vcf_header_->sampleNames[i].size();
+		const U32 n_char = this->vcf_header->sampleNames[i].size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-		this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
+		this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header->sampleNames[i][0]), n_char);
 	}
 
 	// Push in VCF header and executed line
-	buffer_type temp(this->vcf_header_->literal_lines.size()*65536);
-	for(U32 i = 0; i < this->vcf_header_->literal_lines.size(); ++i)
-		temp += this->vcf_header_->literal_lines[i] + '\n';
+	buffer_type temp(this->vcf_header->literal_lines.size()*65536);
+	for(U32 i = 0; i < this->vcf_header->literal_lines.size(); ++i)
+		temp += this->vcf_header->literal_lines[i] + '\n';
 
 	const std::string command = "##tomahawk_importCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
 		+ "; VERSION=" + std::string(VERSION)
 		+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
 
 	temp += command;
-	this->gzip_controller_.Deflate(temp);
-	this->streamTotempole.write(&this->gzip_controller_.buffer.data[0], this->gzip_controller_.buffer.pointer);
-	this->gzip_controller_.Clear();
+	this->gzip_controller.Deflate(temp);
+	this->streamTotempole.write(&this->gzip_controller.buffer.data[0], this->gzip_controller.buffer.pointer);
+	this->gzip_controller.Clear();
 	temp.deleteAll();
 }
 
@@ -180,14 +180,14 @@ void TomahawkImportWriter::WriteFinal(void){
 	}
 
 	streamTemp.seekg(shift);
-	streamTemp.write(reinterpret_cast<const char*>(&this->blocksWritten_), sizeof(U32));
-	streamTemp.write(reinterpret_cast<const char*>(&this->largest_uncompressed_block_), sizeof(U32));
+	streamTemp.write(reinterpret_cast<const char*>(&this->n_blocksWritten), sizeof(U32));
+	streamTemp.write(reinterpret_cast<const char*>(&this->largest_uncompressed_block), sizeof(U32));
 	streamTemp.flush();
 	streamTemp.close();
 }
 
 void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
-	this->vcf_header_ = &header;
+	this->vcf_header = &header;
 	this->encoder = new encoder_type(header.samples);
 	this->encoder->DetermineBitWidth();
 }
@@ -320,27 +320,26 @@ bool TomahawkImportWriter::flush(void){
 	std::cerr << this->totempole_entry.n_variantsRLE+this->totempole_entry.n_variantsComplex << '\t' << this->totempole_entry.n_variantsRLE << '\t' << this->totempole_entry.n_variantsComplex << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << '\t';
 
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
-	//this->buffer_meta += this->buffer_metaComplex;
-	//this->buffer_encode_rle += this->buffer_encode_simple;
 
+	// Merge data to single buffer
 	this->buffer_meta += this->buffer_encode_rle;
 	this->buffer_meta += this->buffer_encode_simple;
 	this->buffer_meta += this->buffer_metaComplex;
 
-	this->gzip_controller_.Deflate(this->buffer_meta); // Deflate block
-	this->streamTomahawk << this->gzip_controller_; // Write tomahawk output
-	std::cerr << this->gzip_controller_.buffer.pointer << std::endl;
-	this->gzip_controller_.Clear(); // Clean up gzip controller
+	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
+	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	std::cerr << this->gzip_controller.buffer.pointer << std::endl;
+	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	// Keep track of largest block observed
-	if(this->buffer_meta.size() > this->largest_uncompressed_block_)
-		this->largest_uncompressed_block_ = this->buffer_meta.size();
+	if(this->buffer_meta.size() > this->largest_uncompressed_block)
+		this->largest_uncompressed_block = this->buffer_meta.size();
 
 	this->totempole_entry.l_uncompressed = this->buffer_meta.size(); // Store uncompressed size
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->streamTotempole << this->totempole_entry; // Write totempole output
-	++this->blocksWritten_; // update number of blocks written
-	this->variants_written += this->totempole_entry.n_variantsRLE + this->totempole_entry.n_variantsComplex; // update number of variants written
+	++this->n_blocksWritten; // update number of blocks written
+	this->n_variants_written += this->totempole_entry.n_variantsRLE + this->totempole_entry.n_variantsComplex; // update number of variants written
 
 	this->reset(); // reset buffers
 
