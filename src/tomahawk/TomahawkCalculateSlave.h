@@ -255,7 +255,7 @@ class TomahawkCalculateSlave{
 	typedef TomahawkCalculateSlave<T> self_type;
 	typedef TomahawkBlockManager<const T> manager_type;
 	typedef TomahawkIterator<const T> controller_type;
-	typedef const Support::TomahawkEntryMeta<const T> meta_type;
+	typedef const Tomahawk::Support::TomahawkEntryMetaRLE<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T> output_manager_type;
@@ -438,7 +438,7 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 	if(mB.HWE_P < LOW_HWE_THRESHOLD)
 		this->helper.setFailedHWEB();
 
-	if(mA.missing || mB.missing)
+	if(mA.controller.missing || mB.controller.missing)
 		this->helper.setHasMissingValues();
 }
 
@@ -906,7 +906,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_type& a, const controller_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().missing == 0 && b.currentMeta().missing == 0)
+	if(a.currentMeta().controller.missing == 0 && b.currentMeta().controller.missing == 0)
 		return(this->CalculateLDUnphasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1048,7 +1048,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_type& a, const controller_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().missing == 0 && b.currentMeta().missing == 0)
+	if(a.currentMeta().controller.missing == 0 && b.currentMeta().controller.missing == 0)
 		return(this->CalculateLDPhasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1495,7 +1495,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 		return;
 	}
 
-	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
+	if(block1.currentMeta().controller.phased == 1 && block2.currentMeta().controller.phased == 1){
 		if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);

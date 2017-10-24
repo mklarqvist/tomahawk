@@ -15,11 +15,11 @@ TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPref
 	reader_(inputFile),
 	writer_(this->filters),
 	header_(nullptr),
-	rle_controller(nullptr)
+	encoder(nullptr)
 {}
 
 TomahawkImporter::~TomahawkImporter(){
-	delete this->rle_controller;
+	delete this->encoder;
 	// do not delete header: it might be a borrowed pointer
 }
 
@@ -52,8 +52,8 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	line_type line(totempole.getHeader().samples);
 
 	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->header_->samples);
-	this->rle_controller->DetermineBitWidth();
+	this->encoder = new encoder_type(this->header_->samples);
+	this->encoder->DetermineBitWidth();
 
 	this->reader_.clear();
 	// seek reader until line does not start with '#'
@@ -153,8 +153,8 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->header_->samples);
-	this->rle_controller->DetermineBitWidth();
+	this->encoder = new encoder_type(this->header_->samples);
+	this->encoder->DetermineBitWidth();
 
 	this->writer_.setHeader(reader.header);
 	if(!this->writer_.Open(this->outputPrefix)){
@@ -259,8 +259,8 @@ bool TomahawkImporter::BuildVCF(void){
 	}
 
 	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->header_->samples);
-	this->rle_controller->DetermineBitWidth();
+	this->encoder = new encoder_type(this->header_->samples);
+	this->encoder->DetermineBitWidth();
 
 	// Parse lines
 	line_type line(this->header_->size());

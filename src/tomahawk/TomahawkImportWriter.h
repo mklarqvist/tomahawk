@@ -3,6 +3,7 @@
 
 #include <fstream>
 
+#include "../algorithm/compression/TomahawkImportEncoder.h"
 #include "../support/TypeDefinitions.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
@@ -10,7 +11,6 @@
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
-#include "../algorithm/compression/TomahawkImportRLE.h"
 #include "base/TomahawkEntryMeta.h"
 #include "base/TomahawkEntrySupport.h"
 #include "../totempole/TotempoleEntry.h"
@@ -24,6 +24,7 @@ class TomahawkImportWriter {
 	typedef IO::BasicBuffer buffer_type;
 	typedef TomahawkImporterFilters filter_type;
 	typedef Support::TomahawkEntryMetaBase meta_base_type;
+	typedef Algorithm::TomahawkImportEncoder encoder_type;
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -85,7 +86,7 @@ public:
 
 	Totempole::TotempoleEntry totempole_entry;
 	IO::TGZFController gzip_controller_;
-	Algorithm::TomahawkImportRLE* rleController_;
+	encoder_type* encoder;
 	IO::BasicBuffer buffer_rle;	// run lengths
 	IO::BasicBuffer buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
 	IO::BasicBuffer buffer_metaComplex; // complex meta data

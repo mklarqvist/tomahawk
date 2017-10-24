@@ -100,7 +100,7 @@ public:
 
 template <class T, class Y>
 struct TomahawkIterator{
-	typedef Support::TomahawkEntryMeta<T> meta_type;
+	typedef Support::TomahawkEntryMetaRLE<T> meta_type;
 	typedef Totempole::TotempoleEntry totempole_type;
 
 public:

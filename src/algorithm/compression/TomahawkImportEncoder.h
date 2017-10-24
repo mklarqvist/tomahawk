@@ -1,5 +1,5 @@
-#ifndef TOMAHAWKIMPORTRLE_H_
-#define TOMAHAWKIMPORTRLE_H_
+#ifndef TomahawkImportEncoder_H_
+#define TomahawkImportEncoder_H_
 
 #include <algorithm>
 #include <bitset>
@@ -7,16 +7,17 @@
 #include "../../math/FisherMath.h"
 #include "../../tomahawk/base/TomahawkEntryMeta.h"
 #include "../../io/bcf/BCFReader.h"
+#include "../../io/vcf/VCFLines.h"
 #include "RunLengthEncoding.h"
 
 namespace Tomahawk{
 namespace Algorithm{
 
 // Todo: These should all be moved to VCF or BCF entry class
-struct TomahawkImportRLEHelper{
-	typedef TomahawkImportRLEHelper self_type;
+struct TomahawkImportEncoderHelper{
+	typedef TomahawkImportEncoderHelper self_type;
 
-	TomahawkImportRLEHelper(const U64 expectedSamples) :
+	TomahawkImportEncoderHelper(const U64 expectedSamples) :
 		MAF(0),
 		MGF(0),
 		HWE_P(0),
@@ -28,7 +29,7 @@ struct TomahawkImportRLEHelper{
 		memset(&this->countsGenotypes[0], 0, sizeof(U64)*16);
 		memset(&this->countsAlleles[0],   0, sizeof(U64)*3);
 	}
-	~TomahawkImportRLEHelper(){}
+	~TomahawkImportEncoderHelper(){}
 
 	U64& operator[](const U32& p){ return(this->countsGenotypes[p]); }
 
@@ -193,18 +194,18 @@ struct TomahawkImportRLEHelper{
 	FisherMath fisherTable;
 };
 
-class TomahawkImportRLE {
-	typedef TomahawkImportRLE self_type;
+class TomahawkImportEncoder {
+	typedef TomahawkImportEncoder self_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef VCF::VCFLine vcf_type;
 	typedef BCF::BCFEntry bcf_type;
 	typedef Support::TomahawkEntryMetaBase meta_base_type;
-	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*rleFunction)(const vcf_type& line, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
-	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*bcfFunction)(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
-	typedef TomahawkImportRLEHelper helper_type;
+	typedef bool (Tomahawk::Algorithm::TomahawkImportEncoder::*rleFunction)(const vcf_type& line, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
+	typedef bool (Tomahawk::Algorithm::TomahawkImportEncoder::*bcfFunction)(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
+	typedef TomahawkImportEncoderHelper helper_type;
 
 public:
-	TomahawkImportRLE(const U64 samples) :
+	TomahawkImportEncoder(const U64 samples) :
 		n_samples(samples),
 		encode(nullptr),
 		encodeComplex(nullptr),
@@ -216,7 +217,7 @@ public:
 	{
 	}
 
-	~TomahawkImportRLE(){
+	~TomahawkImportEncoder(){
 	}
 
 	void DetermineBitWidth(void){
@@ -302,16 +303,21 @@ public:
 };
 
 template <class T>
-bool TomahawkImportRLE::EncodeSingle(const bcf_type& line, buffer_type& runs){
+bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& runs){
 	const U32 shift_size = ceil(log2(double(line.body->n_allele))) + 1;
 
 	// Virtual byte offset into start of genotypes
 	// in BCF entry
 	U32 internal_pos = line.p_genotypes;
+
+	// Pack genotypes as
+	// allele A | alleleB | isPhased
 	for(U32 i = 0; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-		const T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
+		const T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) |
+				         (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) |
+						 (fmt_type_value2 & 1);
 		runs += packed;
 	}
 
@@ -319,12 +325,12 @@ bool TomahawkImportRLE::EncodeSingle(const bcf_type& line, buffer_type& runs){
 }
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs){
+bool TomahawkImportEncoder::RunLengthEncodeBCF(const bcf_type& line, meta_base_type& meta_base, buffer_type& meta, buffer_type& runs){
 	// Update basic values for a meta entry
 	meta_base.position = (U32)line.body->POS + 1; // Base-1
 	meta_base.ref_alt = line.ref_alt;
-	meta_base.biallelic = true;
-	meta_base.simple = line.isSimple();
+	meta_base.controller.biallelic = true;
+	meta_base.controller.simple = line.isSimple();
 	T n_runs = 0;
 
 	// If the number of alleles == 2
@@ -400,7 +406,7 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 	// If number of alleles != 2
 	// Revert back to no-encoding
 	else {
-		meta_base.biallelic = false;
+		meta_base.controller.biallelic = false;
 		n_runs = this->n_samples;
 
 		// We use ceil(log2(n_alleles + 1)) bits for each allele
@@ -424,11 +430,13 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 	}
 
 	// See meta for more information
-	meta_base.phased = this->helper.phased;
-	meta_base.missing = this->helper.missingValues;
+	meta_base.controller.phased = this->helper.phased;
+	meta_base.controller.missing = this->helper.missingValues;
 	meta_base.MGF = this->helper.MGF;
 	meta_base.HWE_P = this->helper.HWE_P;
 	meta_base.virtual_offset = runs.pointer; // position at end
+	// Set offset for complex pointer outside
+	//meta_base.virtual_offset_complex
 	meta += meta_base;
 	meta += n_runs;
 
@@ -438,7 +446,7 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const bcf_type& line, meta_base_type&
 }
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeSimple(const vcf_type& line, buffer_type& meta, buffer_type& runs){
+bool TomahawkImportEncoder::RunLengthEncodeSimple(const vcf_type& line, buffer_type& meta, buffer_type& runs){
 	meta += line.position;
 	meta += line.ref_alt;
 
@@ -544,7 +552,7 @@ bool TomahawkImportRLE::RunLengthEncodeSimple(const vcf_type& line, buffer_type&
 
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs){
+bool TomahawkImportEncoder::RunLengthEncodeComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs){
 	meta += line.position;
 	meta += line.ref_alt;
 
@@ -649,4 +657,4 @@ bool TomahawkImportRLE::RunLengthEncodeComplex(const vcf_type& line, buffer_type
 }
 }
 
-#endif /* TOMAHAWKIMPORTRLE_H_ */
+#endif /* TomahawkImportEncoder_H_ */

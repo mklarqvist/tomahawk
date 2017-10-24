@@ -10,7 +10,7 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	variants_complex_written(0),
 	largest_uncompressed_block_(0),
 	filter(filter),
-	rleController_(nullptr),
+	encoder(nullptr),
 	buffer_rle(flush_limit*2),
 	buffer_meta(flush_limit*2),
 	buffer_metaComplex(flush_limit*2),
@@ -18,7 +18,7 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 {}
 
 TomahawkImportWriter::~TomahawkImportWriter(){
-	delete this->rleController_;
+	delete this->encoder;
 	this->buffer_rle.deleteAll();
 	this->buffer_meta.deleteAll();
 }
@@ -175,14 +175,14 @@ void TomahawkImportWriter::WriteFinal(void){
 
 void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
 	this->vcf_header_ = &header;
-	this->rleController_ = new Algorithm::TomahawkImportRLE(header.samples);
-	this->rleController_->DetermineBitWidth();
+	this->encoder = new encoder_type(header.samples);
+	this->encoder->DetermineBitWidth();
 }
 
 bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	const U32 meta_start_pos = this->buffer_meta.pointer;
 	const U32 rle_start_pos  = this->buffer_rle.pointer;
-	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta, this->buffer_rle)){
+	if(!this->encoder->RunLengthEncode(line, this->buffer_meta, this->buffer_rle)){
 		this->buffer_meta.pointer = meta_start_pos; // reroll back
 		this->buffer_rle.pointer  = rle_start_pos; // reroll back
 		return false;
@@ -224,7 +224,7 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 	meta_base_type meta;
 
 	// Perform run-length encoding
-	if(!this->rleController_->RunLengthEncode(line, meta, this->buffer_meta, this->buffer_rle)){
+	if(!this->encoder->RunLengthEncode(line, meta, this->buffer_meta, this->buffer_rle)){
 		this->buffer_meta.pointer = meta_start_pos; // reroll back
 		this->buffer_rle.pointer  = rle_start_pos; // reroll back
 		return false;
