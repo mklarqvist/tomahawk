@@ -12,6 +12,9 @@
 #include "../totempole/TotempoleContig.h"
 #include "../totempole/TotempoleHeader.h"
 
+#include "base/TomahawkRun.h"
+#include "TomahawkBlockIterator.h"
+
 namespace Tomahawk {
 
 TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
@@ -24,7 +27,7 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	filter(filter),
 	buffer_encode_rle(flush_limit*2),
 	buffer_encode_simple(flush_limit*2),
-	buffer_meta(flush_limit*2),
+	buffer_meta(flush_limit*8), // meta joins all other buffers
 	buffer_metaComplex(flush_limit*2),
 	encoder(nullptr),
 	vcf_header(nullptr)
@@ -99,9 +102,9 @@ bool TomahawkImportWriter::OpenExtend(const std::string output){
 	}
 
 	U64 tempsize = this->streamTomahawk.tellp();
-	this->streamTomahawk.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
+	this->streamTomahawk.seekp(tempsize - sizeof(U64) * Tomahawk::Constants::eof_length);
 	tempsize = this->streamTotempole.tellp();
-	this->streamTotempole.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
+	this->streamTotempole.seekp(tempsize - sizeof(U64) * Tomahawk::Constants::eof_length);
 
 	// Determine flush limit
 	this->DetermineFlushLimit();
@@ -223,7 +226,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 
 	this->totempole_entry.maxPosition = line.position;
 	//if(line.c)
-	++this->totempole_entry.n_variantsRLE;
+	++this->totempole_entry.n_variants;
 
 	return true;
 }
@@ -299,9 +302,7 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 	}
 
 	// Update number of entries in block
-	if(meta.controller.biallelic)
-		++this->totempole_entry.n_variantsRLE;
-	else ++this->totempole_entry.n_variantsComplex;
+	++this->totempole_entry.n_variants;
 
 	return true;
 }
@@ -317,7 +318,7 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.l_rle = this->buffer_encode_rle.pointer;
 	this->totempole_entry.l_simple = this->buffer_encode_simple.pointer;
 
-	std::cerr << this->totempole_entry.n_variantsRLE+this->totempole_entry.n_variantsComplex << '\t' << this->totempole_entry.n_variantsRLE << '\t' << this->totempole_entry.n_variantsComplex << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << '\t';
+	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << '\t';
 
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
@@ -326,9 +327,47 @@ bool TomahawkImportWriter::flush(void){
 	this->buffer_meta += this->buffer_encode_simple;
 	this->buffer_meta += this->buffer_metaComplex;
 
+	// Test to iterate over complex
+	/*
+	//U32 p = 0;
+	TomahawkBlockIterator<U32> b(this->buffer_meta.data, this->buffer_meta.pointer, this->totempole_entry);
+	while(++b){
+		//std::cerr << p++ << '/' << this->totempole_entry.n_variants << ": " << b.isRLE() << '\t' << b.size() << '\t' << b.getMeta() << std::endl;
+		if(!b.isRLE()){
+			const BYTE n_alleles = b.getMetaComplex().n_allele + 1;
+			if(n_alleles < 8){
+				//const Support::TomahawkRunSimple<BYTE>* field = nullptr;
+				//while(b.nextRunSimple(field)){
+				//	std::cerr << *field << '\t';
+				//}
+				//std::cerr << std::endl;
+				//exit(1);
+			} else {
+				std::cerr << this->totempole_entry.n_variants << ": " << b.isRLE() << '\t' << b.size() << '\t' << b.getMeta() << std::endl;
+				const Support::TomahawkRunSimple<U16>* field = nullptr;
+				while(b.nextRunSimple(field)){
+					//std::cerr << *reinterpret_cast<const U16*>(field) << '\t' << *field << std::endl;
+					std::cerr << *field << '\t';
+				}
+				std::cerr << std::endl;
+				exit(1);
+			}
+		}
+		/*
+		else {
+			const Support::TomahawkRun<U32>* entry;
+			while(b.nextRun(entry)){
+				std::cerr << *entry << '\t';
+			}
+			std::cerr << std::endl;
+		}
+
+	}
+	*/
+
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << this->gzip_controller.buffer.pointer << std::endl;
+	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	// Keep track of largest block observed
@@ -339,7 +378,8 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->streamTotempole << this->totempole_entry; // Write totempole output
 	++this->n_blocksWritten; // update number of blocks written
-	this->n_variants_written += this->totempole_entry.n_variantsRLE + this->totempole_entry.n_variantsComplex; // update number of variants written
+	this->n_variants_written += this->totempole_entry.n_variants; // update number of variants written
+	this->totempole_entry.reset();
 
 	this->reset(); // reset buffers
 

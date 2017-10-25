@@ -1,5 +1,5 @@
-#ifndef HELPERS_H_
-#define HELPERS_H_
+#ifndef BASIC_HELPERS_H_
+#define BASIC_HELPERS_H_
 
 #include <string>
 #include <vector>
@@ -83,7 +83,7 @@ inline std::string secondsToTimestring(const double& value){
 	return(retVal);
 }
 
+}
+}
 
-}
-}
 #endif /* HELPERS_H_ */

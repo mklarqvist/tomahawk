@@ -62,7 +62,7 @@ public:
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
 		// or if the number of entries written to buffer exceeds our set limit
-		if(this->totempole_entry.n_variantsRLE + this->totempole_entry.n_variantsComplex >= this->n_variants_limit || this->buffer_encode_rle.size() >= this->flush_limit){
+		if(this->totempole_entry.n_variants >= this->n_variants_limit || this->buffer_encode_rle.size() >= this->flush_limit){
 			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle.size() << '/' << this->flush_limit << std::endl;
 			return true;
 		}

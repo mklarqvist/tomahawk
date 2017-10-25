@@ -490,10 +490,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 		}
 
 		// Exit condition
-		if(pointerA == a.meta[a.metaPointer].runs || pointerB == b.meta[b.metaPointer].runs){
+		if(pointerA == a.meta[a.metaPointer].n_runs || pointerB == b.meta[b.metaPointer].n_runs){
 			//std::cerr << pointerA << '/' << a.meta[a.metaPointer].runs << '\t' << pointerB << '/' << b.meta[b.metaPointer].runs << std::endl;
-			if(pointerA != a.meta[a.metaPointer].runs || pointerB != b.meta[b.metaPointer].runs){
-				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << a.meta[a.metaPointer].runs << " and " << pointerB << "/" << b.meta[b.metaPointer].runs << std::endl;
+			if(pointerA != a.meta[a.metaPointer].n_runs || pointerB != b.meta[b.metaPointer].n_runs){
+				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << a.meta[a.metaPointer].n_runs << " and " << pointerB << "/" << b.meta[b.metaPointer].n_runs << std::endl;
 				exit(1);
 			}
 			break;
@@ -1316,9 +1316,9 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 		this->helper[currentMixR] += add;
 
 		// Exit condition
-		if(pointerA == a.meta[a.metaPointer].runs || pointerB == b.meta[b.metaPointer].runs){
-			if(pointerA != a.meta[a.metaPointer].runs || pointerB != b.meta[b.metaPointer].runs){
-				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << a.meta[a.metaPointer].runs << " and " << pointerB << "/" << b.meta[b.metaPointer].runs << std::endl;
+		if(pointerA == a.meta[a.metaPointer].n_runs || pointerB == b.meta[b.metaPointer].n_runs){
+			if(pointerA != a.meta[a.metaPointer].n_runs || pointerB != b.meta[b.metaPointer].n_runs){
+				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << a.meta[a.metaPointer].n_runs << " and " << pointerB << "/" << b.meta[b.metaPointer].n_runs << std::endl;
 				exit(1);
 			}
 			break;
@@ -1490,7 +1490,7 @@ template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& block1, const controller_type block2){
 #if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().n_runs == 1 || block2.currentMeta().n_runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
@@ -1555,7 +1555,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controller_type& block1, const controller_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().n_runs == 1 || block2.currentMeta().n_runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
@@ -1573,7 +1573,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controll
 template <class T>
 void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const controller_type& block1, const controller_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().n_runs == 1 || block2.currentMeta().n_runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}

@@ -96,9 +96,5 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 	return true;
 }
 
-bool TomahawkSupport::parseID(void){
-
-}
-
 }
 }

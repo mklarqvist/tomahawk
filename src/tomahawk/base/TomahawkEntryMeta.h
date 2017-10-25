@@ -22,10 +22,24 @@ struct TomahawkEntryMetaBase{
 
 public:
 	typedef struct __meta_controller{
-		explicit __meta_controller(void) : missing(0), phased(0), biallelic(0), simple(0), hasComplex(0), unused(0){}
+		explicit __meta_controller(void) :
+				missing(0),
+				phased(0),
+				biallelic(0),
+				simple(0),
+				hasComplex(0),
+				rle(0),
+				unused(0)
+		{}
 		~__meta_controller(){}
 
-		BYTE missing: 1, phased: 1, biallelic: 1, simple: 1, hasComplex: 1, unused: 3;
+		BYTE missing: 1,  // any missing
+		     phased: 1,   // all phased
+			 biallelic: 1,// is biallelic
+			 simple: 1,   // is simple SNV
+			 hasComplex: 1,// has complex meta
+			 rle: 1,      // uses RLE compression
+			 unused: 2;
 	} controller_byte;
 
 public:
@@ -34,15 +48,18 @@ public:
 		ref_alt(0),
 		MGF(0),
 		HWE_P(0),
+		AF(0),
 		virtual_offset_complex(0),
 		virtual_offset(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
-	inline bool isSingleton(void) const{ return(this->MGF == 0); }
+	inline const bool isSingleton(void) const{ return(this->MGF == 0); }
+	inline const bool isSimpleSNV(void) const{ return(this->controller.biallelic == true && this->controller.simple == true); }
+	inline const bool isRLE(void) const{ return(this->controller.rle); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset;
+		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset;
 		return(out);
 	}
 
@@ -65,10 +82,11 @@ public:
 	// sites that are not bi-allelic and not simple
 	// will be encoded in the complex meta section
 	BYTE ref_alt;
-	// MGF and HWE is pre-computed as they are used in
+	// MGF, HWE, AF is pre-computed as they are used in
 	// LD heuristics
 	float MGF;
 	float HWE_P;
+	float AF;
 	// Hot-cold split structure. pointer to cold data
 	// since a pointer cannot be read from a byte
 	// stream as its memory location changes
@@ -94,28 +112,19 @@ struct TomahawkEntryMeta : public TomahawkEntryMetaBase{
 	typedef TomahawkEntryMeta self_type;
 
 public:
-	TomahawkEntryMeta() : runs(0){}
+	TomahawkEntryMeta() : n_runs(0){}
 	~TomahawkEntryMeta(){}
 
-	inline bool isValid(void) const{ return(this->runs > 0); }
-
-	friend std::ofstream& operator<<(std::ofstream& os, const self_type& entry){
-		const U32 writePos = ( entry.position << 29 ) | ( entry.controller.biallelic << 2 ) << ( entry.controller.phased << 1 ) | entry.controller.missing;
-		os.write(reinterpret_cast<const char*>(&writePos),      sizeof(U32));
-		os.write(reinterpret_cast<const char*>(&entry.ref_alt), sizeof(BYTE));
-		os.write(reinterpret_cast<const char*>(&entry.runs),    sizeof(U32));
-		os.write(reinterpret_cast<const char*>(&entry.MGF),     sizeof(float));
-		os.write(reinterpret_cast<const char*>(&entry.HWE_P),   sizeof(float));
-		return os;
-	}
+	inline const bool isValid(void) const{ return(this->n_runs > 0); }
+	inline const T& getRuns(void) const{ return(this->n_runs); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.ref_alt << '\t' << entry.runs << '\t' << entry.MGF << '\t' << entry.HWE_P;
+		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.n_runs << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.n_runs;
 		return(out);
 	}
 
 public:
-	T runs; // number of runs
+	T n_runs; // number of runs
 };
 
 }

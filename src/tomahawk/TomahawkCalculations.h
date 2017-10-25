@@ -291,7 +291,7 @@ bool TomahawkCalculations::__calculateTajimaDGrouped(const U32 bin_size){
 
 			// Count number of genotypes / group
 			U64 cumPos = 0;
-			for(U32 i = 0; i < meta->runs; ++i){
+			for(U32 i = 0; i < meta->n_runs; ++i){
 				for(U32 k = 0; k < this->Occ[0].size(); ++k)
 					genotypes[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
 
@@ -425,7 +425,7 @@ bool TomahawkCalculations::__calculateTajimaD(const U32 bin_size){
 			}
 
 			// Count number of genotypes
-			for(U32 i = 0; i < meta->runs; ++i)
+			for(U32 i = 0; i < meta->n_runs; ++i)
 				lookup[runs[i].alleles] += runs[i].runs;
 
 			// If we reach the end of a bin or switch chromosome
@@ -528,7 +528,7 @@ bool TomahawkCalculations::__calculateSiteStats(void){
 		while(controller.nextVariant(runs, meta)){
 
 			// Count number of genotypes
-			for(U32 i = 0; i < meta->runs; ++i)
+			for(U32 i = 0; i < meta->n_runs; ++i)
 				g.add(runs[i].alleles, runs[i].runs);
 
 			std::cout << currentContigID << '\t' << meta->position << '\t' << Stats::Support::calculateHardyWeinberg(g) << '\n';
@@ -591,7 +591,7 @@ bool TomahawkCalculations::__calculateSiteStatsGrouped(void){
 		while(controller.nextVariant(runs, meta)){
 			// Count number of genotypes / group
 			U64 cumPos = 0;
-			for(U32 i = 0; i < meta->runs; ++i){
+			for(U32 i = 0; i < meta->n_runs; ++i){
 				for(U32 k = 0; k < this->Occ[0].size(); ++k)
 					genotypes[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
 
@@ -761,7 +761,7 @@ bool TomahawkCalculations::__calculateSFSGrouped(void){
 		// Cycle over variants in block
 		while(controller.nextVariant(runs, meta)){
 			// Cycle over runs
-			for(U32 i = 0; i < meta->runs; ++i){
+			for(U32 i = 0; i < meta->n_runs; ++i){
 				for(U32 k = 0; k < this->Occ[0].size(); ++k)
 					genotypes[k].add(runs[i].alleles, this->Occ[cumPos + runs[i].runs][k] - this->Occ[cumPos][k]);
 

@@ -58,7 +58,7 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 			exit(1);
 		}
 
-		if(!stream.tellg() == filesize){
+		if(stream.tellg() != filesize){
 			std::cerr << Helpers::timestamp("ERROR", "TOI") << "Mangled data!" << std::endl;
 			exit(1);
 		}

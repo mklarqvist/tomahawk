@@ -9,6 +9,7 @@
 #include "../../io/bcf/BCFReader.h"
 #include "../../io/vcf/VCFLines.h"
 #include "RunLengthEncoding.h"
+#include "../../tomahawk/base/TomahawkRun.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -301,7 +302,8 @@ private:
 
 template <class T>
 bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& simple, U64& n_runs){
-	const U32 shift_size = ceil(log2(double(line.body->n_allele))) + 1;
+	BYTE shift_size = 3;
+	if(sizeof(T) == 2) shift_size = 7;
 
 	// Virtual byte offset into start of genotypes
 	// in BCF entry
@@ -312,8 +314,8 @@ bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& simp
 	for(U32 i = 0; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-		const T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << (shift_size + 1)) |
-				         (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) |
+		const T packed = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
+				         ((fmt_type_value1 >> 1) << 1) |
 						 (fmt_type_value2 & 1);
 		simple += packed;
 	}
@@ -404,36 +406,30 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 
 	// If the number of alleles == 2
 	if(line.body->n_allele == 2){
+		meta_base.virtual_offset = runs.pointer; // absolute position at start of stream
 		this->EncodeRLE<T>(line, runs, n_runs);
-		meta_base.virtual_offset = runs.pointer; // absolute position at end of stream
+		meta_base.AF = float(this->helper.countsAlleles[1]) / (this->helper.countsAlleles[0] + this->helper.countsAlleles[1]);
+		meta_base.controller.rle = true;
 	}
 	// If number of alleles != 2
 	// Revert back to no-encoding
 	else {
+		meta_base.virtual_offset = simple.pointer; // absolute position at start of stream
 		meta_base.controller.biallelic = false;
+		meta_base.AF = 0; // AF needs to be looked up in cold store
 		n_runs = this->n_samples;
 
-		// We use ceil(log2(n_alleles + 1)) bits for each allele
-		// where the + 1 represent the missing case
-		// MSB first bit encode for phasing between the diploid alleles
-		// The word size is then (2*bits + 1) / 8 where the + 1 represent
-		// the phasing information
-		const U32 shift_size = ceil(log2(double(line.body->n_allele))) + 1;
-		const BYTE bit_width = 2*shift_size + 1;
-		const BYTE word_size = ceil(float(bit_width) / 8);
-
-		if(word_size == 1)      this->EncodeSingle<BYTE>(line, simple, n_runs);
-		else if(word_size == 2) this->EncodeSingle<U16>(line, simple, n_runs);
+		if(line.body->n_allele + 1 < 8) this->EncodeSingle<BYTE>(line, simple, n_runs);
+		else if(line.body->n_allele + 1 < 128) this->EncodeSingle<U16>(line, simple, n_runs);
 		else {
 			std::cerr << Helpers::timestamp("ERROR", "ENCODER") <<
 					     "Illegal number of alleles (" << line.body->n_allele + 1 << "). "
-					     "Format is limited to 65536..." << std::endl;
+					     "Format is limited to 128..." << std::endl;
 			return false;
 		}
 
 		this->helper.HWE_P = 1;
 		this->helper.MGF = 0;
-		meta_base.virtual_offset = simple.pointer; // absolute position at end of stream
 	}
 
 	// See meta for more information
