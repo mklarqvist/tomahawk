@@ -7,7 +7,7 @@ namespace Tomahawk{
 namespace Support{
 
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 2*sizeof(float) + 2*sizeof(U32))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 3*sizeof(float) + 2*sizeof(U32))
 
 /*
  TomahawkEntryMetaBase is used for reinterpreting
@@ -33,12 +33,12 @@ public:
 		{}
 		~__meta_controller(){}
 
-		BYTE missing: 1,  // any missing
-		     phased: 1,   // all phased
-			 biallelic: 1,// is biallelic
-			 simple: 1,   // is simple SNV
+		BYTE missing: 1,   // any missing
+		     phased: 1,    // all phased
+			 biallelic: 1, // is biallelic
+			 simple: 1,    // is simple SNV->SNV
 			 hasComplex: 1,// has complex meta
-			 rle: 1,      // uses RLE compression
+			 rle: 1,       // uses RLE compression
 			 unused: 2;
 	} controller_byte;
 
@@ -49,8 +49,8 @@ public:
 		MGF(0),
 		HWE_P(0),
 		AF(0),
-		virtual_offset_complex(0),
-		virtual_offset(0)
+		virtual_offset_cold_meta(0),
+		virtual_offset_gt(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
@@ -59,7 +59,7 @@ public:
 	inline const bool isRLE(void) const{ return(this->controller.rle); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset;
+		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset_cold_meta << '\t' << entry.virtual_offset_gt;
 		return(out);
 	}
 
@@ -70,8 +70,8 @@ public:
 		buffer += entry.ref_alt;
 		buffer += entry.MGF;
 		buffer += entry.HWE_P;
-		buffer += entry.virtual_offset_complex;
-		buffer += entry.virtual_offset;
+		buffer += entry.virtual_offset_cold_meta;
+		buffer += entry.virtual_offset_gt;
 		return(buffer);
 	}
 
@@ -93,12 +93,12 @@ public:
 	// we have to provide the pointer as an ABSOLUTE
 	// virtual stream offset relative to the complex
 	// start position into the complex byte stream
-	U32 virtual_offset_complex;
+	U32 virtual_offset_cold_meta;
 	// offset to the byte end of this entry in the stream
 	// (either RLE or simple stream depending on context)
 	// this allows fast iteration when switching between
 	// the two compression approaches
-	U32 virtual_offset;
+	U32 virtual_offset_gt;
 };
 
 /*

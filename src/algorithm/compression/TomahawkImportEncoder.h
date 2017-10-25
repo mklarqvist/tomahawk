@@ -9,7 +9,7 @@
 #include "../../io/bcf/BCFReader.h"
 #include "../../io/vcf/VCFLines.h"
 #include "RunLengthEncoding.h"
-#include "../../tomahawk/base/TomahawkRun.h"
+#include "../../tomahawk/base/TomahawkGTEntries.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -304,6 +304,7 @@ template <class T>
 bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& simple, U64& n_runs){
 	BYTE shift_size = 3;
 	if(sizeof(T) == 2) shift_size = 7;
+	if(sizeof(T) == 4) shift_size = 15;
 
 	// Virtual byte offset into start of genotypes
 	// in BCF entry
@@ -311,13 +312,27 @@ bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& simp
 
 	// Pack genotypes as
 	// allele A | alleleB | isPhased
-	for(U32 i = 0; i < this->n_samples * 2; i += 2){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-		const T packed = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
-				         ((fmt_type_value1 >> 1) << 1) |
-						 (fmt_type_value2 & 1);
-		simple += packed;
+	if(sizeof(T) <= 2){
+		for(U32 i = 0; i < this->n_samples * 2; i += 2){
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+			const T packed = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
+							 ((fmt_type_value1 >> 1) << 1) |
+							 (fmt_type_value2 & 1);
+			simple += packed;
+		}
+	} else if(sizeof(T) == 4){
+		for(U32 i = 0; i < this->n_samples * 4; i += 4){
+			const S16& fmt_type_value1 = *reinterpret_cast<const S16* const>(&line.data[internal_pos++]);
+			const S16& fmt_type_value2 = *reinterpret_cast<const S16* const>(&line.data[internal_pos++]);
+			const T packed = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
+							 ((fmt_type_value1 >> 1) << 1) |
+							 (fmt_type_value2 & 1);
+			simple += packed;
+		}
+	} else {
+		std::cerr << "not supported" << std::endl;
+		exit(1);
 	}
 	n_runs = this->n_samples;
 
@@ -406,7 +421,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 
 	// If the number of alleles == 2
 	if(line.body->n_allele == 2){
-		meta_base.virtual_offset = runs.pointer; // absolute position at start of stream
+		meta_base.virtual_offset_gt = runs.pointer; // absolute position at start of stream
 		this->EncodeRLE<T>(line, runs, n_runs);
 		meta_base.AF = float(this->helper.countsAlleles[1]) / (this->helper.countsAlleles[0] + this->helper.countsAlleles[1]);
 		meta_base.controller.rle = true;
@@ -414,17 +429,19 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 	// If number of alleles != 2
 	// Revert back to no-encoding
 	else {
-		meta_base.virtual_offset = simple.pointer; // absolute position at start of stream
+		meta_base.virtual_offset_gt = simple.pointer; // absolute position at start of stream
 		meta_base.controller.biallelic = false;
 		meta_base.AF = 0; // AF needs to be looked up in cold store
 		n_runs = this->n_samples;
 
-		if(line.body->n_allele + 1 < 8) this->EncodeSingle<BYTE>(line, simple, n_runs);
-		else if(line.body->n_allele + 1 < 128) this->EncodeSingle<U16>(line, simple, n_runs);
+		// Use appropriate byte width
+		if(line.body->n_allele + 1 < 8)          this->EncodeSingle<BYTE>(line, simple, n_runs);
+		else if(line.body->n_allele + 1 < 128)   this->EncodeSingle<U16> (line, simple, n_runs);
+		else if(line.body->n_allele + 1 < 32768) this->EncodeSingle<U32> (line, simple, n_runs);
 		else {
 			std::cerr << Helpers::timestamp("ERROR", "ENCODER") <<
 					     "Illegal number of alleles (" << line.body->n_allele + 1 << "). "
-					     "Format is limited to 128..." << std::endl;
+					     "Format is limited to 32768..." << std::endl;
 			return false;
 		}
 

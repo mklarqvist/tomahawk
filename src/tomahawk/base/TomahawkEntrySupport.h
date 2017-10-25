@@ -84,8 +84,10 @@ public:
 
 	// Parse everything in this entry
 	bool parse(void);
+
 	// Parse the name only
 	bool parseID(void);
+
 	// Parse the alleles only
 	bool parseAlleles(void);
 

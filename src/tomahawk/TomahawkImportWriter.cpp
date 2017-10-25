@@ -11,8 +11,8 @@
 #include "../support/MagicConstants.h"
 #include "../totempole/TotempoleContig.h"
 #include "../totempole/TotempoleHeader.h"
+#include "base/TomahawkGTEntries.h"
 
-#include "base/TomahawkRun.h"
 #include "TomahawkBlockIterator.h"
 
 namespace Tomahawk {
@@ -281,7 +281,7 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 
 	// Push meta to buffer
 	// update complex offset position
-	meta.virtual_offset_complex = this->buffer_metaComplex.pointer;
+	meta.virtual_offset_cold_meta = this->buffer_metaComplex.pointer;
 	meta.controller.hasComplex = true;
 	this->buffer_meta += meta;
 	switch(this->encoder->getBitWidth()){

@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKRUN_H_
-#define TOMAHAWK_TOMAHAWKRUN_H_
+#ifndef TOMAHAWK_TOMAHAWKGTENTRIES_H_
+#define TOMAHAWK_TOMAHAWKGTENTRIES_H_
 
 namespace Tomahawk{
 namespace Support{
@@ -15,12 +15,11 @@ public:
 	~TomahawkRun(); // Disallowed dtor
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.alleleA
+		out << (U32)entry.alleleA
 			<< (entry.phasing ? '|' : '/')
-			<< entry.alleleB;
+			<< (U32)entry.alleleB;
 		return(out);
 	}
-
 
 	T phasing: 1,
 	  alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
@@ -66,4 +65,4 @@ public:
 }
 }
 
-#endif /* TOMAHAWK_TOMAHAWKRUN_H_ */
+#endif /* TOMAHAWK_TOMAHAWKGTENTRIES_H_ */

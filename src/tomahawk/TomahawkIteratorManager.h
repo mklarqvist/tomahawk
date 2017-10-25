@@ -6,7 +6,7 @@
 #include "../tomahawk/base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
-#include "base/TomahawkRun.h"
+#include "base/TomahawkGTEntries.h"
 
 namespace Tomahawk{
 

@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWKBLOCKITERATOR_H_
 #define TOMAHAWK_TOMAHAWKBLOCKITERATOR_H_
 
-#include "base/TomahawkRun.h"
+#include "base/TomahawkGTEntries.h"
 
 namespace Tomahawk{
 
@@ -69,7 +69,6 @@ public:
 		if(this->pointer == this->upper_limit)
 			return false;
 
-		//std::cerr << '\t' << this->pointer << '/' << this->upper_limit << ':' << (int)this->encoding_simple[0] << std::endl;
 		field = reinterpret_cast<const Support::TomahawkRunSimple<S>*>(this->encoding_simple);
 		++this->pointer;
 		this->encoding_simple += sizeof(S);
