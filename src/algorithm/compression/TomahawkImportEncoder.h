@@ -375,11 +375,8 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	const BYTE*    map = Constants::TOMAHAWK_ALLELE_REDUCED_MAP;
 	if(shift == 2) map = Constants::TOMAHAWK_ALLELE_SELF_MAP;
 
-	//std::cerr << "shift,add,size: " << (int)shift << ',' << (int)add << ',' << sizeof(T) << std::endl;
-
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-	//T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 	T packed = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
 	// MSB contains phasing information
@@ -395,18 +392,12 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 			RLE = length;
 			RLE <<= 2*shift + add;
 			RLE |= packed;
-			if((RLE >> (2 * shift + add)) != length){
-				std::cerr << "broken: " << (U32)(RLE >> (2 * shift + add)) << "!=" << (U32)length << " size " << sizeof(T) << std::endl;
-				exit(1);
-			}
 
 			// Set meta phased flag bit
 			if((fmt_type_value2 & 1) != 1) this->helper.phased = false;
 
 			// Push RLE to buffer
 			runs += RLE;
-
-			//std::cerr << (int)(packed >> add) << '\t' << (int)(packed >> (shift + add)) << '\t' << (int)((packed >> add) & ((1 << shift) - 1)) << std::endl;
 
 			// Update genotype and allele counts
 			this->helper[map[packed >> add]] += length;
@@ -415,7 +406,6 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 
 			// Reset and update
 			sumLength += length;
-			//std::cerr << (int)length << std::endl;
 			length = 0;
 			packed = packed_internal;
 			++n_runs;
@@ -425,13 +415,8 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	// Last entry
 	// Prepare RLE
 	RLE = length;
-	//std::cerr << (int)length << std::endl << std::endl;
 	RLE <<= 2 * shift + add;
 	RLE |= packed;
-	if((RLE >> (2 * shift + add)) != length){
-		std::cerr << "broken: " << (U32)(RLE >> (2 * shift + add)) << "!=" << (U32)length << " size " << sizeof(T) << std::endl;
-		exit(1);
-	}
 
 	// Set meta phased flag bit
 	if((packed & 1) != 1) this->helper.phased = false;
@@ -441,25 +426,13 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	++n_runs;
 
 	// Update genotype and allele counts
-	//std::cerr << (int)(packed >> add) << '\t' << (int)(packed >> (shift + add)) << '\t' << (int)((packed >> add) & ((1 << shift) - 1)) << std::endl;
 	this->helper[map[packed >> add]] += length;
 	this->helper.countsAlleles[packed >> (shift + add)] += length;
 	this->helper.countsAlleles[(packed >> add) & ((1 << shift) - 1)]  += length;
 
 	// Reset and update
 	sumLength += length;
-	//std::cerr << line.body->POS+1 << ':' <<  (U32)sumLength << '/' << this->n_samples << std::endl;
 	assert(sumLength == this->n_samples);
-
-	//std::cerr << sizeof(T) << '\t' << (int)shift << ',' << (int)add << ';' << 2*shift+add << '\t' << this->helper << std::endl;
-	if(this->helper.countAlleles() != this->n_samples*2){
-		std::cerr << "bad" << std::endl;
-		exit(1);
-	}
-	if(this->helper[0] + this->helper[1] + this->helper[4] + this->helper[5] != this->n_samples){
-		std::cerr << "bad gt" << std::endl;
-		exit(1);
-	}
 
 	// Calculate basic stats
 	this->helper.calculateMGF();
@@ -480,7 +453,6 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-	//T packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 3) | (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << 1) | (fmt_type_value2 & 1);
 	T packed = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift);
 
 	// MSB contains phasing information
@@ -496,11 +468,6 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 			RLE = length;
 			RLE <<= 2*shift+1;
 			RLE |= packed;
-
-			if((RLE >> (2 * shift + 1)) != length){
-				std::cerr << "broken: " << (U32)(RLE >> (2 * shift + 1)) << "!=" << (U32)length << " size " << sizeof(T) << std::endl;
-				exit(1);
-			}
 
 			// Set meta phased flag bit
 			if((fmt_type_value2 & 1) != 1) this->helper.phased = false;
@@ -521,11 +488,6 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 	RLE = length;
 	RLE <<= 2*shift+1;
 	RLE |= packed;
-
-	if((RLE >> (2 * shift + 1)) != length){
-		std::cerr << "broken: " << (U32)(RLE >> (2 * shift + 1)) << "!=" << (U32)length << " size " << sizeof(T) << std::endl;
-		exit(1);
-	}
 
 	// Set meta phased flag bit
 	if((packed & 1) != 1) this->helper.phased = false;

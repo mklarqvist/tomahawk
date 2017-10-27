@@ -51,7 +51,6 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		}
 
 		meta_base.AF = float(this->helper.countsAlleles[1]) / (this->helper.countsAlleles[0] + this->helper.countsAlleles[1]);
-		// See meta for more information
 		meta_base.MGF = this->helper.MGF;
 		meta_base.HWE_P = this->helper.HWE_P;
 
@@ -72,8 +71,6 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.AF = 0; // AF needs to be looked up in cold store
 		meta_base.controller.mixed_phasing = cost.mixedPhasing;
 		meta_base.controller.anyMissing = cost.hasMissing;
-
-		// See meta for more information
 		meta_base.MGF = 0;
 		meta_base.HWE_P = 1;
 
@@ -170,7 +167,7 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	if(run_length > largest) largest = run_length;
 
 	// Calculate word size
-	// Allele width can accidentally be 0 if log2(1)
+	// Allele width can be 0 if log2(1)
 	BYTE allele_width = 2*ceil(log2(1 + anyMissing));
 	if(allele_width == 0) allele_width = 1 + 1;
 	U32 word_width = ceil((ceil(log2(largest + 1)) + allele_width + mixedPhase) / 8);
@@ -212,7 +209,6 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	if(run_length > largest) largest = run_length;
 
 	// Calculate word size
-	// Allele width can accidentally be 0 if log2(1)
 	U32 word_width = ceil(
 			         (ceil(log2(largest + 1)) +
 			         2*ceil(log2(line.body->n_allele + 1)) + 1)
