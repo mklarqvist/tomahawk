@@ -192,7 +192,7 @@ void TomahawkImportWriter::WriteFinal(void){
 void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
 	this->vcf_header = &header;
 	this->encoder = new encoder_type(header.samples);
-	this->encoder->DetermineBitWidth();
+	//this->encoder->DetermineBitWidth();
 }
 
 bool TomahawkImportWriter::add(const VCF::VCFLine& line){
@@ -282,9 +282,14 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 	// Push meta to buffer
 	// update complex offset position
 	meta.virtual_offset_cold_meta = this->buffer_metaComplex.pointer;
-	meta.controller.hasComplex = true;
 	this->buffer_meta += meta;
-	switch(this->encoder->getBitWidth()){
+
+	// RLE using this word size
+	U32 w = ceil(ceil(log2(this->vcf_header->samples))/8);
+	if(w > 2 & w < 4) w = 4;
+	else if(w > 4) w = 8;
+
+	switch(w){
 	case 1: this->buffer_meta += (BYTE)n_runs; break;
 	case 2: this->buffer_meta += (U16)n_runs; break;
 	case 4: this->buffer_meta += (U32)n_runs; break;

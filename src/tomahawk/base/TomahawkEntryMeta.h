@@ -23,23 +23,23 @@ struct TomahawkEntryMetaBase{
 public:
 	typedef struct __meta_controller{
 		explicit __meta_controller(void) :
-				missing(0),
-				phased(0),
+				anyMissing(0),
+				allPhased(0),
+				mixed_phasing(0),
 				biallelic(0),
 				simple(0),
-				hasComplex(0),
 				rle(0),
-				unused(0)
+				rle_type(0)
 		{}
 		~__meta_controller(){}
 
-		BYTE missing: 1,   // any missing
-		     phased: 1,    // all phased
+		BYTE anyMissing: 1,   // any missing
+             allPhased: 1,    // all phased
+			 mixed_phasing: 1,// has mixed phasing
 			 biallelic: 1, // is biallelic
 			 simple: 1,    // is simple SNV->SNV
-			 hasComplex: 1,// has complex meta
 			 rle: 1,       // uses RLE compression
-			 unused: 2;
+			 rle_type: 2; // type of RLE (BYTE, U16, U32, U64)
 	} controller_byte;
 
 public:

@@ -438,7 +438,7 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 	if(mB.HWE_P < LOW_HWE_THRESHOLD)
 		this->helper.setFailedHWEB();
 
-	if(mA.controller.missing || mB.controller.missing)
+	if(mA.controller.anyMissing || mB.controller.anyMissing)
 		this->helper.setHasMissingValues();
 }
 
@@ -906,7 +906,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_type& a, const controller_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().controller.missing == 0 && b.currentMeta().controller.missing == 0)
+	if(a.currentMeta().controller.anyMissing == 0 && b.currentMeta().controller.anyMissing == 0)
 		return(this->CalculateLDUnphasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1048,7 +1048,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 template <class T>
 bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_type& a, const controller_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().controller.missing == 0 && b.currentMeta().controller.missing == 0)
+	if(a.currentMeta().controller.anyMissing == 0 && b.currentMeta().controller.anyMissing == 0)
 		return(this->CalculateLDPhasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1495,7 +1495,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 		return;
 	}
 
-	if(block1.currentMeta().controller.phased == 1 && block2.currentMeta().controller.phased == 1){
+	if(block1.currentMeta().controller.allPhased == 1 && block2.currentMeta().controller.allPhased == 1){
 		if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);

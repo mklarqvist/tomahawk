@@ -42,6 +42,17 @@ const BYTE TOMAHAWK_SHIFT_SIZE = Constants::TOMAHAWK_SNP_PACK_WIDTH + 1;
 const char TOMAHAWK_ALLELE_LOOKUP[4] = {2, 3, 0, 1};
 const char TOMAHAWK_ALLELE_LOOKUP_REVERSE[4] = {'0', '1', '.', '?'};
 
+// 0 -> 0
+// 1 -> 1
+// 2 -> 4
+// 3 -> 5
+const BYTE TOMAHAWK_ALLELE_REDUCED_MAP[4] = {0, 1, 4, 5};
+// 0 -> 0
+// 1 -> 1
+// 4 -> 4
+// 5 -> 5
+const BYTE TOMAHAWK_ALLELE_SELF_MAP[6] = {0, 1, 0, 0, 4, 5};
+
 // Encoding for bases
 const char* const REF_ALT_LOOKUP = "ATGCN";
 const BYTE REF_ALT_A = 0;

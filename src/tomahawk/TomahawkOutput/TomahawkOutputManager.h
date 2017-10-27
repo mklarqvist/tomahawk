@@ -177,8 +177,8 @@ public:
 	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
 		// Note we do NOT write meta.biallelic
 		// LD is only calculated for biallelic sites
-		const U32 writePosA = a.meta[a.metaPointer].position << 2 | a.meta[a.metaPointer].controller.phased << 1 | a.meta[a.metaPointer].controller.missing;
-		const U32 writePosB = b.meta[b.metaPointer].position << 2 | b.meta[b.metaPointer].controller.phased << 1 | b.meta[b.metaPointer].controller.missing;
+		const U32 writePosA = a.meta[a.metaPointer].position << 2 | a.meta[a.metaPointer].controller.allPhased << 1 | a.meta[a.metaPointer].controller.anyMissing;
+		const U32 writePosB = b.meta[b.metaPointer].position << 2 | b.meta[b.metaPointer].controller.allPhased << 1 | b.meta[b.metaPointer].controller.anyMissing;
 		this->buffer += helper.controller;
 		this->buffer += a.support->contigID;
 		this->buffer += writePosA;

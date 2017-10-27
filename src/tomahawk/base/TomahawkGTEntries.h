@@ -4,11 +4,16 @@
 namespace Tomahawk{
 namespace Support{
 
+// We CANNOT place phasing template parameter
+// since if we set it to 0 then we have a
+// 0 width bit field which is illegal
+// To solve this we introduce the TomahawkRunNoPhase
+// data structure below
 #pragma pack(1)
-template <class T>
+template <class T, BYTE missing = 1>
 struct TomahawkRun{
 private:
-	typedef TomahawkRun<T> self_type;
+	typedef TomahawkRun self_type;
 
 public:
 	TomahawkRun();	// Disallowed ctor
@@ -22,21 +27,39 @@ public:
 	}
 
 	T phasing: 1,
-	  alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
-	  alleleB: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH - 1;
+	  alleleA: (1 + missing),
+	  alleleB: (1 + missing),
+	  runs:    sizeof(T)*8 - (2 * (1 + missing) + 1);
 };
 
 #pragma pack(1)
-template <class T>
+template <class T, BYTE missing = 1>
+struct TomahawkRunNoPhase{
+private:
+	typedef TomahawkRunNoPhase self_type;
+
+public:
+	TomahawkRunNoPhase();  // Disallowed ctor
+	~TomahawkRunNoPhase(); // Disallowed dtor
+
+	T alleleA: (1 + missing),
+	  alleleB: (1 + missing),
+	  runs:    sizeof(T)*8 - (2 * (1 + missing));
+};
+
+#pragma pack(1)
+template <class T, BYTE missing = 1>
 struct TomahawkRunPacked{
+private:
+	typedef TomahawkRunPacked self_type;
+
 public:
 	TomahawkRunPacked();	// Disallowed ctor
-	~TomahawkRunPacked();	// Disallowed dtor
+	~TomahawkRunPacked(); // Disallowed dtor
 
 	T phasing: 1,
-	  alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH - 1;
+	  alleles: 2*(1 + missing),
+	  runs:    sizeof(T)*8 - (2 * (1 + missing) + 1);
 };
 
 #pragma pack(1)

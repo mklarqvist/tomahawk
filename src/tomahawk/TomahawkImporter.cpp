@@ -53,7 +53,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 
 	// Spawn RLE controller
 	this->encoder = new encoder_type(this->header_->samples);
-	this->encoder->DetermineBitWidth();
+	//this->encoder->DetermineBitWidth();
 
 	this->reader_.clear();
 	// seek reader until line does not start with '#'
@@ -154,7 +154,7 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Spawn RLE controller
 	this->encoder = new encoder_type(this->header_->samples);
-	this->encoder->DetermineBitWidth();
+	//this->encoder->DetermineBitWidth();
 
 	this->writer_.setHeader(reader.header);
 	if(!this->writer_.Open(this->outputPrefix)){
@@ -260,7 +260,7 @@ bool TomahawkImporter::BuildVCF(void){
 
 	// Spawn RLE controller
 	this->encoder = new encoder_type(this->header_->samples);
-	this->encoder->DetermineBitWidth();
+	//this->encoder->DetermineBitWidth();
 
 	// Parse lines
 	line_type line(this->header_->size());
