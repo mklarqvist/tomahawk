@@ -26,7 +26,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.controller.mixed_phasing = cost.mixedPhasing;
 		meta_base.controller.anyMissing = cost.hasMissing;
 
-		//std::cerr << line.body->POS+1 << ":" << (int)cost.word_width << ',' << cost.n_runs << ',' << (int)cost.hasMissing << ',' << (int)cost.mixedPhasing << std::endl;
+		std::cerr << line.body->POS+1 << "\t0\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
 
 		switch(cost.word_width){
 		case 1:
@@ -78,6 +78,8 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 
 		// RLE is cheaper
 		if(cost.word_width*cost.n_runs < costBCFStyle){
+			std::cerr << line.body->POS+1 << "\t1\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
+
 			meta_base.controller.rle = true;
 			meta_base.controller.rle_type = 1; // Todo: fix
 
@@ -109,6 +111,8 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		}
 		// BCF style is cheaper
 		else {
+			std::cerr << line.body->POS+1 << "\t1\t1" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << costBCFStyle << std::endl;
+
 			meta_base.controller.rle = false;
 			meta_base.controller.rle_type = 0;
 

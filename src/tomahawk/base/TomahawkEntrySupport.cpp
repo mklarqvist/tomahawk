@@ -49,7 +49,6 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 
 	// Write out ID
 	typed_value n_ID;
-	//std::cerr << (S32)entry.l_ID << std::endl;
 	if(entry.l_ID < 63){
 		n_ID.type = typed_value::BYTE_TYPE;
 		n_ID.length = entry.l_ID;
@@ -69,7 +68,6 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 
 	// Write out alleles
 	for(U32 i = 0; i < entry.body->n_allele; ++i){
-		//std::cerr << (S32)entry.alleles[i].length << std::endl;
 		// Write out allele
 		typed_value n_ID;
 		if(entry.alleles[i].length < 63){
@@ -90,7 +88,6 @@ bool TomahawkSupport::write(const bcf_type& entry, buffer_type& buffer){
 		buffer.Add(entry.alleles[i].data, entry.alleles[i].length);
 	}
 
-	//std::cerr << "Expected: " << offset << "; observed: " << (S32)buffer.pointer - offset << std::endl;
 	assert((S32)buffer.pointer - (buffer_start + offset) == 0);
 
 	return true;

@@ -68,7 +68,7 @@ public:
 		inline const bool isEmpty(void) const{ return(true); }
 		inline const bool isFull(void) const{ return(this->length == 63); }
 
-		friend buffer_type operator+=(buffer_type& buffer, const self_type entry){
+		friend buffer_type& operator+=(buffer_type& buffer, const self_type& entry){
 			BYTE out = entry.length << 2;
 			out |= entry.type;
 			buffer += out;

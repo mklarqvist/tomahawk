@@ -323,7 +323,7 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.l_rle = this->buffer_encode_rle.pointer;
 	this->totempole_entry.l_simple = this->buffer_encode_simple.pointer;
 
-	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << '\t';
+	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
 
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
