@@ -33,13 +33,13 @@ public:
 		{}
 		~__meta_controller(){}
 
-		BYTE anyMissing: 1,   // any missing
-             allPhased: 1,    // all phased
+		BYTE anyMissing: 1,  // any missing
+             allPhased: 1,   // all phased
 			 mixed_phasing: 1,// has mixed phasing
-			 biallelic: 1, // is biallelic
-			 simple: 1,    // is simple SNV->SNV
-			 rle: 1,       // uses RLE compression
-			 rle_type: 2; // type of RLE (BYTE, U16, U32, U64)
+			 biallelic: 1,   // is biallelic
+			 simple: 1,      // is simple SNV->SNV
+			 rle: 1,         // uses RLE compression
+			 rle_type: 2;   // type of RLE (BYTE, U16, U32, U64)
 	} controller_byte;
 
 public:
@@ -70,6 +70,7 @@ public:
 		buffer += entry.ref_alt;
 		buffer += entry.MGF;
 		buffer += entry.HWE_P;
+		buffer += entry.AF;
 		buffer += entry.virtual_offset_cold_meta;
 		buffer += entry.virtual_offset_gt;
 		return(buffer);

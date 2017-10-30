@@ -285,7 +285,7 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 	this->buffer_meta += meta;
 
 	// RLE using this word size
-	U32 w = ceil(ceil(log2(this->vcf_header->samples))/8);
+	U32 w = ceil(ceil(log2(this->vcf_header->samples + 1))/8);
 	if(w > 2 & w < 4) w = 4;
 	else if(w > 4) w = 8;
 
@@ -333,19 +333,24 @@ bool TomahawkImportWriter::flush(void){
 	this->buffer_meta += this->buffer_metaComplex;
 
 	// Test to iterate over complex
-	/*
+
 	//U32 p = 0;
-	TomahawkBlockIterator<U32> b(this->buffer_meta.data, this->buffer_meta.pointer, this->totempole_entry);
-	while(++b){
+	/*
+	TomahawkBlockIterator<U16> b(this->buffer_meta.data, this->buffer_meta.pointer, this->totempole_entry);
+	while(true){
+		//std::cerr << b.getMeta() << std::endl;
 		//std::cerr << p++ << '/' << this->totempole_entry.n_variants << ": " << b.isRLE() << '\t' << b.size() << '\t' << b.getMeta() << std::endl;
-		if(!b.isRLE()){
+
+		if(b.getMeta().controller.biallelic == 0 && b.getMeta().controller.rle == 0){
+			std::cerr << b.getMeta().position << '\t' << b.getMeta().n_runs << std::endl;
 			const BYTE n_alleles = b.getMetaComplex().n_allele + 1;
 			if(n_alleles < 8){
-				//const Support::TomahawkRunSimple<BYTE>* field = nullptr;
-				//while(b.nextRunSimple(field)){
-				//	std::cerr << *field << '\t';
-				//}
-				//std::cerr << std::endl;
+				const Support::TomahawkRunSimple<BYTE>* field = nullptr;
+				while(b.nextRunSimple(field)){
+					std::cerr << *field << '\t';
+				}
+				std::cerr << std::endl;
+
 				//exit(1);
 			} else {
 				std::cerr << this->totempole_entry.n_variants << ": " << b.isRLE() << '\t' << b.size() << '\t' << b.getMeta() << std::endl;
@@ -355,20 +360,60 @@ bool TomahawkImportWriter::flush(void){
 					std::cerr << *field << '\t';
 				}
 				std::cerr << std::endl;
+				//exit(1);
+			}
+		} else if(b.getMeta().controller.biallelic == 0 && b.getMeta().controller.rle == 1){
+			const BYTE& rle_type = b.getMeta().controller.rle_type;
+			const BYTE shift_size = ceil(log2(b.getMetaComplex().n_allele + 1));
+			const BYTE allele_mask = (1 << shift_size) - 1;
+
+			if(rle_type == 0){
+				std::cerr << b.getMeta().position << std::endl;
+				std::cerr << "nallelic and rle: " << (int)rle_type << " n_alleles: " << b.getMetaComplex().n_allele << std::endl;
+				std::cerr << (int)shift_size << ',' << (int)rle_type << " mask: " << std::bitset<8>(allele_mask) << std::endl;
+
+				const BYTE* field = nullptr;
+
+				while(b.nextRunSimple(field)){
+					const U32 l = ((*field >> (1 + 2*shift_size)));
+					for(U32 i = 0; i < l; ++i)
+						std::cerr << (int)(((*field >> 1) & allele_mask) - 1) << ((*field&1) ? '|' : '/') << (int)(((*field >> (1 + shift_size)) & allele_mask) - 1) << '\t';
+					//std::cerr << "A: " << (int)((*field >> 1) & allele_mask) << '\t'
+					//		  << "B: " << (int)((*field >> (1 + shift_size)) & allele_mask) << '\t'
+					//		  << "run; " << (int)((*field >> (1 + 2*shift_size))) << '\t'
+					//		  << std::bitset<8>(*field) << std::endl;
+				}
 				exit(1);
 			}
 		}
-		/*
-		else {
-			const Support::TomahawkRun<U32>* entry;
-			while(b.nextRun(entry)){
-				std::cerr << *entry << '\t';
-			}
-			std::cerr << std::endl;
-		}
 
+
+		else if(b.getMeta().controller.biallelic == 1 && b.getMeta().controller.rle == 1) {
+			/*
+			const BYTE& rle_type = b.getMeta().controller.rle_type;
+			const BYTE shift_size = 1 + b.getMeta().controller.anyMissing;
+			const BYTE mixed_phasing = b.getMeta().controller.mixed_phasing;
+			const BYTE allele_mask = (1 << shift_size) - 1;
+
+			if(rle_type == 1){
+				const U16* field = nullptr;
+				std::cerr << (int)shift_size << ',' << (int)mixed_phasing << ',' << (int)rle_type << " mask: " << std::bitset<16>(allele_mask) << std::endl;
+				while(b.nextRun(field)){
+					std::cerr << "A: " << (int)((*field >> mixed_phasing) & allele_mask) << '\t'
+							  << "B: " << (int)((*field >> (mixed_phasing + shift_size)) & allele_mask) << '\t'
+							  << "run; " << (int)((*field >> (mixed_phasing + 2*shift_size))) << '\t'
+							  << std::bitset<16>(*field) << std::endl;
+				}
+				exit(1);
+			}
+			*/
+		/*}
+
+
+		if(!++b) break;
 	}
 	*/
+
 
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output

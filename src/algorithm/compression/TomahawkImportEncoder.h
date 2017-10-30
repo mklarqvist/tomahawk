@@ -15,7 +15,7 @@ namespace Tomahawk{
 namespace Algorithm{
 
 #define PACK_RLE_BIALLELIC(A, B, SHIFT, ADD) BCF::BCF_UNPACK_GENOTYPE(A) << (SHIFT + ADD) | BCF::BCF_UNPACK_GENOTYPE(B) << (ADD) | (A & ADD)
-#define PACK_RLE_SIMPLE(A, B, SHIFT) (A >> 1) << (SHIFT + 1) | (B >> 1) << 1 | (A & 1)
+#define PACK_RLE_SIMPLE(A, B, SHIFT) ((A >> 1) << (SHIFT + 1)) | ((B >> 1) << 1) | (A & 1)
 
 // Todo: These should all be moved to VCF or BCF entry class
 struct TomahawkImportEncoderHelper{
@@ -266,7 +266,7 @@ private:
 
 	template <class T> bool EncodeRLESimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool EncodeRLEComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs);
-	template <class T> bool EncodeSingle(const bcf_type& line, buffer_type& runs, U64& n_runs);
+	template <class T> bool EncodeSimple(const bcf_type& line, buffer_type& runs, U64& n_runs);
 	template <class T> bool EncodeRLE(const bcf_type& line, buffer_type& runs, U64& n_runs, const bool hasMissing = true, const bool hasMixedPhase = true);
 	template <class T> bool EncodeRLESimple(const bcf_type& line, buffer_type& runs, U64& n_runs);
 
@@ -281,7 +281,7 @@ private:
 };
 
 template <class T>
-bool TomahawkImportEncoder::EncodeSingle(const bcf_type& line, buffer_type& simple, U64& n_runs){
+bool TomahawkImportEncoder::EncodeSimple(const bcf_type& line, buffer_type& simple, U64& n_runs){
 	BYTE shift_size = 3;
 	if(sizeof(T) == 2) shift_size = 7;
 	if(sizeof(T) == 4) shift_size = 15;
@@ -366,9 +366,9 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	// UNPACK(value) << shift +1 | UNPACK(value2) << 1 | phase
 	// shift = 2 if hasMissing == TRUE
 	// shift = 1 if HasMissing == FALSE
-	// add = 1 if hasMixedPhase == TRUE OR hasMissing == TRUE
+	// add = 1 if hasMixedPhase == TRUE
 	const BYTE shift = hasMissing ? 2 : 1;
-	const BYTE add = (hasMissing || hasMixedPhase) ? 1 : 0;
+	const BYTE add = hasMixedPhase ? 1 : 0;
 
 	// Genotype maps
 	// Map to 0,1,4,5
@@ -392,6 +392,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 			RLE = length;
 			RLE <<= 2*shift + add;
 			RLE |= packed;
+			assert((RLE >> (2*shift + add)) == length);
 
 			// Set meta phased flag bit
 			if((fmt_type_value2 & 1) != 1) this->helper.phased = false;
@@ -417,6 +418,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	RLE = length;
 	RLE <<= 2 * shift + add;
 	RLE |= packed;
+	assert((RLE >> (2*shift + add)) == length);
 
 	// Set meta phased flag bit
 	if((packed & 1) != 1) this->helper.phased = false;
@@ -450,6 +452,7 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 	const BYTE shift = ceil(log2(line.body->n_allele + 1));
 
 	//std::cerr << "RLE simple shift; shift,size: " << (int)shift << ',' << sizeof(T) << std::endl;
+	//exit(1);
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
@@ -466,11 +469,14 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 		if(packed != packed_internal){
 			// Prepare RLE
 			RLE = length;
-			RLE <<= 2*shift+1;
+			RLE <<= 2*shift + 1;
 			RLE |= packed;
+
+			//if(sizeof(T) == 1) std::cerr << line.body->POS+1 << ": " << std::bitset<sizeof(T)*8>(RLE) << '\t' << std::bitset<sizeof(T)*8>(packed) << std::endl;
 
 			// Set meta phased flag bit
 			if((fmt_type_value2 & 1) != 1) this->helper.phased = false;
+			assert((RLE >> (2*shift + 1)) == length);
 
 			// Push RLE to buffer
 			runs += RLE;
@@ -486,8 +492,10 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 	// Last entry
 	// Prepare RLE
 	RLE = length;
-	RLE <<= 2*shift+1;
+	RLE <<= 2*shift + 1;
 	RLE |= packed;
+	assert((RLE >> (2*shift + 1)) == length);
+	//if(sizeof(T) == 1){ std::cerr << line.body->POS+1 << ": " << std::bitset<sizeof(T)*8>(RLE) << std::endl; exit(1);}
 
 	// Set meta phased flag bit
 	if((packed & 1) != 1) this->helper.phased = false;

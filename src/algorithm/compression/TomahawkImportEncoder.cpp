@@ -14,7 +14,6 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 	// Update basic values for a meta entry
 	meta_base.position = (U32)line.body->POS + 1; // Base-1
 	meta_base.ref_alt = line.ref_alt;
-	meta_base.controller.biallelic = true;
 	meta_base.controller.simple = line.isSimple();
 
 	// Assess cost and encode
@@ -25,8 +24,9 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.controller.rle = true;
 		meta_base.controller.mixed_phasing = cost.mixedPhasing;
 		meta_base.controller.anyMissing = cost.hasMissing;
+		meta_base.controller.biallelic = true;
 
-		std::cerr << line.body->POS+1 << "\t0\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
+		//std::cerr << line.body->POS+1 << "\t0\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
 
 		switch(cost.word_width){
 		case 1:
@@ -73,31 +73,31 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.controller.anyMissing = cost.hasMissing;
 		meta_base.MGF = 0;
 		meta_base.HWE_P = 1;
+		meta_base.controller.simple = 1;
 
 		//std::cerr << (int)cost.word_width << '\t' << cost.n_runs << '\t' << cost.word_width*cost.n_runs << '\t' << costBCFStyle << '\t' << costBCFStyle/double(cost.word_width*cost.n_runs) << std::endl;
 
 		// RLE is cheaper
 		if(cost.word_width*cost.n_runs < costBCFStyle){
-			std::cerr << line.body->POS+1 << "\t1\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
+			//std::cerr << line.body->POS+1 << "\t1\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
 
 			meta_base.controller.rle = true;
-			meta_base.controller.rle_type = 1; // Todo: fix
 
 			switch(cost.word_width){
 			case 1:
-				this->EncodeRLESimple<BYTE>(line, runs, n_runs);
+				this->EncodeRLESimple<BYTE>(line, simple, n_runs);
 				meta_base.controller.rle_type = 0;
 				break;
 			case 2:
-				this->EncodeRLESimple<U16>(line, runs, n_runs);
+				this->EncodeRLESimple<U16>(line, simple, n_runs);
 				meta_base.controller.rle_type = 1;
 				break;
 			case 4:
-				this->EncodeRLESimple<U32>(line, runs, n_runs);
+				this->EncodeRLESimple<U32>(line, simple, n_runs);
 				meta_base.controller.rle_type = 2;
 				break;
 			case 8:
-				this->EncodeRLESimple<U64>(line, runs, n_runs);
+				this->EncodeRLESimple<U64>(line, simple, n_runs);
 				meta_base.controller.rle_type = 3;
 				break;
 			default:
@@ -111,14 +111,14 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		}
 		// BCF style is cheaper
 		else {
-			std::cerr << line.body->POS+1 << "\t1\t1" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << costBCFStyle << std::endl;
+			//std::cerr << line.body->POS+1 << "\t1\t1" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << costBCFStyle << std::endl;
 
 			meta_base.controller.rle = false;
 			meta_base.controller.rle_type = 0;
 
-			if(line.body->n_allele + 1 < 8)          this->EncodeSingle<BYTE>(line, simple, n_runs);
-			else if(line.body->n_allele + 1 < 128)   this->EncodeSingle<U16> (line, simple, n_runs);
-			else if(line.body->n_allele + 1 < 32768) this->EncodeSingle<U32> (line, simple, n_runs);
+			if(line.body->n_allele + 1 < 8)          this->EncodeSimple<BYTE>(line, simple, n_runs);
+			else if(line.body->n_allele + 1 < 128)   this->EncodeSimple<U16> (line, simple, n_runs);
+			else if(line.body->n_allele + 1 < 32768) this->EncodeSimple<U32> (line, simple, n_runs);
 			else {
 				std::cerr << Helpers::timestamp("ERROR", "ENCODER") <<
 							 "Illegal number of alleles (" << line.body->n_allele + 1 << "). "
@@ -190,16 +190,12 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	U32 n_runs = 1;
 	U32 largest = 0;
 	U32 run_length = 1;
-	U32 ref = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
-			  ((fmt_type_value1 >> 1) << 1) |
-			  (fmt_type_value2 & 1);
+	U32 ref = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
 
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-		U32 internal = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
-					   ((fmt_type_value1 >> 1) << 1) |
-					   (fmt_type_value2 & 1);
+		U32 internal = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
 
 		if(ref != internal){
 			ref = internal;
