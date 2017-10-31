@@ -168,10 +168,11 @@ bool TGZFController::Deflate(const buffer_type& buffer){
 	*test = compressedLength;
 	//std::cerr << Helpers::timestamp("DEBUG") << data.pointer << "->" << compressedLength-1 << " stored: " << *test << std::endl;
 
-	std::time_t result = std::time(nullptr);
-	std::asctime(std::localtime(&result));
+	//std::time_t result = std::time(nullptr);
+	//std::asctime(std::localtime(&result));
 	U32* time = reinterpret_cast<U32*>(&this->buffer[4]);
-	*time = result;
+	//*time = result;
+	*time = 0;
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
 
 

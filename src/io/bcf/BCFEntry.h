@@ -6,9 +6,11 @@
 namespace Tomahawk {
 namespace BCF {
 
+#define BCF_ASSERT 1
+
 const BYTE BCF_UNPACK_TOMAHAWK[3] = {2, 0, 1};
 #define BCF_UNPACK_GENOTYPE(A) BCF_UNPACK_TOMAHAWK[(A >> 1)]
-
+const char BCF_TYPE_SIZE[8] = {0,1,2,4,0,4,0,1};
 
 #pragma pack(1)
 struct BCFAtomicBase{
@@ -59,12 +61,10 @@ struct BCFEntryBody{
 	S32 rlen;
 	float QUAL;
 	U32 n_info: 16, n_allele: 16;
-	U32 n_sample: 8, n_fmt: 24;
+	U32 n_sample: 24, n_fmt: 8;
 };
 
 struct BCFTypeString{
-	typedef BCFAtomicBase base_type;
-
 	U16 length;
 	char* data; // reinterpret me as char*
 };
@@ -83,7 +83,7 @@ struct BCFEntry{
 	inline void reset(void){ this->pointer = 0; this->isGood = false; }
 	inline const U32& size(void) const{ return(this->pointer); }
 	inline const U32& capacity(void) const{ return(this->limit); }
-	inline U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
+	inline const U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
 
 	inline const bool isSimple(void) const{
 		return((this->body->n_allele == 2) && (this->alleles[0].length == 1 && this->alleles[1].length == 1));
@@ -95,7 +95,31 @@ struct BCFEntry{
 	bool parse(void);
 	void SetRefAlt(void);
 	double getMissingness(const U64& samples) const;
-	const bool& good(void) const{ return(this->isGood); }
+	inline const bool& good(void) const{ return(this->isGood); }
+
+	inline const S32 getInteger(const base_type& key, const char* const data, U32& pos){
+		S32 value = 0;
+		switch(key.low){
+		case(1): value = *reinterpret_cast<const SBYTE* const>(&this->data[pos++]); break;
+		case(2): value = *reinterpret_cast<const S16* const>(&this->data[pos]); pos+=sizeof(S16);  break;
+		case(3): value = *reinterpret_cast<const S32* const>(&this->data[pos]); pos+=sizeof(S32);  break;
+		}
+		return value;
+	}
+
+	inline const float getFloat(const char* const data, U32& pos){
+		const float val = *reinterpret_cast<const float* const>(&this->data[pos]);
+		pos += sizeof(float);
+		return val;
+	}
+
+	inline const char getChar(const char* const data, U32& pos){
+		return(*reinterpret_cast<const char* const>(&this->data[pos++]));
+	}
+
+	inline U64 hashFilter(void);
+	inline U64 hashInfo(void);
+	inline U64 hashFormat(void);
 
 public:
 	U32 pointer; // byte width
@@ -109,6 +133,10 @@ public:
 	string_type* alleles; // pointer to pointer of ref alleles and their lengths
 	char* ID;
 	SBYTE* genotypes;
+
+	// FILTER
+	// INFO
+	// FORMAT
 };
 
 }

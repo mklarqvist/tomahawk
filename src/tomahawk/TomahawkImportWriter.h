@@ -17,6 +17,7 @@
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
 #include "TomahawkImporterFilters.h"
+#include "../algorithm/OpenHashTable.h"
 
 namespace Tomahawk {
 
@@ -29,6 +30,7 @@ class TomahawkImportWriter {
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef IO::TGZFController tgzf_controller_type;
 	typedef BCF::BCFEntry bcf_entry_type;
+	typedef Hash::HashTable<U32, U32> hash_table;
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -98,6 +100,9 @@ public:
 	buffer_type buffer_encode_simple; // simple encoding
 	buffer_type buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
 	buffer_type buffer_metaComplex; // complex meta data
+
+	hash_table info_hash_pattern;
+	hash_table info_hash_streams;
 
 	encoder_type* encoder;
 	vcf_header_type* vcf_header;

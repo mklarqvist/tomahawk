@@ -182,6 +182,16 @@ HashTable<T, K>::~HashTable(){
     delete[] this->__entries;
 }
 
+template <class T, class K>
+void HashTable<T, K>::clear(void){
+	for(U32 i = 0; i < this->__size; ++i){
+		if(this->__entries[i] != nullptr){
+			delete this->__entries[i];
+			this->__entries[i] = nullptr;
+		}
+	}
+}
+
 
 } /* namespace Hash */
 }

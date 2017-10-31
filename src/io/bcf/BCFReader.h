@@ -3,8 +3,6 @@
 
 #include <cassert>
 
-#define BCF_ASSERT 1
-
 #include "../BasicBuffer.h"
 #include "../compression/BGZFController.h"
 #include "BCFEntry.h"

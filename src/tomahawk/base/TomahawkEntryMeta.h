@@ -49,7 +49,7 @@ public:
 		//MGF(0),
 		HWE_P(0),
 		AF(0),
-		info_map(0),
+		INFO_map_ID(0),
 		virtual_offset_cold_meta(0),
 		virtual_offset_gt(0)
 	{}
@@ -72,7 +72,7 @@ public:
 		//buffer += entry.MGF;
 		buffer += entry.HWE_P;
 		buffer += entry.AF;
-		buffer += entry.info_map;
+		buffer += entry.INFO_map_ID;
 		buffer += entry.virtual_offset_cold_meta;
 		buffer += entry.virtual_offset_gt;
 		return(buffer);
@@ -91,7 +91,7 @@ public:
 	float HWE_P;
 	float AF;
 	// INFO map
-	U16 info_map;
+	U16 INFO_map_ID;
 	// Hot-cold split structure. pointer to cold data
 	// since a pointer cannot be read from a byte
 	// stream as its memory location changes

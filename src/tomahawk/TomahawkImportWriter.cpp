@@ -27,8 +27,10 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	filter(filter),
 	buffer_encode_rle(flush_limit*2),
 	buffer_encode_simple(flush_limit*2),
-	buffer_meta(flush_limit*8), // meta joins all other buffers
+	buffer_meta(flush_limit*10), // meta joins all other buffers
 	buffer_metaComplex(flush_limit*2),
+	info_hash_pattern(5012),
+	info_hash_streams(5012),
 	encoder(nullptr),
 	vcf_header(nullptr)
 {}
@@ -217,7 +219,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	if(base_meta.AF < this->filter.MGF){
 		this->buffer_meta.pointer = meta_start_pos; // reroll back
 		this->buffer_encode_rle.pointer  = rle_start_pos; // reroll back
-		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
+		//std::cerr << "MAF < " << this->filter.MGF << ": " << base_meta.AF << '\t' << base_meta << std::endl;
 		return false;
 	}
 
@@ -225,7 +227,6 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 		this->totempole_entry.minPosition = line.position;
 
 	this->totempole_entry.maxPosition = line.position;
-	//if(line.c)
 	++this->totempole_entry.n_variants;
 
 	return true;
