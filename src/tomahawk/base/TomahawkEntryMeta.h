@@ -49,9 +49,9 @@ public:
 		//MGF(0),
 		HWE_P(0),
 		AF(0),
+		info_map(0),
 		virtual_offset_cold_meta(0),
-		virtual_offset_gt(0),
-		info_map(0)
+		virtual_offset_gt(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
@@ -72,9 +72,9 @@ public:
 		//buffer += entry.MGF;
 		buffer += entry.HWE_P;
 		buffer += entry.AF;
+		buffer += entry.info_map;
 		buffer += entry.virtual_offset_cold_meta;
 		buffer += entry.virtual_offset_gt;
-		buffer += entry.info_map;
 		return(buffer);
 	}
 
@@ -90,6 +90,8 @@ public:
 	//float MGF;
 	float HWE_P;
 	float AF;
+	// INFO map
+	U16 info_map;
 	// Hot-cold split structure. pointer to cold data
 	// since a pointer cannot be read from a byte
 	// stream as its memory location changes
@@ -102,7 +104,6 @@ public:
 	// this allows fast iteration when switching between
 	// the two compression approaches
 	U32 virtual_offset_gt;
-	U16 info_map;
 };
 
 /*
