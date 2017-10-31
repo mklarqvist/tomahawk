@@ -214,7 +214,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 		return false;
 	}
 
-	if(base_meta.MGF < this->filter.MGF){
+	if(base_meta.AF < this->filter.MGF){
 		this->buffer_meta.pointer = meta_start_pos; // reroll back
 		this->buffer_encode_rle.pointer  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
@@ -261,7 +261,7 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 	}
 
 	// Minor-genotype frequency filter
-	if(meta.MGF < this->filter.MGF){
+	if(meta.AF < this->filter.MGF){
 		this->buffer_meta.pointer = meta_start_pos; // roll back
 		this->buffer_encode_rle.pointer  = rle_start_pos; // roll back
 		this->buffer_encode_simple.pointer = simple_start_pos;

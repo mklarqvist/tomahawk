@@ -51,7 +51,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		}
 
 		meta_base.AF = float(this->helper.countsAlleles[1]) / (this->helper.countsAlleles[0] + this->helper.countsAlleles[1]);
-		meta_base.MGF = this->helper.MGF;
+		//meta_base.MGF = this->helper.MGF;
 		meta_base.HWE_P = this->helper.HWE_P;
 
 		// Reset and recycle helper
@@ -71,7 +71,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.AF = 0; // AF needs to be looked up in cold store
 		meta_base.controller.mixed_phasing = cost.mixedPhasing;
 		meta_base.controller.anyMissing = cost.hasMissing;
-		meta_base.MGF = 0;
+		//meta_base.MGF = 0;
 		meta_base.HWE_P = 1;
 		meta_base.controller.simple = 1;
 

@@ -204,8 +204,6 @@ class TomahawkImportEncoder {
 	typedef VCF::VCFLine vcf_type;
 	typedef BCF::BCFEntry bcf_type;
 	typedef Support::TomahawkEntryMetaBase meta_base_type;
-	//typedef bool (Tomahawk::Algorithm::TomahawkImportEncoder::*rleFunction)(const vcf_type& line, buffer_type& meta, buffer_type& runs); // Type cast pointer to function
-	//typedef bool (Tomahawk::Algorithm::TomahawkImportEncoder::*bcfFunction)(const bcf_type& line, meta_base_type& meta_base, buffer_type& runs, buffer_type& simple, U64& n_runs); // Type cast pointer to function
 	typedef TomahawkImportEncoderHelper helper_type;
 
 	typedef struct __RLEAssessHelper{
@@ -275,9 +273,6 @@ private:
 	BYTE shiftSize;            // bit shift size
 	U64 n_samples;             // number of samples
 	helper_type helper;        // support stucture
-	//rleFunction encode;        // encoding function
-	//rleFunction encodeComplex; // encoding function
-	//bcfFunction encodeBCF;     // encoding function for bcf
 };
 
 template <class T>
@@ -293,43 +288,6 @@ bool TomahawkImportEncoder::EncodeSimple(const bcf_type& line, buffer_type& simp
 	// Pack genotypes as
 	// allele A | alleleB | isPhased
 	if(sizeof(T) <= 2){
-		// Assess RLE cost
-		U32 internal_pos_rle = line.p_genotypes;
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-		U32 n_runs = 1;
-		U32 largest = 0;
-		U32 run_length = 1;
-		T ref = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
-		//T ref = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
-		//		((fmt_type_value1 >> 1) << 1) |
-		//		(fmt_type_value2 & 1);
-
-		for(U32 i = 2; i < this->n_samples * 2; i += 2){
-			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-			T internal = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
-			//T internal = ((fmt_type_value2 >> 1) << (shift_size + 1)) |
-			//		     ((fmt_type_value1 >> 1) << 1) |
-			//		     (fmt_type_value2 & 1);
-
-			if(ref != internal){
-				ref = internal;
-				if(run_length > largest) largest = run_length;
-				++n_runs;
-				run_length = 0;
-			}
-			++run_length;
-		}
-		++n_runs;
-		if(run_length > largest) largest = run_length;
-		U32 word_width = ceil((ceil(log2(largest)) + (2*(ceil(log2(line.body->n_allele))+1) + 1)) / 8);
-		if(word_width == 3) word_width = 4;
-		if(word_width > 4)  word_width = 8;
-
-		//std::cerr << ceil(log2(largest)) << '\t' << 2*(ceil(log2(line.body->n_allele))+1) + 1 << '\t' << word_width << std::endl;
-		//std::cerr << largest << '\t' << n_runs << '\t' << word_width*n_runs+1 << '\t' << sizeof(T)*this->n_samples << '\t' << double(sizeof(T)*this->n_samples)/(word_width*n_runs+1) << std::endl;
-
 		for(U32 i = 0; i < this->n_samples * 2; i += 2){
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
@@ -348,7 +306,7 @@ bool TomahawkImportEncoder::EncodeSimple(const bcf_type& line, buffer_type& simp
 			simple += packed;
 		}
 	} else {
-		std::cerr << "not supported" << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","ENCODER") << "Illegal number of alleles..." << std::endl;
 		exit(1);
 	}
 	n_runs = this->n_samples;

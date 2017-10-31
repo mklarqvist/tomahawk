@@ -7,7 +7,7 @@ namespace Tomahawk{
 namespace Support{
 
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 3*sizeof(float) + 2*sizeof(U32))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 2*sizeof(float) + 2*sizeof(U32) + sizeof(U16))
 
 /*
  TomahawkEntryMetaBase is used for reinterpreting
@@ -46,20 +46,21 @@ public:
 	TomahawkEntryMetaBase() :
 		position(0),
 		ref_alt(0),
-		MGF(0),
+		//MGF(0),
 		HWE_P(0),
 		AF(0),
 		virtual_offset_cold_meta(0),
-		virtual_offset_gt(0)
+		virtual_offset_gt(0),
+		info_map(0)
 	{}
 	~TomahawkEntryMetaBase(){}
 
-	inline const bool isSingleton(void) const{ return(this->MGF == 0); }
+	inline const bool isSingleton(void) const{ return(this->AF == 0); }
 	inline const bool isSimpleSNV(void) const{ return(this->controller.biallelic == true && this->controller.simple == true); }
 	inline const bool isRLE(void) const{ return(this->controller.rle); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset_cold_meta << '\t' << entry.virtual_offset_gt;
+		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.AF << '\t' << entry.HWE_P << '\t' << entry.virtual_offset_cold_meta << '\t' << entry.virtual_offset_gt;
 		return(out);
 	}
 
@@ -68,11 +69,12 @@ public:
 		buffer += *reinterpret_cast<const BYTE* const>(&entry.controller);
 		buffer += entry.position;
 		buffer += entry.ref_alt;
-		buffer += entry.MGF;
+		//buffer += entry.MGF;
 		buffer += entry.HWE_P;
 		buffer += entry.AF;
 		buffer += entry.virtual_offset_cold_meta;
 		buffer += entry.virtual_offset_gt;
+		buffer += entry.info_map;
 		return(buffer);
 	}
 
@@ -85,7 +87,7 @@ public:
 	BYTE ref_alt;
 	// MGF, HWE, AF is pre-computed as they are used in
 	// LD heuristics
-	float MGF;
+	//float MGF;
 	float HWE_P;
 	float AF;
 	// Hot-cold split structure. pointer to cold data
@@ -100,6 +102,7 @@ public:
 	// this allows fast iteration when switching between
 	// the two compression approaches
 	U32 virtual_offset_gt;
+	U16 info_map;
 };
 
 /*
@@ -120,7 +123,7 @@ public:
 	inline const T& getRuns(void) const{ return(this->n_runs); }
 
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
-		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.n_runs << '\t' << entry.MGF << '\t' << entry.HWE_P << '\t' << entry.n_runs;
+		out << entry.position << '\t' << (int)entry.controller.biallelic << ',' << (int)entry.controller.simple << '\t' << (int)entry.ref_alt << '\t' << entry.n_runs << '\t' << entry.AF << '\t' << entry.HWE_P << '\t' << entry.n_runs;
 		return(out);
 	}
 

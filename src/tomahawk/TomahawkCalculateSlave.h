@@ -426,10 +426,10 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 		this->helper.setLongRange();
 
 	// Set FLAGs
-	if(mA.MGF < LOW_MAF_THRESHOLD)
+	if(mA.AF < LOW_MAF_THRESHOLD)
 		this->helper.setLowMAFA();
 
-	if(mB.MGF < LOW_MAF_THRESHOLD)
+	if(mB.AF < LOW_MAF_THRESHOLD)
 		this->helper.setLowMAFB();
 
 	if(mA.HWE_P < LOW_HWE_THRESHOLD)
@@ -1496,7 +1496,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 	}
 
 	if(block1.currentMeta().controller.allPhased == 1 && block2.currentMeta().controller.allPhased == 1){
-		if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
+		if(block1.currentMeta().AF + block2.currentMeta().AF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1504,7 +1504,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 				this->output_manager.Add(block1, block2, this->helper);
 		}
 	} else {
-		if(block1.currentMeta().MGF+block2.currentMeta().MGF <= 0.009784345){
+		if(block1.currentMeta().AF+block2.currentMeta().AF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1560,7 +1560,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controll
 		return;
 	}
 
-	if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.004792332){
+	if(block1.currentMeta().AF + block2.currentMeta().AF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {
@@ -1578,7 +1578,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const contro
 		return;
 	}
 
-	if(block1.currentMeta().MGF + block2.currentMeta().MGF <= 0.009784345){
+	if(block1.currentMeta().AF + block2.currentMeta().AF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {
