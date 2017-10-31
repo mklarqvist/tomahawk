@@ -49,7 +49,9 @@ public:
 		//MGF(0),
 		HWE_P(0),
 		AF(0),
+		FILTER_map_ID(0),
 		INFO_map_ID(0),
+		FORMAT_map_ID(0),
 		virtual_offset_cold_meta(0),
 		virtual_offset_gt(0)
 	{}
@@ -72,7 +74,9 @@ public:
 		//buffer += entry.MGF;
 		buffer += entry.HWE_P;
 		buffer += entry.AF;
+		buffer += entry.FILTER_map_ID;
 		buffer += entry.INFO_map_ID;
+		buffer += entry.FORMAT_map_ID;
 		buffer += entry.virtual_offset_cold_meta;
 		buffer += entry.virtual_offset_gt;
 		return(buffer);
@@ -90,8 +94,12 @@ public:
 	//float MGF;
 	float HWE_P;
 	float AF;
+	// FILTER map
+	U16 FILTER_map_ID;
 	// INFO map
 	U16 INFO_map_ID;
+	// FORMAT map
+	U16 FORMAT_map_ID;
 	// Hot-cold split structure. pointer to cold data
 	// since a pointer cannot be read from a byte
 	// stream as its memory location changes

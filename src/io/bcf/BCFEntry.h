@@ -1,6 +1,7 @@
 #ifndef BCFENTRY_H_
 #define BCFENTRY_H_
 
+#include "../../third_party/xxhash/xxhash.h"
 #include "../BasicBuffer.h"
 
 namespace Tomahawk {
@@ -80,7 +81,15 @@ struct BCFEntry{
 
 	void resize(const U32 size);
 	void add(const char* const data, const U32 length);
-	inline void reset(void){ this->pointer = 0; this->isGood = false; }
+
+	inline void reset(void){
+		this->pointer = 0;
+		this->isGood = false;
+		this->infoPointer = 0;
+		this->formatPointer = 0;
+		this->filterPointer = 0;
+	}
+
 	inline const U32& size(void) const{ return(this->pointer); }
 	inline const U32& capacity(void) const{ return(this->limit); }
 	inline const U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
@@ -117,9 +126,9 @@ struct BCFEntry{
 		return(*reinterpret_cast<const char* const>(&this->data[pos++]));
 	}
 
-	inline U64 hashFilter(void);
-	inline U64 hashInfo(void);
-	inline U64 hashFormat(void);
+	inline const U64 hashFilter(void){return(XXH64((const void*)this->filterID, sizeof(U32)*this->filterPointer, 452930477));}
+	inline const U64 hashInfo(void){return(XXH64((const void*)this->infoID, sizeof(U32)*this->infoPointer, 452930477));}
+	inline const U64 hashFormat(void){return(XXH64((const void*)this->formatID, sizeof(U32)*this->formatPointer, 452930477));}
 
 public:
 	U32 pointer; // byte width
@@ -134,9 +143,16 @@ public:
 	char* ID;
 	SBYTE* genotypes;
 
+	// Vectors of identifiers
+	U16 filterPointer;
+	U16 infoPointer;
+	U16 formatPointer;
 	// FILTER
+	U32* filterID;
 	// INFO
+	U32* infoID;
 	// FORMAT
+	U32* formatID;
 };
 
 }

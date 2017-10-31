@@ -20,12 +20,28 @@ BCFEntry::BCFEntry(void):
 	body(reinterpret_cast<body_type*>(this->data)),
 	alleles(new string_type[100]),
 	ID(nullptr),
-	genotypes(nullptr)
+	genotypes(nullptr),
+
+	// Vectors of identifiers
+	filterPointer(0),
+	infoPointer(0),
+	formatPointer(0),
+	// FILTER
+	filterID(new U32[256]),
+	// INFO
+	infoID(new U32[256]),
+	// FORMAT
+	formatID(new U32[256])
 {
 
 }
 
-BCFEntry::~BCFEntry(void){ delete [] this->data; }
+BCFEntry::~BCFEntry(void){
+	delete [] this->data;
+	delete [] this->filterID;
+	delete [] this->infoID;
+	delete [] this->formatID;
+}
 
 void BCFEntry::resize(const U32 size){
 	char* temp = this->data;
@@ -65,7 +81,7 @@ void BCFEntry::__parseID(U32& internal_pos){
 		this->l_ID = this->getInteger(array_base, this->data, internal_pos);
 		this->ID = &this->data[internal_pos];
 	}
-	std::cerr << std::string(this->ID, this->l_ID) << ":" << this->l_ID << '\t';
+	//std::cerr << std::string(this->ID, this->l_ID) << ":" << this->l_ID << '\t';
 	internal_pos += this->l_ID;
 }
 
@@ -87,13 +103,13 @@ void BCFEntry::__parseRefAlt(U32& internal_pos){
 			this->alleles[i].data = &this->data[internal_pos];
 		}
 
-		std::cerr << std::string(this->alleles[i].data, this->alleles[i].length) << '\t';
+		//std::cerr << std::string(this->alleles[i].data, this->alleles[i].length) << '\t';
 		internal_pos += this->alleles[i].length;
 	}
 }
 
 bool BCFEntry::parse(void){
-	std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t';
+	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t';
 	U32 internal_pos = sizeof(body_type);
 	this->__parseID(internal_pos);
 	this->__parseRefAlt(internal_pos);
@@ -108,10 +124,12 @@ bool BCFEntry::parse(void){
 
 	for(U32 i = 0; i < n_filter; ++i){
 		const S32 filter_value = this->getInteger(filter_key, this->data, internal_pos);
+		this->filterID[this->filterPointer++] = filter_value;
 		//std::cerr << "FILTER: " << (int)n_filter << '\t' << (int)filter_key.low << '\t' << "id: " << filter_value << std::endl;
 	}
 
 	// At INFO
+
 	for(U32 i = 0; i < this->body->n_info; ++i){
 		const base_type& info_key = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
 #if BCF_ASSERT == 1
@@ -122,7 +140,9 @@ bool BCFEntry::parse(void){
 #endif
 		const S32 id = this->getInteger(info_key, this->data, internal_pos);
 		//std::cerr << i << " INFO: " << (int)info_key.high << '/' << (int)info_key.low << " id: " << id << std::endl;
-		std::cerr << id << ":";
+		//std::cerr << id << ":";
+
+		this->infoID[this->infoPointer++] = id;
 
 		const base_type& info_value = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
 		S32 n_info_value = info_value.high;
@@ -138,20 +158,23 @@ bool BCFEntry::parse(void){
 			for(U32 j = 0; j < n_info_value; ++j){
 				const S32 val = this->getInteger(info_value, this->data, internal_pos);
 				//std::cerr << '\t' << j << ": " << val << std::endl;
-				std::cerr << val << ';';
+				//std::cerr << val << ';';
 			}
 
 		} else if(info_value.low == 5){
 			for(U32 j = 0; j < n_info_value; ++j){
 				//std::cerr << '\t' << j << ": " << this->getFloat(this->data, internal_pos) << std::endl;
-				std::cerr << this->getFloat(this->data, internal_pos) << ';';
+				//std::cerr << this->getFloat(this->data, internal_pos) << ';';
+				this->getFloat(this->data, internal_pos);
 			}
 
 		} else if(info_value.low == 7){
 			//std::cerr << '\t';
-			for(U32 j = 0; j < n_info_value; ++j)
-				std::cerr << this->getChar(this->data, internal_pos);
-			std::cerr << ';';
+			for(U32 j = 0; j < n_info_value; ++j){
+				//std::cerr << this->getChar(this->data, internal_pos);
+				this->getChar(this->data, internal_pos);
+			}
+			//std::cerr << ';';
 
 		} else {
 			std::cerr << "impossible: " << (int)info_value.low << std::endl;
@@ -161,7 +184,10 @@ bool BCFEntry::parse(void){
 		//internal_pos += n_info * BCF_TYPE_SIZE[info_key.low];
 		//std::cerr << i << " INFO: " << (int)n_info << '\t' << (int)info_key.low << " id: " << 1 << "\tjump: " << 1 << std::endl;
 	}
-	std::cerr << std::endl;
+	//std::cerr << std::endl;
+
+	//std::cerr << this->filterPointer << '\t' << this->infoPointer << '\t' << this->formatPointer << std::endl;
+	std::cerr << this->hashFilter() << '\t' << this->hashInfo() << '\t' << this->hashFormat() << std::endl;
 
 #if BCF_ASSERT == 1
 	// Assert all FILTER and INFO data have been successfully
@@ -171,7 +197,7 @@ bool BCFEntry::parse(void){
 	assert(internal_pos == (this->body->l_shared + sizeof(U32)*2));
 #endif
 
-	//if(this->body->POS+1 == 118498) exit(1);
+	//if(this->body->POS+1 == 118498) exit(1); */
 
 	// Move up to start of FORMAT
 	internal_pos = this->body->l_shared + sizeof(U32)*2;

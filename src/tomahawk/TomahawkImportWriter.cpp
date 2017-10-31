@@ -415,7 +415,6 @@ bool TomahawkImportWriter::flush(void){
 	}
 	*/
 
-
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;

@@ -170,11 +170,10 @@ bool TGZFController::Deflate(const buffer_type& buffer){
 
 	//std::time_t result = std::time(nullptr);
 	//std::asctime(std::localtime(&result));
-	U32* time = reinterpret_cast<U32*>(&this->buffer[4]);
+	//U32* time = reinterpret_cast<U32*>(&this->buffer[4]);
 	//*time = result;
-	*time = 0;
+	//*time = 0;
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
-
 
 	memset(&buffer.data[compressedLength - Constants::TGZF_BLOCK_FOOTER_LENGTH], 0, Constants::TGZF_BLOCK_FOOTER_LENGTH);
 
