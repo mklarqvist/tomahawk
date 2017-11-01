@@ -186,9 +186,6 @@ bool BCFEntry::parse(void){
 	}
 	//std::cerr << std::endl;
 
-	//std::cerr << this->filterPointer << '\t' << this->infoPointer << '\t' << this->formatPointer << std::endl;
-	std::cerr << this->hashFilter() << '\t' << this->hashInfo() << '\t' << this->hashFormat() << std::endl;
-
 #if BCF_ASSERT == 1
 	// Assert all FILTER and INFO data have been successfully
 	// parsed. This is true when the byte pointer equals the
@@ -196,8 +193,6 @@ bool BCFEntry::parse(void){
 	// in the meta header structure
 	assert(internal_pos == (this->body->l_shared + sizeof(U32)*2));
 #endif
-
-	//if(this->body->POS+1 == 118498) exit(1); */
 
 	// Move up to start of FORMAT
 	internal_pos = this->body->l_shared + sizeof(U32)*2;
@@ -208,7 +203,7 @@ bool BCFEntry::parse(void){
 	assert(fmt_key.high == 1);
 #endif
 	const S32 value = this->getInteger(fmt_key, this->data, internal_pos);
-
+	this->formatID[this->formatPointer++] = value;
 
 	//std::cerr << (int)fmt_key.high << '\t' << (int)fmt_key.low << '\t' << "id: " << value << std::endl;
 
