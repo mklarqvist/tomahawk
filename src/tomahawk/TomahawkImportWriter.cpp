@@ -29,8 +29,16 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	buffer_encode_simple(flush_limit*2),
 	buffer_meta(flush_limit*10), // meta joins all other buffers
 	buffer_metaComplex(flush_limit*2),
+	filter_hash_pattern_counter(0),
+	info_hash_pattern_counter(0),
+	format_hash_pattern_counter(0),
+	info_hash_value_counter(0),
+	format_hash_value_counter(0),
+	filter_hash_pattern(5012),
 	info_hash_pattern(5012),
 	info_hash_streams(5012),
+	format_hash_pattern(5012),
+	format_hash_streams(5012),
 	encoder(nullptr),
 	vcf_header(nullptr)
 {}
@@ -39,6 +47,8 @@ TomahawkImportWriter::~TomahawkImportWriter(){
 	delete this->encoder;
 	this->buffer_encode_rle.deleteAll();
 	this->buffer_meta.deleteAll();
+	this->buffer_encode_simple.deleteAll();
+	this->buffer_metaComplex.deleteAll();
 }
 
 bool TomahawkImportWriter::Open(const std::string output){
@@ -232,7 +242,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	return true;
 }
 
-bool TomahawkImportWriter::add(const bcf_entry_type& line){
+bool TomahawkImportWriter::add(bcf_entry_type& entry){
 	// Keep positions
 	// If the entry needs to be filtered out
 	// then we roll back to these positions
@@ -244,7 +254,7 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 
 	// Perform run-length encoding
 	U64 n_runs = 0;
-	if(!this->encoder->Encode(line, meta, this->buffer_encode_rle, this->buffer_encode_simple, n_runs)){
+	if(!this->encoder->Encode(entry, meta, this->buffer_encode_rle, this->buffer_encode_simple, n_runs)){
 		this->buffer_meta.pointer = meta_start_pos; // roll back
 		this->buffer_encode_rle.pointer  = rle_start_pos; // roll back
 		this->buffer_encode_simple.pointer = simple_start_pos;
@@ -270,15 +280,18 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 		return false;
 	}
 
+	// Parse BCF
+	this->parseBCF(entry);
+
 	// If the current minPosition is 0
 	// then this is the first entry we've seen
 	// in this contig. Keep the current position
 	// as the last one we've seen
 	if(this->totempole_entry.minPosition == 0)
-		this->totempole_entry.minPosition = line.body->POS + 1;
+		this->totempole_entry.minPosition = entry.body->POS + 1;
 
 	// Update max position
-	this->totempole_entry.maxPosition = line.body->POS + 1;
+	this->totempole_entry.maxPosition = entry.body->POS + 1;
 
 	// Push meta to buffer
 	// update complex offset position
@@ -302,13 +315,81 @@ bool TomahawkImportWriter::add(const bcf_entry_type& line){
 
 	// Complex meta data
 	Support::TomahawkSupport test;
-	if(!test.write(line, this->buffer_metaComplex)){
+	if(!test.write(entry, this->buffer_metaComplex)){
 		std::cerr << Helpers::timestamp("ERROR","ENCODER") << "Failed to write complex meta!" << std::endl;
 		return false;
 	}
 
 	// Update number of entries in block
 	++this->totempole_entry.n_variants;
+
+	return true;
+}
+
+bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
+	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t' << this->body->n_allele << '\t' << this->body->n_fmt << '\t' << this->body->n_info << '\t' << this->body->n_sample << std::endl;
+	U32 internal_pos = entry.format_start;
+	std::cerr << "start pos: " << internal_pos << std::endl;
+
+	// At FILTER
+	const bcf_entry_type::base_type& filter_key = *reinterpret_cast<const bcf_entry_type::base_type* const>(&entry.data[internal_pos++]);
+	U32 n_filter = filter_key.high;
+	if(n_filter == 15) n_filter = entry.getInteger(filter_key.low, entry.data, internal_pos);
+	entry.n_filter = n_filter;
+	entry.filter_key = filter_key;
+
+	S32 val = 0;
+	while(entry.nextFilter(val, internal_pos)){
+		std::cerr << val << '\t' << internal_pos << '\t' << XXH64((const void*)&val, sizeof(S32), BCF_HASH_SEED) << std::endl;
+	}
+
+	// At INFO
+	U32 info_length;
+	BYTE info_value_type;
+	while(entry.nextInfo(val, info_length, info_value_type, internal_pos)){
+		std::cerr << val << '\t' << internal_pos << '\t' << info_length << '\t' << (int)info_value_type << '\t' << XXH64((const void*)&val, sizeof(S32), BCF_HASH_SEED) << std::endl;
+		U32* hash_map_ret = nullptr;
+		U32 temp = val;
+		if(this->info_hash_streams.GetItem(&temp, hash_map_ret, 1)){
+			std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
+		} else {
+			this->info_hash_streams.SetItem(&temp, this->info_hash_value_counter, 1);
+			std::cerr << "SET: " << temp << "->" << this->info_hash_value_counter << std::endl;
+			++this->info_hash_value_counter;
+		}
+
+		// Move out
+		if(info_value_type <= 3){
+			for(U32 j = 0; j < info_length; ++j){
+				std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
+			}
+			std::cerr << std::endl;
+
+		} else if(info_value_type == 5){
+			for(U32 j = 0; j < info_length; ++j){
+				std::cerr << entry.getFloat(entry.data, internal_pos) << ';';
+			}
+			std::cerr << std::endl;
+
+		} else if(info_value_type == 7){
+			for(U32 j = 0; j < info_length; ++j){
+				std::cerr << entry.getChar(entry.data, internal_pos);
+			}
+			std::cerr << std::endl;
+
+		} else {
+			std::cerr << "impossible: " << (int)info_value_type << std::endl;
+			exit(1);
+		}
+	}
+
+#if BCF_ASSERT == 1
+	// Assert all FILTER and INFO data have been successfully
+	// parsed. This is true when the byte pointer equals the
+	// start position of the FORMAT fields which are encoded
+	// in the meta header structure
+	assert(internal_pos == (entry.body->l_shared + sizeof(U32)*2));
+#endif
 
 	return true;
 }
@@ -329,9 +410,11 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
 	// Merge data to single buffer
-	this->buffer_meta += this->buffer_encode_rle;
-	this->buffer_meta += this->buffer_encode_simple;
+
 	this->buffer_meta += this->buffer_metaComplex;
+
+	this->buffer_encode_rle += this->buffer_encode_simple;
+	//this->buffer_meta += this->buffer_encode_simple;
 
 	// Test to iterate over complex
 
@@ -419,6 +502,12 @@ bool TomahawkImportWriter::flush(void){
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
+
+	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
+	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
+	this->gzip_controller.Clear(); // Clean up gzip controller
+
 
 	// Keep track of largest block observed
 	if(this->buffer_meta.size() > this->largest_uncompressed_block)

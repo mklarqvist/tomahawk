@@ -8,6 +8,7 @@ namespace Tomahawk {
 namespace BCF {
 
 #define BCF_ASSERT 1
+#define BCF_HASH_SEED 452930477
 
 const BYTE BCF_UNPACK_TOMAHAWK[3] = {2, 0, 1};
 #define BCF_UNPACK_GENOTYPE(A) BCF_UNPACK_TOMAHAWK[(A >> 1)]
@@ -88,6 +89,8 @@ struct BCFEntry{
 		this->infoPointer = 0;
 		this->formatPointer = 0;
 		this->filterPointer = 0;
+		this->n_filter = 0;
+		this->format_start = 0;
 	}
 
 	inline const U32& size(void) const{ return(this->pointer); }
@@ -106,9 +109,9 @@ struct BCFEntry{
 	double getMissingness(const U64& samples) const;
 	inline const bool& good(void) const{ return(this->isGood); }
 
-	inline const S32 getInteger(const base_type& key, const char* const data, U32& pos){
+	inline const S32 getInteger(const BYTE& key, const char* const data, U32& pos){
 		S32 value = 0;
-		switch(key.low){
+		switch(key){
 		case(1): value = *reinterpret_cast<const SBYTE* const>(&this->data[pos++]); break;
 		case(2): value = *reinterpret_cast<const S16* const>(&this->data[pos]); pos+=sizeof(S16);  break;
 		case(3): value = *reinterpret_cast<const S32* const>(&this->data[pos]); pos+=sizeof(S32);  break;
@@ -126,9 +129,14 @@ struct BCFEntry{
 		return(*reinterpret_cast<const char* const>(&this->data[pos++]));
 	}
 
-	inline const U64 hashFilter(void){return(XXH64((const void*)this->filterID, sizeof(U32)*this->filterPointer, 452930477));}
-	inline const U64 hashInfo(void){return(XXH64((const void*)this->infoID, sizeof(U32)*this->infoPointer, 452930477));}
-	inline const U64 hashFormat(void){return(XXH64((const void*)this->formatID, sizeof(U32)*this->formatPointer, 452930477));}
+	inline const U64 hashFilter(void){return(XXH64((const void*)this->filterID, sizeof(U32)*this->filterPointer, BCF_HASH_SEED));}
+	inline const U64 hashInfo(void){return(XXH64((const void*)this->infoID, sizeof(U32)*this->infoPointer, BCF_HASH_SEED));}
+	inline const U64 hashFormat(void){return(XXH64((const void*)this->formatID, sizeof(U32)*this->formatPointer, BCF_HASH_SEED));}
+
+	// Iterators over fields
+	bool nextFilter(S32& value, U32& position);
+	bool nextInfo(S32& value, U32& length, BYTE& value_type, U32& position);
+	bool nextFormat(S32& value, U32& position);
 
 public:
 	U32 pointer; // byte width
@@ -142,6 +150,11 @@ public:
 	string_type* alleles; // pointer to pointer of ref alleles and their lengths
 	char* ID;
 	SBYTE* genotypes;
+
+	//
+	U32 format_start;
+	U32 n_filter;
+	base_type filter_key;
 
 	// Vectors of identifiers
 	U16 filterPointer;
