@@ -79,7 +79,7 @@ void BCFEntry::__parseID(U32& internal_pos){
 		// next byte is the length array
 		// Type and length
 		const base_type& array_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-		this->l_ID = this->getInteger(array_base.low, this->data, internal_pos);
+		this->l_ID = this->getInteger(array_base.low, internal_pos);
 		this->ID = &this->data[internal_pos];
 	}
 	//std::cerr << std::string(this->ID, this->l_ID) << ":" << this->l_ID << '\t';
@@ -100,7 +100,7 @@ void BCFEntry::__parseRefAlt(U32& internal_pos){
 		if(alelle_base.high == 15){
 			// Type and length
 			const base_type& array_base = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-			this->alleles[i].length = this->getInteger(array_base.low, this->data, internal_pos);
+			this->alleles[i].length = this->getInteger(array_base.low, internal_pos);
 			this->alleles[i].data = &this->data[internal_pos];
 		}
 
@@ -113,7 +113,7 @@ bool BCFEntry::nextFilter(S32& value, U32& position){
 	if(this->filterPointer == this->n_filter)
 		return false;
 
-	value = this->getInteger(this->filter_key.low, this->data, position);
+	value = this->getInteger(this->filter_key.low, position);
 	this->filterID[this->filterPointer++] = value;
 
 	return true;
@@ -132,7 +132,7 @@ bool BCFEntry::nextInfo(S32& value, U32& length, BYTE& value_type, U32& position
 	#endif
 
 	// INFO identifier
-	value = this->getInteger(info_key.low, this->data, position);
+	value = this->getInteger(info_key.low, position);
 	this->infoID[this->infoPointer++] = value;
 
 	// Data for this identifier
@@ -140,7 +140,7 @@ bool BCFEntry::nextInfo(S32& value, U32& length, BYTE& value_type, U32& position
 	length = info_value.high;
 	if(length == 15){
 		const base_type& array_base = *reinterpret_cast<const base_type* const>(&this->data[position++]);
-		length = this->getInteger(array_base.low, this->data, position);
+		length = this->getInteger(array_base.low, position);
 	}
 	value_type = info_value.low;
 
@@ -165,7 +165,7 @@ bool BCFEntry::parse(void){
 #if BCF_ASSERT == 1
 	assert(fmt_key.high == 1);
 #endif
-	const S32 value = this->getInteger(fmt_key.low, this->data, internal_pos);
+	const S32 value = this->getInteger(fmt_key.low, internal_pos);
 	this->formatID[this->formatPointer++] = value;
 
 	//std::cerr << (int)fmt_key.high << '\t' << (int)fmt_key.low << '\t' << "id: " << value << std::endl;

@@ -109,23 +109,39 @@ struct BCFEntry{
 	double getMissingness(const U64& samples) const;
 	inline const bool& good(void) const{ return(this->isGood); }
 
-	inline const S32 getInteger(const BYTE& key, const char* const data, U32& pos){
+	inline const SBYTE& getSBYTE(U32& pos){ return(*reinterpret_cast<const SBYTE* const>(&this->data[pos++])); }
+
+	inline const S16& getS16(U32& pos){
+		const S16& t = *reinterpret_cast<const S16* const>(&this->data[pos]);
+		pos += sizeof(S16);
+		return(t);
+	}
+
+	inline const S32& getS32(U32& pos){
+		const S32& t = *reinterpret_cast<const S32* const>(&this->data[pos]);
+		pos += sizeof(S32);
+		return(t);
+	}
+
+	inline const S32 getInteger(const BYTE& key, U32& pos){
 		S32 value = 0;
 		switch(key){
 		case(1): value = *reinterpret_cast<const SBYTE* const>(&this->data[pos++]); break;
 		case(2): value = *reinterpret_cast<const S16* const>(&this->data[pos]); pos+=sizeof(S16);  break;
 		case(3): value = *reinterpret_cast<const S32* const>(&this->data[pos]); pos+=sizeof(S32);  break;
+		case(0): std::cerr << "FLAG value" << std::endl; break;
+		default: std::cerr << "illegal" << std::endl; exit(1);
 		}
 		return value;
 	}
 
-	inline const float getFloat(const char* const data, U32& pos){
+	inline const float getFloat(U32& pos){
 		const float val = *reinterpret_cast<const float* const>(&this->data[pos]);
 		pos += sizeof(float);
 		return val;
 	}
 
-	inline const char getChar(const char* const data, U32& pos){
+	inline const char getChar(U32& pos){
 		return(*reinterpret_cast<const char* const>(&this->data[pos++]));
 	}
 

@@ -27,16 +27,72 @@ class TomahawkImportEncoderStreamContainer{
 	typedef IO::BasicBuffer buffer_type;
 
 public:
+	TomahawkImportEncoderStreamContainer() :
+		stream_data_type(0),
+		n_entries(0),
+		n_additions(0)
+	{}
+
 	TomahawkImportEncoderStreamContainer(const U32 start_size) :
 		stream_data_type(0),
 		n_entries(0),
 		n_additions(0),
 		buffer(start_size)
 	{}
+
 	~TomahawkImportEncoderStreamContainer(){ this->buffer.deleteAll(); }
 
-	template <class T>
-	inline void operator+=(const T& value){ this->buffer += value; }
+	inline void setType(const BYTE value){ this->stream_data_type = value; }
+
+	inline void operator++(void){ ++this->n_additions; }
+
+	inline void operator+=(const SBYTE& value){
+		if(this->stream_data_type != 0) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const BYTE& value){
+		if(this->stream_data_type != 1) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const S16& value){
+		if(this->stream_data_type != 2) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const U16& value){
+		if(this->stream_data_type != 3) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const S32& value){
+		if(this->stream_data_type != 4) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const U32& value){
+		if(this->stream_data_type != 5) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const U64& value){
+		if(this->stream_data_type != 6) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
+
+	inline void operator+=(const float& value){
+		if(this->stream_data_type != 7) exit(1);
+		this->buffer += value;
+		++this->n_entries;
+	}
 
 	void reset(void){
 		this->stream_data_type = 0;
@@ -45,7 +101,9 @@ public:
 		this->buffer.reset();
 	}
 
-private:
+	inline void resize(const U32 size){ this->buffer.resize(size); }
+
+public:
 	BYTE stream_data_type;
 	U32 n_entries;   // number of entries
 	U32 n_additions; // number of times added
@@ -105,6 +163,10 @@ public:
 		this->info_patterns.clear();
 		this->format_patterns.clear();
 		this->filter_patterns.clear();
+
+		// Reset
+		for(U32 i = 0; i < 100; ++i)
+			this->containers[i].reset();
 	}
 
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
@@ -184,6 +246,9 @@ public:
 
 	// VCF header reference
 	vcf_header_type* vcf_header;
+
+	// Stream containers
+	stream_container* containers;
 };
 
 } /* namespace Tomahawk */
