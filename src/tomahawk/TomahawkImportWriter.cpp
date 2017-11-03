@@ -300,7 +300,7 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry){
 
 	// RLE using this word size
 	U32 w = ceil(ceil(log2(this->vcf_header->samples + 1))/8);
-	if(w > 2 & w < 4) w = 4;
+	if((w > 2) & (w < 4)) w = 4;
 	else if(w > 4) w = 8;
 
 	switch(w){
@@ -329,7 +329,6 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry){
 bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t' << this->body->n_allele << '\t' << this->body->n_fmt << '\t' << this->body->n_info << '\t' << this->body->n_sample << std::endl;
 	U32 internal_pos = entry.format_start;
-	std::cerr << "start pos: " << internal_pos << std::endl;
 
 	// At FILTER
 	const bcf_entry_type::base_type& filter_key = *reinterpret_cast<const bcf_entry_type::base_type* const>(&entry.data[internal_pos++]);
@@ -340,42 +339,48 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 
 	S32 val = 0;
 	while(entry.nextFilter(val, internal_pos)){
-		std::cerr << val << '\t' << internal_pos << '\t' << XXH64((const void*)&val, sizeof(S32), BCF_HASH_SEED) << std::endl;
+		// Hash FILTER value
+
 	}
 
 	// At INFO
 	U32 info_length;
 	BYTE info_value_type;
 	while(entry.nextInfo(val, info_length, info_value_type, internal_pos)){
-		std::cerr << val << '\t' << internal_pos << '\t' << info_length << '\t' << (int)info_value_type << '\t' << XXH64((const void*)&val, sizeof(S32), BCF_HASH_SEED) << std::endl;
+		// Hash INFO values
 		U32* hash_map_ret = nullptr;
 		U32 temp = val;
-		if(this->info_hash_streams.GetItem(&temp, hash_map_ret, 1)){
-			std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
+		if(this->info_hash_streams.GetItem(&temp, hash_map_ret, sizeof(U32))){
+			//std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
 		} else {
-			this->info_hash_streams.SetItem(&temp, this->info_hash_value_counter, 1);
+			this->info_hash_streams.SetItem(&temp, this->info_hash_value_counter, sizeof(U32));
 			std::cerr << "SET: " << temp << "->" << this->info_hash_value_counter << std::endl;
+			hash_map_ret = &this->info_hash_value_counter;
 			++this->info_hash_value_counter;
 		}
+		//std::cerr << "send to: " << *hash_map_ret << std::endl;
 
 		// Move out
 		if(info_value_type <= 3){
 			for(U32 j = 0; j < info_length; ++j){
-				std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
+				//std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
+				entry.getInteger(info_value_type, entry.data, internal_pos);
 			}
-			std::cerr << std::endl;
+			//std::cerr << std::endl;
 
 		} else if(info_value_type == 5){
 			for(U32 j = 0; j < info_length; ++j){
-				std::cerr << entry.getFloat(entry.data, internal_pos) << ';';
+				//std::cerr << entry.getFloat(entry.data, internal_pos) << ';';
+				entry.getFloat(entry.data, internal_pos);
 			}
-			std::cerr << std::endl;
+			//std::cerr << std::endl;
 
 		} else if(info_value_type == 7){
 			for(U32 j = 0; j < info_length; ++j){
-				std::cerr << entry.getChar(entry.data, internal_pos);
+				//std::cerr << entry.getChar(entry.data, internal_pos);
+				entry.getChar(entry.data, internal_pos);
 			}
-			std::cerr << std::endl;
+			//std::cerr << std::endl;
 
 		} else {
 			std::cerr << "impossible: " << (int)info_value_type << std::endl;
@@ -390,6 +395,63 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 	// in the meta header structure
 	assert(internal_pos == (entry.body->l_shared + sizeof(U32)*2));
 #endif
+
+	// Hash FILTER pattern
+	U32* hash_map_ret = nullptr;
+	const U64 hash_filter_vector = entry.hashFilter();
+	if(this->filter_hash_pattern.GetItem(&hash_filter_vector, hash_map_ret, sizeof(U64))){
+		//std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
+	} else {
+		this->filter_hash_pattern.SetItem(&hash_filter_vector, this->filter_hash_pattern_counter, sizeof(U64));
+		std::cerr << "PSET-FI: " << hash_filter_vector << "->" << this->filter_hash_pattern_counter << std::endl;
+		filter_patterns.push_back(std::vector<U32>());
+		for(U32 i = 0; i < entry.filterPointer; ++i){
+			//std::cerr << i << '/' << entry.infoPointer << std::endl;
+			this->filter_patterns[this->filter_hash_pattern_counter].push_back(entry.filterID[i]);
+		}
+		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
+		std::cerr << "pattern-size: " << this->filter_patterns[this->filter_hash_pattern_counter].size() << '\t' << entry.filterPointer << '\t' << this->filter_hash_pattern_counter << std::endl;
+
+		++this->filter_hash_pattern_counter;
+	}
+
+	// Hash INFO pattern
+	hash_map_ret = nullptr;
+	const U64 hash_info_vector = entry.hashInfo();
+	if(this->info_hash_pattern.GetItem(&hash_info_vector, hash_map_ret, sizeof(U64))){
+		//std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
+	} else {
+		this->info_hash_pattern.SetItem(&hash_info_vector, this->info_hash_pattern_counter, sizeof(U64));
+		std::cerr << "PSET-I: " << hash_info_vector << "->" << this->info_hash_pattern_counter << std::endl;
+		info_patterns.push_back(std::vector<U32>());
+		for(U32 i = 0; i < entry.infoPointer; ++i){
+			//std::cerr << i << '/' << entry.infoPointer << std::endl;
+			this->info_patterns[this->info_hash_pattern_counter].push_back(entry.infoID[i]);
+		}
+		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
+		std::cerr << "pattern-size: " << this->info_patterns[this->info_hash_pattern_counter].size() << '\t' << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
+
+		++this->info_hash_pattern_counter;
+	}
+
+	// Hash FORMAT pattern
+	hash_map_ret = nullptr;
+	const U64 hash_format_vector = entry.hashFormat();
+	if(this->format_hash_pattern.GetItem(&hash_format_vector, hash_map_ret, sizeof(U64))){
+		//std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
+	} else {
+		this->format_hash_pattern.SetItem(&hash_format_vector, this->format_hash_pattern_counter, sizeof(U64));
+		std::cerr << "PSET-F: " << hash_format_vector << "->" << this->format_hash_value_counter << std::endl;
+		format_patterns.push_back(std::vector<U32>());
+		for(U32 i = 0; i < entry.formatPointer; ++i){
+			//std::cerr << i << '/' << entry.infoPointer << std::endl;
+			this->format_patterns[this->format_hash_pattern_counter].push_back(entry.formatID[i]);
+		}
+		std::cerr << "pattern-size: " << this->format_patterns[this->format_hash_pattern_counter].size() << '\t' << entry.formatPointer << '\t' << this->format_hash_pattern_counter << std::endl;
+
+
+		++this->format_hash_pattern_counter;
+	}
 
 	return true;
 }
@@ -521,6 +583,7 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.reset();
 
 	this->reset(); // reset buffers
+	std::cerr << "cleared" << std::endl;
 
 	return true;
 }

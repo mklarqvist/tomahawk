@@ -64,6 +64,7 @@ class TomahawkImportWriter {
 	typedef Hash::HashTable<U64, U32> hash_table_vector;
 	typedef Hash::HashTable<U32, U32> hash_table;
 	typedef TomahawkImportEncoderStreamContainer stream_container;
+	typedef std::vector< std::vector<U32> > pattern_vector;
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -74,22 +75,36 @@ public:
 	bool OpenExtend(const std::string output);
 	void WriteHeaders(void);
 	void WriteFinal(void);
-	void setHeader(VCF::VCFHeader& header);
+	void setHeader(vcf_header_type& header);
 	bool add(const VCF::VCFLine& line);
 	bool add(bcf_entry_type& entry);
 	bool parseBCF(bcf_entry_type& entry);
 
-	inline void reset(void){
+	void reset(void){
+		// Buffers
 		this->buffer_encode_rle.reset();
 		this->buffer_encode_simple.reset();
 		this->buffer_meta.reset();
 		this->buffer_metaComplex.reset();
 
+		// Hashes
 		this->filter_hash_pattern_counter = 0;
 		this->info_hash_pattern_counter = 0;
 		this->format_hash_pattern_counter = 0;
 		this->info_hash_value_counter = 0;
 		this->format_hash_value_counter = 0;
+
+		// Reset hash patterns
+		this->filter_hash_pattern.clear();
+		this->info_hash_pattern.clear();
+		this->info_hash_streams.clear();
+		this->format_hash_pattern.clear();
+		this->format_hash_streams.clear();
+
+		// Pattern data
+		this->info_patterns.clear();
+		this->format_patterns.clear();
+		this->filter_patterns.clear();
 	}
 
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
@@ -116,15 +131,17 @@ public:
 
 	void CheckOutputNames(const std::string& input);
 
-	inline Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
+	inline totempole_entry_type& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
+	// Stream information
 	std::ofstream streamTomahawk;   // stream for data
 	std::ofstream streamTotempole;  // stream for index
 	std::string filename;
 	std::string basePath;
 	std::string baseName;
 
+	// Basic
 	U32 flush_limit;
 	U32 n_variants_limit;
 	U64 n_blocksWritten;            // number of blocks written
@@ -133,7 +150,10 @@ public:
 	U32 largest_uncompressed_block; // size of largest block observed
 	const filter_type& filter;      // filters
 
+	// Totempole entry
 	totempole_entry_type totempole_entry;
+
+	// TGZF controller
 	tgzf_controller_type gzip_controller;
 
 	// Basic output buffers
@@ -148,13 +168,21 @@ public:
 	U32 format_hash_pattern_counter;
 	U32 info_hash_value_counter;
 	U32 format_hash_value_counter;
+	// Hashes
 	hash_table_vector filter_hash_pattern;
 	hash_table_vector info_hash_pattern;
 	hash_table info_hash_streams;
 	hash_table_vector format_hash_pattern;
 	hash_table format_hash_streams;
+	// Actual patterns
+	pattern_vector format_patterns;
+	pattern_vector info_patterns;
+	pattern_vector filter_patterns;
 
+	// Encoder
 	encoder_type* encoder;
+
+	// VCF header reference
 	vcf_header_type* vcf_header;
 };
 
