@@ -1,7 +1,3 @@
-#ifndef IO_BCF_BCFREADER_CPP_
-#define IO_BCF_BCFREADER_CPP_
-
-#include "../vcf/VCFHeader.h"
 #include "BCFReader.h"
 
 namespace Tomahawk{
@@ -86,13 +82,18 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 bool BCFReader::getVariants(const U32 entries, bool across_contigs){
 	delete [] this->entries;
 	this->entries = new entry_type[entries];
-	this->n_capacity = entries;
+	this->n_entries = 0;
+
+	//std::cerr << "here: " << entries << std::endl;
 
 	for(U32 i = 0; i < entries; ++i){
+		//std::cerr << i << std::endl;
 		if(this->current_pointer == this->bgzf_controller.buffer.size()){
+			//std::cerr << "load new block: " << this->current_pointer << '\t' << this->bgzf_controller.buffer.size() << std::endl;
 			if(!this->nextBlock())
 				return false;
 		}
+		//std::cerr << i << std::endl;
 
 		if(this->current_pointer + 8 > this->bgzf_controller.buffer.size()){
 			const S32 partial = (S32)this->bgzf_controller.buffer.size() - this->current_pointer;
@@ -127,6 +128,9 @@ bool BCFReader::getVariants(const U32 entries, bool across_contigs){
 		this->entries[this->n_entries].parse();
 		++this->n_entries;
 	}
+
+	//std::cerr << this->current_pointer << '/' << this->bgzf_controller.buffer.size() << std::endl;
+	//std::cerr << "final: " << this->n_entries << "\t" << this->bgzf_controller.buffer.size() << std::endl;
 
 	return true;
 }
@@ -207,5 +211,3 @@ bool BCFReader::open(const std::string input){
 
 }
 }
-
-#endif /* IO_BCF_BCFREADER_CPP_ */

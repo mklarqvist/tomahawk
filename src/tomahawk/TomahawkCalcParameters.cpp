@@ -1,6 +1,3 @@
-#ifndef TOMAHAWK_TOMAHAWKCALCPARAMETERS_CPP_
-#define TOMAHAWK_TOMAHAWKCALCPARAMETERS_CPP_
-
 #include "TomahawkCalcParameters.h"
 
 namespace Tomahawk{
@@ -8,5 +5,3 @@ namespace Tomahawk{
 
 
 }
-
-#endif /* TOMAHAWK_TOMAHAWKCALCPARAMETERS_CPP_ */

@@ -1,9 +1,8 @@
 #ifndef VCFPARSER_H_
 #define VCFPARSER_H_
 
-#include "../io/reader.h"
 #include "../io/vcf/VCFHeader.h"
-#include "../io/bcf/BCFReader.h"
+#include "../algorithm/permutation/RadixSortGT.h"
 #include "TomahawkImporterFilters.h"
 #include "TomahawkImportWriter.h"
 
@@ -21,6 +20,7 @@ class TomahawkImporter {
 	typedef BCF::BCFReader bcf_reader_type;
 	typedef BCF::BCFEntry bcf_entry_type;
 	typedef TomahawkImporterFilters filter_type;
+	typedef Algorithm::RadixSortGT radix_sorter_type;
 
 	/*
 	 This supportive structure keeps track of the current and

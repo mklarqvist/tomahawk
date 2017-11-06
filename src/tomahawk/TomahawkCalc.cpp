@@ -1,4 +1,3 @@
-
 #include "TomahawkCalc.h"
 
 namespace Tomahawk {

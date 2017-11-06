@@ -1,8 +1,4 @@
 #include "TomahawkImporter.h"
-
-#include <string>
-
-#include "../io/reader.h"
 #include "TomahawkImportWriter.h"
 #include "TomahawkReader.h"
 
@@ -173,6 +169,17 @@ bool TomahawkImporter::BuildBCF(void){
 	for(U32 i = 0; i < reader.size(); ++i){
 		std::cerr << i << '\t' << reader.entries[i].body->CHROM << ":" << reader.entries[i].body->POS+1 << '\t' << reader.entries[i].isBiallelic() << '\t' << reader.entries[i].isBiallelicSimple() << std::endl;
  	}
+
+	std::cerr << "outside: " << reader.size() << std::endl;
+	std::cerr << &reader << std::endl;
+	std::cerr << &reader.n_entries << std::endl;
+	radix_sorter_type radix(this->header_->samples);
+	if(!radix.build(reader)){
+		std::cerr << "failed radix" << std::endl;
+		//exit(1);
+	}
+	std::cerr << "outside: " << reader.size() << std::endl;
+
 	exit(1);
 	///
 

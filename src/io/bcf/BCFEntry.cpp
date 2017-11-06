@@ -1,6 +1,3 @@
-#ifndef BCFENTRY_CPP_
-#define BCFENTRY_CPP_
-
 #include <cassert>
 
 #include "BCFEntry.h"
@@ -249,7 +246,3 @@ void BCFEntry::SetRefAlt(void){
 
 }
 }
-
-
-
-#endif /* BCFENTRY_CPP_ */

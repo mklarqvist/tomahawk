@@ -1,6 +1,7 @@
-#ifndef BCFENTRY_H_
-#define BCFENTRY_H_
+#ifndef BCF_BCFENTRY_H_
+#define BCF_BCFENTRY_H_
 
+#include "../vcf/VCFHeader.h"
 #include "../../third_party/xxhash/xxhash.h"
 #include "../BasicBuffer.h"
 
@@ -191,4 +192,4 @@ public:
 }
 }
 
-#endif /* BCFENTRY_H_ */
+#endif /* BCF_BCFENTRY_H_ */

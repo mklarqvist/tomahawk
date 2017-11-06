@@ -1,3 +1,6 @@
+#ifndef BASIC_READER_H_
+#define BASIC_READER_H_
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -6,9 +9,6 @@
 #include <cstring>
 
 #include "../support/MagicConstants.h" // for SILENT
-
-#ifndef READER_H_
-#define READER_H_
 
 namespace Tomahawk{
 
@@ -122,4 +122,4 @@ public:
 
 }
 
-#endif /* READER_H_ */
+#endif /* BASIC_READER_H_ */

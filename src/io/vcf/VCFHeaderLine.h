@@ -1,6 +1,8 @@
 #ifndef VCF_VCFHEADERLINE_H_
 #define VCF_VCFHEADERLINE_H_
 
+#include <algorithm> // for std::find
+
 namespace Tomahawk{
 namespace VCF{
 

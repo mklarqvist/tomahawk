@@ -3,10 +3,9 @@
 
 #include <cassert>
 
-#include "../BasicBuffer.h"
-#include "../compression/BGZFController.h"
 #include "BCFEntry.h"
-#include "../vcf/VCFHeader.h"
+#include "../compression/BGZFController.h"
+
 
 namespace Tomahawk {
 namespace BCF {

@@ -1,4 +1,3 @@
-#include <string>
 #include "VCFHeader.h"
 
 namespace Tomahawk {
