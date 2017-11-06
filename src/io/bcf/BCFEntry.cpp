@@ -21,8 +21,8 @@ BCFEntry::BCFEntry(void):
 	alleles(new string_type[100]),
 	ID(nullptr),
 	genotypes(nullptr),
-	n_filter(0),
 	format_start(0),
+	n_filter(0),
 	// Vectors of identifiers
 	filterPointer(0),
 	infoPointer(0),
@@ -42,6 +42,7 @@ BCFEntry::~BCFEntry(void){
 	delete [] this->filterID;
 	delete [] this->infoID;
 	delete [] this->formatID;
+	delete [] this->alleles;
 }
 
 void BCFEntry::resize(const U32 size){

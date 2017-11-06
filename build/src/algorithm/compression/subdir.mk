@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../src/algorithm/compression/RadixSortGT.cpp \
 ../src/algorithm/compression/TomahawkImportEncoder.cpp 
 
 OBJS += \
+./src/algorithm/compression/RadixSortGT.o \
 ./src/algorithm/compression/TomahawkImportEncoder.o 
 
 CPP_DEPS += \
+./src/algorithm/compression/RadixSortGT.d \
 ./src/algorithm/compression/TomahawkImportEncoder.d 
 
 

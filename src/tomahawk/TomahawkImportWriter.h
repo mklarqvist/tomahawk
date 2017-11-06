@@ -136,7 +136,7 @@ public:
 	void setHeader(vcf_header_type& header);
 	bool add(const VCF::VCFLine& line);
 	bool add(bcf_entry_type& entry);
-	bool parseBCF(bcf_entry_type& entry);
+	bool parseBCF(meta_base_type& meta, bcf_entry_type& entry);
 
 	void reset(void){
 		// Buffers

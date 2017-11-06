@@ -97,8 +97,12 @@ struct BCFEntry{
 	inline const U32& capacity(void) const{ return(this->limit); }
 	inline const U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
 
-	inline const bool isSimple(void) const{
+	inline const bool isBiallelicSimple(void) const{
 		return((this->body->n_allele == 2) && (this->alleles[0].length == 1 && this->alleles[1].length == 1));
+	}
+	inline const bool isBiallelic(void) const{ return(this->body->n_allele == 2); }
+	inline const bool isSimple(void) const{
+		return(this->alleles[0].length == 1 && this->alleles[1].length == 1);
 	}
 
 	void __parseID(U32& internal_pos);

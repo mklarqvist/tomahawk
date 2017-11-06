@@ -162,6 +162,20 @@ bool TomahawkImporter::BuildBCF(void){
 		return false;
 	}
 
+	///
+	///
+	/// TODO
+	/// temp
+	if(!reader.getVariants(2048, false)){
+		std::cerr << "failed to get 2048 entries..." << std::endl;
+		return false;
+	}
+	for(U32 i = 0; i < reader.size(); ++i){
+		std::cerr << i << '\t' << reader.entries[i].body->CHROM << ":" << reader.entries[i].body->POS+1 << '\t' << reader.entries[i].isBiallelic() << '\t' << reader.entries[i].isBiallelicSimple() << std::endl;
+ 	}
+	exit(1);
+	///
+
 	// Get a line
 	// BCF parse occurs in nextVariant
 	bcf_entry_type entry;

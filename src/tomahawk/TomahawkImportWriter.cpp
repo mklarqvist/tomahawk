@@ -285,7 +285,7 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry){
 	}
 
 	// Parse BCF
-	this->parseBCF(entry);
+	this->parseBCF(meta, entry);
 
 	// If the current minPosition is 0
 	// then this is the first entry we've seen
@@ -330,7 +330,7 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry){
 	return true;
 }
 
-bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
+bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry){
 	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t' << this->body->n_allele << '\t' << this->body->n_fmt << '\t' << this->body->n_info << '\t' << this->body->n_sample << std::endl;
 	U32 internal_pos = entry.format_start;
 
@@ -342,9 +342,10 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 	entry.filter_key = filter_key;
 
 	S32 val = 0;
+	// TODO
 	while(entry.nextFilter(val, internal_pos)){
 		// Hash FILTER value
-
+		//std::cerr << "FILTER: " << val << std::endl;
 	}
 
 	// At INFO
@@ -451,10 +452,12 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 #endif
 
 	// Hash FILTER pattern
+	U32 mapID = 0;
 	U32* hash_map_ret = nullptr;
 	const U64 hash_filter_vector = entry.hashFilter();
 	if(this->filter_hash_pattern.GetItem(&hash_filter_vector, hash_map_ret, sizeof(U64))){
 		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
+		mapID = *hash_map_ret;
 	} else {
 		this->filter_hash_pattern.SetItem(&hash_filter_vector, this->filter_hash_pattern_counter, sizeof(U64));
 		//std::cerr << "PSET-FI: " << hash_filter_vector << "->" << this->filter_hash_pattern_counter << std::endl;
@@ -466,18 +469,25 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
 		//std::cerr << "pattern-size: " << this->filter_patterns[this->filter_hash_pattern_counter].size() << '\t' << entry.filterPointer << '\t' << this->filter_hash_pattern_counter << std::endl;
 
+		assert(this->filter_hash_pattern_counter < 65536);
+		mapID = this->filter_hash_pattern_counter;
 		++this->filter_hash_pattern_counter;
 	}
+	// Store this map in the meta
+	meta.FILTER_map_ID = mapID;
 
 	// Hash INFO pattern
+	mapID = 0;
 	hash_map_ret = nullptr;
+	// Hash INFO vector of identifiers
 	const U64 hash_info_vector = entry.hashInfo();
 	if(this->info_hash_pattern.GetItem(&hash_info_vector, hash_map_ret, sizeof(U64))){
 		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
+		mapID = *hash_map_ret;
 	} else {
 		this->info_hash_pattern.SetItem(&hash_info_vector, this->info_hash_pattern_counter, sizeof(U64));
 		//std::cerr << "PSET-I: " << hash_info_vector << "->" << this->info_hash_pattern_counter << std::endl;
-		info_patterns.push_back(std::vector<U32>());
+		this->info_patterns.push_back(std::vector<U32>());
 		for(U32 i = 0; i < entry.infoPointer; ++i){
 			//std::cerr << i << '/' << entry.infoPointer << std::endl;
 			this->info_patterns[this->info_hash_pattern_counter].push_back(entry.infoID[i]);
@@ -485,14 +495,21 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
 		//std::cerr << "pattern-size: " << this->info_patterns[this->info_hash_pattern_counter].size() << '\t' << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
 
+		assert(this->info_hash_pattern_counter < 65536);
+		mapID = this->info_hash_pattern_counter;
 		++this->info_hash_pattern_counter;
 	}
+	// Update meta
+	//std::cerr << "meta_INFO: " << mapID << std::endl;
+	meta.INFO_map_ID = mapID;
 
 	// Hash FORMAT pattern
+	mapID = 0;
 	hash_map_ret = nullptr;
 	const U64 hash_format_vector = entry.hashFormat();
 	if(this->format_hash_pattern.GetItem(&hash_format_vector, hash_map_ret, sizeof(U64))){
 		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
+		mapID = *hash_map_ret;
 	} else {
 		this->format_hash_pattern.SetItem(&hash_format_vector, this->format_hash_pattern_counter, sizeof(U64));
 		//std::cerr << "PSET-F: " << hash_format_vector << "->" << this->format_hash_value_counter << std::endl;
@@ -502,8 +519,11 @@ bool TomahawkImportWriter::parseBCF(bcf_entry_type& entry){
 			this->format_patterns[this->format_hash_pattern_counter].push_back(entry.formatID[i]);
 		}
 		//std::cerr << "pattern-size: " << this->format_patterns[this->format_hash_pattern_counter].size() << '\t' << entry.formatPointer << '\t' << this->format_hash_pattern_counter << std::endl;
+		assert(this->format_hash_pattern_counter < 65536);
+		mapID = this->format_hash_pattern_counter;
 		++this->format_hash_pattern_counter;
 	}
+	meta.FORMAT_map_ID = mapID;
 	return true;
 }
 
@@ -518,15 +538,66 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.l_rle = this->buffer_encode_rle.pointer;
 	this->totempole_entry.l_simple = this->buffer_encode_simple.pointer;
 
-	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
+	// Todo:
+	// pointer each data stream
+	std::vector< std::pair<U32, U32> > info_offsets;
+	for(U32 i = 0; i < this->info_hash_streams.size(); ++i){
+		if(this->info_hash_streams.pat(i) != nullptr){
+			//std::cerr << this->info_hash_streams[i].key << '\t' << this->info_hash_streams[i].value << std::endl;
+			info_offsets.push_back(std::pair<U32,U32>(this->info_hash_streams[i].value, this->info_hash_streams[i].key));
+		}
+	}
+	// Sort by map->target
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: Sorting key-value pairs..." << std::endl;
+	std::sort(info_offsets.begin(), info_offsets.end());
+	for(U32 i = 0; i < info_offsets.size(); ++i){
+		std::cerr << info_offsets[i].first << '\t' << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << std::endl;
+	}
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: " << info_offsets.size() << " entries -> " << ceil((float)info_offsets.size()/8) << " bytes" << std::endl;
 
+	// Build map
+	// Construct bitvectors
+	const BYTE info_bitvector_width = ceil((float)info_offsets.size()/8);
+	BYTE* info_bitvector = new BYTE[info_bitvector_width];
+	memset(info_bitvector, 0, sizeof(BYTE)*info_bitvector_width);
+
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: Mapping..." << std::endl;
+	for(U32 i = 0; i < this->info_patterns.size(); ++i){
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < this->info_patterns[i].size(); ++j){
+			std::cerr << this->info_patterns[i][j] << '\t';
+		}
+		std::cerr << std::endl;
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < this->info_patterns[i].size(); ++j){
+			U32* retval = nullptr;
+			if(!this->info_hash_streams.GetItem(&this->info_patterns[i][j], retval, sizeof(U32))){
+				std::cerr << "impossible" << std::endl;
+				exit(1);
+			}
+			info_bitvector[*retval/8] ^= 1 << (*retval % 8);
+			std::cerr << *retval << '\t';
+		}
+		std::cerr << std::endl;
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < info_bitvector_width; ++j)
+			std::cerr << std::bitset<8>(info_bitvector[j]);
+
+		std::cerr << std::endl;
+		std::cerr << std::endl;
+		memset(info_bitvector, 0, sizeof(BYTE)*info_bitvector_width);
+	}
+	std::cerr << std::endl;
+	delete [] info_bitvector;
+
+	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
-	// Merge data to single buffer
-
+	// Merge meta data to single buffer
 	this->buffer_meta += this->buffer_metaComplex;
-
+	// Merge GT data
 	this->buffer_encode_rle += this->buffer_encode_simple;
+
 	//this->buffer_meta += this->buffer_encode_simple;
 
 	// Test to iterate over complex
@@ -646,6 +717,7 @@ bool TomahawkImportWriter::flush(void){
 	S32 prev_value = 0;
 	bool is_uniform = true;
 	for(U32 i = 0; i < this->info_hash_value_counter; ++i){
+		std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
 		if(this->containers[i].stream_data_type == 4){
 
 			const S32* dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);

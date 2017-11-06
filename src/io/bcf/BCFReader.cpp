@@ -7,8 +7,17 @@
 namespace Tomahawk{
 namespace BCF{
 
-BCFReader::BCFReader() : filesize(0), current_pointer(0){}
-BCFReader::~BCFReader(){}
+BCFReader::BCFReader() :
+		filesize(0),
+		current_pointer(0),
+		n_entries(0),
+		n_capacity(0),
+		entries(nullptr)
+{}
+
+BCFReader::~BCFReader(){
+	delete [] this->entries;
+}
 
 
 bool BCFReader::nextBlock(void){
@@ -70,6 +79,54 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 		}
 	}
 	entry.parse();
+
+	return true;
+}
+
+bool BCFReader::getVariants(const U32 entries, bool across_contigs){
+	delete [] this->entries;
+	this->entries = new entry_type[entries];
+	this->n_capacity = entries;
+
+	for(U32 i = 0; i < entries; ++i){
+		if(this->current_pointer == this->bgzf_controller.buffer.size()){
+			if(!this->nextBlock())
+				return false;
+		}
+
+		if(this->current_pointer + 8 > this->bgzf_controller.buffer.size()){
+			const S32 partial = (S32)this->bgzf_controller.buffer.size() - this->current_pointer;
+			this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
+			if(!this->nextBlock()){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block in partial" << std::endl;
+				return false;
+			}
+
+			this->entries[this->n_entries].add(&this->bgzf_controller.buffer[0], 8 - partial);
+			this->current_pointer = 8 - partial;
+		} else {
+			this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], 8);
+			this->current_pointer += 8;
+		}
+
+		U64 remainder = this->entries[this->n_entries].sizeBody();
+		while(remainder > 0){
+			if(this->current_pointer + remainder > this->bgzf_controller.buffer.size()){
+				this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
+				remainder -= this->bgzf_controller.buffer.size() - this->current_pointer;
+				if(!this->nextBlock())
+					return false;
+
+			} else {
+				this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], remainder);
+				this->current_pointer += remainder;
+				remainder = 0;
+				break;
+			}
+		}
+		this->entries[this->n_entries].parse();
+		++this->n_entries;
+	}
 
 	return true;
 }

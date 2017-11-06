@@ -31,6 +31,17 @@ public:
 	bool parseHeader(void);
 	bool open(const std::string input);
 
+	bool getVariants(const U32 number, bool across_contigs = false); // get N number of variants into buffer
+
+	// Iterator functions
+	inline entry_type& operator[](const U32& p){ return(this->entries[p]); }
+	inline const entry_type& operator[](const U32& p) const{return(this->entries[p]); }
+	inline const entry_type* pat(const U32& p){ return(&this->entries[p]); }
+	inline const U32& size(void) const{ return(this->n_entries); }
+	inline const U32& capacity(void) const{ return(this->n_capacity); }
+	void resize(void);
+	void resize(const U32 new_size);
+
 public:
 	std::ifstream stream;
 	U64 filesize;
@@ -39,6 +50,10 @@ public:
 	buffer_type header_buffer;
 	bgzf_controller_type bgzf_controller;
 	header_type header;
+
+	U32 n_entries;
+	U32 n_capacity;
+	entry_type* entries;
 };
 
 }

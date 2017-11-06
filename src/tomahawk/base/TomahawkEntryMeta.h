@@ -7,7 +7,7 @@ namespace Tomahawk{
 namespace Support{
 
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U32) + sizeof(BYTE) + 2*sizeof(float) + 2*sizeof(U32) + sizeof(U16))
+#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(BYTE) + sizeof(U64) + sizeof(BYTE) + 2*sizeof(float) + 3*sizeof(U16) + 2*sizeof(U32))
 
 /*
  TomahawkEntryMetaBase is used for reinterpreting
@@ -84,7 +84,7 @@ public:
 
 public:
 	controller_byte controller;
-	U32 position;
+	U64 position;
 	// most sites are bi-allelic and simple SNVs
 	// sites that are not bi-allelic and not simple
 	// will be encoded in the complex meta section
