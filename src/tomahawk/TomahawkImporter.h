@@ -27,11 +27,6 @@ class TomahawkImporter {
 	 previous contig identifiers and the previous obseved position.
 	 This information is necessary to guarantee the sort-order of
 	 the output Tomahawk file required for indexing.
-	 The flag previous_included is triggered whenever an entry is
-	 not filtered out. It is used when two or more entries share the
-	 same position. In this case, if the preceding line was included
-	 then ignore the current one. Otherwise, the preceding line was
-	 filtered out and the include the current one.
 	 Note that contigID is a pointer as this is required by our
 	 hash-table implementation as a return value
 	 */
@@ -39,13 +34,11 @@ class TomahawkImporter {
 		__InternalHelper():
 			contigID(nullptr),
 			prevcontigID(-1),
-			previous_position(-1),
-			previous_included(false)
+			previous_position(-1)
 		{}
 		S32* contigID;			// current contigID
 		S32 prevcontigID;		// previous contigID
 		S32 previous_position;	// current position
-		bool previous_included;
 	} sort_order_helper;
 
 public:
@@ -68,6 +61,9 @@ private:
 	bool checkSize(void) const{ return(this->meta_buffer.size() + this->encode_rle_buffer.size() >= this->block_flush_limit); }
 
 private:
+	bool permutateData(bcf_reader_type& reader);
+
+private:
 	U32 block_flush_limit;    // limit in bytes when to flush to disk
 	std::string inputFile;    // input file name
 	std::string outputPrefix; // output file prefix
@@ -78,6 +74,7 @@ private:
 	buffer_type encode_simple_buffer;   // RLE buffer
 	totempole_entry_type totempole_entry;  // totempole entry for indexing
 	filter_type filters;
+	radix_sorter_type permutator;
 	header_type* header_;     // header
 	encoder_type* encoder;   // RLE packer
 };

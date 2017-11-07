@@ -3,6 +3,28 @@
 namespace Tomahawk {
 namespace Algorithm {
 
+RadixSortGT::RadixSortGT() :
+	n_samples(0),
+	position(0),
+	ppa(nullptr),
+	GT_array(nullptr),
+	bins(new U32*[9]),
+	cost_ppa_conventional(0),
+	cost_ppa_best(0),
+	cost_ppa_byte(0),
+	cost_ppa_u16(0),
+	cost_ppa_u32(0),
+	cost_ppa_u64(0),
+	cost_rle_conventional(0),
+	cost_rle_best(0),
+	cost_rle_byte(0),
+	cost_rle_u16(0),
+	cost_rle_u32(0),
+	cost_rle_u64(0)
+{
+	memset(&p_i, 0, sizeof(U32)*9);
+}
+
 RadixSortGT::RadixSortGT(const U64 n_samples) :
 	n_samples(n_samples),
 	position(0),
@@ -39,6 +61,38 @@ RadixSortGT::~RadixSortGT(){
 	delete [] this->GT_array;
 	for(U32 i = 0; i < 9; ++i)
 		delete [] this->bins[i];
+}
+
+void RadixSortGT::setSamples(const U64 n_samples){
+	this->n_samples = n_samples;
+
+	// Delete previous
+	delete [] this->ppa;
+	delete [] this->GT_array;
+
+	// Set new
+	this->ppa = new U32[this->n_samples];
+	this->GT_array = new BYTE[this->n_samples];
+
+	// Reset
+	for(U32 i = 0; i < 9; ++i){
+		this->bins[i] = new U32[n_samples];
+		memset(this->bins[i], 0, sizeof(U32)*n_samples);
+	}
+
+	memset(this->GT_array, 0, sizeof(BYTE)*n_samples);
+
+	for(U32 i = 0; i < this->n_samples; ++i)
+		this->ppa[i] = i;
+}
+
+void RadixSortGT::reset(void){
+	this->position = 0;
+	memset(this->GT_array, 0, sizeof(BYTE)*n_samples);
+	memset(&p_i, 0, sizeof(U32)*9);
+
+	for(U32 i = 0; i < this->n_samples; ++i)
+		this->ppa[i] = i;
 }
 
 bool RadixSortGT::build(const bcf_reader_type& reader){
@@ -88,13 +142,13 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 	// Update GT_array
 	U32 internal_pos = entry.p_genotypes;
 	//std::cerr << internal_pos << std::endl;
-	U32 j = 0;
-	for(U32 i = 0; i < 2*this->n_samples; i += 2, ++j){
+	U32 k = 0;
+	for(U32 i = 0; i < 2*this->n_samples; i += 2, ++k){
 		// this->GT_array[j] = PACK(entry.genotypes[i],entry.genotypes[i+1])
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&entry.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&entry.data[internal_pos++]);
 		const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-		this->GT_array[j] = packed;
+		this->GT_array[k] = packed;
 	}
 	//std::cerr << std::endl;
 
@@ -120,6 +174,7 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 		default: std::cerr << "illegal" << std::endl; exit(1);
 		}
 
+		// Update bin i at position i with ppa[j]
 		this->bins[target_ID][this->p_i[target_ID]] = this->ppa[j];
 		++this->p_i[target_ID];
 	} // end loop over individuals at position i
@@ -154,14 +209,13 @@ void RadixSortGT::outputGT(const bcf_reader_type& reader){
 			continue;
 
 		U32 internal_pos = reader[i].p_genotypes;
-		//std::cerr << internal_pos << std::endl;
-		U32 j = 0;
-		for(U32 k = 0; k < 2*this->n_samples; k += 2, ++j){
+		U32 k = 0;
+		for(U32 k = 0; k < 2*this->n_samples; k += 2, ++k){
 			// this->GT_array[j] = PACK(entry.genotypes[i],entry.genotypes[i+1])
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);
 			const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-			this->GT_array[j] = packed;
+			this->GT_array[k] = packed;
 		}
 
 		for(U32 k = 0; k < this->n_samples; ++k){
@@ -228,7 +282,7 @@ U64 RadixSortGT::assessRLEPPA(const bcf_entry_type& entry){
 
 	for(U32 k = 1; k < this->n_samples; ++k){
 		const BYTE internal_ref = this->GT_array[this->ppa[k]];
-		if(internal_ref != ref){
+		if(ref != internal_ref){
 			++n_runsBYTE;
 			++n_runsU16;
 			++n_runsU32;
@@ -304,7 +358,7 @@ U64 RadixSortGT::assessRLE(const bcf_entry_type& entry){
 	U32 current_U16 = 1;
 	U32 current_U32 = 1;
 	U32 current_U64 = 1;
-	BYTE ref = this->GT_array[this->ppa[0]];
+	BYTE ref = this->GT_array[0];
 	U32 longest_run = 1;
 
 	for(U32 k = 1; k < this->n_samples; ++k){

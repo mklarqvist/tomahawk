@@ -201,21 +201,21 @@ double BCFEntry::getMissingness(const U64& samples) const{
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		//std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
 
-		if(fmt_type_value1 < 0 || fmt_type_value2 < 0)
-			return(1);
+		//if(fmt_type_value1 < 0 || fmt_type_value2 < 0)
+		//	return(1);
 
-		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2)
-		std::cerr << (int)BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) << '\t' << (int)BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << std::endl;
+		if((fmt_type_value1 >> 1) == 0 || (fmt_type_value2 >> 1) == 0)
+			std::cerr << (int)(fmt_type_value1 >> 1) << '\t' << (fmt_type_value2 >> 1) << std::endl;
 
-		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 2 || BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 2) ++n_missing;
+		if((fmt_type_value1 >> 1) == 0 || (fmt_type_value2 >> 1) == 0) ++n_missing;
 	}
 	return((double)n_missing/samples);
 }
 
 void BCFEntry::SetRefAlt(void){
 	this->ref_alt = 0;
+	// Set mock ref-alt if not simple
 	if(this->alleles[0].length != 1 || this->alleles[1].length != 1){
-		//std::cerr << "setting mock refalt for: " << std::string(this->alleles[0].data, this->alleles[0].length) << '\t' << std::string(this->alleles[1].data, this->alleles[1].length) << std::endl;
 		this->ref_alt ^= Tomahawk::Constants::REF_ALT_N << 4;
 		this->ref_alt ^= Tomahawk::Constants::REF_ALT_N;
 		return;
@@ -226,7 +226,6 @@ void BCFEntry::SetRefAlt(void){
 	case 'T': this->ref_alt ^= Tomahawk::Constants::REF_ALT_T << 4; break;
 	case 'G': this->ref_alt ^= Tomahawk::Constants::REF_ALT_G << 4; break;
 	case 'C': this->ref_alt ^= Tomahawk::Constants::REF_ALT_C << 4; break;
-	case '.': this->ref_alt ^= Tomahawk::Constants::REF_ALT_N << 4; break;
 	default:
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Illegal SNV reference..." << std::endl;
 		exit(1);

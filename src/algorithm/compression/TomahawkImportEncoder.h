@@ -255,7 +255,7 @@ public:
 	inline const BYTE& getBitWidth(void) const{ return this->bit_width; }
 	//const BYTE assessRLE(const bcf_type& line);
 
-	bool Encode(const bcf_type& line, meta_base_type& meta_base, buffer_type& runs, buffer_type& simple, U64& n_runs);
+	bool Encode(const bcf_type& line, meta_base_type& meta_base, buffer_type& runs, buffer_type& simple, U64& n_runs, const U32* const ppa);
 	bool Encode(const vcf_type& line, meta_base_type& meta_base, buffer_type& runs, buffer_type& simple, U64& n_runs);
 
 private:
@@ -265,7 +265,7 @@ private:
 	template <class T> bool EncodeRLESimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool EncodeRLEComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool EncodeSimple(const bcf_type& line, buffer_type& runs, U64& n_runs);
-	template <class T> bool EncodeRLE(const bcf_type& line, buffer_type& runs, U64& n_runs, const bool hasMissing = true, const bool hasMixedPhase = true);
+	template <class T> bool EncodeRLE(const bcf_type& line, buffer_type& runs, U64& n_runs, const U32* const ppa, const bool hasMissing = true, const bool hasMixedPhase = true);
 	template <class T> bool EncodeRLESimple(const bcf_type& line, buffer_type& runs, U64& n_runs);
 
 private:
@@ -315,7 +315,7 @@ bool TomahawkImportEncoder::EncodeSimple(const bcf_type& line, buffer_type& simp
 }
 
 template <class T>
-bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U64& n_runs, const bool hasMissing, const bool hasMixedPhase){
+bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U64& n_runs, const U32* const ppa, const bool hasMissing, const bool hasMixedPhase){
 	U32 internal_pos = line.p_genotypes; // virtual byte offset of genotype start
 	U32 sumLength = 0;
 	T length = 1;
@@ -328,24 +328,30 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	const BYTE shift = hasMissing ? 2 : 1;
 	const BYTE add = hasMixedPhase ? 1 : 0;
 
+	// Run limits
+	const T limit = pow(2, 8*sizeof(T) - (2*(1+hasMissing)+hasMixedPhase)) - 1;
+
 	// Genotype maps
 	// Map to 0,1,4,5
 	const BYTE*    map = Constants::TOMAHAWK_ALLELE_REDUCED_MAP;
 	if(shift == 2) map = Constants::TOMAHAWK_ALLELE_SELF_MAP;
 
-	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+	//std::cerr << ppa[0] << std::endl;
+	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]]);
+	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]+1]);
 	T packed = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
 	// MSB contains phasing information
 	this->helper.phased = (fmt_type_value2 & 1);
 
-	for(U32 i = 2; i < this->n_samples * 2; i += 2){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
+	U32 j = 1;
+	for(U32 i = 2; i < this->n_samples * 2; i += 2, ++j){
+		//std::cerr << ppa[j] << std::endl;
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]+1]);
 		const T packed_internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
-		if(packed != packed_internal){
+		if(packed != packed_internal || length == limit){
 			// Prepare RLE
 			RLE = length;
 			RLE <<= 2*shift + add;

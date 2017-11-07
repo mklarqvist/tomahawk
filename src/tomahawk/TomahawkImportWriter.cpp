@@ -246,7 +246,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	return true;
 }
 
-bool TomahawkImportWriter::add(bcf_entry_type& entry){
+bool TomahawkImportWriter::add(bcf_entry_type& entry, const U32* const ppa){
 	// Keep positions
 	// If the entry needs to be filtered out
 	// then we roll back to these positions
@@ -258,7 +258,7 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry){
 
 	// Perform run-length encoding
 	U64 n_runs = 0;
-	if(!this->encoder->Encode(entry, meta, this->buffer_encode_rle, this->buffer_encode_simple, n_runs)){
+	if(!this->encoder->Encode(entry, meta, this->buffer_encode_rle, this->buffer_encode_simple, n_runs, ppa)){
 		this->buffer_meta.pointer = meta_start_pos; // roll back
 		this->buffer_encode_rle.pointer  = rle_start_pos; // roll back
 		this->buffer_encode_simple.pointer = simple_start_pos;
@@ -593,12 +593,21 @@ bool TomahawkImportWriter::flush(void){
 	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
-	// Merge meta data to single buffer
-	this->buffer_meta += this->buffer_metaComplex;
 	// Merge GT data
-	this->buffer_encode_rle += this->buffer_encode_simple;
+	U32 freq[256];
+	memset(&freq[0], 0, sizeof(U32)*256);
+	for(U32 i = 0; i < this->buffer_encode_rle.size(); ++i){
+		++freq[(BYTE)this->buffer_encode_rle[i]];
+	}
 
-	//this->buffer_meta += this->buffer_encode_simple;
+	double p_sum = 0;
+	for(U32 i = 0; i < 256; ++i){
+		double p = (double)freq[i]/this->buffer_encode_rle.size();
+		if(p == 0) continue;
+
+		std::cout << i << '\t' << freq[i] << '\t' << -p*log2(p) << std::endl;
+		p_sum += p*log2(p);
+	}
 
 	// Test to iterate over complex
 
@@ -681,6 +690,9 @@ bool TomahawkImportWriter::flush(void){
 		if(!++b) break;
 	}
 	*/
+	// Merge meta data to single buffer
+	this->buffer_meta += this->buffer_metaComplex;
+	this->buffer_encode_rle += this->buffer_encode_simple;
 
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
@@ -690,6 +702,8 @@ bool TomahawkImportWriter::flush(void){
 	//this->streamTomahawk << this->buffer_encode_rle;
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	std::cout << -p_sum << '\t' << ceil(-p_sum)*this->buffer_encode_rle.size()/8/1e6 << '\t' << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 

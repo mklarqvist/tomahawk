@@ -9,7 +9,7 @@ namespace Algorithm {
 /*
  * This class performs a radix sort on a
  * block of variant lines given they are
- * biallelic diploid.
+ * bi-allelic diploid.
  */
 class RadixSortGT {
 	typedef RadixSortGT self_type;
@@ -17,20 +17,15 @@ class RadixSortGT {
 	typedef BCF::BCFEntry  bcf_entry_type;
 
 public:
+	RadixSortGT();
 	RadixSortGT(const U64 n_samples);
 	~RadixSortGT();
 
 	// Reset does NOT need to cast after each
 	// iteration as values are overwritten
 	// each cycle
-	inline void reset(void){
-		this->position = 0;
-		memset(this->GT_array, 0, sizeof(BYTE)*n_samples);
-		memset(&p_i, 0, sizeof(U32)*9);
-
-		for(U32 i = 0; i < this->n_samples; ++i)
-			this->ppa[i] = i;
-	}
+	void reset(void);
+	void setSamples(const U64 n_samples);
 
 	// Construct given a reader with a block
 	// of BCF entries loaded in it

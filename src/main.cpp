@@ -35,7 +35,6 @@ DEALINGS IN THE SOFTWARE.
 #include "tajima.h"
 #include "sfs.h"
 #include "sitestats.h"
-#include "algorithm/permutation/RadixSortGT.h"
 
 int main(int argc, char** argv){
 	if(Tomahawk::Helpers::isBigEndian()){
@@ -54,40 +53,6 @@ int main(int argc, char** argv){
 	for(U32 i = 1; i < argc; ++i)
 		Tomahawk::Constants::LITERAL_COMMAND_LINE += " " + std::string(&argv[i][0]);
 
-	Tomahawk::BCF::BCFReader reader;
-
-	if(!reader.open("/media/klarqv01/08dcb478-5359-41f4-97c8-469190c8a034/HRC/HRC.r1-1.GRCh37.chr2.shapeit3.mac5.genotypes.bcf")){
-		std::cerr << "Failed to open BCF file..." << std::endl;
-		return false;
-	}
-
-	Tomahawk::Algorithm::RadixSortGT radix(reader.header.samples);
-
-	std::cerr << "PPA_conventional\tPPA_best\tPPA_byte\tPPA_u16\tPPA_u32\tPPA_u64\trle_conventional\trle_best\trle_byte\trle_u16\trle_u32\trle_u64\tfd_rle_best_ppa_best\tmemory_savings_rle_ppa\tfc_rle_conventional_ppa_best" << std::endl;
-	while(true){
-		if(!reader.getVariants(350)){
-			std::cerr << "faield to get reader" << std::endl;
-			return(1);
-		}
-
-		if(!radix.build(reader)){
-			std::cerr << "fail" << std::endl;
-		}
-
-		radix.assesRLECost(reader);
-		radix.reset();
-	}
-
-	return(1);
-
-	const U32* ppa = radix.getPPA();
-	for(U32 i = 0; i < 5000; ++i){
-		std::cerr << *ppa << std::endl;
-		++ppa;
-	}
-
-
-	return(1);
 
 	if(strncmp(&argv[1][0], "import", 5) == 0){
 		return(import(argc, argv));
@@ -103,8 +68,6 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "index", 5) == 0){
 		return(index(argc, argv));
-		//std::cerr << "Not implemented" << std::endl;
-		//return(1);
 
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));

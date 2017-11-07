@@ -135,7 +135,7 @@ public:
 	void WriteFinal(void);
 	void setHeader(vcf_header_type& header);
 	bool add(const VCF::VCFLine& line);
-	bool add(bcf_entry_type& entry);
+	bool add(bcf_entry_type& entry, const U32* const ppa);
 	bool parseBCF(meta_base_type& meta, bcf_entry_type& entry);
 
 	void reset(void){
