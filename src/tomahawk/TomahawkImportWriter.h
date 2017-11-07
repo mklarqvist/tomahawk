@@ -176,7 +176,7 @@ public:
 	}
 
 	// flush and write
-	bool flush(void);
+	bool flush(const U32* const ppa);
 
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush

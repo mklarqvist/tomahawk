@@ -530,7 +530,7 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 }
 
 // flush and write
-bool TomahawkImportWriter::flush(void){
+bool TomahawkImportWriter::flush(const U32* const ppa){
 	if(this->buffer_meta.size() == 0)
 		return false;
 
@@ -694,31 +694,43 @@ bool TomahawkImportWriter::flush(void){
 		if(!++b) break;
 	}
 	*/
-	// Merge meta data to single buffer
-	this->buffer_meta += this->buffer_metaComplex;
-	this->buffer_encode_rle += this->buffer_encode_simple;
-
-	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
-	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cout << "META\t" << this->buffer_meta.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	// test
 	buffer_type test(300000);
+	/*
+	for(U32 i = 0; i < this->vcf_header->samples; ++i)
+		test += (U32)ppa[i];
+	 */
 	//this->gzip_controller.buffer.resize(1.1*this->buffer_encode_rle.pointer);
-	//size_t ret = FSE_compress(test.data, test.width, this->ppa, this->vcf_header->samples*sizeof(U32));
+	size_t ret = FSE_compress(test.data, test.width, ppa, this->vcf_header->samples*sizeof(U32));
 	// FSE_decompress(void* dst,  size_t dstCapacity, const void* cSrc, size_t cSrcSize);
-	//std::cerr << "ret is: " << ret << std::endl;
-	//if(FSE_isError(ret)){
-	//	std::cerr << "is error: " << (ret) << std::endl;
-	//	exit(1);
-	//}
+	if(FSE_isError(ret)){
+		std::cerr << "is error: " << (ret) << std::endl;
+		exit(1);
+	}
+	test.pointer = ret;
+	//this->gzip_controller.Deflate(test); // Deflate block
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << this->vcf_header->samples*sizeof(U32)/1e6 << '\t' << ret/1e6 << std::endl;
+	this->streamTomahawk << test;
+	//this->gzip_controller.Clear(); // Clean up gzip controller
+	test.reset();
 	//this->gzip_controller.buffer.pointer = ret;
 
-	//this->streamTomahawk << this->buffer_meta;
+	// Merge data to single buffer
+	// and compress
+	//
+	// Meta
+	this->buffer_meta += this->buffer_metaComplex;
+	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
+	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META\t" << this->buffer_meta.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	this->gzip_controller.Clear(); // Clean up gzip controller
+
+	// RLE
+	this->buffer_encode_rle += this->buffer_encode_simple;
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cout << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 
