@@ -14,6 +14,7 @@ RM := rm
 -include src/tomahawk/subdir.mk
 -include src/third_party/zlib/subdir.mk
 -include src/third_party/xxhash/subdir.mk
+-include src/third_party/FiniteStateEntropy/lib/subdir.mk
 -include src/support/subdir.mk
 -include src/math/subdir.mk
 -include src/io/vcf/subdir.mk

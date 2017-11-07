@@ -33,6 +33,7 @@ src/io/vcf \
 src \
 src/math \
 src/support \
+src/third_party/FiniteStateEntropy/lib \
 src/third_party/xxhash \
 src/third_party/zlib \
 src/tomahawk \

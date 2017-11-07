@@ -19,7 +19,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 	// Assess cost and encode
 	rle_helper_type cost;
 	if(line.body->n_allele == 2){
-		cost = this->assessRLEBiallelic(line);
+		cost = this->assessRLEBiallelic(line, ppa);
 		meta_base.virtual_offset_gt = runs.pointer; // absolute position at start of stream
 		meta_base.controller.rle = true;
 		meta_base.controller.mixed_phasing = cost.mixedPhasing;
@@ -134,7 +134,7 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 	return false;
 }
 
-const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBiallelic(const bcf_type& line){
+const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBiallelic(const bcf_type& line, const U32* const ppa){
 	// Assess RLE cost
 	U32 internal_pos_rle = line.p_genotypes;
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
@@ -157,7 +157,8 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	if((fmt_type_value1 >> 1) == 0 || (fmt_type_value2 >> 1) == 0) anyMissing = true;
 
 	// Cycle over GT values
-	for(U32 i = 2; i < this->n_samples * 2; i += 2){
+	U32 j = 1;
+	for(U32 i = 2; i < this->n_samples * 2; i += 2, ++j){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
 
@@ -181,8 +182,8 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	U32 n_runs_u64  = 1; U32 run_length_u64  = 1;
 
 	// First ref
-	const SBYTE& fmt_type_value1_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-	const SBYTE& fmt_type_value2_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
+	const SBYTE& fmt_type_value1_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]]);
+	const SBYTE& fmt_type_value2_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]+1]);
 	U32 ref = PACK_RLE_BIALLELIC(fmt_type_value2_2, fmt_type_value1_2, 2, 1);
 
 	// Run limits
@@ -193,8 +194,8 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 
 	// Cycle over GT values
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]+1]);
 		U32 internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, 2, 1);
 
 		// Extend or break run

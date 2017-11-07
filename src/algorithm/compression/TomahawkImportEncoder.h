@@ -259,7 +259,7 @@ public:
 	bool Encode(const vcf_type& line, meta_base_type& meta_base, buffer_type& runs, buffer_type& simple, U64& n_runs);
 
 private:
-	const rle_helper_type assessRLEBiallelic(const bcf_type& line);
+	const rle_helper_type assessRLEBiallelic(const bcf_type& line, const U32* const ppa);
 	const rle_helper_type assessRLEnAllelic(const bcf_type& line);
 
 	template <class T> bool EncodeRLESimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
