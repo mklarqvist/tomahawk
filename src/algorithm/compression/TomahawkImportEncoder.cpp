@@ -176,10 +176,10 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	//
 	// Calculate cost / given a data type
 	/////////////////////
-	U32 n_runs_byte = 1; U32 run_length_byte = 1;
-	U32 n_runs_u16  = 1; U32 run_length_u16  = 1;
-	U32 n_runs_u32  = 1; U32 run_length_u32  = 1;
-	U32 n_runs_u64  = 1; U32 run_length_u64  = 1;
+	U32 n_runs_byte = 0; U32 run_length_byte = 1;
+	U32 n_runs_u16  = 0; U32 run_length_u16  = 1;
+	U32 n_runs_u32  = 0; U32 run_length_u32  = 1;
+	U32 n_runs_u64  = 0; U32 run_length_u64  = 1;
 
 	// First ref
 	const SBYTE& fmt_type_value1_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]]);
@@ -242,10 +242,23 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	U32 internal_pos_rle = line.p_genotypes;
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-	U32 n_runs = 1;
-	U32 largest = 0;
-	U32 run_length = 1;
 	U32 ref = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
+
+	// Run limits
+	// Values set to signed integers as values can underflow if
+	// the do not fit in the word size
+	S32 BYTE_limit = pow(2, 8*sizeof(BYTE) - (2*(shift_size)+1)) - 1;
+	S32  U16_limit  = pow(2, 8*sizeof(U16)  - (2*(shift_size)+1)) - 1;
+	S32  U32_limit  = pow(2, 8*sizeof(U32)  - (2*(shift_size)+1)) - 1;
+	U64  U64_limit  = pow(2, 8*sizeof(U64)  - (2*(shift_size)+1)) - 1;
+	if(BYTE_limit < 0) BYTE_limit = std::numeric_limits<S32>::max();
+	if(U16_limit < 0)  U16_limit  = std::numeric_limits<S32>::max();
+	if(U32_limit < 0)  U32_limit  = std::numeric_limits<S32>::max();
+
+	U32 n_runs_byte = 0; U32 run_length_byte = 1;
+	U32 n_runs_u16  = 0; U32 run_length_u16  = 1;
+	U32 n_runs_u32  = 0; U32 run_length_u32  = 1;
+	U32 n_runs_u64  = 0; U32 run_length_u64  = 1;
 
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
@@ -254,23 +267,43 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 
 		if(ref != internal){
 			ref = internal;
-			if(run_length > largest) largest = run_length;
-			++n_runs;
-			run_length = 0;
+			++n_runs_byte; run_length_byte = 0;
+			++n_runs_u16;  run_length_u16  = 0;
+			++n_runs_u32;  run_length_u32  = 0;
+			++n_runs_u64;  run_length_u64  = 0;
 		}
-		++run_length;
-	}
-	++n_runs;
-	if(run_length > largest) largest = run_length;
 
-	// Calculate word size
-	U32 word_width = ceil(
-			         (ceil(log2(largest + 1)) +
-			         2*ceil(log2(line.body->n_allele + 1)) + 1)
-			         / 8);
-	if(word_width == 3) word_width = 4;
-	if(word_width > 4)  word_width = 8;
-	return(rle_helper_type(word_width, n_runs, true, true));
+		// Overflow: trigger a break
+		if(run_length_byte == BYTE_limit){ ++n_runs_byte; run_length_byte = 0; }
+		if(run_length_u16  == U16_limit) { ++n_runs_u16; run_length_u16   = 0; }
+		if(run_length_u32  == U32_limit) { ++n_runs_u32; run_length_u32   = 0; }
+		if(run_length_u64  == U64_limit) { ++n_runs_u64; run_length_u64   = 0; }
+
+		// Update all counts
+		++run_length_byte;
+		++run_length_u16;
+		++run_length_u32;
+		++run_length_u64;
+	}
+	// Final runs
+	++n_runs_byte;
+	++n_runs_u16;
+	++n_runs_u32;
+	++n_runs_u64;
+
+	// Determine best action
+	U32 smallest_cost = n_runs_byte*sizeof(BYTE);
+	U64 chosen_runs = n_runs_byte;
+	BYTE word_width = 1;
+	if(BYTE_limit == std::numeric_limits<S32>::max()) smallest_cost = std::numeric_limits<U32>::max();
+	if(n_runs_u16*sizeof(U16) < smallest_cost && U16_limit != std::numeric_limits<S32>::max()){ smallest_cost = n_runs_u16*sizeof(U16); word_width = 2; chosen_runs = n_runs_u16; }
+	if(n_runs_u32*sizeof(U32) < smallest_cost && U32_limit != std::numeric_limits<S32>::max()){ smallest_cost = n_runs_u32*sizeof(U32); word_width = 4; chosen_runs = n_runs_u32; }
+	if(n_runs_u64*sizeof(U64) < smallest_cost){ smallest_cost = n_runs_u64*sizeof(U64); word_width = 8; chosen_runs = n_runs_u64; }
+
+	//std::cerr << (int)word_width << '\t' << chosen_runs << '\t' << word_width*chosen_runs << "\t\t" << n_runs_byte*sizeof(BYTE) << '\t' << n_runs_u16*sizeof(U16) << '\t' << n_runs_u32*sizeof(U32) << '\t' << n_runs_u64*sizeof(U64) << std::endl;
+	//std::cerr << BYTE_limit << '\t' << U16_limit << '\t'  << U32_limit << '\t' << U64_limit << std::endl;
+
+	return(rle_helper_type(word_width, chosen_runs, true, true));
 }
 
 }

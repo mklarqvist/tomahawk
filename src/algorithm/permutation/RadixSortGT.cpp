@@ -141,16 +141,13 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 	//
 	// Update GT_array
 	U32 internal_pos = entry.p_genotypes;
-	//std::cerr << internal_pos << std::endl;
 	U32 k = 0;
 	for(U32 i = 0; i < 2*this->n_samples; i += 2, ++k){
-		// this->GT_array[j] = PACK(entry.genotypes[i],entry.genotypes[i+1])
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&entry.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&entry.data[internal_pos++]);
 		const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
 		this->GT_array[k] = packed;
 	}
-	//std::cerr << std::endl;
 
 	// Build PPA
 	// 3^2 = 9 state radix sort over

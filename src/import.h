@@ -32,6 +32,7 @@ void import_usage(void){
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file prefix (required)\n"
+	"  -c INT   checkpoint size in number of variants (default: 500)\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
 	"  -m FLOAT Minor-genotype frequency (MGF) cutoff (default: 0)\n"
 	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
@@ -49,6 +50,7 @@ int import(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",		required_argument, 0,  'i' },
 		{"output",		optional_argument, 0,  'o' },
+		{"checkpoint",		optional_argument, 0,  'c' },
 		{"extend",		optional_argument, 0,  'e' },
 		{"hwep",		optional_argument, 0,  'h' },
 		{"missingness",		optional_argument, 0,  'n' },
@@ -65,8 +67,9 @@ int import(int argc, char** argv){
 	double hwe_p = 0;
 	double mgf = 0;
 	double missingness = 0.2;
+	S32 checkpoint = 500;
 
-	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:s?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:c:s?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -120,6 +123,14 @@ int import(int argc, char** argv){
 			}
 
 			break;
+		case 'c':
+			checkpoint = atoi(optarg);
+			if(checkpoint < 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set checkpoint to < 0..." << std::endl;
+				return(1);
+			}
+			break;
+
 		case 's':
 			SILENT = 1;
 			break;
@@ -151,7 +162,7 @@ int import(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling import..." << std::endl;
 	}
 
-	Tomahawk::TomahawkImporter importer(input, output);
+	Tomahawk::TomahawkImporter importer(input, output, checkpoint);
 	importer.getFilters().HWE_P = hwe_p;
 	importer.getFilters().MGF = mgf;
 	importer.getFilters().missingness = missingness;

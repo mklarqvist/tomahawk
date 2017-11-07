@@ -4,12 +4,17 @@
 
 ![screenshot](tomahawk.png)
 ## Fast genetics in large-scale human cohorts
-Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the number of runs. This encoding scheme is superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is determined by the number of samples in the matrix during run-time. Tomahawk has three primary internal functions: 1) iterate over RLE entries; 2) divide compressed genotypic vectors into groups; 3) computing the inner product of compressed genotypic vectors.
+Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the number of runs. This encoding scheme is superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is determined contextually for a variant site during run-time. Tomahawk has three
+primary internal functions: 
+
+1) iterate over sites and RLE entries; 
+2) divide compressed genotypic vectors into groups;
+3) computing the inner product of compressed genotypic vectors.
 
 We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
 
 The current format specifications (v.0) for `TWK`,`TWI`,`TWO`,`TOI`, `LD`, and `TGZF`
-are available [TWKv0](spec/TWKv0.pdf)
+are available [TWKv0.4](spec/TWKv0.pdf)
 
 Marcus D. R. Klarqvist (<mk819@cam.ac.uk>)
 
@@ -42,23 +47,11 @@ commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
 disequilibrium data is written out in `two` and `toi` format.
 
 ### Importing to Tomahawk
-By design Tomahawk only operates on bi-allelic SNVs and as such filters out
-indels and complex variants. Tomahawk does not support mixed phasing of genotypes
-in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found in a line,
-all genotypes in that line are converted to unphased. Importing a variant document (`vcf`/`bcf`)
-to Tomahawk requires the `import` command.
+Importing a variant document (`vcf`/`bcf`) to Tomahawk requires the `import` command.
 The following command line imports a `vcf` file and outputs `outPrefix.twk` and
-`outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
-from Hardy-Weinberg equilibrium with a probability < 0.001
+`outPrefix.twk.twi`
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -h 1e-3
-```
-
-### Import-extend
-If you have split up your `vcf`/`bcf` files into multiple disjoint files
-(such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
-```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -h 1e-3
+tomahawk import -i file.vcf -o outPrefix
 ```
 
 ### Calculating linkage disequilibrium
@@ -97,6 +90,52 @@ Perform k-way merge of partially sorted blocks
 ```bash
 tomahawk sort -i partial.two -o sorted.two -M
 ```
+
+## <a name="notes"></a>Further Notes
+### <a name="others"></a>Other formats
+
+* TWK vs [PBWT][pbwt]. Compression of genotype data in TWK is inspired by the
+  2-bin radix sort in PBWT. TWK, unlike PBWT, keeps all multi-allelic variants
+  and all INFO/FORMAT/FILTER fields. PBWT supports advanced queries for 
+  haplotype matching, phasing and imputation. TWK has no such functionality.
+
+* TWK vs [BCF2][vcf]. TWK supports all functionality in BCF with the restriction
+  that the target species is diploid. BCF keeps genotype data internally in roughly
+  the same space as raw VCF. This makes querying BCF extremely slow. TWK stores
+  genotypic data as (dynamic) fixed-width run-length encoded objects that we can
+  query directly. 
+
+* TWK vs [GQT][gqt]. GQT is designed with speed in mind and completely sacrifice
+  compressibility. Because of this, GQT archives are >20-fold larger than TWK and
+  many hundred-fold larger than PBWT, BGF, and GTC. TWK is just as fast at processing
+  genotype data while compressing much better.
+
+* TWK vs [GTC][gtc]. GTC provides superior compressibility of genotypes but is considerably
+  less expressible as it throws away all other fields. GTC will struggle to rapidly 
+  query data because of the bit-vector representation it employs.
+  
+### <a name="comp"></a>Compression evaluation
+The test is run on the first release of [Haplotype Reference Consortium][hrc]
+(HRC) data. There are ~39 million phased SNPs in 32,488 samples. We have
+generated the `TWK` for chromosome 11. The following table shows the file sizes
+across a number of tools.
+
+|File-size           |Command line|
+|-------------------:|:------------|
+|3322M               |`bcftools view HRC_chr11.vcf -o hrc_chr11.bcf`|
+|623M + 965K         |`tomahawk import -i HRC_chr11.bcf -o hrc_chr11`|
+|185M + 30M + 679K   |`pbwt -readVcfGT HRC_chr11.bcf -checkpoint 10000 -writeAll hrc_chr11`|
+|188M + 12M + 62K    |`gtc compress -b HRC_chr11.bcf -o hrc_chr11`|
+|349M + 12M + 68K    |`bgt import hrc_chr11 HRC_chr11.bcf`|
+|4110M + 58M + 7M    |`gqt convert bcf -i HRC_chr11.bcf`|
+
+Listed files represent the primary archive plus any auxiliary files (1M=1024\*1024 bytes).
+
+[hrc]: http://www.haplotype-reference-consortium.org
+[gqt]: https://github.com/ryanlayer/gqt
+[pbwt]: https://github.com/richarddurbin/pbwt
+[gtc]: https://github.com/refresh-bio/GTC
+[vcf]: https://samtools.github.io/hts-specs/
 
 ### License
 [MIT](LICENSE)

@@ -42,7 +42,7 @@ class TomahawkImporter {
 	} sort_order_helper;
 
 public:
-	TomahawkImporter(std::string inputFile, std::string outputPrefix);
+	TomahawkImporter(std::string inputFile, std::string outputPrefix, const U32 checkpoint_size);
 	~TomahawkImporter();
 	bool Build();
 	bool Extend(std::string extendFile);
@@ -64,6 +64,7 @@ private:
 	bool permutateData(bcf_reader_type& reader);
 
 private:
+	U32 checkpoint_size;      // number of variants until checkpointing
 	U32 block_flush_limit;    // limit in bytes when to flush to disk
 	std::string inputFile;    // input file name
 	std::string outputPrefix; // output file prefix

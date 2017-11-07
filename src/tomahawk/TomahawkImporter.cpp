@@ -4,7 +4,8 @@
 
 namespace Tomahawk {
 
-TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPrefix) :
+TomahawkImporter::TomahawkImporter(std::string inputFile, std::string outputPrefix, const U32 checkpoint) :
+	checkpoint_size(checkpoint),
 	block_flush_limit(65536),
 	inputFile(inputFile),
 	outputPrefix(outputPrefix),
@@ -171,8 +172,9 @@ bool TomahawkImporter::BuildBCF(void){
 
 
 	//std::cerr << "PPA_conventional\tPPA_best\tPPA_byte\tPPA_u16\tPPA_u32\tPPA_u64\trle_conventional\trle_best\trle_byte\trle_u16\trle_u32\trle_u64\tfd_rle_best_ppa_best\tmemory_savings_rle_ppa\tfc_rle_conventional_ppa_best" << std::endl;
+	std::cerr << "checkpoint: " << this->checkpoint_size << std::endl;
 	while(true){
-		if(!reader.getVariants(1000)){
+		if(!reader.getVariants(this->checkpoint_size)){
 			std::cerr << "faield to get reader" << std::endl;
 			return(1);
 		}
