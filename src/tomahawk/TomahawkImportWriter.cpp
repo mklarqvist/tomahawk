@@ -15,6 +15,8 @@
 
 #include "TomahawkBlockIterator.h"
 
+#include "../third_party/FiniteStateEntropy/lib/fse.h"
+
 namespace Tomahawk {
 
 TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
@@ -594,6 +596,7 @@ bool TomahawkImportWriter::flush(void){
 	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
 	// Merge GT data
+	/*
 	U32 freq[256];
 	memset(&freq[0], 0, sizeof(U32)*256);
 	for(U32 i = 0; i < this->buffer_encode_rle.size(); ++i){
@@ -608,6 +611,7 @@ bool TomahawkImportWriter::flush(void){
 		std::cout << i << '\t' << freq[i] << '\t' << -p*log2(p) << std::endl;
 		p_sum += p*log2(p);
 	}
+	*/
 
 	// Test to iterate over complex
 
@@ -696,14 +700,25 @@ bool TomahawkImportWriter::flush(void){
 
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	std::cout << "META\t" << this->buffer_meta.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
+	// test
+	buffer_type test(300000);
+	//this->gzip_controller.buffer.resize(1.1*this->buffer_encode_rle.pointer);
+	//size_t ret = FSE_compress(test.data, test.width, this->ppa, this->vcf_header->samples*sizeof(U32));
+	// FSE_decompress(void* dst,  size_t dstCapacity, const void* cSrc, size_t cSrcSize);
+	//std::cerr << "ret is: " << ret << std::endl;
+	//if(FSE_isError(ret)){
+	//	std::cerr << "is error: " << (ret) << std::endl;
+	//	exit(1);
+	//}
+	//this->gzip_controller.buffer.pointer = ret;
+
 	//this->streamTomahawk << this->buffer_meta;
-	//this->streamTomahawk << this->buffer_encode_rle;
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cout << -p_sum << '\t' << ceil(-p_sum)*this->buffer_encode_rle.size()/8/1e6 << '\t' << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-
+	std::cout << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 
@@ -718,7 +733,7 @@ bool TomahawkImportWriter::flush(void){
 	this->n_variants_written += this->totempole_entry.n_variants; // update number of variants written
 	this->totempole_entry.reset();
 
-	buffer_type test(300000);
+
 
 	//std::cerr << "Data values" << std::endl;
 	//for(U32 i = 0; i < this->info_hash_value_counter; ++i){
@@ -733,7 +748,6 @@ bool TomahawkImportWriter::flush(void){
 	for(U32 i = 0; i < this->info_hash_value_counter; ++i){
 		std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
 		if(this->containers[i].stream_data_type == 4){
-
 			const S32* dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
 			min = *dat;
 			max = *dat;
@@ -759,18 +773,6 @@ bool TomahawkImportWriter::flush(void){
 			if(byte_width >= 3 && byte_width <= 4) byte_width = 4;
 			else if(byte_width > 4) byte_width = 8;
 			if(byte_width == 0) byte_width = 1;
-			//std::cerr << "min: " << min << " max " << max << " uniform " << is_uniform << " type " << (int)byte_width << std::endl;
-
-			BYTE byte_width_check = 0;
-			if(min >= 0){
-				byte_width_check = ceil(ceil(log2((max + 1) - min))/8);
-				if(byte_width_check >= 3 && byte_width_check <= 4) byte_width_check = 4;
-				else if(byte_width_check > 4) byte_width_check = 8;
-				if(byte_width_check == 0) byte_width_check = 1;
-				if(byte_width_check != byte_width){
-					std::cerr << "min: " << min << " max " << max << " uniform " << is_uniform << " switch max-min: " << (int)byte_width << "->" << (int)byte_width_check << " for " << (is_uniform ? 1 : this->containers[i].n_entries) << " entries" << std::endl;
-				}
-			}
 
 			if(is_uniform){
 				// Non-negative
@@ -795,52 +797,21 @@ bool TomahawkImportWriter::flush(void){
 				dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
 				// Is non-negative
 				if(min >= 0){
-					if(byte_width_check < byte_width){
-						// Use min-max transformation
-						std::cerr << "using min-max" << std::endl;
-						if(byte_width_check == 1){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j){
-								test += (BYTE)(*dat - min);
-								++dat;
-							}
-						} else if(byte_width_check == 2){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j){
-								test += (U16)(*dat - min);
-								++dat;
-							}
-						} else if(byte_width_check == 4){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j){
-								test += (U32)(*dat - min);
-								++dat;
-							}
-						} else if(byte_width_check == 8){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j){
-								test += (U64)(*dat - min);
-								++dat;
-							}
-						} else {
-							std::cerr << "illegal" << std::endl;
-							exit(1);
-						}
-					}
-					// Use normal
-					else {
-						if(byte_width == 1){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-								test += (BYTE)*(dat++);
-						} else if(byte_width == 2){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-								test += (U16)*(dat++);
-						} else if(byte_width == 4){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-								test += (U32)*(dat++);
-						} else if(byte_width == 8){
-							for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-								test += (U64)*(dat++);
-						} else {
-							std::cerr << "illegal" << std::endl;
-							exit(1);
-						}
+					if(byte_width == 1){
+						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
+							test += (BYTE)*(dat++);
+					} else if(byte_width == 2){
+						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
+							test += (U16)*(dat++);
+					} else if(byte_width == 4){
+						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
+							test += (U32)*(dat++);
+					} else if(byte_width == 8){
+						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
+							test += (U64)*(dat++);
+					} else {
+						std::cerr << "illegal" << std::endl;
+						exit(1);
 					}
 				}
 				// Is negative
