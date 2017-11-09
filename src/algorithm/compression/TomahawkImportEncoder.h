@@ -260,7 +260,7 @@ public:
 
 private:
 	const rle_helper_type assessRLEBiallelic(const bcf_type& line, const U32* const ppa);
-	const rle_helper_type assessRLEnAllelic(const bcf_type& line);
+	const rle_helper_type assessRLEnAllelic(const bcf_type& line, const U32* const ppa);
 
 	template <class T> bool EncodeRLESimple (const vcf_type& line, buffer_type& meta, buffer_type& runs);
 	template <class T> bool EncodeRLEComplex(const vcf_type& line, buffer_type& meta, buffer_type& runs);
@@ -339,6 +339,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	//std::cerr << ppa[0] << std::endl;
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]+1]);
+	internal_pos += 2;
 	T packed = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
 	// MSB contains phasing information
@@ -349,6 +350,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 		//std::cerr << ppa[j] << std::endl;
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]+1]);
+		internal_pos += 2;
 		const T packed_internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
 		if(packed != packed_internal || length == limit){
