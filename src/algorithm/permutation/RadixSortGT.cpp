@@ -130,10 +130,10 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 	//
 	// Genotype encodings are thus:
 	// 0/0 -> 0000b = 0 -> 0
-	// 0/1 -> 0001b = 1 -> 1
+	// 0/1 -> 0001b = 1 -> 3
 	// 0/. -> 0010b = 2	-> 4
 	// 1/0 -> 0100b = 4 -> 2
-	// 1/1 -> 0101b = 5 -> 3
+	// 1/1 -> 0101b = 5 -> 1
 	// 1/. -> 0110b = 6 -> 5
 	// ./0 -> 1000b = 8 -> 6
 	// ./1 -> 1001b = 9 -> 7
@@ -160,10 +160,10 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 		// Determine correct bin
 		switch(this->GT_array[this->ppa[j]]){
 		case 0:  target_ID = 0; break;
-		case 1:  target_ID = 1; break;
+		case 1:  target_ID = 3; break;
 		case 2:  target_ID = 4; break;
 		case 4:  target_ID = 2; break;
-		case 5:  target_ID = 3; break;
+		case 5:  target_ID = 1; break;
 		case 6:  target_ID = 5; break;
 		case 8:  target_ID = 6; break;
 		case 9:  target_ID = 7; break;
@@ -182,6 +182,7 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 	for(U32 i = 0; i < 9; ++i){
 		// Copy data in bin i to current position
 		memcpy(&this->ppa[cum_pos], this->bins[i], this->p_i[i]*sizeof(U32));
+
 		// Update cumulative position and reset
 		cum_pos += this->p_i[i];
 		this->p_i[i] = 0;

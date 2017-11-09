@@ -41,6 +41,7 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	info_hash_streams(5012),
 	format_hash_pattern(5012),
 	format_hash_streams(5012),
+	buffer_ppa(100000),
 	encoder(nullptr),
 	vcf_header(nullptr),
 	containers(new stream_container[100])
@@ -695,26 +696,79 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	}
 	*/
 
-	// test
-	buffer_type test(300000);
-	/*
-	for(U32 i = 0; i < this->vcf_header->samples; ++i)
-		test += (U32)ppa[i];
-	 */
-	//this->gzip_controller.buffer.resize(1.1*this->buffer_encode_rle.pointer);
-	size_t ret = FSE_compress(test.data, test.width, ppa, this->vcf_header->samples*sizeof(U32));
-	// FSE_decompress(void* dst,  size_t dstCapacity, const void* cSrc, size_t cSrcSize);
-	if(FSE_isError(ret)){
-		std::cerr << "is error: " << (ret) << std::endl;
-		exit(1);
+	// Split U32 values into 4 streams
+	const U32 partition = this->vcf_header->samples;
+	buffer_type test(partition*sizeof(U32)*10);
+	bytePreprocessor(ppa, partition, test.data);
+
+	// Hist
+	U32 b[8]; memset(b,0, 8*sizeof(U32));
+	BYTE* target = reinterpret_cast<BYTE*>(&test.data[partition*2]);
+	for(U32 i = 0; i < partition; ++i){
+		for(U32 j = 0; j < 8; ++j){
+			//std::cerr << j << '\t' << std::bitset<8>(1 << j) << '\t' << std::bitset<8>(target[i]) << '\t' << std::bitset<8>(target[i] & (1 << j)) << std::endl;
+			b[j] += !((target[i] & (1 << j)) == 0);
+		}
 	}
-	test.pointer = ret;
-	//this->gzip_controller.Deflate(test); // Deflate block
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << this->vcf_header->samples*sizeof(U32)/1e6 << '\t' << ret/1e6 << std::endl;
-	this->streamTomahawk << test;
-	//this->gzip_controller.Clear(); // Clean up gzip controller
+	for(U32 j = 0; j < 8; ++j){
+		std::cerr << b[j] << '\t';
+	}
+	std::cerr << std::endl;
+	 memset(b,0, 8*sizeof(U32));
+	 target = reinterpret_cast<BYTE*>(&test.data[partition*3]);
+	 for(U32 i = 0; i < partition; ++i){
+		for(U32 j = 0; j < 8; ++j){
+			//std::cerr << j << '\t' << std::bitset<8>(1 << j) << '\t' << std::bitset<8>(target[i]) << '\t' << std::bitset<8>(target[i] & (1 << j)) << std::endl;
+			b[j] += !((target[i] & (1 << j)) == 0);
+		}
+	}
+	for(U32 j = 0; j < 8; ++j){
+		std::cerr << b[j] << '\t';
+	}
+	std::cerr << std::endl;
+
+	test.pointer = partition*4;
+	this->buffer_ppa.Add(&test.data[partition*2], partition*2);
+	this->gzip_controller.Deflate(this->buffer_ppa);
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << this->vcf_header->samples*sizeof(U32)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	this->streamTomahawk << this->gzip_controller;
+	this->gzip_controller.Clear();
+	this->buffer_ppa.reset();
 	test.reset();
-	//this->gzip_controller.buffer.pointer = ret;
+
+	/*
+
+	this->buffer_ppa.resize(partition*8);
+	U32 ret_sep = 0;
+	buffer_type temp2(partition*8);
+	buffer_type temp3(partition*8);
+	std::cerr << "size: " << temp2.capacity() << std::endl;
+	for(U32 i = 0; i < 4; ++i){
+		std::cerr << "compressing: " << partition*i << "->" << partition*(i+1) << " at " << this->buffer_ppa.pointer << '/' << this->buffer_ppa.capacity() << std::endl;
+		size_t ret = FSE_compress(&this->buffer_ppa.data[this->buffer_ppa.pointer], this->buffer_ppa.capacity(),
+				                  &test.data[partition*i], partition);
+		std::cerr << "compressed: " << ret << " input: " << partition << std::endl;
+		if(FSE_isError(ret) || ret == 0){
+			std::cerr << "failed to compress: " << ret << std::endl;
+			exit(1);
+		}
+
+		if(ret == 1)
+			continue;
+
+		size_t retD = FSE_decompress(temp2.data, temp2.capacity(), &this->buffer_ppa.data[this->buffer_ppa.pointer], ret);
+		if(FSE_isError(retD)){
+			std::cerr << "decompress error: "  << retD << std::endl;
+			exit(1);
+		}
+		std::cerr << "decompressed: " << retD << std::endl;
+		ret_sep += ret;
+		this->buffer_ppa.pointer += ret;
+	}
+	this->streamTomahawk << this->buffer_ppa;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << this->vcf_header->samples*sizeof(U32) << '\t' << this->buffer_ppa.pointer << std::endl;
+	this->buffer_ppa.reset();
+	*/
 
 	// Merge data to single buffer
 	// and compress
@@ -733,10 +787,9 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
-
 	// Keep track of largest block observed
-	if(this->buffer_meta.size() > this->largest_uncompressed_block)
-		this->largest_uncompressed_block = this->buffer_meta.size();
+	if(this->buffer_encode_rle.size() > this->largest_uncompressed_block)
+		this->largest_uncompressed_block = this->buffer_encode_rle.size();
 
 	this->totempole_entry.l_uncompressed = this->buffer_meta.size(); // Store uncompressed size
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
@@ -745,38 +798,24 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	this->n_variants_written += this->totempole_entry.n_variants; // update number of variants written
 	this->totempole_entry.reset();
 
-
-
-	//std::cerr << "Data values" << std::endl;
-	//for(U32 i = 0; i < this->info_hash_value_counter; ++i){
-		//std::cerr << i << ": " << this->containers[i].buffer.size() << std::endl;
-		//test += this->containers[i].buffer;
-	//}
-
 	// integers
 	S32 min = 0, max = 0;
 	S32 prev_value = 0;
 	bool is_uniform = true;
 	for(U32 i = 0; i < this->info_hash_value_counter; ++i){
-		std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
+		//std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
 		if(this->containers[i].stream_data_type == 4){
 			const S32* dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
 			min = *dat;
 			max = *dat;
 			prev_value = *dat;
 
-			//std::cerr << *(dat++) << ',';
 			for(U32 j = 1; j < this->containers[i].n_entries; ++j){
 				if(*dat < min) min = *dat;
 				if(*dat > max) max = *dat;
-				if(prev_value != *dat){
-					//std::cerr << prev_value << "!=" << *dat << std::endl;
-					is_uniform = false;
-				}
+				if(prev_value != *dat) is_uniform = false;
 				prev_value = *dat;
-				//std::cerr << *(dat++) << ',';
 			}
-			//std::cerr << std::endl;
 
 			BYTE byte_width = 0;
 			if(min < 0) byte_width = ceil((ceil(log2(abs(min) + 1))+1)/8);  // One bit is used for sign
@@ -851,12 +890,13 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 			test += this->containers[i].buffer;
 		}
 	}
-	std::cerr << "data size: " << test.size() << std::endl;
+	//std::cerr << "data size: " << test.size() << std::endl;
 
 	this->gzip_controller.Deflate(test); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	//this->streamTomahawk << test; // Write tomahawk output
 	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO\t" << test.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	this->gzip_controller.Clear(); // Clean up gzip controller
 	test.deleteAll();
 

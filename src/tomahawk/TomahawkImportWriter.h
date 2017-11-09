@@ -21,6 +21,43 @@
 
 namespace Tomahawk {
 
+inline bool bytePreprocessor(const U32* const data, const size_t& size, char* destination){
+	BYTE* targetData = reinterpret_cast<BYTE*>(destination);
+	BYTE* s1 = &targetData[size*3];
+	BYTE* s2 = &targetData[size*2];
+	BYTE* s3 = &targetData[size*1];
+	BYTE* s4 = &targetData[size*0];
+
+	for(U32 i = 0; i < size; ++i){
+		const BYTE* const p = reinterpret_cast<const BYTE* const>(&data[i]);
+		s1[i] = (p[0] & 255);
+		//s1[i] = 127;
+		s2[i] = (p[1] & 255);
+		s3[i] = (p[2] & 255);
+		s4[i] = (p[3] & 255);
+		const U32 x = s4[i] << 24 | s3[i] << 16 | s2[i] << 8 | s1[i];
+		assert(x == data[i]);
+	}
+
+	return true;
+}
+
+inline bool bytePreprocessorRevert(const BYTE* data, const size_t& size, char* destination){
+	BYTE* targetData = reinterpret_cast<BYTE*>(destination);
+	BYTE* s1 = &targetData[size*3];
+	BYTE* s2 = &targetData[size*2];
+	BYTE* s3 = &targetData[size*1];
+	BYTE* s4 = &targetData[size*0];
+	U32* dest = reinterpret_cast<U32*>(destination);
+
+	for(U32 i = 0; i < size; ++i){
+		U32 x = s4[i] << 24 | s3[i] << 16 | s2[i] << 8 | s1[i];
+		dest[i] = x;
+	}
+
+	return true;
+}
+
 // Stream container for importing
 class TomahawkImportEncoderStreamContainer{
 	typedef TomahawkImportEncoderStreamContainer self_type;
@@ -223,6 +260,7 @@ public:
 	buffer_type buffer_encode_simple; // simple encoding
 	buffer_type buffer_meta;// meta data for run lengths (chromosome, position, ref/alt)
 	buffer_type buffer_metaComplex; // complex meta data
+	buffer_type buffer_ppa; // ppa buffer
 
 	// Meta data
 	U32 filter_hash_pattern_counter;
