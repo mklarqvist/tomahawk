@@ -531,7 +531,7 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 }
 
 // flush and write
-bool TomahawkImportWriter::flush(const U32* const ppa){
+bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	if(this->buffer_meta.size() == 0)
 		return false;
 
@@ -699,41 +699,51 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	// Split U32 values into 4 streams
 	const U32 partition = this->vcf_header->samples;
 	buffer_type test(partition*sizeof(U32)*10);
-	bytePreprocessor(ppa, partition, test.data);
+	bytePreprocessor(permuter.getPPA(), partition, test.data);
 
-	// Hist
-	U32 b[8]; memset(b,0, 8*sizeof(U32));
-	BYTE* target = reinterpret_cast<BYTE*>(&test.data[partition*2]);
-	for(U32 i = 0; i < partition; ++i){
-		for(U32 j = 0; j < 8; ++j){
-			//std::cerr << j << '\t' << std::bitset<8>(1 << j) << '\t' << std::bitset<8>(target[i]) << '\t' << std::bitset<8>(target[i] & (1 << j)) << std::endl;
-			b[j] += !((target[i] & (1 << j)) == 0);
-		}
-	}
-	for(U32 j = 0; j < 8; ++j){
-		std::cerr << b[j] << '\t';
-	}
-	std::cerr << std::endl;
-	 memset(b,0, 8*sizeof(U32));
-	 target = reinterpret_cast<BYTE*>(&test.data[partition*3]);
-	 for(U32 i = 0; i < partition; ++i){
-		for(U32 j = 0; j < 8; ++j){
-			//std::cerr << j << '\t' << std::bitset<8>(1 << j) << '\t' << std::bitset<8>(target[i]) << '\t' << std::bitset<8>(target[i] & (1 << j)) << std::endl;
-			b[j] += !((target[i] & (1 << j)) == 0);
-		}
-	}
-	for(U32 j = 0; j < 8; ++j){
-		std::cerr << b[j] << '\t';
-	}
-	std::cerr << std::endl;
+	//const BYTE* const temp_out = reinterpret_cast<const BYTE* const>(test.data);
+	//for(U32 i = 0; i < partition; ++i){
+	//	std::cerr << (U32)permuter.getPPA()[i] << ' ';
+	//}
+	//std::cerr << std::endl;
+
+	//for(U32 i = partition*2; i < partition*3; ++i){
+	//	std::cerr << (U32)temp_out[i] << ' ';
+	//}
+	//std::cerr << std::endl;
+	//this->buffer_ppa.resize(partition*sizeof(U32)*10);
+	//bytePreprocessorRevert(test.data, partition, this->buffer_ppa.data);
+	//const U32* const temp_out_rev = reinterpret_cast<const U32* const>(this->buffer_ppa.data);
+	//for(U32 i = 0; i < partition; ++i){
+	//	std::cerr << permuter.getPPA()[i] << '\t' << temp_out_rev[i] << std::endl;
+	//}
+	//std::cerr << std::endl;
 
 	test.pointer = partition*4;
+	this->buffer_ppa.reset();
 	this->buffer_ppa.Add(&test.data[partition*2], partition*2);
 	this->gzip_controller.Deflate(this->buffer_ppa);
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << this->vcf_header->samples*sizeof(U32)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-byte\t" << (partition*2)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->streamTomahawk << this->gzip_controller;
 	this->gzip_controller.Clear();
 	this->buffer_ppa.reset();
+
+	// test bitshuffle
+	//memset(this->buffer_ppa.data, 0, 2*sizeof(BYTE)*partition);
+	//bytePreprocessBits(&test.data[partition*2], partition, this->buffer_ppa.data);
+	//bytePreprocessBits(&test.data[partition*3], partition, &this->buffer_ppa.data[partition]);
+	//const BYTE* const test_bit = reinterpret_cast<const BYTE* const>(this->buffer_ppa.data);
+	//for(U32 i = 0; i < partition; ++i){
+//		std::cerr << (U32)test_bit[i] << ' ';
+	//}
+	//std::cerr << std::endl;
+	//this->buffer_ppa.pointer = 2*partition;
+	//this->gzip_controller.Deflate(this->buffer_ppa);
+	//this->streamTomahawk << this->gzip_controller;
+	//std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-bit\t" << 2*partition/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	//std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
+	this->gzip_controller.Clear();
 	test.reset();
 
 	/*
@@ -778,6 +788,7 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META\t" << this->buffer_meta.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cout << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	// RLE
@@ -785,6 +796,7 @@ bool TomahawkImportWriter::flush(const U32* const ppa){
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cout << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << permuter.cumulative_AAC << '\n';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	// Keep track of largest block observed

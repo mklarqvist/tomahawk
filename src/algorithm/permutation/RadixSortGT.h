@@ -43,13 +43,16 @@ public:
 	U64 assessRLEPPA(const bcf_entry_type& reader);
 	U64 assessRLE(const bcf_entry_type& reader);
 
-private:
+public:
 	U64 n_samples; // total number of entries in file
 	U32 position;  // number of entries parsed
 	U32 p_i[9];    // number of entries in bin i
 	U32* ppa;      // position prefix array
 	BYTE* GT_array;// packed genotype array
 	U32** bins;    // bin i
+
+	U64 cumulative_AAC;
+	U64 cumulative_total;
 
 	// costs
 	U64 cost_ppa_conventional;

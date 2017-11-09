@@ -84,7 +84,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	}
 
 	++this->header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush(this->permutator.getPPA());
+	this->writer_.flush(this->permutator);
 
 	this->writer_.WriteFinal();
 
@@ -186,6 +186,7 @@ bool TomahawkImporter::BuildBCF(void){
 		this->writer_.totempole_entry.contigID = contigID;
 		this->writer_.totempole_entry.minPosition = reader[0].body->POS;
 
+		// Reset permutate
 		if(!this->permutator.build(reader)){
 			std::cerr << "fail" << std::endl;
 		}
@@ -198,10 +199,10 @@ bool TomahawkImporter::BuildBCF(void){
 		}
 
 		++this->header_->getContig(contigID); // update block count for this contigID
-		this->writer_.flush(this->permutator.getPPA());
+		this->writer_.flush(this->permutator);
 		this->writer_.TotempoleSwitch(contigID, this->sort_order_helper.previous_position);
 
-		//this->permutator.assesRLECost(reader);
+		// Reset permutator
 		this->permutator.reset();
 	}
 
@@ -262,7 +263,7 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	++this->header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush(this->permutator.getPPA());
+	this->writer_.flush(this->permutator);
 	this->writer_.WriteFinal();
 
 	if(this->writer_.getVariantsWritten() == 0){
@@ -356,7 +357,7 @@ bool TomahawkImporter::BuildVCF(void){
 	}
 
 	++this->header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush(this->permutator.getPPA());
+	this->writer_.flush(this->permutator);
 	//		return false;
 
 	this->writer_.WriteFinal();
@@ -391,7 +392,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		// Get new contig value from header
 		// and flush out data
 		++this->header_->getContig(line.body->CHROM);
-		this->writer_.flush(this->permutator.getPPA());
+		this->writer_.flush(this->permutator);
 
 		// Update index values
 		this->writer_.TotempoleSwitch(line.body->CHROM, 0);
@@ -482,7 +483,7 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 		// Get new contig value from header
 		// and flush out data
 		++this->header_->getContig(*this->sort_order_helper.contigID);
-		this->writer_.flush(this->permutator.getPPA());
+		this->writer_.flush(this->permutator);
 
 		// Update index values
 		this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, 0);
@@ -514,7 +515,7 @@ bool TomahawkImporter::parseVCFLine(line_type& line){
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->header_->getContig(*this->sort_order_helper.contigID); // update block count for this contigID
-			this->writer_.flush(this->permutator.getPPA());
+			this->writer_.flush(this->permutator);
 
 			this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, this->sort_order_helper.previous_position);
 		}

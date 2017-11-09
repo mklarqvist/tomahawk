@@ -9,6 +9,8 @@ RadixSortGT::RadixSortGT() :
 	ppa(nullptr),
 	GT_array(nullptr),
 	bins(new U32*[9]),
+	cumulative_AAC(0),
+	cumulative_total(0),
 	cost_ppa_conventional(0),
 	cost_ppa_best(0),
 	cost_ppa_byte(0),
@@ -31,6 +33,8 @@ RadixSortGT::RadixSortGT(const U64 n_samples) :
 	ppa(new U32[this->n_samples]),
 	GT_array(new BYTE[this->n_samples]),
 	bins(new U32*[9]),
+	cumulative_AAC(0),
+	cumulative_total(0),
 	cost_ppa_conventional(0),
 	cost_ppa_best(0),
 	cost_ppa_byte(0),
@@ -93,6 +97,9 @@ void RadixSortGT::reset(void){
 
 	for(U32 i = 0; i < this->n_samples; ++i)
 		this->ppa[i] = i;
+
+	this->cumulative_AAC = 0;
+	this->cumulative_total = 0;
 }
 
 bool RadixSortGT::build(const bcf_reader_type& reader){
@@ -140,6 +147,7 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 	// ./. -> 1010b = 10 -> 8
 	//
 	// Update GT_array
+	U32 alt = 0, ref = 0;
 	U32 internal_pos = entry.p_genotypes;
 	U32 k = 0;
 	for(U32 i = 0; i < 2*this->n_samples; i += 2, ++k){
@@ -147,7 +155,18 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&entry.data[internal_pos++]);
 		const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
 		this->GT_array[k] = packed;
+		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) == 1) ++alt;
+		else ++ref;
+		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 1) ++alt;
+		else ++ref;
 	}
+	//std::cerr << alt << '\t' << ref << '\t' << alt+ref << std::endl;
+	//if(alt > 1000 || nonDiploid) return true;
+	//std::cerr << entry.body->POS+1 << '\t' << entry.body->n_allele << std::endl;
+
+	if(alt <= ref) this->cumulative_AAC += alt;
+	else this->cumulative_AAC += ref;
+	this->cumulative_total += alt+ref;
 
 	// Build PPA
 	// 3^2 = 9 state radix sort over
@@ -209,7 +228,6 @@ void RadixSortGT::outputGT(const bcf_reader_type& reader){
 		U32 internal_pos = reader[i].p_genotypes;
 		U32 k = 0;
 		for(U32 k = 0; k < 2*this->n_samples; k += 2, ++k){
-			// this->GT_array[j] = PACK(entry.genotypes[i],entry.genotypes[i+1])
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);
 			const BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
