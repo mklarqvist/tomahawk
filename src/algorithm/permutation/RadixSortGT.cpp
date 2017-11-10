@@ -160,13 +160,11 @@ bool RadixSortGT::update(const bcf_entry_type& entry){
 		if(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1) == 1) ++alt;
 		else ++ref;
 	}
-	//std::cerr << alt << '\t' << ref << '\t' << alt+ref << std::endl;
-	//if(alt > 1000 || nonDiploid) return true;
-	//std::cerr << entry.body->POS+1 << '\t' << entry.body->n_allele << std::endl;
-
 	if(alt <= ref) this->cumulative_AAC += alt;
 	else this->cumulative_AAC += ref;
-	this->cumulative_total += alt+ref;
+	this->cumulative_total += alt + ref;
+
+	//if(alt < 50) return false;
 
 	// Build PPA
 	// 3^2 = 9 state radix sort over
@@ -226,7 +224,6 @@ void RadixSortGT::outputGT(const bcf_reader_type& reader){
 			continue;
 
 		U32 internal_pos = reader[i].p_genotypes;
-		U32 k = 0;
 		for(U32 k = 0; k < 2*this->n_samples; k += 2, ++k){
 			const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);
 			const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&reader[i].data[internal_pos++]);

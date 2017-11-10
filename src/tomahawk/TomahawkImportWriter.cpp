@@ -719,29 +719,29 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	//}
 	//std::cerr << std::endl;
 
-	test.pointer = partition*4;
-	this->buffer_ppa.reset();
-	this->buffer_ppa.Add(&test.data[partition*2], partition*2);
-	this->gzip_controller.Deflate(this->buffer_ppa);
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-byte\t" << (partition*2)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	//test.pointer = partition*4;
+	//this->buffer_ppa.reset();
+	//this->buffer_ppa.Add(&test.data[partition*2], partition*2);
+	//this->gzip_controller.Deflate(this->buffer_ppa);
+	//std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-byte\t" << (partition*2)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
-	this->streamTomahawk << this->gzip_controller;
-	this->gzip_controller.Clear();
-	this->buffer_ppa.reset();
+	//this->streamTomahawk << this->gzip_controller;
+	//this->gzip_controller.Clear();
+	//this->buffer_ppa.reset();
 
 	// test bitshuffle
-	//memset(this->buffer_ppa.data, 0, 2*sizeof(BYTE)*partition);
-	//bytePreprocessBits(&test.data[partition*2], partition, this->buffer_ppa.data);
-	//bytePreprocessBits(&test.data[partition*3], partition, &this->buffer_ppa.data[partition]);
+	memset(this->buffer_ppa.data, 0, 2*sizeof(BYTE)*partition);
+	bytePreprocessBits(&test.data[partition*2], partition, this->buffer_ppa.data);
+	bytePreprocessBits(&test.data[partition*3], partition, &this->buffer_ppa.data[partition]);
 	//const BYTE* const test_bit = reinterpret_cast<const BYTE* const>(this->buffer_ppa.data);
 	//for(U32 i = 0; i < partition; ++i){
 //		std::cerr << (U32)test_bit[i] << ' ';
 	//}
 	//std::cerr << std::endl;
-	//this->buffer_ppa.pointer = 2*partition;
-	//this->gzip_controller.Deflate(this->buffer_ppa);
-	//this->streamTomahawk << this->gzip_controller;
-	//std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-bit\t" << 2*partition/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	this->buffer_ppa.pointer = 2*partition;
+	this->gzip_controller.Deflate(this->buffer_ppa);
+	this->streamTomahawk << this->gzip_controller;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-bit\t" << 2*partition/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
 	//std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear();
 	test.reset();

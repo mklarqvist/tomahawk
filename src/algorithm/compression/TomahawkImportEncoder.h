@@ -339,25 +339,25 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	//std::cerr << ppa[0] << std::endl;
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]+1]);
-	internal_pos += 2;
 	T packed = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 
 	// MSB contains phasing information
 	this->helper.phased = (fmt_type_value2 & 1);
 
 	U32 j = 1;
+	BYTE last_phase = (fmt_type_value2 & 1);
 	for(U32 i = 2; i < this->n_samples * 2; i += 2, ++j){
 		//std::cerr << ppa[j] << std::endl;
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]+1]);
-		internal_pos += 2;
 		const T packed_internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
+		last_phase = (fmt_type_value2 & 1);
 
 		if(packed != packed_internal || length == limit){
 			// Prepare RLE
 			RLE = length;
-			RLE <<= 2*shift + add;
-			RLE |= packed;
+			RLE <<= (2*shift + add);
+			if(add) RLE |= (fmt_type_value2 & 1);
 			assert((RLE >> (2*shift + add)) == length);
 
 			// Set meta phased flag bit
@@ -383,7 +383,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	// Prepare RLE
 	RLE = length;
 	RLE <<= 2 * shift + add;
-	RLE |= packed;
+	if(add) RLE |= (last_phase & 1);
 	assert((RLE >> (2*shift + add)) == length);
 
 	// Set meta phased flag bit
@@ -417,9 +417,6 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 
 	const BYTE shift = ceil(log2(line.body->n_allele + 1));
 
-	//std::cerr << "RLE simple shift; shift,size: " << (int)shift << ',' << sizeof(T) << std::endl;
-	//exit(1);
-
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 	T packed = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift);
@@ -427,12 +424,15 @@ bool TomahawkImportEncoder::EncodeRLESimple(const bcf_type& line, buffer_type& r
 	// MSB contains phasing information
 	this->helper.phased = (fmt_type_value2 & 1);
 
+	// Run limits
+	const T limit = pow(2, 8*sizeof(T) - (2*shift+1)) - 1;
+
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos++]);
 		const T packed_internal = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift);
 
-		if(packed != packed_internal){
+		if(packed != packed_internal || length == limit){
 			// Prepare RLE
 			RLE = length;
 			RLE <<= 2*shift + 1;

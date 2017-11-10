@@ -183,7 +183,6 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	// First ref
 	const SBYTE& fmt_type_value1_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]]);
 	const SBYTE& fmt_type_value2_2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]+1]);
-	internal_pos_rle += 2;
 	U32 ref = PACK_RLE_BIALLELIC(fmt_type_value2_2, fmt_type_value1_2, 2, 1);
 
 	// Run limits
@@ -192,18 +191,16 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 	const U32  U32_limit  = pow(2, 8*sizeof(U32)  - (2*(1+anyMissing)+mixedPhase)) - 1;
 	const U64  U64_limit  = pow(2, 8*sizeof(U64)  - (2*(1+anyMissing)+mixedPhase)) - 1;
 
-	//std::cerr << (U32)BYTE_limit << '\t' << U16_limit << '\t' << U32_limit << '\t' << U64_limit << std::endl;
-
 	// Cycle over GT values
 	U32 j = 1;
 	for(U32 i = 2; i < this->n_samples * 2; i += 2, ++j){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]+1]);
-		internal_pos_rle += 2;
 		U32 internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, 2, 1);
 
 		// Extend or break run
 		if(ref != internal){
+			//std::cerr << run_length_byte << '\t' << run_length_u16 << '\t' << run_length_u32 << '\t' << run_length_u64 << std::endl;
 			++n_runs_byte; run_length_byte = 0;
 			++n_runs_u16;  run_length_u16  = 0;
 			++n_runs_u32;  run_length_u32  = 0;
@@ -213,9 +210,9 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEBia
 
 		// Overflow: trigger a break
 		if(run_length_byte == BYTE_limit){ ++n_runs_byte; run_length_byte = 0; }
-		if(run_length_u16  == U16_limit) { ++n_runs_u16; run_length_u16   = 0; }
-		if(run_length_u32  == U32_limit) { ++n_runs_u32; run_length_u32   = 0; }
-		if(run_length_u64  == U64_limit) { ++n_runs_u64; run_length_u64   = 0; }
+		if(run_length_u16  == U16_limit) { ++n_runs_u16;  run_length_u16  = 0; }
+		if(run_length_u32  == U32_limit) { ++n_runs_u32;  run_length_u32  = 0; }
+		if(run_length_u64  == U64_limit) { ++n_runs_u64;  run_length_u64  = 0; }
 
 		// Update all counts
 		++run_length_byte;
@@ -244,8 +241,8 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	// Assess RLE cost
 	const BYTE shift_size = ceil(log2(line.body->n_allele + 1));
 	U32 internal_pos_rle = line.p_genotypes;
-	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
+	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]]);
+	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[0]+1]);
 	U32 ref = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
 
 	// Run limits
@@ -264,9 +261,10 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	U32 n_runs_u32  = 0; U32 run_length_u32  = 1;
 	U32 n_runs_u64  = 0; U32 run_length_u64  = 1;
 
-	for(U32 i = 2; i < this->n_samples * 2; i += 2){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle++]);
+	U32 j = 1;
+	for(U32 i = 2; i < this->n_samples * 2; i += 2, ++j){
+		const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]]);
+		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos_rle+2*ppa[j]+1]);
 		U32 internal = PACK_RLE_SIMPLE(fmt_type_value2, fmt_type_value1, shift_size);
 
 		if(ref != internal){
