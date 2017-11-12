@@ -160,7 +160,6 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	///
-	///
 	/// TODO
 	/// temp
 
@@ -170,13 +169,11 @@ bool TomahawkImporter::BuildBCF(void){
 	this->writer_.totempole_entry.contigID = 0;
 	this->writer_.totempole_entry.minPosition = 0;
 
-
 	//std::cerr << "PPA_conventional\tPPA_best\tPPA_byte\tPPA_u16\tPPA_u32\tPPA_u64\trle_conventional\trle_best\trle_byte\trle_u16\trle_u32\trle_u64\tfd_rle_best_ppa_best\tmemory_savings_rle_ppa\tfc_rle_conventional_ppa_best" << std::endl;
-	std::cerr << "checkpoint: " << this->checkpoint_size << std::endl;
 	while(true){
 		if(!reader.getVariants(this->checkpoint_size)){
-			std::cerr << "faield to get reader" << std::endl;
-			return(1);
+			std::cerr << "faield to get reader: " << reader.size() << std::endl;
+			break;
 		}
 
 		S32 contigID = reader[0].body->CHROM;
@@ -206,7 +203,27 @@ bool TomahawkImporter::BuildBCF(void){
 		this->permutator.reset();
 	}
 
-	exit(1);
+	// This only happens if there are no valid entries in the file
+	if(this->sort_order_helper.contigID == nullptr){
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
+		return false;
+	}
+
+	++this->header_->getContig(*this->sort_order_helper.contigID);
+	this->writer_.flush(this->permutator);
+	this->writer_.WriteFinal();
+
+	if(this->writer_.getVariantsWritten() == 0){
+		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
+		return false;
+	}
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.getVariantsWritten()))
+														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
+														 << " blocks..." << std::endl;
+
+	return(true);
 
 	///
 
@@ -412,21 +429,6 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Assess missingness
 	const double missing = line.getMissingness(this->header_->samples);
-	//const float missing = 0;
-	/*
-	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
-		if(this->sort_order_helper.previous_included){
-			//if(!SILENT)
-			//	std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
-
-			goto next;
-		} else {
-			//if(!SILENT)
-			//	std::cerr << Helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Keeping (drop other)..." << std::endl;
-
-		}
-	}
-	*/
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){

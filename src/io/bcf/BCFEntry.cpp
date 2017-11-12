@@ -199,13 +199,6 @@ double BCFEntry::getMissingness(const U64& samples) const{
 	for(U32 i = 0; i < samples; ++i){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		//std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
-
-		//if(fmt_type_value1 < 0 || fmt_type_value2 < 0)
-		//	return(1);
-
-		if((fmt_type_value1 >> 1) == 0 || (fmt_type_value2 >> 1) == 0)
-			std::cerr << (int)(fmt_type_value1 >> 1) << '\t' << (fmt_type_value2 >> 1) << std::endl;
 
 		if((fmt_type_value1 >> 1) == 0 || (fmt_type_value2 >> 1) == 0) ++n_missing;
 	}

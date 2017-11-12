@@ -344,11 +344,11 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 	entry.n_filter = n_filter;
 	entry.filter_key = filter_key;
 
-	S32 val = 0;
 	// TODO
+	S32 val = 0;
 	while(entry.nextFilter(val, internal_pos)){
 		// Hash FILTER value
-		//std::cerr << "FILTER: " << val << std::endl;
+		// Filter fields have no values
 	}
 
 	// At INFO
@@ -360,87 +360,47 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 		U32 mapID = 0;
 		U32 temp = val;
 		if(this->info_hash_streams.GetItem(&temp, hash_map_ret, sizeof(U32))){
-			//std::cerr << "GET: " << temp << "->" << *hash_map_ret << std::endl;
 			mapID = *hash_map_ret;
 		} else {
 			this->info_hash_streams.SetItem(&temp, this->info_hash_value_counter, sizeof(U32));
-			//std::cerr << "SET: " << temp << "->" << this->info_hash_value_counter << std::endl;
 			mapID = this->info_hash_value_counter;
+			this->info_values.push_back(mapID);
 			++this->info_hash_value_counter;
 		}
 
 		//
 		if(this->containers[mapID].n_entries == 0){
-			//std::cerr << "entries is 0" << std::endl;
-			if(info_value_type == 0) this->containers[mapID].setType(4);
+			// Set all integer types to U32
+			// Change to smaller type later if required
+			if(info_value_type == 0)      this->containers[mapID].setType(4);
 			else if(info_value_type == 1) this->containers[mapID].setType(4);
 			else if(info_value_type == 2) this->containers[mapID].setType(4);
 			else if(info_value_type == 3) this->containers[mapID].setType(4);
 			else if(info_value_type == 5) this->containers[mapID].setType(7);
 			else if(info_value_type == 7) this->containers[mapID].setType(0);
-			//std::cerr << "set type: " << (int)this->containers[mapID].stream_data_type << std::endl;
 		}
 		++this->containers[mapID];
-		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
-		//std::cerr << (int)this->containers[mapID].stream_data_type << std::endl;
-		//std::cerr << "current: " << (int)info_value_type << std::endl;
 
-		//std::cerr << "send to: " << mapID << std::endl;
-
-		// Move out
-
+		// Flags and integers
 		if(info_value_type <= 3){
 			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
 				this->containers[mapID] += entry.getInteger(info_value_type, internal_pos);
 			}
 		}
-
-		/*
-		if(info_value_type == 0){
-			//std::cerr << "flag for " << val << '\t' << entry.body->POS+1 << std::endl;
-			this->containers[mapID] += (BYTE)0;
-
-		} else if(info_value_type == 1){
-			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
-				//entry.getSBYTE(internal_pos);
-				this->containers[mapID] += entry.getSBYTE(internal_pos);
-			}
-			//std::cerr << std::endl;
-		} else if(info_value_type == 2){
-			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
-				//entry.getS16(internal_pos);
-				this->containers[mapID] += entry.getS16(internal_pos);
-			}
-			//std::cerr << std::endl;
-		} else if(info_value_type == 3){
-			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getInteger(info_value_type, entry.data, internal_pos) << ';';
-				//entry.getS32(internal_pos);
-				this->containers[mapID] += entry.getS32(internal_pos);
-			}
-			//std::cerr << std::endl;
-		}
-		*/
+		// Floats
 		else if(info_value_type == 5){
 			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getFloat(entry.data, internal_pos) << ';';
-				//entry.getFloat(internal_pos);
 				this->containers[mapID] += entry.getFloat(internal_pos);
 			}
-			//std::cerr << std::endl;
-
-		} else if(info_value_type == 7){
+		}
+		// Chars
+		else if(info_value_type == 7){
 			for(U32 j = 0; j < info_length; ++j){
-				//std::cerr << entry.getChar(entry.data, internal_pos);
-				//entry.getChar(internal_pos);
 				this->containers[mapID] += entry.getChar(internal_pos);
 			}
-			//std::cerr << std::endl;
-
-		} else {
+		}
+		// Illegal: parsing error
+		else {
 			std::cerr << "impossible: " << (int)info_value_type << std::endl;
 			exit(1);
 		}
@@ -536,13 +496,14 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 		return false;
 
 	// Update sizes of streams
+	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->totempole_entry.l_meta = this->buffer_meta.pointer;
 	this->totempole_entry.l_meta_complex = this->buffer_metaComplex.pointer;
-	this->totempole_entry.l_rle = this->buffer_encode_rle.pointer;
-	this->totempole_entry.l_simple = this->buffer_encode_simple.pointer;
+	this->totempole_entry.l_gt_rle = this->buffer_encode_rle.pointer;
+	this->totempole_entry.l_gt_simple = this->buffer_encode_simple.pointer;
 
 	// Todo:
-	// pointer each data stream
+	// Build (value,key)-pair for each stream
 	std::vector< std::pair<U32, U32> > info_offsets;
 	for(U32 i = 0; i < this->info_hash_streams.size(); ++i){
 		if(this->info_hash_streams.pat(i) != nullptr){
@@ -552,10 +513,12 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	}
 	// Sort by map->target
 	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: Sorting key-value pairs..." << std::endl;
+	// Sort to get order of appearance
+	// Now info_offsets[i].first == i
 	std::sort(info_offsets.begin(), info_offsets.end());
-	for(U32 i = 0; i < info_offsets.size(); ++i){
-		std::cerr << info_offsets[i].first << '\t' << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << std::endl;
-	}
+	//for(U32 i = 0; i < info_offsets.size(); ++i){
+	//	std::cerr << info_offsets[i].first << '\t' << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << std::endl;
+	//}
 	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: " << info_offsets.size() << " entries -> " << ceil((float)info_offsets.size()/8) << " bytes" << std::endl;
 
 	// Build map
@@ -594,7 +557,6 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	delete [] info_bitvector;
 
 	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
-	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 
 	// Merge GT data
 	/*
@@ -724,7 +686,7 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	//this->buffer_ppa.Add(&test.data[partition*2], partition*2);
 	//this->gzip_controller.Deflate(this->buffer_ppa);
 	//std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-byte\t" << (partition*2)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
+	//std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
 	//this->streamTomahawk << this->gzip_controller;
 	//this->gzip_controller.Clear();
 	//this->buffer_ppa.reset();
@@ -741,8 +703,8 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	this->buffer_ppa.pointer = 2*partition;
 	this->gzip_controller.Deflate(this->buffer_ppa);
 	this->streamTomahawk << this->gzip_controller;
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-bit\t" << 2*partition/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	//std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << 2*partition << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)2*partition/this->gzip_controller.buffer.size() << std::endl;
+	std::cout << partition*2 << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear();
 	test.reset();
 
@@ -784,38 +746,55 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	// and compress
 	//
 	// Meta
-	this->buffer_meta += this->buffer_metaComplex;
+	//this->buffer_meta += this->buffer_metaComplex;
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META\t" << this->buffer_meta.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META\t" << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_meta.size() / this->gzip_controller.buffer.size() << std::endl;
 	std::cout << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
+	this->gzip_controller.Deflate(this->buffer_metaComplex); // Deflate block
+	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META-C\t" << this->buffer_metaComplex.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_metaComplex.size() / this->gzip_controller.buffer.size() << std::endl;
+	std::cout << this->buffer_metaComplex.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
+	this->gzip_controller.Clear(); // Clean up gzip controller
+
 	// RLE
-	this->buffer_encode_rle += this->buffer_encode_simple;
+	//this->buffer_encode_rle += this->buffer_encode_simple;
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	std::cout << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << permuter.cumulative_AAC << '\n';
+	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_rle.size() / this->gzip_controller.buffer.size() << std::endl;
+	std::cout << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
+
+	// If there is any simple data
+	if(this->buffer_encode_simple.size() > 0){
+		this->gzip_controller.Deflate(this->buffer_encode_simple); // Deflate block
+		this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+		std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE-S\t" << this->buffer_encode_simple.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_simple.size() / this->gzip_controller.buffer.size() << std::endl;
+		std::cout << this->buffer_encode_simple.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
+		this->gzip_controller.Clear(); // Clean up gzip controller
+	}
 
 	// Keep track of largest block observed
 	if(this->buffer_encode_rle.size() > this->largest_uncompressed_block)
 		this->largest_uncompressed_block = this->buffer_encode_rle.size();
 
-	this->totempole_entry.l_uncompressed = this->buffer_meta.size(); // Store uncompressed size
+	//this->totempole_entry.l_uncompressed = this->buffer_meta.size(); // Store uncompressed size
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->streamTotempole << this->totempole_entry; // Write totempole output
 	++this->n_blocksWritten; // update number of blocks written
 	this->n_variants_written += this->totempole_entry.n_variants; // update number of variants written
 	this->totempole_entry.reset();
 
-	// integers
+	// Dispatch values into streams
 	S32 min = 0, max = 0;
 	S32 prev_value = 0;
 	bool is_uniform = true;
 	for(U32 i = 0; i < this->info_hash_value_counter; ++i){
 		//std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
+
+		// Is integer type
 		if(this->containers[i].stream_data_type == 4){
 			const S32* dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
 			min = *dat;
@@ -898,18 +877,34 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 			min = 0; max = 0;
 			is_uniform = true;
 
+			if(is_uniform){
+				this->streamTomahawk.write(test.data, byte_width);
+				std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO " << info_offsets[i].second << "\t" << (U32)byte_width << '\t' << (U32)byte_width << '\t' << (float)byte_width / byte_width << std::endl;
+			} else {
+				this->gzip_controller.Deflate(test);
+				this->streamTomahawk << this->gzip_controller;
+				//test += this->containers[i].buffer;
+				std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO " << info_offsets[i].second << "\t" << test.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)test.size() / this->gzip_controller.buffer.size() << std::endl;
+				this->gzip_controller.Clear();
+			}
+			test.reset();
+
 		} else {
-			test += this->containers[i].buffer;
+			this->gzip_controller.Deflate(this->containers[i].buffer);
+			this->streamTomahawk << this->gzip_controller;
+			std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO:" << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->containers[i].buffer.size() / this->gzip_controller.buffer.size() << std::endl;
+			//test += this->containers[i].buffer;
+			this->gzip_controller.Clear();
 		}
 	}
 	//std::cerr << "data size: " << test.size() << std::endl;
 
-	this->gzip_controller.Deflate(test); // Deflate block
-	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
+	//this->gzip_controller.Deflate(test); // Deflate block
+	//this->streamTomahawk << this->gzip_controller; // Write tomahawk output
 	//this->streamTomahawk << test; // Write tomahawk output
 	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO\t" << test.size()/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	this->gzip_controller.Clear(); // Clean up gzip controller
+	//std::cout << test.size() << '\t' << this->gzip_controller.buffer.size() << '\n';
+	//this->gzip_controller.Clear(); // Clean up gzip controller
 	test.deleteAll();
 
 	this->reset(); // reset buffers

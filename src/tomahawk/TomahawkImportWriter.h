@@ -184,7 +184,9 @@ class TomahawkImportWriter {
 	typedef Hash::HashTable<U64, U32> hash_table_vector;
 	typedef Hash::HashTable<U32, U32> hash_table;
 	typedef TomahawkImportEncoderStreamContainer stream_container;
-	typedef std::vector< std::vector<U32> > pattern_vector;
+	typedef std::vector<U32> id_vector;
+	typedef std::vector< id_vector > pattern_vector;
+
 
 public:
 	TomahawkImportWriter(const filter_type& filter);
@@ -226,6 +228,11 @@ public:
 		this->format_patterns.clear();
 		this->filter_patterns.clear();
 
+		// Value data
+		this->info_values.clear();
+		this->format_values.clear();
+		this->filter_values.clear();
+
 		// Reset
 		for(U32 i = 0; i < 100; ++i)
 			this->containers[i].reset();
@@ -257,6 +264,9 @@ public:
 	void CheckOutputNames(const std::string& input);
 
 	inline totempole_entry_type& getTotempoleEntry(void){ return(this->totempole_entry); }
+
+private:
+	bool constructBitVector(const hash_table_vector& htable, const U32 byte_width);
 
 public:
 	// Stream information
@@ -304,6 +314,10 @@ public:
 	pattern_vector format_patterns;
 	pattern_vector info_patterns;
 	pattern_vector filter_patterns;
+	// Values
+	id_vector format_values;
+	id_vector info_values;
+	id_vector filter_values;
 
 	// Encoder
 	encoder_type* encoder;

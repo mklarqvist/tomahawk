@@ -25,8 +25,8 @@ public:
 		data(data),
 		meta(reinterpret_cast<const meta_type*>(data)),
 		encoding_RLE(&data[totempole.l_meta]),
-		encoding_simple(&data[totempole.l_meta + totempole.l_rle]),
-		meta_complex(&data[totempole.l_meta + totempole.l_rle + totempole.l_simple])
+		encoding_simple(&data[totempole.l_meta + totempole.l_gt_rle]),
+		meta_complex(&data[totempole.l_meta + totempole.l_gt_rle + totempole.l_gt_simple])
 	{
 		this->upper_limit = this->meta[0].n_runs;
 	}
@@ -44,7 +44,7 @@ public:
 			++this->p_rle;
 		}
 		else {
-			this->encoding_simple = &this->data[totempole.l_meta + totempole.l_rle + this->getMeta().virtual_offset_gt];
+			this->encoding_simple = &this->data[totempole.l_meta + totempole.l_gt_rle + this->getMeta().virtual_offset_gt];
 			++this->p_simple;
 		}
 
