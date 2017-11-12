@@ -451,17 +451,22 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 			++this->format_hash_value_counter;
 		}
 
+		if(this->format_containers[mapID].n_entries == 0){
+			this->format_containers[mapID].setStrideSize(info_length);
+		}
+
 		if(mapID == 0){
 			switch(info_value_type){
 			case 1: internal_pos += this->vcf_header->samples * sizeof(SBYTE) * info_length; break;
-			case 2: internal_pos += this->vcf_header->samples * sizeof(S16) * info_length; break;
-			case 3: internal_pos += this->vcf_header->samples * sizeof(S32) * info_length; break;
+			case 2: internal_pos += this->vcf_header->samples * sizeof(S16)   * info_length; break;
+			case 3: internal_pos += this->vcf_header->samples * sizeof(S32)   * info_length; break;
 			}
 			continue;
 		}
 
 		stream_container& target_container = this->format_containers[mapID];
 		if(this->format_containers[mapID].n_entries == 0){
+			target_container.setStrideSize(info_length);
 			// Set all integer types to U32
 			// Change to smaller type later if required
 			if(info_value_type == 0)      target_container.setType(4);
@@ -472,6 +477,10 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 			else if(info_value_type == 7) target_container.setType(0);
 		}
 		++target_container;
+		if(!target_container.checkStrideSize(info_length))
+			target_container.setMixedStrides();
+
+		target_container.addStride(info_length);
 
 		// Flags and integers
 		if(info_value_type <= 3){
@@ -534,7 +543,7 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 		mapID = this->info_hash_pattern_counter;
 		++this->info_hash_pattern_counter;
 	}
-	// Update meta
+	// Store this map in the meta
 	meta.INFO_map_ID = mapID;
 
 	// Hash FORMAT pattern
@@ -553,7 +562,10 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 		mapID = this->format_hash_pattern_counter;
 		++this->format_hash_pattern_counter;
 	}
+	// Store this map in the meta
 	meta.FORMAT_map_ID = mapID;
+
+	// Return
 	return true;
 }
 
@@ -801,6 +813,12 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 			exit(1);
 		}
 		std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "INFO " << this->info_values[i] << '\t' << ret_size << '\t' << (float)this->info_containers[i].buffer_data.size()/ret_size << '\t' << this->info_containers[i].addSize << std::endl;
+		if(this->info_containers[i].addSize == -1){
+			this->gzip_controller.Deflate(this->info_containers[i].buffer_strides);
+			std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "INFO-ADD " << this->info_containers[i].buffer_strides.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->info_containers[i].buffer_strides.size()/this->gzip_controller.buffer.size() << std::endl;
+			this->streamTomahawk << this->gzip_controller;
+			this->gzip_controller.Clear();
+		}
 	}
 
 	// Dispatch values into streams
@@ -811,6 +829,12 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 			exit(1);
 		}
 		std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "FORMAT " << this->format_values[i] << '\t' << ret_size << '\t' << (float)this->format_containers[i].buffer_data.size()/ret_size << '\t' << this->format_containers[i].addSize << std::endl;
+		if(this->format_containers[i].addSize == -1){
+			this->gzip_controller.Deflate(this->format_containers[i].buffer_strides);
+			std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "FORMAT-ADD " << this->format_containers[i].buffer_strides.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->format_containers[i].buffer_strides.size()/this->gzip_controller.buffer.size() << std::endl;
+			this->streamTomahawk << this->gzip_controller;
+			this->gzip_controller.Clear();
+		}
 	}
 
 	this->reset(); // reset buffers
