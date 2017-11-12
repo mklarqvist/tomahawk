@@ -171,10 +171,8 @@ bool TomahawkImporter::BuildBCF(void){
 
 	//std::cerr << "PPA_conventional\tPPA_best\tPPA_byte\tPPA_u16\tPPA_u32\tPPA_u64\trle_conventional\trle_best\trle_byte\trle_u16\trle_u32\trle_u64\tfd_rle_best_ppa_best\tmemory_savings_rle_ppa\tfc_rle_conventional_ppa_best" << std::endl;
 	while(true){
-		if(!reader.getVariants(this->checkpoint_size)){
-			std::cerr << "faield to get reader: " << reader.size() << std::endl;
+		if(!reader.getVariants(this->checkpoint_size))
 			break;
-		}
 
 		S32 contigID = reader[0].body->CHROM;
 		this->sort_order_helper.previous_position = reader[0].body->POS;
@@ -186,6 +184,7 @@ bool TomahawkImporter::BuildBCF(void){
 		// Reset permutate
 		if(!this->permutator.build(reader)){
 			std::cerr << "fail" << std::endl;
+			return false;
 		}
 
 		for(U32 i = 0; i < reader.size(); ++i){
@@ -224,77 +223,6 @@ bool TomahawkImporter::BuildBCF(void){
 														 << " blocks..." << std::endl;
 
 	return(true);
-
-	///
-
-	// Get a line
-	// BCF parse occurs in nextVariant
-	bcf_entry_type entry;
-	while(reader.nextVariant(entry)){
-		if(!entry.good()){
-			entry.reset();
-			continue;
-		}
-		break;
-	}
-
-	if(!entry.good()){
-		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "No valid variants..." << std::endl;
-		return false;
-	}
-	entry.reset();
-
-	S32 contigID = entry.body->CHROM;
-	this->sort_order_helper.previous_position = entry.body->POS;
-	this->sort_order_helper.contigID = &contigID;
-	this->sort_order_helper.prevcontigID = contigID;
-	this->writer_.totempole_entry.contigID = contigID;
-	this->writer_.totempole_entry.minPosition = entry.body->POS;
-
-	if(!this->parseBCFLine(entry)){
-		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
-		return false;
-	}
-	entry.reset();
-
-	// Parse lines
-	// BCF parse occurs in nextVariant
-	while(reader.nextVariant(entry)){
-		if(!entry.good()){
-			entry.reset();
-			continue;
-		}
-
-		if(!this->parseBCFLine(entry)){
-			std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
-			return false;
-		}
-
-		entry.reset();
-	}
-
-	// This only happens if there are no valid entries in the file
-	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
-		return false;
-	}
-
-	++this->header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush(this->permutator);
-	this->writer_.WriteFinal();
-
-	if(this->writer_.getVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
-		return false;
-	}
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.getVariantsWritten()))
-														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
-														 << " blocks..." << std::endl;
-
-
-	return true;
 }
 
 bool TomahawkImporter::BuildVCF(void){
@@ -409,7 +337,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		// Get new contig value from header
 		// and flush out data
 		++this->header_->getContig(line.body->CHROM);
-		this->writer_.flush(this->permutator);
+		//this->writer_.flush(this->permutator);
 
 		// Update index values
 		this->writer_.TotempoleSwitch(line.body->CHROM, 0);

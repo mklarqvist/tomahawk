@@ -18,7 +18,7 @@ BCFEntry::BCFEntry(void):
 	alleles(new string_type[100]),
 	ID(nullptr),
 	genotypes(nullptr),
-	format_start(0),
+	filter_start(0),
 	n_filter(0),
 	// Vectors of identifiers
 	filterPointer(0),
@@ -145,6 +145,34 @@ bool BCFEntry::nextInfo(S32& value, U32& length, BYTE& value_type, U32& position
 	return true;
 }
 
+bool BCFEntry::nextFormat(S32& value, U32& length, BYTE& value_type, U32& position){
+	if(this->formatPointer == this->body->n_fmt)
+		return false;
+
+	const base_type& format_key = *reinterpret_cast<const base_type* const>(&this->data[position++]);
+	#if BCF_ASSERT == 1
+	// This first bit returns a single identifier
+	// to a field. It should always be a single
+	// value
+	assert(format_key.high == 1);
+	#endif
+
+	// format identifier
+	value = this->getInteger(format_key.low, position);
+	this->formatID[this->formatPointer++] = value;
+
+	// Data for this identifier
+	const base_type& format_value = *reinterpret_cast<const base_type* const>(&this->data[position++]);
+	length = format_value.high;
+	if(length == 15){
+		const base_type& array_base = *reinterpret_cast<const base_type* const>(&this->data[position++]);
+		length = this->getInteger(array_base.low, position);
+	}
+	value_type = format_value.low;
+
+	return true;
+}
+
 bool BCFEntry::parse(void){
 	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t';
 	U32 internal_pos = sizeof(body_type);
@@ -153,7 +181,7 @@ bool BCFEntry::parse(void){
 	this->SetRefAlt();
 
 	// start of FORMAT
-	this->format_start = internal_pos;
+	this->filter_start = internal_pos;
 
 	// Move up to start of FORMAT
 	internal_pos = this->body->l_shared + sizeof(U32)*2;
@@ -163,8 +191,8 @@ bool BCFEntry::parse(void){
 #if BCF_ASSERT == 1
 	assert(fmt_key.high == 1);
 #endif
-	const S32 value = this->getInteger(fmt_key.low, internal_pos);
-	this->formatID[this->formatPointer++] = value;
+	this->getInteger(fmt_key.low, internal_pos);
+	//this->formatID[this->formatPointer++] = value;
 
 	//std::cerr << (int)fmt_key.high << '\t' << (int)fmt_key.low << '\t' << "id: " << value << std::endl;
 

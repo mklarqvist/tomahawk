@@ -20,6 +20,9 @@ class BCFReader{
 	typedef BCFEntry entry_type;
 
 public:
+	enum bcf_reader_state{BCF_INIT, BCF_OK, BCF_ERROR, BCF_EOF, BCF_STREAM_ERROR};
+
+public:
 	BCFReader();
 	~BCFReader();
 
@@ -50,6 +53,7 @@ public:
 	bgzf_controller_type bgzf_controller;
 	header_type header;
 
+	bcf_reader_state state;
 	U32 n_entries;
 	U32 n_capacity;
 	entry_type* entries;

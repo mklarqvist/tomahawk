@@ -36,18 +36,24 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	format_hash_pattern_counter(0),
 	info_hash_value_counter(0),
 	format_hash_value_counter(0),
+	filter_hash_value_counter(0),
 	filter_hash_pattern(5012),
 	info_hash_pattern(5012),
 	info_hash_streams(5012),
 	format_hash_pattern(5012),
 	format_hash_streams(5012),
+	filter_hash_streams(5012),
 	buffer_ppa(100000),
+	buffer_general(300000),
 	encoder(nullptr),
 	vcf_header(nullptr),
-	containers(new stream_container[100])
+	info_containers(new stream_container[100]),
+	format_containers(new stream_container[100])
 {
-	for(U32 i = 0; i < 100; ++i)
-		this->containers[i].resize(65536*4);
+	for(U32 i = 0; i < 100; ++i){
+		this->info_containers[i].resize(65536*4);
+		this->format_containers[i].resize(65536*1000);
+	}
 }
 
 TomahawkImportWriter::~TomahawkImportWriter(){
@@ -56,6 +62,7 @@ TomahawkImportWriter::~TomahawkImportWriter(){
 	this->buffer_meta.deleteAll();
 	this->buffer_encode_simple.deleteAll();
 	this->buffer_metaComplex.deleteAll();
+	this->buffer_general.deleteAll();
 }
 
 bool TomahawkImportWriter::Open(const std::string output){
@@ -335,20 +342,29 @@ bool TomahawkImportWriter::add(bcf_entry_type& entry, const U32* const ppa){
 
 bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry){
 	//std::cerr << this->body->CHROM << ':' << this->body->POS+1 << '\t' << this->body->n_allele << '\t' << this->body->n_fmt << '\t' << this->body->n_info << '\t' << this->body->n_sample << std::endl;
-	U32 internal_pos = entry.format_start;
+	U32 internal_pos = entry.filter_start;
 
 	// At FILTER
+	// Typed vector
 	const bcf_entry_type::base_type& filter_key = *reinterpret_cast<const bcf_entry_type::base_type* const>(&entry.data[internal_pos++]);
 	U32 n_filter = filter_key.high;
 	if(n_filter == 15) n_filter = entry.getInteger(filter_key.low, internal_pos);
 	entry.n_filter = n_filter;
 	entry.filter_key = filter_key;
 
-	// TODO
 	S32 val = 0;
 	while(entry.nextFilter(val, internal_pos)){
 		// Hash FILTER value
 		// Filter fields have no values
+		U32* hash_map_ret = nullptr;
+		U32 temp = val;
+		if(this->filter_hash_streams.GetItem(&temp, hash_map_ret, sizeof(U32))){
+			// exists
+		} else {
+			this->filter_hash_streams.SetItem(&temp, this->filter_hash_value_counter, sizeof(U32));
+			this->filter_values.push_back(val);
+			++this->filter_hash_value_counter;
+		}
 	}
 
 	// At INFO
@@ -364,39 +380,45 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 		} else {
 			this->info_hash_streams.SetItem(&temp, this->info_hash_value_counter, sizeof(U32));
 			mapID = this->info_hash_value_counter;
-			this->info_values.push_back(mapID);
+			this->info_values.push_back(val);
 			++this->info_hash_value_counter;
 		}
 
 		//
-		if(this->containers[mapID].n_entries == 0){
+		stream_container& target_container = this->info_containers[mapID];
+		if(this->info_containers[mapID].n_entries == 0){
+			target_container.setStrideSize(info_length);
 			// Set all integer types to U32
 			// Change to smaller type later if required
-			if(info_value_type == 0)      this->containers[mapID].setType(4);
-			else if(info_value_type == 1) this->containers[mapID].setType(4);
-			else if(info_value_type == 2) this->containers[mapID].setType(4);
-			else if(info_value_type == 3) this->containers[mapID].setType(4);
-			else if(info_value_type == 5) this->containers[mapID].setType(7);
-			else if(info_value_type == 7) this->containers[mapID].setType(0);
+			if(info_value_type == 0)      target_container.setType(4);
+			else if(info_value_type == 1) target_container.setType(4);
+			else if(info_value_type == 2) target_container.setType(4);
+			else if(info_value_type == 3) target_container.setType(4);
+			else if(info_value_type == 5) target_container.setType(7);
+			else if(info_value_type == 7) target_container.setType(0);
 		}
-		++this->containers[mapID];
+		++target_container;
+		if(!target_container.checkStrideSize(info_length))
+			target_container.setMixedStrides();
+
+		target_container.addStride(info_length);
 
 		// Flags and integers
 		if(info_value_type <= 3){
 			for(U32 j = 0; j < info_length; ++j){
-				this->containers[mapID] += entry.getInteger(info_value_type, internal_pos);
+				target_container += entry.getInteger(info_value_type, internal_pos);
 			}
 		}
 		// Floats
 		else if(info_value_type == 5){
 			for(U32 j = 0; j < info_length; ++j){
-				this->containers[mapID] += entry.getFloat(internal_pos);
+				target_container += entry.getFloat(internal_pos);
 			}
 		}
 		// Chars
 		else if(info_value_type == 7){
 			for(U32 j = 0; j < info_length; ++j){
-				this->containers[mapID] += entry.getChar(internal_pos);
+				target_container += entry.getChar(internal_pos);
 			}
 		}
 		// Illegal: parsing error
@@ -414,24 +436,80 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 	assert(internal_pos == (entry.body->l_shared + sizeof(U32)*2));
 #endif
 
+	while(entry.nextFormat(val, info_length, info_value_type, internal_pos)){
+		// Hash FORMAT values
+		U32* hash_map_ret = nullptr;
+		U32 mapID = 0;
+		U32 temp = val;
+		if(this->format_hash_streams.GetItem(&temp, hash_map_ret, sizeof(U32))){
+			mapID = *hash_map_ret;
+		} else {
+			this->format_hash_streams.SetItem(&temp, this->format_hash_value_counter, sizeof(U32));
+			mapID = this->format_hash_value_counter;
+			this->format_values.push_back(val);
+			std::cerr << Helpers::timestamp("DEBUG") << val << '\t' << info_length << '\t' << (U32)info_value_type << std::endl;
+			++this->format_hash_value_counter;
+		}
+
+		if(mapID == 0){
+			switch(info_value_type){
+			case 1: internal_pos += this->vcf_header->samples * sizeof(SBYTE) * info_length; break;
+			case 2: internal_pos += this->vcf_header->samples * sizeof(S16) * info_length; break;
+			case 3: internal_pos += this->vcf_header->samples * sizeof(S32) * info_length; break;
+			}
+			continue;
+		}
+
+		stream_container& target_container = this->format_containers[mapID];
+		if(this->format_containers[mapID].n_entries == 0){
+			// Set all integer types to U32
+			// Change to smaller type later if required
+			if(info_value_type == 0)      target_container.setType(4);
+			else if(info_value_type == 1) target_container.setType(4);
+			else if(info_value_type == 2) target_container.setType(4);
+			else if(info_value_type == 3) target_container.setType(4);
+			else if(info_value_type == 5) target_container.setType(7);
+			else if(info_value_type == 7) target_container.setType(0);
+		}
+		++target_container;
+
+		// Flags and integers
+		if(info_value_type <= 3){
+			for(U32 j = 0; j < this->vcf_header->samples*info_length; ++j){
+				target_container += entry.getInteger(info_value_type, internal_pos);
+			}
+		}
+		// Floats
+		else if(info_value_type == 5){
+			for(U32 j = 0; j < this->vcf_header->samples*info_length; ++j){
+				target_container += entry.getFloat(internal_pos);
+			}
+		}
+		// Chars
+		else if(info_value_type == 7){
+			for(U32 j = 0; j < this->vcf_header->samples*info_length; ++j){
+				target_container += entry.getChar(internal_pos);
+			}
+		}
+		// Illegal: parsing error
+		else {
+			std::cerr << "impossible: " << (int)info_value_type << std::endl;
+			exit(1);
+		}
+	}
+
 	// Hash FILTER pattern
 	U32 mapID = 0;
 	U32* hash_map_ret = nullptr;
 	const U64 hash_filter_vector = entry.hashFilter();
 	if(this->filter_hash_pattern.GetItem(&hash_filter_vector, hash_map_ret, sizeof(U64))){
-		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
 		mapID = *hash_map_ret;
 	} else {
 		this->filter_hash_pattern.SetItem(&hash_filter_vector, this->filter_hash_pattern_counter, sizeof(U64));
-		//std::cerr << "PSET-FI: " << hash_filter_vector << "->" << this->filter_hash_pattern_counter << std::endl;
 		filter_patterns.push_back(std::vector<U32>());
 		for(U32 i = 0; i < entry.filterPointer; ++i){
-			//std::cerr << i << '/' << entry.infoPointer << std::endl;
 			this->filter_patterns[this->filter_hash_pattern_counter].push_back(entry.filterID[i]);
 		}
-		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
-		//std::cerr << "pattern-size: " << this->filter_patterns[this->filter_hash_pattern_counter].size() << '\t' << entry.filterPointer << '\t' << this->filter_hash_pattern_counter << std::endl;
-
 		assert(this->filter_hash_pattern_counter < 65536);
 		mapID = this->filter_hash_pattern_counter;
 		++this->filter_hash_pattern_counter;
@@ -445,25 +523,18 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 	// Hash INFO vector of identifiers
 	const U64 hash_info_vector = entry.hashInfo();
 	if(this->info_hash_pattern.GetItem(&hash_info_vector, hash_map_ret, sizeof(U64))){
-		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
 		mapID = *hash_map_ret;
 	} else {
 		this->info_hash_pattern.SetItem(&hash_info_vector, this->info_hash_pattern_counter, sizeof(U64));
-		//std::cerr << "PSET-I: " << hash_info_vector << "->" << this->info_hash_pattern_counter << std::endl;
 		this->info_patterns.push_back(std::vector<U32>());
 		for(U32 i = 0; i < entry.infoPointer; ++i){
-			//std::cerr << i << '/' << entry.infoPointer << std::endl;
 			this->info_patterns[this->info_hash_pattern_counter].push_back(entry.infoID[i]);
 		}
-		//std::cerr << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
-		//std::cerr << "pattern-size: " << this->info_patterns[this->info_hash_pattern_counter].size() << '\t' << entry.infoPointer << '\t' << this->info_hash_pattern_counter << std::endl;
-
 		assert(this->info_hash_pattern_counter < 65536);
 		mapID = this->info_hash_pattern_counter;
 		++this->info_hash_pattern_counter;
 	}
 	// Update meta
-	//std::cerr << "meta_INFO: " << mapID << std::endl;
 	meta.INFO_map_ID = mapID;
 
 	// Hash FORMAT pattern
@@ -471,17 +542,13 @@ bool TomahawkImportWriter::parseBCF(meta_base_type& meta, bcf_entry_type& entry)
 	hash_map_ret = nullptr;
 	const U64 hash_format_vector = entry.hashFormat();
 	if(this->format_hash_pattern.GetItem(&hash_format_vector, hash_map_ret, sizeof(U64))){
-		//std::cerr << "GET: " << temp << "->" << mapID << std::endl;
 		mapID = *hash_map_ret;
 	} else {
 		this->format_hash_pattern.SetItem(&hash_format_vector, this->format_hash_pattern_counter, sizeof(U64));
-		//std::cerr << "PSET-F: " << hash_format_vector << "->" << this->format_hash_value_counter << std::endl;
 		format_patterns.push_back(std::vector<U32>());
 		for(U32 i = 0; i < entry.formatPointer; ++i){
-			//std::cerr << i << '/' << entry.infoPointer << std::endl;
 			this->format_patterns[this->format_hash_pattern_counter].push_back(entry.formatID[i]);
 		}
-		//std::cerr << "pattern-size: " << this->format_patterns[this->format_hash_pattern_counter].size() << '\t' << entry.formatPointer << '\t' << this->format_hash_pattern_counter << std::endl;
 		assert(this->format_hash_pattern_counter < 65536);
 		mapID = this->format_hash_pattern_counter;
 		++this->format_hash_pattern_counter;
@@ -503,58 +570,25 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	this->totempole_entry.l_gt_simple = this->buffer_encode_simple.pointer;
 
 	// Todo:
-	// Build (value,key)-pair for each stream
-	std::vector< std::pair<U32, U32> > info_offsets;
-	for(U32 i = 0; i < this->info_hash_streams.size(); ++i){
-		if(this->info_hash_streams.pat(i) != nullptr){
-			//std::cerr << this->info_hash_streams[i].key << '\t' << this->info_hash_streams[i].value << std::endl;
-			info_offsets.push_back(std::pair<U32,U32>(this->info_hash_streams[i].value, this->info_hash_streams[i].key));
-		}
-	}
-	// Sort by map->target
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: Sorting key-value pairs..." << std::endl;
-	// Sort to get order of appearance
-	// Now info_offsets[i].first == i
-	std::sort(info_offsets.begin(), info_offsets.end());
-	//for(U32 i = 0; i < info_offsets.size(); ++i){
-	//	std::cerr << info_offsets[i].first << '\t' << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << std::endl;
-	//}
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: " << info_offsets.size() << " entries -> " << ceil((float)info_offsets.size()/8) << " bytes" << std::endl;
-
 	// Build map
 	// Construct bitvectors
-	const BYTE info_bitvector_width = ceil((float)info_offsets.size()/8);
-	BYTE* info_bitvector = new BYTE[info_bitvector_width];
-	memset(info_bitvector, 0, sizeof(BYTE)*info_bitvector_width);
-
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO: Mapping..." << std::endl;
-	for(U32 i = 0; i < this->info_patterns.size(); ++i){
-		std::cerr << i << '\t';
-		for(U32 j = 0; j < this->info_patterns[i].size(); ++j){
-			std::cerr << this->info_patterns[i][j] << '\t';
-		}
-		std::cerr << std::endl;
-		std::cerr << i << '\t';
-		for(U32 j = 0; j < this->info_patterns[i].size(); ++j){
-			U32* retval = nullptr;
-			if(!this->info_hash_streams.GetItem(&this->info_patterns[i][j], retval, sizeof(U32))){
-				std::cerr << "impossible" << std::endl;
-				exit(1);
-			}
-			info_bitvector[*retval/8] ^= 1 << (*retval % 8);
-			std::cerr << *retval << '\t';
-		}
-		std::cerr << std::endl;
-		std::cerr << i << '\t';
-		for(U32 j = 0; j < info_bitvector_width; ++j)
-			std::cerr << std::bitset<8>(info_bitvector[j]);
-
-		std::cerr << std::endl;
-		std::cerr << std::endl;
-		memset(info_bitvector, 0, sizeof(BYTE)*info_bitvector_width);
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "INFO: " << this->info_values.size() << " entries -> " << ceil((float)this->info_values.size()/8) << " bytes" << std::endl;
+	if(!this->constructBitVector(this->info_hash_streams, this->info_values, this->info_patterns)){
+		std::cerr << "failed bit" << std::endl;
+		return false;
 	}
-	std::cerr << std::endl;
-	delete [] info_bitvector;
+
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "FORMAT: " << this->format_values.size() << " entries -> " << ceil((float)this->format_values.size()/8) << " bytes" << std::endl;
+	if(!this->constructBitVector(this->format_hash_streams, this->format_values, this->format_patterns)){
+		std::cerr << "failed bit" << std::endl;
+		return false;
+	}
+
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "FILTER: " << this->filter_values.size() << " entries -> " << ceil((float)this->filter_values.size()/8) << " bytes" << std::endl;
+	if(!this->constructBitVector(this->filter_hash_streams, this->filter_values, this->filter_patterns)){
+		std::cerr << "failed bit" << std::endl;
+		return false;
+	}
 
 	//std::cerr << this->totempole_entry.n_variants << '\t' << this->buffer_meta.pointer << '\t' << this->buffer_metaComplex.pointer << '\t' << this->buffer_encode_rle.pointer << '\t' << this->buffer_encode_simple.pointer << std::endl;
 
@@ -660,41 +694,13 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 
 	// Split U32 values into 4 streams
 	const U32 partition = this->vcf_header->samples;
-	buffer_type test(partition*sizeof(U32)*10);
-	bytePreprocessor(permuter.getPPA(), partition, test.data);
-
-	//const BYTE* const temp_out = reinterpret_cast<const BYTE* const>(test.data);
-	//for(U32 i = 0; i < partition; ++i){
-	//	std::cerr << (U32)permuter.getPPA()[i] << ' ';
-	//}
-	//std::cerr << std::endl;
-
-	//for(U32 i = partition*2; i < partition*3; ++i){
-	//	std::cerr << (U32)temp_out[i] << ' ';
-	//}
-	//std::cerr << std::endl;
-	//this->buffer_ppa.resize(partition*sizeof(U32)*10);
-	//bytePreprocessorRevert(test.data, partition, this->buffer_ppa.data);
-	//const U32* const temp_out_rev = reinterpret_cast<const U32* const>(this->buffer_ppa.data);
-	//for(U32 i = 0; i < partition; ++i){
-	//	std::cerr << permuter.getPPA()[i] << '\t' << temp_out_rev[i] << std::endl;
-	//}
-	//std::cerr << std::endl;
-
-	//test.pointer = partition*4;
-	//this->buffer_ppa.reset();
-	//this->buffer_ppa.Add(&test.data[partition*2], partition*2);
-	//this->gzip_controller.Deflate(this->buffer_ppa);
-	//std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA-byte\t" << (partition*2)/1e6 << '\t' << this->gzip_controller.buffer.size()/1e6 << std::endl;
-	//std::cout << partition*4 << '\t' << this->gzip_controller.buffer.size() << '\t';
-	//this->streamTomahawk << this->gzip_controller;
-	//this->gzip_controller.Clear();
-	//this->buffer_ppa.reset();
+	//buffer_type test(partition*sizeof(U32)*10);
+	bytePreprocessor(permuter.getPPA(), partition, this->buffer_general.data);
 
 	// test bitshuffle
 	memset(this->buffer_ppa.data, 0, 2*sizeof(BYTE)*partition);
-	bytePreprocessBits(&test.data[partition*2], partition, this->buffer_ppa.data);
-	bytePreprocessBits(&test.data[partition*3], partition, &this->buffer_ppa.data[partition]);
+	bytePreprocessBits(&this->buffer_general.data[partition*2], partition, this->buffer_ppa.data);
+	bytePreprocessBits(&this->buffer_general.data[partition*3], partition, &this->buffer_ppa.data[partition]);
 	//const BYTE* const test_bit = reinterpret_cast<const BYTE* const>(this->buffer_ppa.data);
 	//for(U32 i = 0; i < partition; ++i){
 //		std::cerr << (U32)test_bit[i] << ' ';
@@ -703,10 +709,10 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	this->buffer_ppa.pointer = 2*partition;
 	this->gzip_controller.Deflate(this->buffer_ppa);
 	this->streamTomahawk << this->gzip_controller;
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "PPA\t" << 2*partition << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)2*partition/this->gzip_controller.buffer.size() << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "PPA\t" << 2*partition << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)2*partition/this->gzip_controller.buffer.size() << std::endl;
 	std::cout << partition*2 << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear();
-	test.reset();
+	this->buffer_general.reset();
 
 	/*
 
@@ -749,13 +755,13 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	//this->buffer_meta += this->buffer_metaComplex;
 	this->gzip_controller.Deflate(this->buffer_meta); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META\t" << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_meta.size() / this->gzip_controller.buffer.size() << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "META\t" << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_meta.size() / this->gzip_controller.buffer.size() << std::endl;
 	std::cout << this->buffer_meta.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
 	this->gzip_controller.Deflate(this->buffer_metaComplex); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "META-C\t" << this->buffer_metaComplex.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_metaComplex.size() / this->gzip_controller.buffer.size() << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "META-C\t" << this->buffer_metaComplex.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_metaComplex.size() / this->gzip_controller.buffer.size() << std::endl;
 	std::cout << this->buffer_metaComplex.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
@@ -763,7 +769,7 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	//this->buffer_encode_rle += this->buffer_encode_simple;
 	this->gzip_controller.Deflate(this->buffer_encode_rle); // Deflate block
 	this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE\t" << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_rle.size() / this->gzip_controller.buffer.size() << std::endl;
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "RLE\t" << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_rle.size() / this->gzip_controller.buffer.size() << std::endl;
 	std::cout << this->buffer_encode_rle.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 	this->gzip_controller.Clear(); // Clean up gzip controller
 
@@ -771,7 +777,7 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	if(this->buffer_encode_simple.size() > 0){
 		this->gzip_controller.Deflate(this->buffer_encode_simple); // Deflate block
 		this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-		std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "RLE-S\t" << this->buffer_encode_simple.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_simple.size() / this->gzip_controller.buffer.size() << std::endl;
+		std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "RLE-S\t" << this->buffer_encode_simple.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->buffer_encode_simple.size() / this->gzip_controller.buffer.size() << std::endl;
 		std::cout << this->buffer_encode_simple.size() << '\t' << this->gzip_controller.buffer.size() << '\t';
 		this->gzip_controller.Clear(); // Clean up gzip controller
 	}
@@ -788,129 +794,184 @@ bool TomahawkImportWriter::flush(Algorithm::RadixSortGT& permuter){
 	this->totempole_entry.reset();
 
 	// Dispatch values into streams
-	S32 min = 0, max = 0;
-	S32 prev_value = 0;
-	bool is_uniform = true;
 	for(U32 i = 0; i < this->info_hash_value_counter; ++i){
-		//std::cerr << "field: " << i << " -> " << info_offsets[i].second << std::endl;
-
-		// Is integer type
-		if(this->containers[i].stream_data_type == 4){
-			const S32* dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
-			min = *dat;
-			max = *dat;
-			prev_value = *dat;
-
-			for(U32 j = 1; j < this->containers[i].n_entries; ++j){
-				if(*dat < min) min = *dat;
-				if(*dat > max) max = *dat;
-				if(prev_value != *dat) is_uniform = false;
-				prev_value = *dat;
-			}
-
-			BYTE byte_width = 0;
-			if(min < 0) byte_width = ceil((ceil(log2(abs(min) + 1))+1)/8);  // One bit is used for sign
-			else byte_width = ceil(ceil(log2(max + 1))/8);
-
-			if(byte_width >= 3 && byte_width <= 4) byte_width = 4;
-			else if(byte_width > 4) byte_width = 8;
-			if(byte_width == 0) byte_width = 1;
-
-			if(is_uniform){
-				// Non-negative
-				if(min >= 0){
-					switch(byte_width){
-					case 1: test += (BYTE)min; break;
-					case 2: test += (U16)min; break;
-					case 4: test += (U32)min; break;
-					case 8: test += (U64)min; break;
-					default: std::cerr << "illegal: " << std::endl; exit(1);
-					}
-				} else {
-					switch(byte_width){
-					case 1: test += (SBYTE)min; break;
-					case 2: test += (S16)min; break;
-					case 4: test += (S32)min; break;
-					default: std::cerr << "illegal" << std::endl; exit(1);
-					}
-				}
-			} else {
-				//std::cerr << "non-uniform" << std::endl;
-				dat = reinterpret_cast<const S32*>(this->containers[i].buffer.data);
-				// Is non-negative
-				if(min >= 0){
-					if(byte_width == 1){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (BYTE)*(dat++);
-					} else if(byte_width == 2){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (U16)*(dat++);
-					} else if(byte_width == 4){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (U32)*(dat++);
-					} else if(byte_width == 8){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (U64)*(dat++);
-					} else {
-						std::cerr << "illegal" << std::endl;
-						exit(1);
-					}
-				}
-				// Is negative
-				else {
-					if(byte_width == 1){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (SBYTE)*(dat++);
-					} else if(byte_width == 2){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (S16)*(dat++);
-					} else if(byte_width == 4){
-						for(U32 j = 0; j < this->containers[i].n_entries; ++j)
-							test += (S32)*(dat++);
-					} else {
-						std::cerr << "illegal" << std::endl;
-						exit(1);
-					}
-				}
-			}
-
-			min = 0; max = 0;
-			is_uniform = true;
-
-			if(is_uniform){
-				this->streamTomahawk.write(test.data, byte_width);
-				std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO " << info_offsets[i].second << "\t" << (U32)byte_width << '\t' << (U32)byte_width << '\t' << (float)byte_width / byte_width << std::endl;
-			} else {
-				this->gzip_controller.Deflate(test);
-				this->streamTomahawk << this->gzip_controller;
-				//test += this->containers[i].buffer;
-				std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO " << info_offsets[i].second << "\t" << test.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)test.size() / this->gzip_controller.buffer.size() << std::endl;
-				this->gzip_controller.Clear();
-			}
-			test.reset();
-
-		} else {
-			this->gzip_controller.Deflate(this->containers[i].buffer);
-			this->streamTomahawk << this->gzip_controller;
-			std::cerr << Helpers::timestamp("DEBUG","IMPORT") << "INFO:" << info_offsets[i].second << '\t' << this->containers[i].buffer.size() << '\t' << this->gzip_controller.buffer.size() << '\t' << (float)this->containers[i].buffer.size() / this->gzip_controller.buffer.size() << std::endl;
-			//test += this->containers[i].buffer;
-			this->gzip_controller.Clear();
+		S32 ret_size = this->recodeStream(this->info_containers[i]);
+		if(ret_size == -1){
+			std::cerr << "failed recode @ " << i << std::endl;
+			exit(1);
 		}
+		std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "INFO " << this->info_values[i] << '\t' << ret_size << '\t' << (float)this->info_containers[i].buffer_data.size()/ret_size << '\t' << this->info_containers[i].addSize << std::endl;
 	}
-	//std::cerr << "data size: " << test.size() << std::endl;
 
-	//this->gzip_controller.Deflate(test); // Deflate block
-	//this->streamTomahawk << this->gzip_controller; // Write tomahawk output
-	//this->streamTomahawk << test; // Write tomahawk output
-	//std::cerr << this->gzip_controller.buffer.pointer << std::endl;
-	//std::cout << test.size() << '\t' << this->gzip_controller.buffer.size() << '\n';
-	//this->gzip_controller.Clear(); // Clean up gzip controller
-	test.deleteAll();
+	// Dispatch values into streams
+	for(U32 i = 0; i < this->format_hash_value_counter; ++i){
+		S32 ret_size = this->recodeStream(this->format_containers[i]);
+		if(ret_size == -1){
+			std::cerr << "failed recode @ " << i << std::endl;
+			exit(1);
+		}
+		std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "FORMAT " << this->format_values[i] << '\t' << ret_size << '\t' << (float)this->format_containers[i].buffer_data.size()/ret_size << '\t' << this->format_containers[i].addSize << std::endl;
+	}
 
 	this->reset(); // reset buffers
-	//std::cerr << "cleared" << std::endl;
+
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "END FLUSH" << std::endl;
 
 	return true;
+}
+
+bool TomahawkImportWriter::constructBitVector(hash_table& htable, const id_vector& values, const pattern_vector& patterns){
+	const BYTE bitvector_width = ceil((float)values.size()/8);
+	BYTE* bitvector = new BYTE[bitvector_width];
+	memset(bitvector, 0, sizeof(BYTE)*bitvector_width);
+
+	std::cerr << Helpers::timestamp("DEBUG","FLUSH") << "Mapping..." << std::endl;
+
+	// Cycle over pattern size
+	for(U32 i = 0; i < patterns.size(); ++i){
+		// Dump data
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < patterns[i].size(); ++j){
+			std::cerr << patterns[i][j] << '\t';
+		}
+		std::cerr << std::endl;
+
+		//
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < patterns[i].size(); ++j){
+			U32* retval = nullptr;
+			if(!htable.GetItem(&patterns[i][j], retval, sizeof(U32))){
+				std::cerr << "impossible" << std::endl;
+				exit(1);
+			}
+			bitvector[*retval/8] ^= 1 << (*retval % 8);
+			std::cerr << *retval << '\t';
+		}
+		std::cerr << std::endl;
+
+		std::cerr << i << '\t';
+		for(U32 j = 0; j < bitvector_width; ++j)
+			std::cerr << std::bitset<8>(bitvector[j]);
+
+		std::cerr << std::endl << std::endl;
+		memset(bitvector, 0, sizeof(BYTE)*bitvector_width);
+	}
+	std::cerr << std::endl;
+	delete [] bitvector;
+
+	return true;
+}
+
+S32 TomahawkImportWriter::recodeStream(stream_container& stream){
+	S32 ret_size = -1;
+
+	if(stream.stream_data_type == 4){
+		const S32* dat = reinterpret_cast<const S32*>(stream.buffer_data.data);
+		S32 min = dat[0];
+		S32 max = dat[0];
+		S32 prev_value = dat[0];
+		bool is_uniform = true;
+
+		for(U32 j = 1; j < stream.n_entries; ++j){
+			if(dat[j] < min) min = dat[j];
+			if(dat[j] > max) max = dat[j];
+			if(prev_value != dat[j]) is_uniform = false;
+			prev_value = dat[j];
+		}
+
+		BYTE byte_width = 0;
+		if(min < 0) byte_width = ceil((ceil(log2(abs(min) + 1))+1)/8);  // One bit is used for sign
+		else byte_width = ceil(ceil(log2(max + 1))/8);
+
+		if(byte_width >= 3 && byte_width <= 4) byte_width = 4;
+		else if(byte_width > 4) byte_width = 8;
+		if(byte_width == 0) byte_width = 1;
+
+		// Phase 2
+		// Here we re-encode values using the smallest possible
+		// word-size
+		if(is_uniform){
+			// Non-negative
+			if(min >= 0){
+				switch(byte_width){
+				case 1: this->buffer_general += (BYTE)min; break;
+				case 2: this->buffer_general += (U16)min; break;
+				case 4: this->buffer_general += (U32)min; break;
+				case 8: this->buffer_general += (U64)min; break;
+				default: std::cerr << "illegal: " << std::endl; exit(1);
+				}
+			} else {
+				switch(byte_width){
+				case 1: this->buffer_general += (SBYTE)min; break;
+				case 2: this->buffer_general += (S16)min; break;
+				case 4: this->buffer_general += (S32)min; break;
+				default: std::cerr << "illegal" << std::endl; exit(1);
+				}
+			}
+		} else {
+			//std::cerr << "non-uniform" << std::endl;
+			dat = reinterpret_cast<const S32*>(stream.buffer_data.data);
+			// Is non-negative
+			if(min >= 0){
+				if(byte_width == 1){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (BYTE)*(dat++);
+				} else if(byte_width == 2){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (U16)*(dat++);
+				} else if(byte_width == 4){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (U32)*(dat++);
+				} else if(byte_width == 8){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (U64)*(dat++);
+				} else {
+					std::cerr << "illegal" << std::endl;
+					exit(1);
+				}
+			}
+			// Is negative
+			else {
+				if(byte_width == 1){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (SBYTE)*(dat++);
+				} else if(byte_width == 2){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (S16)*(dat++);
+				} else if(byte_width == 4){
+					for(U32 j = 0; j < stream.n_entries; ++j)
+						this->buffer_general += (S32)*(dat++);
+				} else {
+					std::cerr << "illegal" << std::endl;
+					exit(1);
+				}
+			}
+		}
+
+		min = 0; max = 0;
+		is_uniform = true;
+
+		if(is_uniform){
+			this->streamTomahawk.write(this->buffer_general.data, byte_width);
+			ret_size = byte_width;
+		} else {
+			this->gzip_controller.Deflate(this->buffer_general);
+			this->streamTomahawk << this->gzip_controller;
+			ret_size = this->gzip_controller.buffer.size();
+			this->gzip_controller.Clear();
+		}
+		this->buffer_general.reset();
+
+	}
+	// Is not an integer
+	else {
+		this->gzip_controller.Deflate(stream.buffer_data);
+		this->streamTomahawk << this->gzip_controller;
+		ret_size = this->gzip_controller.buffer.size();
+		this->gzip_controller.Clear();
+	}
+
+	return(ret_size);
 }
 
 void TomahawkImportWriter::CheckOutputNames(const std::string& input){

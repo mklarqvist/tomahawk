@@ -6,6 +6,7 @@ namespace BCF{
 BCFReader::BCFReader() :
 		filesize(0),
 		current_pointer(0),
+		state(bcf_reader_state::BCF_INIT),
 		n_entries(0),
 		n_capacity(0),
 		entries(nullptr)
@@ -20,20 +21,26 @@ bool BCFReader::nextBlock(void){
 	// Stream died
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Stream died!" << std::endl;
+		this->state = bcf_reader_state::BCF_STREAM_ERROR;
 		return false;
 	}
 
 	// EOF
-	if(this->stream.tellg() == this->filesize)
+	if(this->stream.tellg() == this->filesize){
+		this->state = bcf_reader_state::BCF_EOF;
 		return false;
+	}
 
 	if(!this->bgzf_controller.InflateBlock(this->stream, this->buffer)){
+		if(this->bgzf_controller.buffer.size() == 0) this->state = bcf_reader_state::BCF_EOF;
+		else this->state = bcf_reader_state::BCF_ERROR;
 		return false;
 	}
 
 	// Reset buffer
 	this->buffer.reset();
 	this->current_pointer = 0;
+	this->state = bcf_reader_state::BCF_OK;
 
 	return true;
 }
@@ -84,16 +91,16 @@ bool BCFReader::getVariants(const U32 entries, bool across_contigs){
 	this->entries = new entry_type[entries];
 	this->n_entries = 0;
 
-	//std::cerr << "here: " << entries << std::endl;
+	// EOF
+	if(this->state == bcf_reader_state::BCF_EOF)
+		return false;
 
 	for(U32 i = 0; i < entries; ++i){
-		//std::cerr << i << std::endl;
 		if(this->current_pointer == this->bgzf_controller.buffer.size()){
-			//std::cerr << "load new block: " << this->current_pointer << '\t' << this->bgzf_controller.buffer.size() << std::endl;
-			if(!this->nextBlock())
-				return false;
+			if(!this->nextBlock()){
+				return(this->size() > 0);
+			}
 		}
-		//std::cerr << i << std::endl;
 
 		if(this->current_pointer + 8 > this->bgzf_controller.buffer.size()){
 			const S32 partial = (S32)this->bgzf_controller.buffer.size() - this->current_pointer;
@@ -115,8 +122,10 @@ bool BCFReader::getVariants(const U32 entries, bool across_contigs){
 			if(this->current_pointer + remainder > this->bgzf_controller.buffer.size()){
 				this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], this->bgzf_controller.buffer.size() - this->current_pointer);
 				remainder -= this->bgzf_controller.buffer.size() - this->current_pointer;
-				if(!this->nextBlock())
+				if(!this->nextBlock()){
+					std::cerr << Tomahawk::Helpers::timestamp("ERROR","BCF") << "Failed to get next block in partial" << std::endl;
 					return false;
+				}
 
 			} else {
 				this->entries[this->n_entries].add(&this->bgzf_controller.buffer[this->current_pointer], remainder);
@@ -129,10 +138,7 @@ bool BCFReader::getVariants(const U32 entries, bool across_contigs){
 		++this->n_entries;
 	}
 
-	//std::cerr << this->current_pointer << '/' << this->bgzf_controller.buffer.size() << std::endl;
-	//std::cerr << "final: " << this->n_entries << "\t" << this->bgzf_controller.buffer.size() << std::endl;
-
-	return true;
+	return(this->size() > 0);
 }
 
 bool BCFReader::parseHeader(void){

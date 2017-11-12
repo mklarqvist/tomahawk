@@ -91,7 +91,7 @@ struct BCFEntry{
 		this->formatPointer = 0;
 		this->filterPointer = 0;
 		this->n_filter = 0;
-		this->format_start = 0;
+		this->filter_start = 0;
 	}
 
 	inline const U32& size(void) const{ return(this->pointer); }
@@ -173,7 +173,7 @@ public:
 	SBYTE* genotypes;
 
 	//
-	U32 format_start;
+	U32 filter_start;
 	U32 n_filter;
 	base_type filter_key;
 
