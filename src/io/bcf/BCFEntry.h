@@ -157,7 +157,7 @@ struct BCFEntry{
 	// Iterators over fields
 	bool nextFilter(S32& value, U32& position);
 	bool nextInfo(S32& value, U32& length, BYTE& value_type, U32& position);
-	bool nextFormat(S32& value, U32& position);
+	bool nextFormat(S32& value, U32& length, BYTE& value_type, U32& position);
 
 public:
 	U32 pointer; // byte width

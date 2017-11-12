@@ -26,8 +26,6 @@ bool TomahawkImportEncoder::Encode(const bcf_type& line, meta_base_type& meta_ba
 		meta_base.controller.anyMissing = cost.hasMissing;
 		meta_base.controller.biallelic = true;
 
-		//std::cerr << line.body->POS+1 << "\t0\t0" << '\t' << (int)cost.word_width << '\t' << cost.n_runs << '\t' << (int)cost.hasMissing << '\t' << (int)cost.mixedPhasing << '\t' << cost.n_runs*cost.word_width << std::endl;
-
 		switch(cost.word_width){
 		case 1:
 			this->EncodeRLE<BYTE>(line, runs, n_runs, ppa, cost.hasMissing, cost.mixedPhasing);
@@ -248,7 +246,7 @@ const TomahawkImportEncoder::rle_helper_type TomahawkImportEncoder::assessRLEnAl
 	// Run limits
 	// Values set to signed integers as values can underflow if
 	// the do not fit in the word size
-	S32 BYTE_limit = pow(2, 8*sizeof(BYTE) - (2*(shift_size)+1)) - 1;
+	S32 BYTE_limit  = pow(2, 8*sizeof(BYTE) - (2*(shift_size)+1)) - 1;
 	S32  U16_limit  = pow(2, 8*sizeof(U16)  - (2*(shift_size)+1)) - 1;
 	S32  U32_limit  = pow(2, 8*sizeof(U32)  - (2*(shift_size)+1)) - 1;
 	U64  U64_limit  = pow(2, 8*sizeof(U64)  - (2*(shift_size)+1)) - 1;

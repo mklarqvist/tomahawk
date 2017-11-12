@@ -340,6 +340,7 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[0]+1]);
 	T packed = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
+	//std::cout << (U32)packed << '\t';
 
 	// MSB contains phasing information
 	this->helper.phased = (fmt_type_value2 & 1);
@@ -352,6 +353,8 @@ bool TomahawkImportEncoder::EncodeRLE(const bcf_type& line, buffer_type& runs, U
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<const SBYTE* const>(&line.data[internal_pos+2*ppa[j]+1]);
 		const T packed_internal = PACK_RLE_BIALLELIC(fmt_type_value2, fmt_type_value1, shift, add);
 		last_phase = (fmt_type_value2 & 1);
+
+		//std::cout << (U32)packed_internal << '\t';
 
 		if(packed != packed_internal || length == limit){
 			// Prepare RLE
