@@ -51,14 +51,14 @@ The following command line imports a `vcf` file and outputs `outPrefix.twk` and
 `outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
+tomahawk import -i file.vcf -o outPrefix -n 0.2 -h 1e-3
 ```
 
 ### Import-extend
 If you have split up your `vcf`/`bcf` files into multiple disjoint files
 (such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
 ```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
+tomahawk import -i file.bcf -e extend.twk -n 0.2 -h 1e-3
 ```
 
 ### Calculating linkage disequilibrium
