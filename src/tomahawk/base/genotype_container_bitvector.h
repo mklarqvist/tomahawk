@@ -157,6 +157,9 @@ public:
 	template <class T>
 	bool Build(const GenotypeContainerRunlength<T>& genotype_container, const U64& n_samples);
 
+	template <class T>
+	bool Build(const Support::TomahawkRun<T>* const genotype_runs, const TomahawkEntryMeta<T>* const meta_entries, const size_t& n_entries, const U64& n_samples);
+
 public:
 	size_type n_entries;
 	size_type n_capacity;
@@ -206,6 +209,77 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 
 	// Search for zero runs in either end
 	for(U32 i = 0; i < genotype_container.size(); ++i){
+		S32 j = 0;
+
+		// Search from left->right
+		for(; j < byteAlignedEnd; ++j){
+			if(this->__entries[i].data[j] != 0 || this->__entries[i].mask[j] != 0)
+				break;
+		}
+
+		// Front of zeroes
+		this->__entries[i].frontZero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
+		if(j == byteAlignedEnd)
+			continue;
+
+		j = byteAlignedEnd - 1;
+		for(; j > 0; --j){
+			if(this->__entries[i].data[j] != 0 || this->__entries[i].mask[j] != 0)
+				break;
+		}
+
+		// Tail of zeroes
+		this->__entries[i].tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
+	}
+	return true;
+}
+
+template <class T>
+bool GenotypeContainerBitvector::Build(const Support::TomahawkRun<T>* const genotype_runs,
+                                          const TomahawkEntryMeta<T>* const meta_entries,
+                                                        const size_t& n_entries,
+                                                           const U64& n_samples)
+{
+	if(n_entries == 0)
+		return false;
+
+	// Cleanup
+	for(std::size_t i = 0; i < this->n_entries; ++i)
+		((this->__entries + i)->~GenotypeBitvector)();
+
+	::operator delete[](static_cast<void*>(this->__entries));
+
+	// Allocate new
+	this->n_entries  = n_entries;
+	this->n_capacity = this->n_entries;
+	this->__entries  = static_cast<pointer>(::operator new[](this->n_entries*sizeof(value_type)));
+
+	const U32 byte_width = ceil((double)n_samples/4);
+
+	// INVERSE mask is cheaper in terms of instructions used
+	// exploited in calculations: TomahawkCalculationSlave
+	const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+	const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+	// Cycle over variants in container
+	U32 cumulative_position = 0;
+	for(U32 i = 0; i < n_entries; ++i){
+		new( &this->__entries[i] ) value_type( byte_width );
+		Algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
+		Algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
+
+		// Cycle over runs in container
+		for(U32 j = 0; j < meta_entries[i].runs; ++j, cumulative_position++){
+			const Support::TomahawkRunPacked<T>* const packed = reinterpret_cast<const Support::TomahawkRunPacked<T>* const>(&genotype_runs[cumulative_position]);
+			packerA.add(lookup_data[packed->alleles], packed->runs);
+			packerB.add(lookup_mask[packed->alleles], packed->runs);
+		}
+	}
+
+	const U32 byteAlignedEnd  = byte_width / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
+
+	// Search for zero runs in either end
+	for(U32 i = 0; i < n_entries; ++i){
 		S32 j = 0;
 
 		// Search from left->right

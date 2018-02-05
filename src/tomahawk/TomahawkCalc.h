@@ -6,6 +6,7 @@
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
 #include "base/twk_reader_implementation.h"
+#include "base/genotype_container_reference.h"
 
 namespace Tomahawk {
 
@@ -62,9 +63,21 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
 		//controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
 
-		std::cerr << i << '/' << this->reader.DataOffsetSize() << '\t' << this->reader.getOffsetPair(i).l_buffer << std::endl;
+		//std::cerr << i << '/' << this->reader.DataOffsetSize() << '\t' << this->reader.getOffsetPair(i).l_buffer << std::endl;
 		impl.addDataBlock(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer,  this->reader.getOffsetPair(i).entry);
-		std::cerr << impl.size() << '>' << impl[i].size() << std::endl;
+		//std::cerr << impl.size() << '>' << impl[i].size() << std::endl;
+		Base::GenotypeContainerReference<T> t(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer, this->reader.getOffsetPair(i).entry, totempole.getSamples());
+		std::cerr << t.currentMeta().runs << std::endl;
+		for(U32 k = 0; k < t.size(); ++k){
+			size_t n_total = 0;
+			for(U32 j = 0; j < t.currentMeta().runs; ++j){
+				std::cerr << t[j].alleleA << "|" << t[j].alleleB << ',' << t[j].runs << ' ';
+				n_total += t[j].runs;
+			}
+			assert(n_total == totempole.getSamples());
+			++t;
+			std::cerr << '\n';
+		}
 	}
 
 	if(!SILENT){

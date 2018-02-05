@@ -11,7 +11,8 @@ namespace Tomahawk{
  Number of runs can be inferred from the sample
  number and byte length of the stream
  */
-struct TomahawkEntryMetaBase{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) TomahawkEntryMetaBase{
 	typedef TomahawkEntryMetaBase self_type;
 
 public:
@@ -62,7 +63,7 @@ public:
  are missing and if the data is phased.
  */
 template <class T>
-struct TomahawkEntryMeta : public TomahawkEntryMetaBase{
+struct __attribute__((packed, aligned(1))) TomahawkEntryMeta : public TomahawkEntryMetaBase{
 	typedef TomahawkEntryMeta     self_type;
 	typedef TomahawkEntryMetaBase parent_type;
 
@@ -101,6 +102,7 @@ public:
 public:
 	T runs; // number of runs
 };
+#pragma pack(pop)
 
 }
 
