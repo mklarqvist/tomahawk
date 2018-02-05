@@ -68,7 +68,7 @@ public:
 		delete this->container_bitvector;
 	}
 
-	 class iterator{
+	class iterator{
 	private:
 		typedef iterator self_type;
 		typedef std::forward_iterator_tag iterator_category;
