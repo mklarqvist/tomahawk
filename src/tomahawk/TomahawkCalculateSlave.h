@@ -1512,21 +1512,25 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const U32& block1, const U
 	if(manager[block1].getMeta(position1).phased == 1 && manager[block2].getMeta(position2).phased == 1){
 		if(manager[block1].getMeta(position1).MAF+manager[block2].getMeta(position2).MAF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2, position1, position2)){
-				//this->output_manager.Add(manager[block1], block2, this->helper);
+				this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDPhasedVectorized(block1, block2, position1, position2)){
-				//this->output_manager.Add(manager[block1], block2, this->helper);
+				this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
 	} else {
 		if(manager[block1].getMeta(position1).MAF+manager[block2].getMeta(position2).MAF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2, position1, position2)){
-				//this->output_manager.Add(manager[block1], block2, this->helper);
+				this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDUnphasedVectorized(block1, block2, position1, position2)){
-				//this->output_manager.Add(manager[block1], block2, this->helper);
+				this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
 	}
@@ -1580,11 +1584,13 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const U32& blo
 
 	if(manager[block1].getMeta(position1).MAF+manager[block2].getMeta(position2).MAF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2, position1, position2)){
-			//this->output_manager.Add(block1, block2, this->helper);
+			this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDPhasedVectorized(block1, block2, position1, position2)){
-			//this->output_manager.Add(block1, block2, this->helper);
+			this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
 
@@ -1600,11 +1606,13 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const U32& b
 
 	if(manager[block1].getMeta(position1).MAF+manager[block2].getMeta(position2).MAF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2, position1, position2)){
-			//this->output_manager.Add(block1, block2, this->helper);
+			this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDUnphasedVectorized(block1, block2, position1, position2)){
-			//this->output_manager.Add(block1, block2, this->helper);
+			this->output_manager.Add(manager[block1].getMeta(position1), manager[block2].getMeta(position2), manager[block1].getTotempole(), manager[block2].getTotempole(), this->helper);
+			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
 }

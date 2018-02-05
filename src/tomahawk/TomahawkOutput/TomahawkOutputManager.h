@@ -20,13 +20,15 @@ template <class T>
 struct TomahawkOutputManager{
 	typedef TomahawkOutputManager                     self_type;
 	typedef IO::WriterFile                            writer_type;
-	typedef TomahawkBlock<const T, Tomahawk::Support::TomahawkRun<T>> controller_type;
+	//typedef TomahawkBlock<const T, Tomahawk::Support::TomahawkRun<T>> controller_type;
 	typedef Tomahawk::Support::TomahawkOutputLD       helper_type;
 	typedef IO::BasicBuffer                           buffer_type;
 	typedef TGZFController                            tgzf_controller;
 	typedef IO::TomahawkOutputEntry                   entry_type;
-	typedef Totempole::TotempoleOutputEntry           totempoly_entry;
+	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
+	typedef TomahawkEntryMeta<T>                      meta_type;
+	typedef Totempole::TotempoleEntry                 header_entry;
 
 public:
 	TomahawkOutputManager() :
@@ -153,13 +155,13 @@ public:
 		return true;
 	}
 
-	void Add(const controller_type& a, const controller_type& b, const helper_type& helper){
-		const U32 writePosA = a.meta[a.metaPointer].position << 2 | a.meta[a.metaPointer].phased << 1 | a.meta[a.metaPointer].missing;
-		const U32 writePosB = b.meta[b.metaPointer].position << 2 | b.meta[b.metaPointer].phased << 1 | b.meta[b.metaPointer].missing;
+	void Add(const meta_type& meta_a, const meta_type& meta_b, const header_entry& header_a, const header_entry& header_b, const helper_type& helper){
+		const U32 writePosA = meta_a.position << 2 | meta_a.phased << 1 | meta_a.missing;
+		const U32 writePosB = meta_b.position << 2 | meta_b.phased << 1 | meta_b.missing;
 		this->buffer += helper.controller;
-		this->buffer += a.support->contigID;
+		this->buffer += header_a.contigID;
 		this->buffer += writePosA;
-		this->buffer += b.support->contigID;
+		this->buffer += header_b.contigID;
 		this->buffer += writePosB;
 		this->buffer << helper;
 		++this->outCount;
@@ -222,7 +224,7 @@ private:
 	U64             outCount;      // lines written
 	U32             progressCount; // lines added since last flush
 	U32             totempole_blocks_written;
-	totempoly_entry entry; // track stuff
+	totempole_entry entry; // track stuff
 	writer_type*    writer;	// writer
 	writer_type*    writer_index; // writer index
 	buffer_type     buffer; // internal buffer
