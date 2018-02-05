@@ -19,6 +19,7 @@ private:
 	typedef GenotypeContainerBitvector           container_bitvector_type;
 	typedef GenotypeContainerRunlength<T>        container_runlength_type;
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
+	typedef Base::GenotypeBitvector<>            genotype_bitvector_type;
 	typedef TomahawkEntryMeta<T>                 meta_type;
 	typedef Totempole::TotempoleEntry            header_entry;
     typedef genotype_runlength_type              value_type;
@@ -116,6 +117,7 @@ public:
 	// Accessor
 	inline const meta_type& getMeta(const U32& position) const{ return(this->meta_entries[position]); }
 	inline const header_entry& getTotempole(void) const{ return(this->index_entry); }
+	inline const genotype_bitvector_type& getBitvector(const U32& position) const{ return(this->container_bitvector->at(position)); }
 
 	// Capacity
 	inline const bool empty(void) const{ return(this->n_entries == 0); }
