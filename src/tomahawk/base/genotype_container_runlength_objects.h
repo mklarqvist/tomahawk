@@ -1,58 +1,40 @@
-#ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_H_
-#define TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_H_
-
-#include <cassert>
-
-#include "TomahawkEntryMeta.h"
-#include "TomahawkSupport.h"
-#include "genotype_container_runlength_objects.h"
+#ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
+#define TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
 
 namespace Tomahawk{
 namespace Base{
 
 template <class T>
-class GenotypeContainerRunlength{
+class GenotypeContainerRunlengthObjects{
 private:
-    typedef GenotypeContainerRunlength           self_type;
-    typedef GenotypeContainerRunlengthObjects<T> value_type;
-    typedef value_type&                          reference;
-    typedef const value_type&                    const_reference;
-    typedef value_type*                          pointer;
-    typedef const value_type*                    const_pointer;
-    typedef std::ptrdiff_t                       difference_type;
-    typedef std::size_t                          size_type;
-	typedef TomahawkEntryMeta<T>                 meta_type;
+    typedef GenotypeContainerRunlengthObjects self_type;
+    typedef Support::TomahawkRun<T>           value_type;
+    typedef value_type&                       reference;
+    typedef const value_type&                 const_reference;
+    typedef value_type*                       pointer;
+    typedef const value_type*                 const_pointer;
+    typedef std::ptrdiff_t                    difference_type;
+    typedef std::size_t                       size_type;
 
 public:
-	GenotypeContainerRunlength() :
-		n_entries(0),
+    GenotypeContainerRunlengthObjects() :
+    	n_entries(0),
 		__entries(nullptr)
 	{}
 
-	GenotypeContainerRunlength(const char* const genotype_buffer, const size_t l_buffer_length, const size_t n_entries, const meta_type* const meta_entries) :
-		n_entries(n_entries),
-		__entries(static_cast<pointer>(::operator new[](n_entries*sizeof(value_type))))
-	{
-		assert(n_entries > 0);
-		assert(l_buffer_length % sizeof(T) == 0);
+    GenotypeContainerRunlengthObjects(const char* const genotype_buffer, const size_t l_buffer_length) :
+    	n_entries(l_buffer_length / sizeof(T)),
+		__entries(new value_type[this->n_entries])
+    {
+    	assert(l_buffer_length % sizeof(T) == 0);
+    	memcpy(this->__entries, genotype_buffer, l_buffer_length);
+    }
 
-		size_t cumulative_position = 0;
-		for(size_t i = 0; i < this->size(); ++i){
-			new( &this->__entries[i] ) value_type( &genotype_buffer[cumulative_position], meta_entries[i].runs * sizeof(T) );
-			cumulative_position += meta_entries[i].runs * sizeof(T);
-			assert(this->__entries[i].size() > 0);
-		}
-		assert(cumulative_position == l_buffer_length);
-	}
+    ~GenotypeContainerRunlengthObjects(){
+    	delete [] this->__entries;
+    }
 
-	~GenotypeContainerRunlength(){
-		for(std::size_t i = 0; i < this->n_entries; ++i)
-			((this->__entries + i)->~GenotypeContainerRunlengthObjects<T>)();
-
-		::operator delete[](static_cast<void*>(this->__entries));
-	}
-
-	class iterator{
+    class iterator{
 	private:
 		typedef iterator self_type;
 		typedef std::forward_iterator_tag iterator_category;
@@ -111,8 +93,8 @@ public:
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
 private:
-	size_type n_entries;
-	pointer   __entries;
+    size_type n_entries;
+    pointer   __entries;
 };
 
 }
@@ -120,4 +102,4 @@ private:
 
 
 
-#endif /* TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_H_ */
+#endif /* TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_ */
