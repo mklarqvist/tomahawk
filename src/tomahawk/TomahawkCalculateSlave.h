@@ -300,8 +300,8 @@ private:
 	bool Calculate();
 	bool DiagonalWorkOrder(const order_type& order);
 	bool SquareWorkOrder(const order_type& order);
-	bool CompareBlocks(block_type& block1);
-	bool CompareBlocks(block_type& block1, block_type block2);
+	bool CompareBlocks(const U32& block1);
+	bool CompareBlocks(const U32& block1, const U32& block2);
 	inline void CompareBlocksFunction(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	inline void CompareBlocksFunctionForcedPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	inline void CompareBlocksFunctionForcedUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
@@ -1436,15 +1436,15 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 template <class T>
 bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		block_type block1(this->manager[i]);
+		//block_type block1(this->manager[i]);
 
 		for(U32 j = i; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "DIAG") << i << '/' << j << '\t' << order << std::endl;
 			if(i == j)
-				this->CompareBlocks(block1);
+				this->CompareBlocks(i);
 			else {
-				block_type block2(this->manager[j]);
-				this->CompareBlocks(block1, block2);
+				//block_type block2(this->manager[j]);
+				this->CompareBlocks(i, j);
 			}
 		}
 	}
@@ -1457,21 +1457,19 @@ bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
 	if(order.staggered)
 		return(this->DiagonalWorkOrder(order));
 
-	/*
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		block_type block1(this->manager[i]);
+		//block_type block1(this->manager[i]);
 
 		for(U32 j = order.fromColumn; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "SQUARE") << i << '/' << j << '\t' << order << std::endl;
 			if(i == j)
-				this->CompareBlocks(block1);
+				this->CompareBlocks(i);
 			else {
-				block_type block2(this->manager[j]);
-				this->CompareBlocks(block1, block2);
+				//block_type block2(this->manager[j]);
+				this->CompareBlocks(i, j);
 			}
 		}
 	}
-	*/
 	return true;
 }
 
@@ -1613,49 +1611,49 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const U32& b
 
 // Within-block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(block_type& block1){
+bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1){
 	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << *block1.support << '\t' << (block1.size()*block1.size()-block1.size())/2 << std::endl;
-	block1.reset(); // make sure it is reset
-	block_type block2(block1);
+	//block1.reset(); // make sure it is reset
+	//block_type block2(block1);
 
-	for(U32 i = 0; i < block1.size(); ++i){
- 		block2 = block1;
-		++block2; // block2 starts at relative +1
-		for(U32 j = i + 1; j < block2.size(); ++j){
-			(this->*phase_function_across)(block1, block2);
-			++block2;
+	for(U32 i = 0; i < manager[block1].size(); ++i){
+ 		//block2 = block1;
+		//++block2; // block2 starts at relative +1
+		for(U32 j = i + 1; j < manager[block1].size(); ++j){
+			(this->*phase_function_across)(block1, block1, i, j);
+			//++block2;
 		}
 
 		// Update progress
-		this->progress(block1.size() - (i + 1), this->output_manager.GetProgressCounts());
+		this->progress(manager[block1].size() - (i + 1), this->output_manager.GetProgressCounts());
 		this->output_manager.ResetProgress();
-		++block1;
+		//++block1;
 	}
 	return true;
 }
 
 // Across block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(block_type& block1, block_type block2){
+bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1, const U32& block2){
 	// Reset
 	// Make sure pointers are the beginning
-	block1.reset();
-	block2.reset();
+	//block1.reset();
+	//block2.reset();
 
 	// Cycle over block 1 and block 2
-	for(U32 i = 0; i < block1.size(); ++i){
-		for(U32 j = 0; j < block2.size(); ++j){
-			(this->*phase_function_across)(block1, block2);
-			++block2;
+	for(U32 i = 0; i < manager[block1].size(); ++i){
+		for(U32 j = 0; j < manager[block2].size(); ++j){
+			(this->*phase_function_across)(block1, block2, i, j);
+			//++block2;
 		}
 
 		// Update progress
-		this->progress(block2.size(), this->output_manager.GetProgressCounts());
+		this->progress(manager[block2].size(), this->output_manager.GetProgressCounts());
 		this->output_manager.ResetProgress();
 
 		// Reset position in block2 and increment position in block1
-		block2.reset();
-		++block1;
+		//block2.reset();
+		//++block1;
 	}
 	return true;
 }
