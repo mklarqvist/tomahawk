@@ -6,8 +6,8 @@
 namespace Tomahawk {
 namespace Totempole {
 
-#pragma pack(1)
-struct TotempoleOutputEntryController{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) TotempoleOutputEntryController{
 	typedef TotempoleOutputEntryController self_type;
 
 	BYTE sorted: 1, expanded: 1, partial_sort: 1, unused: 5;
@@ -23,8 +23,7 @@ struct TotempoleOutputEntryController{
 	}
 };
 
-#pragma pack(1)
-struct TotempoleOutputEntry{
+struct __attribute__((packed, aligned(1))) TotempoleOutputEntry{
 	typedef TotempoleOutputEntry self_type;
 
 public:
@@ -76,8 +75,7 @@ public:
 	U32 uncompressed_size;	// uncompressed size of this block
 };
 
-#pragma pack(1)
-struct TotempoleOutputSortedEntry{
+struct __attribute__((packed, aligned(1))) TotempoleOutputSortedEntry{
 	typedef TotempoleOutputSortedEntry self_type;
 
 public:
@@ -135,6 +133,7 @@ public:
 	S32 toBlock; 	// number of variants in this block
 	U32 toBlock_entries_offset;
 };
+#pragma pack(pop)
 
 }
 }

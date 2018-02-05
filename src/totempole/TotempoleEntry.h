@@ -4,12 +4,22 @@
 namespace Tomahawk{
 namespace Totempole{
 
-#pragma pack(1)
-struct TotempoleEntry{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) TotempoleEntry{
 	typedef TotempoleEntry self_type;
 
 public:
 	TotempoleEntry() : byte_offset(0), byte_offset_end(0), contigID(0), minPosition(0), maxPosition(0), variants(0), uncompressed_size(0){}
+	TotempoleEntry(const self_type& other) :
+		byte_offset(other.byte_offset),
+		byte_offset_end(other.byte_offset_end),
+		contigID(other.contigID),
+		minPosition(other.minPosition),
+		maxPosition(other.maxPosition),
+		variants(other.variants),
+		uncompressed_size(other.uncompressed_size)
+	{
+	}
 	~TotempoleEntry(){}
 
 	inline bool isValid(void) const{ return(this->byte_offset != 0); }
@@ -62,6 +72,7 @@ public:
 	U16 variants; 		// number of variants in this block
 	U32 uncompressed_size; // uncompressed size of this block
 };
+#pragma pack(pop)
 
 }
 }

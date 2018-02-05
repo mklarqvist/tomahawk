@@ -1,4 +1,5 @@
 #include "TomahawkReader.h"
+#include "base/genotype_container.h"
 
 namespace Tomahawk {
 
@@ -167,7 +168,7 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		exit(1);
 	}
 
-	this->blockDataOffsets_.push_back(DataOffsetPair(&this->data_.data[this->data_.pointer], this->totempole_[blockID]));
+	this->blockDataOffsets_.push_back(DataOffsetPair(&this->data_.data[this->data_.pointer], readLength, this->totempole_[blockID]));
 	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
 		//std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
@@ -175,9 +176,20 @@ bool TomahawkReader::getBlock(const U32 blockID){
 	}
 	this->buffer_.pointer = readLength;
 
+	this->data_.reset();
+	std::cerr << "read data: " << this->buffer_.size() << '\t' << this->data_.size() << std::endl;
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate data..." << std::endl;
 		return false;
+	}
+	std::cerr << "read data avail: " << this->buffer_.size() << '\t' << this->data_.size() << std::endl;
+
+	// Here
+	// const char* const data_buffer, const size_t l_buffer_length, const support_type& support, const U64& n_samples
+	std::cerr << "block: " << blockID << std::endl;
+	Base::GenotypeContainer<U16> gt(this->data_.data, this->data_.pointer, this->totempole_[blockID], 2504);
+	for(U32 i = 0; i < gt[0].size(); ++i){
+		std::cerr << i << "/" << gt[0].size() << "\t" << gt[0][i].alleleA << '/' << gt[0][i].alleleB << ',' << gt[0][i].runs << std::endl;
 	}
 
 	return true;

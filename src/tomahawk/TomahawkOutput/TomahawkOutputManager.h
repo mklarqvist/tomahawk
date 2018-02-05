@@ -18,14 +18,14 @@ namespace IO {
 
 template <class T>
 struct TomahawkOutputManager{
-	typedef TomahawkOutputManager self_type;
-	typedef IO::WriterFile writer_type;
-	typedef TomahawkBlock<const T> controller_type;
-	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
-	typedef IO::BasicBuffer buffer_type;
-	typedef TGZFController tgzf_controller;
-	typedef IO::TomahawkOutputEntry entry_type;
-	typedef Totempole::TotempoleOutputEntry totempoly_entry;
+	typedef TomahawkOutputManager                     self_type;
+	typedef IO::WriterFile                            writer_type;
+	typedef TomahawkBlock<const T, Tomahawk::Support::TomahawkRun<T>> controller_type;
+	typedef Tomahawk::Support::TomahawkOutputLD       helper_type;
+	typedef IO::BasicBuffer                           buffer_type;
+	typedef TGZFController                            tgzf_controller;
+	typedef IO::TomahawkOutputEntry                   entry_type;
+	typedef Totempole::TotempoleOutputEntry           totempoly_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 
 public:
@@ -216,19 +216,18 @@ private:
 
 
 private:
-	std::string filename;
-	std::string basePath;
-	std::string baseName;
-
-	U64 outCount;			// lines written
-	U32 progressCount;		// lines added since last flush
-	U32 totempole_blocks_written;
+	std::string     filename;
+	std::string     basePath;
+	std::string     baseName;
+	U64             outCount;      // lines written
+	U32             progressCount; // lines added since last flush
+	U32             totempole_blocks_written;
 	totempoly_entry entry; // track stuff
-	writer_type* writer;	// writer
-	writer_type* writer_index;	// writer index
-	buffer_type buffer;		// internal buffer
-	tgzf_controller compressor;// compressor
-	char* sprintf_buffer;	// special buffer used for sprintf writing scientific output in natural mode
+	writer_type*    writer;	// writer
+	writer_type*    writer_index; // writer index
+	buffer_type     buffer; // internal buffer
+	tgzf_controller compressor; // compressor
+	char*           sprintf_buffer; // special buffer used for sprintf writing scientific output in natural mode
 };
 
 }

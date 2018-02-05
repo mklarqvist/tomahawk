@@ -15,8 +15,8 @@ namespace Tomahawk{
 namespace VCF{
 
 //
-#pragma pack(1)
-struct VCFDiploidGenotype{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) VCFDiploidGenotype{
 public:
 	VCFDiploidGenotype(); // Has no ctor or dtor
 	~VCFDiploidGenotype();
@@ -33,6 +33,7 @@ public:
 		return stream;
 	}
 };
+#pragma pack(pop)
 
 class VCFLineDataInterface{
 public:

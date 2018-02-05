@@ -11,7 +11,6 @@ namespace Tomahawk{
  Number of runs can be inferred from the sample
  number and byte length of the stream
  */
-#pragma pack(1)
 struct TomahawkEntryMetaBase{
 	typedef TomahawkEntryMetaBase self_type;
 
@@ -24,6 +23,23 @@ public:
 		MAF(0),
 		HWE_P(0)
 	{}
+
+	TomahawkEntryMetaBase(const char* const buffer_stream) :
+		missing(0),
+		phased(0),
+		position(0),
+		ref_alt(*reinterpret_cast<const BYTE* const>(&buffer_stream[sizeof(U32)])),
+		MAF(*reinterpret_cast<const float* const>(&buffer_stream[sizeof(U32)+sizeof(BYTE)])),
+		HWE_P(*reinterpret_cast<const float* const>(&buffer_stream[sizeof(U32)+sizeof(BYTE)+sizeof(float)]))
+	{
+		//std::cerr << "in base ctor: " << std::endl;
+		// Overflow fill packed bits
+		//U32* t = reinterpret_cast<U32*>(this->missing);
+		//*t = *reinterpret_cast<const U32* const>(&buffer_stream[0]);
+		memcpy(this, buffer_stream, sizeof(U32));
+		//std::cerr << this->missing << ',' << this->phased << ',' << this->position << '\t' << (int)this->ref_alt << '\t' << this->MAF << std::endl;
+	}
+
 	~TomahawkEntryMetaBase(){}
 
 	bool isSingleton(void) const{ return(this->MAF == 0); }
@@ -34,10 +50,10 @@ public:
 	}
 
 public:
-	const U32 missing: 1, phased: 1, position: 30;
-	const BYTE ref_alt;
-	const float MAF;
-	const float HWE_P;
+	U32 missing: 1, phased: 1, position: 30;
+	BYTE ref_alt;
+	float MAF;
+	float HWE_P;
 };
 
 /*
@@ -45,15 +61,24 @@ public:
  regaring a variant line such as position, if any genotypes
  are missing and if the data is phased.
  */
-#pragma pack(1)
 template <class T>
 struct TomahawkEntryMeta : public TomahawkEntryMetaBase{
-	typedef TomahawkEntryMeta self_type;
+	typedef TomahawkEntryMeta     self_type;
+	typedef TomahawkEntryMetaBase parent_type;
 
 public:
 	TomahawkEntryMeta() :
 		runs(0)
 	{}
+
+	// Copy from stream
+	TomahawkEntryMeta(const char* const buffer_stream) :
+		parent_type(buffer_stream),
+		runs(*reinterpret_cast<const T* const>(&buffer_stream[TOMAHAWK_ENTRY_META_SIZE]))
+	{
+		//std::cerr << "runs: " << (int)this->runs << std::endl;
+	}
+
 	~TomahawkEntryMeta(){}
 
 	inline bool isValid(void) const{ return(this->runs > 0); }

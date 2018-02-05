@@ -5,17 +5,19 @@
 #include "TomahawkReader.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
+#include "base/genotype_container.h"
+
 namespace Tomahawk {
 
 class TomahawkCalc{
-	typedef TomahawkCalc self_type;
-	typedef TomahawkCalcParameters parameter_type;
-	typedef std::pair<U32,U32> pair_type;
-	typedef std::vector<pair_type> pair_vector;
-	typedef Balancer balancer_type;
+	typedef TomahawkCalc               self_type;
+	typedef TomahawkCalcParameters     parameter_type;
+	typedef std::pair<U32,U32>         pair_type;
+	typedef std::vector<pair_type>     pair_vector;
+	typedef Balancer                   balancer_type;
 	typedef Totempole::TotempoleReader totempole_reader;
-	typedef Interface::ProgressBar progress_type;
-	typedef TomahawkReader reader_type;
+	typedef Interface::ProgressBar     progress_type;
+	typedef TomahawkReader             reader_type;
 
 public:
 	TomahawkCalc();
@@ -31,14 +33,13 @@ private:
 	template <class T> bool Calculate();
 
 private:
-	std::string input_file;
-	std::string output_file;
-
-	bool parameters_validated;
-	progress_type progress;
-	balancer_type balancer;
+	std::string    input_file;
+	std::string    output_file;
+	bool           parameters_validated;
+	progress_type  progress;
+	balancer_type  balancer;
 	parameter_type parameters;
-	reader_type reader;
+	reader_type    reader;
 };
 
 template <class T>
@@ -56,8 +57,13 @@ bool TomahawkCalc::Calculate(){
 
 	// Construct Tomahawk manager
 	TomahawkBlockManager<const T> controller(totempole);
-	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i)
-		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
+	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
+		//controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
+
+		std::cerr << i << '/' << this->reader.DataOffsetSize() << std::endl;
+		Base::GenotypeContainer<T>(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer,  this->reader.getOffsetPair(i).entry, totempole.header.samples);
+	}
+	return false;
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1
@@ -82,6 +88,8 @@ bool TomahawkCalc::Calculate(){
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
+
+	return true;
 
 	// Todo: validate
 	U64 totalComparisons = 0;

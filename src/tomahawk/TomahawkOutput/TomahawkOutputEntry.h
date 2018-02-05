@@ -7,8 +7,8 @@
 namespace Tomahawk{
 namespace IO{
 
-#pragma pack(1)
-struct TomahawkOutputEntry{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) TomahawkOutputEntry{
 	typedef TomahawkOutputEntry self_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 
@@ -63,7 +63,10 @@ struct TomahawkOutputEntry{
 	// Swaps cA,pA with cB,pB
 	// used in sorting for indices
 	void swapDirection(void){
-		std::swap(this->AcontigID, this->BcontigID);
+		U32 Ac = this->AcontigID;
+		U32 Bc = this->BcontigID;
+		this->AcontigID = Bc;
+		this->BcontigID = Ac;
 		U32& A = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + sizeof(U32)));
 		U32& B = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + 3*sizeof(U32)));
 		std::swap(A,B);
@@ -89,8 +92,7 @@ struct TomahawkOutputEntry{
 // is illegal. Instead a BYTE array literals stored as
 // a hard copy and reinterpreted as an entry in the
 // overloaded operator<
-#pragma pack(1)
-struct TomahawkOutputEntrySort{
+struct __attribute__((packed, aligned(1))) TomahawkOutputEntrySort{
 	typedef TomahawkOutputEntrySort self_type;
 	typedef TomahawkOutputEntry parent_type;
 
@@ -139,6 +141,7 @@ static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry& s
 }
 
 }
+#pragma pack(pop)
 }
 }
 

@@ -31,8 +31,8 @@
 namespace Tomahawk{
 
 #if SLAVE_DEBUG_MODE == 7
-#pragma pack(1)
-struct __costHelper{
+#pragma pack(push, 1)
+struct __attribute__((packed, aligned(1))) __costHelper{
 	// RLE_A and RLE_B for A1
 	float RLE_A, RLE_B;
 	// cycles A1_P and A1_U
@@ -127,7 +127,7 @@ struct __methodCompare{
 		return true;
 	}
 };
-
+#pragma pack(pop)
 #endif
 
 // Parameter thresholds for FLAGs
@@ -254,13 +254,13 @@ class TomahawkCalculateSlave{
 	//Basic typedefs
 	typedef TomahawkCalculateSlave<T> self_type;
 	typedef TomahawkBlockManager<const T> manager_type;
-	typedef TomahawkBlock<const T> controller_type;
+	typedef TomahawkBlock<const T, Support::TomahawkRun<T>> controller_type;
 	typedef const TomahawkEntryMeta<const T> meta_type;
 	typedef const Support::TomahawkRun<const T> run_type;
 	typedef Totempole::TotempoleEntry totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T> output_manager_type;
 	typedef Support::TomahawkOutputLD helper_type;
-	typedef TomahawkBlockPackedPair<> simd_pair;
+	typedef Base::GenotypeBitvector<> simd_pair;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock order_type;
@@ -793,8 +793,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 	this->helper_simd.counters[8] = 0;
 	this->helper_simd.counters[9] = 0;
 
-	const simd_pair& datA = a.packed->getData(a.metaPointer);
-	const simd_pair& datB = b.packed->getData(b.metaPointer);
+	const simd_pair& datA = a.packed->at(a.metaPointer);
+	const simd_pair& datB = b.packed->at(b.metaPointer);
 	const BYTE* const arrayA = datA.data;
 	const BYTE* const arrayB = datB.data;
 
@@ -926,8 +926,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 	this->helper_simd.counters[8] = 0;
 	this->helper_simd.counters[9] = 0;
 
-	const simd_pair& datA = a.packed->getData(a.metaPointer);
-	const simd_pair& datB = b.packed->getData(b.metaPointer);
+	const simd_pair& datA = a.packed->at(a.metaPointer);
+	const simd_pair& datB = b.packed->at(b.metaPointer);
 	const BYTE* const arrayA = datA.data;
 	const BYTE* const arrayB = datB.data;
 	const BYTE* const arrayA_mask = datA.mask;
@@ -1061,8 +1061,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 	this->helper_simd.counters[2] = 0;
 	this->helper_simd.counters[3] = 0;
 
-	const simd_pair& datA = a.packed->getData(a.metaPointer);
-	const simd_pair& datB = b.packed->getData(b.metaPointer);
+	const simd_pair& datA = a.packed->at(a.metaPointer);
+	const simd_pair& datB = b.packed->at(b.metaPointer);
 	const BYTE* const arrayA = datA.data;
 	const BYTE* const arrayB = datB.data;
 	const BYTE* const arrayA_mask = datA.mask;
@@ -1178,8 +1178,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 	this->helper_simd.counters[2] = 0;
 	this->helper_simd.counters[3] = 0;
 
-	const simd_pair& datA = a.packed->getData(a.metaPointer);
-	const simd_pair& datB = b.packed->getData(b.metaPointer);
+	const simd_pair& datA = a.packed->at(a.metaPointer);
+	const simd_pair& datB = b.packed->at(b.metaPointer);
 	const BYTE* const arrayA = datA.data;
 	const BYTE* const arrayB = datB.data;
 
@@ -1427,6 +1427,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 // Execute diagonal working order
 template <class T>
 bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
+	/*
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
 		controller_type block1(this->manager[i]);
 
@@ -1440,6 +1441,7 @@ bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
 			}
 		}
 	}
+	*/
 	return true;
 }
 
@@ -1449,6 +1451,7 @@ bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
 	if(order.staggered)
 		return(this->DiagonalWorkOrder(order));
 
+	/*
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
 		controller_type block1(this->manager[i]);
 
@@ -1462,6 +1465,7 @@ bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
 			}
 		}
 	}
+	*/
 	return true;
 }
 

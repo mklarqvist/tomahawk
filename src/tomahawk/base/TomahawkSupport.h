@@ -4,28 +4,38 @@
 namespace Tomahawk{
 namespace Support{
 
-#pragma pack(1)
+#pragma pack(push, 1)
 template <class T>
-struct TomahawkRun{
+struct __attribute__((packed, aligned(1))) TomahawkRun{
 public:
-	TomahawkRun();	// Disallowed ctor
-	~TomahawkRun(); // Disallowed dtor
+	TomahawkRun(){}
+	TomahawkRun(const char* const buffer){
+		T* t = reinterpret_cast<T*>(this->alleleA);
+		*t   = *reinterpret_cast<T*>(buffer);
+	}
+	~TomahawkRun(){}
 
 	T alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
 	  alleleB: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
 	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 };
 
-#pragma pack(1)
+
 template <class T>
-struct TomahawkRunPacked{
+struct __attribute__((packed, aligned(1))) TomahawkRunPacked{
 public:
-	TomahawkRunPacked();	// Disallowed ctor
-	~TomahawkRunPacked();	// Disallowed dtor
+	TomahawkRunPacked(){}
+	TomahawkRunPacked(const char* const buffer){
+		T* t = reinterpret_cast<T*>(this->alleles);
+		*t   = *reinterpret_cast<T*>(buffer);
+	}
+	~TomahawkRunPacked(){}
 
 	T alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
 	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
 };
+
+#pragma pack(pop)
 
 } // end support
 

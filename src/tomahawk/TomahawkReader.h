@@ -27,10 +27,11 @@ public:
 	// Used to keep track of char pointer offsets in buffer
 	// and what Totempole entry is associated with that position
 	struct DataOffsetPair{
-		DataOffsetPair(const char* data, const totempole_entry& entry) : entry(entry), data(data){}
+		DataOffsetPair(const char* data, const U64 l_buffer, const totempole_entry& entry) : entry(entry), l_buffer(l_buffer), data(data){}
 		~DataOffsetPair(){}
 
 		const totempole_entry& entry;
+		const U64 l_buffer;
 		const char* data;
 	};
 
@@ -137,6 +138,8 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 
 template <class T>
 bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
+	//Todo
+	/*
 	TomahawkBlock<T> tomahawk_controller(data, this->totempole_[blockID]);
 
 	// For each variant in Tomahawk block
@@ -162,6 +165,7 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 	// Reset buffers
 	this->outputBuffer_.reset(); // reset
 	this->data_.reset(); // reset
+	*/
 
 	return true;
 }

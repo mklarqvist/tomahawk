@@ -39,8 +39,8 @@ public:
 	virtual bool close(void) =0;
 	inline lock_type* getLock(void){ return(&this->lock); }
 
-	virtual inline const size_t writeNoLock(const char* data, const U32 length) =0;
-	virtual inline const size_t writeNoLock(const buffer_type& buffer) =0;
+	virtual const size_t writeNoLock(const char* data, const U32 length) =0;
+	virtual const size_t writeNoLock(const buffer_type& buffer) =0;
 
 protected:
 	lock_type lock;

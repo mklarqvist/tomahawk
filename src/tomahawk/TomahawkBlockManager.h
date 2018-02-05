@@ -7,96 +7,9 @@
 #include "../tomahawk/base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
+#include "base/genotype_container_bitvector.h"
 
 namespace Tomahawk{
-
-template <class T, class Y = Support::TomahawkRun<T>>
-struct TomahawkBlock; // forward declare: required for build function
-
-template <int T = SIMD_ALIGNMENT>
-struct TomahawkBlockPackedPair{
-public:
-	TomahawkBlockPackedPair(const U32 size):
-		frontZero(0),
-		tailZero(0),
-		frontZeroMissing(0),
-		tailZeroMissing(0),
-	#if SIMD_AVAILABLE == 1
-		data((BYTE*)_mm_malloc(size, T)),
-		mask((BYTE*)_mm_malloc(size, T))
-	#else
-		data(new BYTE[size]),
-		mask(new BYTE[size])
-	#endif
-	{
-		memset(this->data, 0, size);
-		memset(this->mask, 0, size);
-	}
-
-	~TomahawkBlockPackedPair(){
-	#if SIMD_AVAILABLE == 1
-		_mm_free(this->data);
-		_mm_free(this->mask);
-	#else
-		delete [] this->data;
-		delete [] this->mask;
-	#endif
-	}
-
-public:
-	U32 frontZero;				// leading zeros in aligned vector width
-	U32 tailZero;				// trailing zeros in aligned vector width
-	U32 frontZeroMissing;		// number of missing values in leading zeros
-	U32 tailZeroMissing;		// number of missing values in trailing zeros
-	BYTE* data;
-	BYTE* mask;
-} __attribute__((aligned(16)));
-
-class TomahawkBlockPacked{
-	typedef TomahawkBlockPackedPair<> pair_type;
-
-public:
-	TomahawkBlockPacked() : width(0), data(nullptr){}
-	~TomahawkBlockPacked(){
-		delete [] this->data;
-		delete this->data;
-	}
-
-	// copy constructor
-	TomahawkBlockPacked(const TomahawkBlockPacked& other) :
-		width(other.width),
-		data(other.data)
-	{
-
-	}
-
-	// move constructor
-	TomahawkBlockPacked(TomahawkBlockPacked&& other) noexcept :
-		width(other.width),
-		data(other.data)
-	{
-		other.data = nullptr;
-	}
-
-	/** Move assignment operator */
-	TomahawkBlockPacked& operator=(TomahawkBlockPacked&& other) noexcept{
-		 // prevent self-move
-		if(this != &other)
-			this->width = other.width;
-
-		return *this;
-	}
-
-	template <class T>
-	bool Build(TomahawkBlock<T>& controller, const U64& samples);
-
-	inline const pair_type& getData(const U32 p) const{ return(*this->data[p]); }
-
-public:
-	U32 width;
-	pair_type** data;
-};
-
 
 template <class T, class Y>
 struct TomahawkBlock{
@@ -118,7 +31,7 @@ public:
 		support(&support),
 		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
 		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
-		packed(new TomahawkBlockPacked)
+		packed(new Base::GenotypeContainerBitvector)
 	{
 
 	}
@@ -155,7 +68,7 @@ public:
 	}
 
 	inline void updatePacked(const TomahawkBlock& self){
-		this->packed = new TomahawkBlockPacked(self.packed);
+		this->packed = new Base::GenotypeContainerBitvector(self.packed);
 	}
 
 
@@ -172,7 +85,7 @@ public:
 	inline const meta_type& currentMeta(void) const{ return(this->meta[this->metaPointer]); }
 	inline const_reference operator[](const U32 p) const{ return this->runs[this->runsPointer + p]; }
 
-	const U16& size(void) const{ return this->support->variants; }
+	const U16 size(void) const{ return this->support->variants; }
 	void reset(void){
 		this->metaPointer = 0;
 		this->runsPointer = 0;
@@ -254,83 +167,25 @@ public:
 	const Totempole::TotempoleEntry* const support; // parent Totempole information
 	const meta_type* const meta;
 	const type* const runs;
-	TomahawkBlockPacked* packed;
+	Base::GenotypeContainerBitvector* packed;
 };
-
-template <class T>
-bool TomahawkBlockPacked::Build(TomahawkBlock<T>& controller, const U64& samples){
-	if(controller.support->variants == 0)
-		return false;
-
-	controller.reset();
-	TomahawkBlock<T, Support::TomahawkRunPacked<T>>& c = *reinterpret_cast<TomahawkBlock<T, Support::TomahawkRunPacked<T>>*>(&controller);
-
-	this->width = c.support->variants;
-	this->data = new pair_type*[c.support->variants];
-
-	const U32 byte_width = ceil((double)samples/4);
-
-	// INVERSE mask is cheaper in terms of instructions used
-	// exploited in calculations: TomahawkCalculationSlave
-	const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-	const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-	for(U32 i = 0; i < c.support->variants; ++i){
-		this->data[i] = new pair_type(byte_width);
-		Algorithm::GenotypeBitPacker packerA(this->data[i]->data, 2);
-		Algorithm::GenotypeBitPacker packerB(this->data[i]->mask, 2);
-
-		for(U32 j = 0; j < c.meta[i].runs; ++j){
-			packerA.add(lookup_data[c[j].alleles], c[j].runs);
-			packerB.add(lookup_mask[c[j].alleles], c[j].runs);
-		}
-		++c;
-	}
-	controller.reset();
-
-	const U32 byteAlignedEnd  = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
-
-	// Search for zero runs in either end
-	for(U32 i = 0; i < c.support->variants; ++i){
-		S32 j = 0;
-
-		// Search from left->right
-		for(; j < byteAlignedEnd; ++j){
-			if(this->data[i]->data[j] != 0 || this->data[i]->mask[j] != 0)
-				break;
-		}
-
-		// Front of zeroes
-		this->data[i]->frontZero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
-		if(j == byteAlignedEnd)
-			break;
-
-		j = byteAlignedEnd - 1;
-		for(; j > 0; --j){
-			if(this->data[i]->data[j] != 0 || this->data[i]->mask[j] != 0)
-				break;
-		}
-
-		// Tail of zeroes
-		this->data[i]->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
-	}
-	return true;
-}
 
 template <class T, class Y>
 bool TomahawkBlock<T, Y>::buildPacked(const U64& samples){
-	return(this->packed->Build(*this, samples));
+	//return(this->packed->Build(*this, samples));
+	return(true);
 }
 
 
 template <class T>
 class TomahawkBlockManager{
-	typedef TomahawkBlockManager<T> self_type;
-	typedef TomahawkBlock<const T> controller_type;
-	typedef Totempole::TotempoleEntry totempole_entry_type;
+	typedef TomahawkBlockManager<T>    self_type;
+	typedef TomahawkBlock<const T, Support::TomahawkRun<T>>     controller_type;
+	typedef Totempole::TotempoleEntry  totempole_entry_type;
+	typedef Totempole::TotempoleReader totempole_reader_type;
 
 public:
-	TomahawkBlockManager(const Totempole::TotempoleReader& header) :
+	TomahawkBlockManager(const totempole_reader_type& totempole_reader) :
 		header(header)
 	{}
 	~TomahawkBlockManager(){}
@@ -347,9 +202,16 @@ public:
 	inline size_t size(void) const{ return this->blocks.size(); }
 	U32 getVariants(void) const{
 		U32 variants = 0;
+		std::cerr << "test: " << this->size() << std::endl;
 
-		for(U32 i = 0; i < this->size(); ++i)
+		for(U32 i = 0; i < this->size(); ++i){
+			std::cerr << "debug: " << i << '\t' << this->size() << std::endl;
+			std::cerr << &this->blocks[i] << std::endl;
+			//std::cerr << this->blocks[i].
 			variants += this->blocks[i].size();
+		}
+
+		std::cerr << "variants: " << variants << std::endl;
 
 		return variants;
 	}
