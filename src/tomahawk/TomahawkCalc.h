@@ -59,26 +59,40 @@ bool TomahawkCalc::Calculate(){
 	// Construct Tomahawk manager
 	//TomahawkBlockManager<const T> controller(totempole);
 	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()*2);
+	Base::GenotypeContainerReference<T>* references = static_cast<Base::GenotypeContainerReference<T>*>(::operator new[](this->reader.DataOffsetSize()*sizeof(Base::GenotypeContainerReference<T>)));
 
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
-		//controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
+		impl.addDataBlock(this->reader.getOffsetPair(i).data,
+                          this->reader.getOffsetPair(i).l_buffer,
+                          this->reader.getOffsetPair(i).entry);
 
-		//std::cerr << i << '/' << this->reader.DataOffsetSize() << '\t' << this->reader.getOffsetPair(i).l_buffer << std::endl;
-		impl.addDataBlock(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer,  this->reader.getOffsetPair(i).entry);
-		//std::cerr << impl.size() << '>' << impl[i].size() << std::endl;
-		Base::GenotypeContainerReference<T> t(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer, this->reader.getOffsetPair(i).entry, totempole.getSamples());
-		std::cerr << t.currentMeta().runs << std::endl;
-		for(U32 k = 0; k < t.size(); ++k){
+		new( &references[i] ) Base::GenotypeContainerReference<T>(
+                this->reader.getOffsetPair(i).data,
+                this->reader.getOffsetPair(i).l_buffer,
+                this->reader.getOffsetPair(i).entry,
+                totempole.getSamples()
+        );
+
+		/*
+		std::cerr << references[i].currentMeta().runs << std::endl;
+		for(U32 k = 0; k < references[i].size(); ++k){
 			size_t n_total = 0;
-			for(U32 j = 0; j < t.currentMeta().runs; ++j){
-				std::cerr << t[j].alleleA << "|" << t[j].alleleB << ',' << t[j].runs << ' ';
-				n_total += t[j].runs;
+			for(U32 j = 0; j < references[i].currentMeta().runs; ++j){
+				std::cerr << references[i][j].alleleA << "|" << references[i][j].alleleB << ',' << references[i][j].runs << ' ';
+				n_total += references[i][j].runs;
 			}
 			assert(n_total == totempole.getSamples());
-			++t;
+			++references[i];
 			std::cerr << '\n';
 		}
+		*/
 	}
+
+	// Cleanup
+	for(std::size_t i = 0; i < this->reader.DataOffsetSize(); ++i)
+		((references + i)->~GenotypeContainerReference)();
+
+	::operator delete[](static_cast<void*>(references));
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1
@@ -88,15 +102,6 @@ bool TomahawkCalc::Calculate(){
 #endif
 		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
 	}
-
-	// Build 1-bit representation from RLE data
-	//if(!controller.BuildVectorized()){
-	//	std::cerr << Helpers::timestamp("ERROR", "SIMD") << "Failed building bit-representation..." << std::endl;
-	//	return false;
-	//}
-
-	//if(!SILENT)
-	//	std::cerr << "Done..." << std::endl;
 
 	// Number of variants in memory
 	const U64 variants = impl.countVariants();
