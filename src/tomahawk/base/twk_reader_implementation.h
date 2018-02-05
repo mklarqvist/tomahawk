@@ -1,14 +1,14 @@
-#ifndef TOMAHAWK_BASE_TWK_READER_H_
-#define TOMAHAWK_BASE_TWK_READER_H_
+#ifndef TOMAHAWK_BASE_TWK_READER_IMPLEMENTATION_H_
+#define TOMAHAWK_BASE_TWK_READER_IMPLEMENTATION_H_
 
 #include "genotype_container.h"
 
 namespace Tomahawk{
 
 template <class T>
-class TomahawkReader{
+class TomahawkReaderImpl{
 private:
-	typedef TomahawkReader             self_type;
+	typedef TomahawkReaderImpl         self_type;
 	typedef Base::GenotypeContainer<T> value_type;
     typedef value_type&                reference;
     typedef const value_type&          const_reference;
@@ -22,7 +22,7 @@ private:
 	typedef Totempole::TotempoleEntry  support_type;
 
 public:
-	TomahawkReader(const U64 n_samples) :
+	TomahawkReaderImpl(const U64 n_samples) :
 		n_entries(0),
 		n_capacity(0),
 		n_samples(n_samples),
@@ -31,16 +31,16 @@ public:
 
 	}
 
-	TomahawkReader(const U64 n_samples, const size_t n_capacity) :
+	TomahawkReaderImpl(const U64 n_samples, const size_t n_capacity) :
 		n_entries(0),
 		n_capacity(n_capacity),
 		n_samples(n_samples),
-		__entries(static_cast<pointer>(::operator new[](this->n_entries*sizeof(value_type))))
+		__entries(static_cast<pointer>(::operator new[](this->n_capacity*sizeof(value_type))))
 	{
 
 	}
 
-	~TomahawkReader(){
+	~TomahawkReaderImpl(){
 		for(size_type i = 0; i < this->size(); ++i)
 			((this->__entries + i)->~value_type)();
 
@@ -113,10 +113,21 @@ public:
 		if(this->n_entries + 1 == this->n_capacity || this->capacity() == 0)
 			return false;
 
-		new( &this->__entries[this->n_entries] ) value_type( &data, l_data, support, this->n_samples );
+		std::cerr << "constructing new @ " << this->n_entries << "/" << this->n_capacity << " and samples: " << this->n_samples << std::endl;
+		new( &this->__entries[this->n_entries] ) value_type( data, l_data, support, this->n_samples );
 		++this->n_entries;
 		return true;
 	}
+
+	const U64 countVariants(void) const{
+		U64 n_total = 0;
+		for(U32 i = 0; i < this->size(); ++i)
+			n_total += this->at(i).getTotempole().size();
+
+		return(n_total);
+	}
+
+	const U64& numberSamples(void) const{ return(this->n_samples); }
 
 private:
 	size_type n_entries;
@@ -127,6 +138,4 @@ private:
 
 }
 
-
-
-#endif /* TOMAHAWK_BASE_TWK_READER_H_ */
+#endif /* TOMAHAWK_BASE_TWK_READER_IMPLEMENTATION_H_ */

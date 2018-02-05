@@ -19,6 +19,8 @@
 #include "TomahawkBlockManager.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
+#include "base/twk_reader_implementation.h"
+
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
 // Method 3: Count comparisons for A1
@@ -251,30 +253,29 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 
 template <class T>
 class TomahawkCalculateSlave{
-	//Basic typedefs
-	typedef TomahawkCalculateSlave<T> self_type;
-	typedef TomahawkBlockManager<const T> manager_type;
-	typedef TomahawkBlock<const T, Support::TomahawkRun<T>> controller_type;
-	typedef const TomahawkEntryMeta<const T> meta_type;
-	typedef const Support::TomahawkRun<const T> run_type;
-	typedef Totempole::TotempoleEntry totempole_entry_type;
-	typedef IO::TomahawkOutputManager<T> output_manager_type;
-	typedef Support::TomahawkOutputLD helper_type;
-	typedef Base::GenotypeBitvector<> simd_pair;
+	typedef TomahawkCalculateSlave<T>     self_type;
+	typedef TomahawkReaderImpl<T>         manager_type;
+	typedef Base::GenotypeContainer<T>    block_type;
+	typedef const TomahawkEntryMeta<T>    meta_type;
+	typedef const Support::TomahawkRun<T> run_type;
+	typedef Totempole::TotempoleEntry     totempole_entry_type;
+	typedef IO::TomahawkOutputManager<T>  output_manager_type;
+	typedef Support::TomahawkOutputLD     helper_type;
+	typedef Base::GenotypeBitvector<>     simd_pair;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock order_type;
 	typedef std::vector<order_type> work_order;
 
 	// Function pointers
-	typedef void (self_type::*phaseFunction)(const controller_type& block1, const controller_type block2);
+	typedef void (self_type::*phaseFunction)(const block_type& block1, const block_type block2);
 
 public:
 	TomahawkCalculateSlave(const manager_type& manager,
-		output_manager_type& writer,
-		Interface::ProgressBar& progress,
-		const TomahawkCalcParameters& parameters,
-		const work_order& orders);
+                          output_manager_type& writer,
+                       Interface::ProgressBar& progress,
+                 const TomahawkCalcParameters& parameters,
+                             const work_order& orders);
 
 	~TomahawkCalculateSlave();
 
@@ -298,22 +299,22 @@ private:
 	bool Calculate();
 	bool DiagonalWorkOrder(const order_type& order);
 	bool SquareWorkOrder(const order_type& order);
-	bool CompareBlocks(controller_type& block1);
-	bool CompareBlocks(controller_type& block1, controller_type block2);
-	inline void CompareBlocksFunction(const controller_type& block1, const controller_type block2);
-	inline void CompareBlocksFunctionForcedPhased(const controller_type& block1, const controller_type block2);
-	inline void CompareBlocksFunctionForcedUnphased(const controller_type& block1, const controller_type block2);
-	bool CalculateLDPhased(const controller_type& a, const controller_type& b);
+	bool CompareBlocks(block_type& block1);
+	bool CompareBlocks(block_type& block1, block_type block2);
+	inline void CompareBlocksFunction(const block_type& block1, const block_type block2);
+	inline void CompareBlocksFunctionForcedPhased(const block_type& block1, const block_type block2);
+	inline void CompareBlocksFunctionForcedUnphased(const block_type& block1, const block_type block2);
+	bool CalculateLDPhased(const block_type& a, const block_type& b);
 	bool CalculateLDPhasedMath(void);
-	bool CalculateLDPhasedVectorized(const controller_type& a, const controller_type& b);
-	bool CalculateLDPhasedVectorizedNoMissing(const controller_type& a, const controller_type& b);
-	bool CalculateLDUnphased(const controller_type& a, const controller_type& b);
-	bool CalculateLDUnphasedVectorized(const controller_type& a, const controller_type& b);
-	bool CalculateLDUnphasedVectorizedNoMissing(const controller_type& a, const controller_type& b);
+	bool CalculateLDPhasedVectorized(const block_type& a, const block_type& b);
+	bool CalculateLDPhasedVectorizedNoMissing(const block_type& a, const block_type& b);
+	bool CalculateLDUnphased(const block_type& a, const block_type& b);
+	bool CalculateLDUnphasedVectorized(const block_type& a, const block_type& b);
+	bool CalculateLDUnphasedVectorizedNoMissing(const block_type& a, const block_type& b);
 	bool CalculateLDUnphasedMath(void);
 	double EstimateChiSq(const double& target, const double& p, const double& q) const;
 	bool ChooseF11Calculate(const double& target, const double& p, const double& q);
-	void setFLAGs(const controller_type& a, const controller_type& b);
+	void setFLAGs(const block_type& a, const block_type& b);
 
 private:
 	const TomahawkCalcParameters& parameters;
@@ -368,7 +369,7 @@ TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 	parameters(parameters),
 	block_comparisons(0),
 	variant_comparisons(0),
-	samples(manager.header.getSamples()),
+	samples(manager.numberSamples()),
 	impossible(0),
 	possible(0),
 	no_uncertainty(0),
@@ -414,10 +415,10 @@ TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkC
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const controller_type& b){
+void TomahawkCalculateSlave<T>::setFLAGs(const block_type& a, const block_type& b){
 	// If long range
-	const meta_type& mA = a.currentMeta();
-	const meta_type& mB = b.currentMeta();
+	const meta_type& mA = a.getMeta();
+	const meta_type& mB = b.getMeta();
 
 	if(b.support->contigID == a.support->contigID)
 		this->helper.setSameContig();
@@ -443,7 +444,7 @@ void TomahawkCalculateSlave<T>::setFLAGs(const controller_type& a, const control
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, const controller_type& b){
+bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const block_type& a, const block_type& b){
 	if(a.meta[a.metaPointer].MAF == 0 || b.meta[b.metaPointer].MAF == 0)
 		return false;
 
@@ -511,7 +512,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const controller_type& a, co
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cout << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t';
+	std::cout << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\t';
 #endif
 
 	this->setFLAGs(a, b);
@@ -779,7 +780,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const controller_type& a, const controller_type& b){
+bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const block_type& a, const block_type& b){
 	this->helper.resetUnphased();
 
 	this->helper_simd.counters[0] = 0;
@@ -907,9 +908,9 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const con
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_type& a, const controller_type& b){
+bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const block_type& a, const block_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().missing == 0 && b.currentMeta().missing == 0)
+	if(a.getMeta().missing == 0 && b.getMeta().missing == 0)
 		return(this->CalculateLDUnphasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1049,9 +1050,9 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const controller_t
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_type& a, const controller_type& b){
+bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const block_type& a, const block_type& b){
 	#if SLAVE_DEBUG_MODE < 6
-	if(a.currentMeta().missing == 0 && b.currentMeta().missing == 0)
+	if(a.getMeta().missing == 0 && b.getMeta().missing == 0)
 		return(this->CalculateLDPhasedVectorizedNoMissing(a, b));
 	#endif
 
@@ -1163,7 +1164,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cout << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
+	std::cout << "V\t" << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
 
 	this->setFLAGs(a, b);
@@ -1171,7 +1172,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const controller_typ
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const controller_type& a, const controller_type& b){
+bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const block_type& a, const block_type& b){
 	this->helper.resetPhased();
 	this->helper_simd.counters[0] = 0;
 	this->helper_simd.counters[1] = 0;
@@ -1265,7 +1266,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cout << "V\t" << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << "\t" << ticks_per_iter.count() << '\n';
+	std::cout << "V\t" << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << "\t" << ticks_per_iter.count() << '\n';
 #endif
 
 	this->setFLAGs(a, b);
@@ -1274,8 +1275,8 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const contr
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, const controller_type& b){
-	if(a.currentMeta().MAF == 0 || b.currentMeta().MAF == 0)
+bool TomahawkCalculateSlave<T>::CalculateLDPhased(const block_type& a, const block_type& b){
+	if(a.getMeta().MAF == 0 || b.getMeta().MAF == 0)
 		return false;
 
 	this->helper.resetPhased();
@@ -1344,11 +1345,11 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const controller_type& a, cons
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
-	std::cout << a.currentMeta().MAF*this->samples + b.currentMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
+	std::cout << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
 
 #if SLAVE_DEBUG_MODE == 3
-	std::cout << a.currentMeta().runs << '\t' << b.currentMeta().runs << '\t' << iterations << std::endl;
+	std::cout << a.getMeta().runs << '\t' << b.getMeta().runs << '\t' << iterations << std::endl;
 #endif
 
 	this->setFLAGs(a, b);
@@ -1429,14 +1430,14 @@ template <class T>
 bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
 	/*
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		controller_type block1(this->manager[i]);
+		block_type block1(this->manager[i]);
 
 		for(U32 j = i; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "DIAG") << i << '/' << j << '\t' << order << std::endl;
 			if(i == j)
 				this->CompareBlocks(block1);
 			else {
-				controller_type block2(this->manager[j]);
+				block_type block2(this->manager[j]);
 				this->CompareBlocks(block1, block2);
 			}
 		}
@@ -1453,14 +1454,14 @@ bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
 
 	/*
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		controller_type block1(this->manager[i]);
+		block_type block1(this->manager[i]);
 
 		for(U32 j = order.fromColumn; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "SQUARE") << i << '/' << j << '\t' << order << std::endl;
 			if(i == j)
 				this->CompareBlocks(block1);
 			else {
-				controller_type block2(this->manager[j]);
+				block_type block2(this->manager[j]);
 				this->CompareBlocks(block1, block2);
 			}
 		}
@@ -1497,16 +1498,16 @@ bool TomahawkCalculateSlave<T>::Calculate(void){
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& block1, const controller_type block2){
+void TomahawkCalculateSlave<T>::CompareBlocksFunction(const block_type& block1, const block_type block2){
 #if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.getMeta().MAF == 0 || block2.getMeta().MAF == 0 || block1.getMeta().runs == 1 || block2.getMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+	if(block1.getMeta().phased == 1 && block2.getMeta().phased == 1){
+		if(block1.getMeta().MAF+block2.getMeta().MAF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1514,7 +1515,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 				this->output_manager.Add(block1, block2, this->helper);
 		}
 	} else {
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+		if(block1.getMeta().MAF+block2.getMeta().MAF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2))
 				this->output_manager.Add(block1, block2, this->helper);
 		} else {
@@ -1563,14 +1564,14 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const controller_type& blo
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controller_type& block1, const controller_type block2){
+void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, const block_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.getMeta().MAF == 0 || block2.getMeta().MAF == 0 || block1.getMeta().runs == 1 || block2.getMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+	if(block1.getMeta().MAF+block2.getMeta().MAF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {
@@ -1581,14 +1582,14 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const controll
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const controller_type& block1, const controller_type block2){
+void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const block_type& block1, const block_type block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.getMeta().MAF == 0 || block2.getMeta().MAF == 0 || block1.getMeta().runs == 1 || block2.getMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+	if(block1.getMeta().MAF+block2.getMeta().MAF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2))
 			this->output_manager.Add(block1, block2, this->helper);
 	} else {
@@ -1599,10 +1600,10 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const contro
 
 // Within-block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(controller_type& block1){
+bool TomahawkCalculateSlave<T>::CompareBlocks(block_type& block1){
 	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << *block1.support << '\t' << (block1.size()*block1.size()-block1.size())/2 << std::endl;
 	block1.reset(); // make sure it is reset
-	controller_type block2(block1);
+	block_type block2(block1);
 
 	for(U32 i = 0; i < block1.size(); ++i){
  		block2 = block1;
@@ -1622,7 +1623,7 @@ bool TomahawkCalculateSlave<T>::CompareBlocks(controller_type& block1){
 
 // Across block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(controller_type& block1, controller_type block2){
+bool TomahawkCalculateSlave<T>::CompareBlocks(block_type& block1, block_type block2){
 	// Reset
 	// Make sure pointers are the beginning
 	block1.reset();

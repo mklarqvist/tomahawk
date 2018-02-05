@@ -4,6 +4,7 @@
 #include "TomahawkSupport.h"
 #include "genotype_bitvector.h"
 #include "genotype_container_runlength.h"
+#include "../../algorithm/GenotypeBitPacker.h"
 
 namespace Tomahawk{
 namespace Base{

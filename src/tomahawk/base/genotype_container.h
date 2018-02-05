@@ -21,7 +21,6 @@ private:
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
 	typedef TomahawkEntryMeta<T>                 meta_type;
 	typedef Totempole::TotempoleEntry            header_entry;
-	typedef Totempole::TotempoleEntry            support_type;
     typedef genotype_runlength_type              value_type;
     typedef value_type&                          reference;
     typedef const value_type&                    const_reference;
@@ -31,7 +30,7 @@ private:
     typedef std::size_t                          size_type;
 
 public:
-	GenotypeContainer(const char* const data_buffer, const size_t l_buffer_length, const support_type& support, const U64& n_samples) :
+	GenotypeContainer(const char* const data_buffer, const size_t l_buffer_length, const header_entry& support, const U64& n_samples) :
 		n_entries(support.variants),
 		index_entry(support), // invoke copy ctor
 		meta_entries(static_cast<meta_type*>(::operator new[](this->n_entries*sizeof(meta_type)))),
@@ -116,6 +115,7 @@ public:
 
 	// Accessor
 	inline const meta_type& getMeta(const U32& position) const{ return(this->meta_entries[position]); }
+	inline const header_entry& getTotempole(void) const{ return(this->index_entry); }
 
 	// Capacity
 	inline const bool empty(void) const{ return(this->n_entries == 0); }
@@ -131,7 +131,7 @@ public:
 
 private:
 	size_type                 n_entries;
-	support_type              index_entry;
+	header_entry              index_entry;
 	meta_type*                meta_entries;
 	container_runlength_type* container_runlength;
 	container_bitvector_type* container_bitvector;

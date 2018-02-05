@@ -1,6 +1,8 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 
+#include "../../support/simd_definitions.h"
+
 namespace Tomahawk{
 namespace Base{
 

@@ -5,7 +5,7 @@
 #include "TomahawkReader.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
-#include "base/genotype_container.h"
+#include "base/twk_reader_implementation.h"
 
 namespace Tomahawk {
 
@@ -56,14 +56,16 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	// Construct Tomahawk manager
-	TomahawkBlockManager<const T> controller(totempole);
+	//TomahawkBlockManager<const T> controller(totempole);
+	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()*2);
+
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
 		//controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
 
-		std::cerr << i << '/' << this->reader.DataOffsetSize() << std::endl;
-		Base::GenotypeContainer<T>(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer,  this->reader.getOffsetPair(i).entry, totempole.header.samples);
+		std::cerr << i << '/' << this->reader.DataOffsetSize() << '\t' << this->reader.getOffsetPair(i).l_buffer << std::endl;
+		impl.addDataBlock(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).l_buffer,  this->reader.getOffsetPair(i).entry);
+		std::cerr << impl.size() << '>' << impl[i].size() << std::endl;
 	}
-	return false;
 
 	if(!SILENT){
 #if SIMD_AVAILABLE == 1
@@ -75,21 +77,19 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	// Build 1-bit representation from RLE data
-	if(!controller.BuildVectorized()){
-		std::cerr << Helpers::timestamp("ERROR", "SIMD") << "Failed building bit-representation..." << std::endl;
-		return false;
-	}
+	//if(!controller.BuildVectorized()){
+	//	std::cerr << Helpers::timestamp("ERROR", "SIMD") << "Failed building bit-representation..." << std::endl;
+	//	return false;
+	//}
 
-	if(!SILENT)
-		std::cerr << "Done..." << std::endl;
+	//if(!SILENT)
+	//	std::cerr << "Done..." << std::endl;
 
 	// Number of variants in memory
-	const U64 variants = controller.getVariants();
+	const U64 variants = impl.countVariants();
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
-
-	return true;
 
 	// Todo: validate
 	U64 totalComparisons = 0;
@@ -101,11 +101,11 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = from; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = controller[from].size();
+							const U32 size = impl[from].size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += controller[from].size() * controller[col].size();
+							totalComparisons += impl[from].size() * impl[col].size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -115,11 +115,11 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = this->balancer.thread_distribution[i][j].fromColumn; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = controller[from].size();
+							const U32 size = impl[from].size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += controller[from].size() * controller[col].size();
+							totalComparisons += impl[from].size() * impl[col].size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -147,7 +147,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new TomahawkCalculateSlave<T>(controller, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		slaves[i] = new TomahawkCalculateSlave<T>(impl, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
 	}
