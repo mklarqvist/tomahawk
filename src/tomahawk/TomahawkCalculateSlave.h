@@ -263,6 +263,8 @@ class TomahawkCalculateSlave{
 	typedef Support::TomahawkOutputLD     helper_type;
 	typedef Base::GenotypeBitvector<>     simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
+	typedef Interface::ProgressBar        progress_bar_type;
+	typedef Support::TomahawkSlaveSIMDHelper<> simd_helper_type;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock order_type;
@@ -334,7 +336,7 @@ private:
 	//U64 false_negative;
 
 	helper_type helper;
-	Support::TomahawkSlaveSIMDHelper<> helper_simd;
+	simd_helper_type helper_simd;
 	Algorithm::FisherMath fisherController;
 	const manager_type& manager;
 
@@ -345,7 +347,7 @@ private:
 	output_manager_type output_manager; // each thread has their own output manager
 
 	// progress
-	Interface::ProgressBar& progress;
+	progress_bar_type& progress;
 
 	// function pointers
 	phaseFunction phase_function_across;
@@ -364,7 +366,7 @@ private:
 template <class T>
 TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 		output_manager_type& writer,
-		Interface::ProgressBar& progress,
+		progress_bar_type& progress,
 		const TomahawkCalcParameters& parameters,
 		const work_order& orders) :
 	parameters(parameters),
@@ -805,10 +807,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const U32
 
 #if SIMD_AVAILABLE == 1
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
-	const U32 tailSmallest = datA.tailZero < datB.tailZero ? datA.tailZero : datB.tailZero;
+	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
 	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus = (datA.tailZero != tailSmallest ? datA.tailZero : datB.tailZero);
+	const U32 tailBonus = (datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero);
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;

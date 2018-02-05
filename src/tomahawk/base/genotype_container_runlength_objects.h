@@ -4,6 +4,13 @@
 namespace Tomahawk{
 namespace Base{
 
+/**<
+ * Primary run-length encoded genotype objects used in Tomahawk.
+ * These higher-order objects are encoded in fixed-width basic
+ * unsigned primitives.
+ * The template parameter represents the encoded primitive type
+ * for a given Tomahawk file.
+ */
 template <class T>
 class GenotypeContainerRunlengthObjects{
 private:

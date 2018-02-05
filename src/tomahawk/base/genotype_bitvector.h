@@ -14,9 +14,9 @@ namespace Base{
  * on the device then use regular memory alignment.
  *
  * Special techniques to accelerate pairwise comparisons:
- * 1) Front and tail number of SIMD _elements_ (e.g. 128 bits)
- *    that are either all 0 or all 1. This allows the algorithm
- *    to either completely skip these stretches or repeats or
+ * 1) Front and tail number of SIMD _elements_ (e.g. 128 bits / 16 bytes)
+ *    that are either all 0 or 1. This allows the algorithm
+ *    to either completely skip these stretches or
  *    resort to cheaper comparison functors.
  * 2) Counts of missingness needs to be maintained for these
  *    tail and head elements to function correctly.
@@ -52,10 +52,10 @@ public:
 	}
 
 public:
-	U32   frontZero;        // leading zeros in aligned vector width
-	U32   tailZero;         // trailing zeros in aligned vector width
-	U32   frontZeroMissing; // number of missing values in leading zeros
-	U32   tailZeroMissing;  // number of missing values in trailing zeros
+	U16   frontZero;        // leading zeros in aligned vector width
+	U16   tailZero;         // trailing zeros in aligned vector width
+	U16   frontZeroMissing; // number of missing values in leading zeros
+	U16   tailZeroMissing;  // number of missing values in trailing zeros
 	BYTE* data;
 	BYTE* mask;
 } __attribute__((aligned(16)));
