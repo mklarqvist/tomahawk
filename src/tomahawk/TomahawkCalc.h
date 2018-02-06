@@ -66,34 +66,27 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	// Construct Tomahawk manager
-	//TomahawkBlockManager<const T> controller(totempole);
 	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
 	GenotypeMetaContainerReference<T> references(totempole.header.samples, this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
-
+		// Hard copy of data into STL-like containers
 		impl.addDataBlock(this->reader.getOffsetPair(i).data,
                           this->reader.getOffsetPair(i).l_buffer,
                           this->reader.getOffsetPair(i).entry);
 
-
-		//std::cerr << impl[i].getMeta(0) << std::endl;
-		/*
-		new( &references[i] ) Base::GenotypeContainerReference<T>(
-                this->reader.getOffsetPair(i).data,
-                this->reader.getOffsetPair(i).l_buffer,
-                this->reader.getOffsetPair(i).entry,
-                totempole.getSamples()
-        );
-        */
+		// Reference interpretation of char buffer in psuedo-iterator containers
+		// directly from unaligned memory
 		references.addDataBlock(this->reader.getOffsetPair(i).data,
-		                          this->reader.getOffsetPair(i).l_buffer,
-		                          this->reader.getOffsetPair(i).entry);
+                                this->reader.getOffsetPair(i).l_buffer,
+                                this->reader.getOffsetPair(i).entry);
+
 		n_variants += references[i].getTotempole().variants;
 
 
 		/*
+		// Dump out genotypes
 		std::cerr << references[i].currentMeta().runs << std::endl;
 		for(U32 k = 0; k < references[i].size(); ++k){
 			size_t n_total = 0;
@@ -232,14 +225,6 @@ bool TomahawkCalc::Calculate(){
 		return false;
 	}
 	writer.close();
-
-	// Cleanup
-	/*
-	for(std::size_t i = 0; i < this->reader.DataOffsetSize(); ++i)
-		((references + i)->~GenotypeContainerReference)();
-
-	::operator delete[](static_cast<void*>(references));
-	*/
 
 	return true;
 }

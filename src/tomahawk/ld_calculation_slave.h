@@ -16,7 +16,6 @@
 #include "../algorithm/GenotypeBitPacker.h"
 #include "TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
-#include "TomahawkBlockManager.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
 #include "base/twk_reader_implementation.h"
