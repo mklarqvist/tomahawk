@@ -6,14 +6,14 @@ namespace Support{
 
 #pragma pack(push, 1)
 template <class T>
-struct __attribute__((packed, aligned(1))) TomahawkRun{
+struct __attribute__((packed, aligned(1))) GenotypeDiploidRun{
 public:
-	TomahawkRun(){}
-	TomahawkRun(const char* const buffer){
+	GenotypeDiploidRun(){}
+	GenotypeDiploidRun(const char* const buffer){
 		T* t = reinterpret_cast<T*>(this->alleleA);
 		*t   = *reinterpret_cast<T*>(buffer);
 	}
-	~TomahawkRun(){}
+	~GenotypeDiploidRun(){}
 
 	T alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
 	  alleleB: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
@@ -22,14 +22,14 @@ public:
 
 
 template <class T>
-struct __attribute__((packed, aligned(1))) TomahawkRunPacked{
+struct __attribute__((packed, aligned(1))) GenotypeDiploidRunPacked{
 public:
-	TomahawkRunPacked(){}
-	TomahawkRunPacked(const char* const buffer){
+	GenotypeDiploidRunPacked(){}
+	GenotypeDiploidRunPacked(const char* const buffer){
 		T* t = reinterpret_cast<T*>(this->alleles);
 		*t   = *reinterpret_cast<T*>(buffer);
 	}
-	~TomahawkRunPacked(){}
+	~GenotypeDiploidRunPacked(){}
 
 	T alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
 	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;

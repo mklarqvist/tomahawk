@@ -17,7 +17,7 @@ private:
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
 
-	typedef TomahawkEntryMeta<T>       meta_type;
+	typedef MetaEntry<T>               meta_type;
 	typedef Totempole::TotempoleEntry  header_entry;
 	typedef Totempole::TotempoleEntry  support_type;
 
@@ -113,7 +113,7 @@ public:
 		if(this->n_entries + 1 == this->n_capacity || this->capacity() == 0)
 			return false;
 
-		std::cerr << "constructing new @ " << this->n_entries << "/" << this->n_capacity << " and samples: " << this->n_samples << std::endl;
+		//std::cerr << "constructing new @ " << this->n_entries << "/" << this->n_capacity << " and samples: " << this->n_samples << std::endl;
 		new( &this->__entries[this->n_entries] ) value_type( data, l_data, support, this->n_samples );
 		++this->n_entries;
 		return true;

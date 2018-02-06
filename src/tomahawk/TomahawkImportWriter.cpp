@@ -197,7 +197,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	}
 
 	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-	const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 	if(n_runs == 1){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back
@@ -239,7 +239,7 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 	}
 
 	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
-	const TomahawkEntryMetaBase& base_meta = *reinterpret_cast<const TomahawkEntryMetaBase* const>(&this->buffer_meta_[meta_start_pos]);
+	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 	if(n_runs == 1){
 		this->buffer_meta_.pointer = meta_start_pos; // reroll back

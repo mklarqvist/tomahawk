@@ -11,10 +11,10 @@
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
 #include "../algorithm/compression/TomahawkImportRLE.h"
-#include "base/TomahawkEntryMeta.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
+#include "base/meta_entry.h"
 #include "TomahawkImporterFilters.h"
 
 namespace Tomahawk {

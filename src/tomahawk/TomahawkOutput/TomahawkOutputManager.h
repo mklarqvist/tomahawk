@@ -27,7 +27,7 @@ struct TomahawkOutputManager{
 	typedef IO::TomahawkOutputEntry                   entry_type;
 	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
-	typedef TomahawkEntryMeta<T>                      meta_type;
+	typedef MetaEntry<T>                      meta_type;
 	typedef Totempole::TotempoleEntry                 header_entry;
 
 public:

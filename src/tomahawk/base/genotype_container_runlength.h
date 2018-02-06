@@ -3,9 +3,9 @@
 
 #include <cassert>
 
-#include "TomahawkEntryMeta.h"
-#include "TomahawkSupport.h"
 #include "genotype_container_runlength_objects.h"
+#include "genotype_objects.h"
+#include "meta_entry.h"
 
 namespace Tomahawk{
 namespace Base{
@@ -21,7 +21,7 @@ private:
     typedef const value_type*                    const_pointer;
     typedef std::ptrdiff_t                       difference_type;
     typedef std::size_t                          size_type;
-	typedef TomahawkEntryMeta<T>                 meta_type;
+	typedef MetaEntry<T>                 meta_type;
 
 public:
 	GenotypeContainerRunlength() :

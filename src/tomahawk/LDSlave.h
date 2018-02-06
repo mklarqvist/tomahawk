@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKCALCULATESLAVE_H_
-#define TOMAHAWK_TOMAHAWKCALCULATESLAVE_H_
+#ifndef TOMAHAWK_LDSLAVE_H_
+#define TOMAHAWK_LDSLAVE_H_
 
 #include <cmath>
 #include <thread>
@@ -252,39 +252,39 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 #endif // ENDIF SIMD_AVAILABLE == 1
 
 template <class T>
-class TomahawkCalculateSlave{
-	typedef TomahawkCalculateSlave<T>     self_type;
-	typedef TomahawkReaderImpl<T>         manager_type;
-	typedef Base::GenotypeContainer<T>    block_type;
-	typedef const TomahawkEntryMeta<T>    meta_type;
-	typedef const Support::TomahawkRun<T> run_type;
-	typedef Totempole::TotempoleEntry     totempole_entry_type;
-	typedef IO::TomahawkOutputManager<T>  output_manager_type;
-	typedef Support::TomahawkOutputLD     helper_type;
-	typedef Base::GenotypeBitvector<>     simd_pair;
+class LDSlave{
+	typedef LDSlave<T>                           self_type;
+	typedef TomahawkReaderImpl<T>                manager_type;
+	typedef Base::GenotypeContainer<T>           block_type;
+	typedef const MetaEntry<T>                   meta_type;
+	typedef const Support::GenotypeDiploidRun<T> run_type;
+	typedef Totempole::TotempoleEntry            totempole_entry_type;
+	typedef IO::TomahawkOutputManager<T>         output_manager_type;
+	typedef Support::TomahawkOutputLD            helper_type;
+	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
-	typedef Interface::ProgressBar        progress_bar_type;
-	typedef Support::TomahawkSlaveSIMDHelper<> simd_helper_type;
+	typedef Interface::ProgressBar               progress_bar_type;
+	typedef Support::TomahawkSlaveSIMDHelper<>   simd_helper_type;
 
 	// Work orders
-	typedef Tomahawk::LoadBalancerBlock order_type;
-	typedef std::vector<order_type> work_order;
+	typedef Tomahawk::LoadBalancerBlock          order_type;
+	typedef std::vector<order_type>              work_order;
 
 	// Function pointers
 	typedef void (self_type::*phaseFunction)(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 
 public:
-	TomahawkCalculateSlave(const manager_type& manager,
-                          output_manager_type& writer,
-                       Interface::ProgressBar& progress,
-                 const TomahawkCalcParameters& parameters,
-                             const work_order& orders);
+	LDSlave(const manager_type& manager,
+           output_manager_type& writer,
+        Interface::ProgressBar& progress,
+  const TomahawkCalcParameters& parameters,
+              const work_order& orders);
 
-	~TomahawkCalculateSlave();
+	~LDSlave();
 
-	TomahawkCalculateSlave& operator=(const TomahawkCalculateSlave& other);
-	TomahawkCalculateSlave& operator=(TomahawkCalculateSlave&& other) noexcept;
-	TomahawkCalculateSlave& operator+=(const TomahawkCalculateSlave& other);
+	LDSlave& operator=(const LDSlave& other);
+	LDSlave& operator=(LDSlave&& other) noexcept;
+	LDSlave& operator+=(const LDSlave& other);
 
 	std::thread* Start(void){
 		this->thread = std::thread(&self_type::Calculate, this);
@@ -302,19 +302,27 @@ private:
 	bool Calculate();
 	bool DiagonalWorkOrder(const order_type& order);
 	bool SquareWorkOrder(const order_type& order);
+
+	// Comparator functions
 	bool CompareBlocks(const U32& block1);
 	bool CompareBlocks(const U32& block1, const U32& block2);
 	inline void CompareBlocksFunction(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	inline void CompareBlocksFunctionForcedPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	inline void CompareBlocksFunctionForcedUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
+
+	// Phased functions
 	bool CalculateLDPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	bool CalculateLDPhasedMath(void);
 	bool CalculateLDPhasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	bool CalculateLDPhasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
+
+	// Unphased functions
 	bool CalculateLDUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	bool CalculateLDUnphasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	bool CalculateLDUnphasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
 	bool CalculateLDUnphasedMath(void);
+
+	// General functions
 	double EstimateChiSq(const double& target, const double& p, const double& q) const;
 	bool ChooseF11Calculate(const double& target, const double& p, const double& q);
 	void setFLAGs(const U32& block1, const U32& block2, const U32& position1, const U32& position2);
@@ -364,7 +372,7 @@ private:
 };
 
 template <class T>
-TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
+LDSlave<T>::LDSlave(const manager_type& manager,
 		output_manager_type& writer,
 		progress_bar_type& progress,
 		const TomahawkCalcParameters& parameters,
@@ -400,11 +408,11 @@ TomahawkCalculateSlave<T>::TomahawkCalculateSlave(const manager_type& manager,
 }
 
 template <class T>
-TomahawkCalculateSlave<T>::~TomahawkCalculateSlave(){ }
+LDSlave<T>::~LDSlave(){ }
 
 // Reduce function
 template <class T>
-TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkCalculateSlave<T>& other){
+LDSlave<T>& LDSlave<T>::operator+=(const LDSlave<T>& other){
 	this->block_comparisons += other.block_comparisons;
 	this->variant_comparisons += other.variant_comparisons;
 	this->impossible += other.impossible;
@@ -418,7 +426,7 @@ TomahawkCalculateSlave<T>& TomahawkCalculateSlave<T>::operator+=(const TomahawkC
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::setFLAGs(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+void LDSlave<T>::setFLAGs(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	// If long range
 	const meta_type& mA = manager[block1].getMeta(position1);
 	const meta_type& mB = manager[block2].getMeta(position2);
@@ -447,7 +455,7 @@ void TomahawkCalculateSlave<T>::setFLAGs(const U32& block1, const U32& block2, c
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	if(manager[block1].getMeta(position1).MAF == 0 || manager[block2].getMeta(position2).MAF == 0)
 		return false;
 
@@ -456,9 +464,9 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const U32& block1, const U32
 	const rle_type& a =  manager[block1][position1];
 	const rle_type& b =  manager[block2][position2];
 
-	/////////////
+	/*////////////
 	// Calculate
-	/////////////
+	////////////*/
 	T currentLengthA = a[0].runs;
 	T currentLengthB = b[0].runs;
 
@@ -527,7 +535,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphased(const U32& block1, const U32
 }
 
 template <class T>
-double TomahawkCalculateSlave<T>::EstimateChiSq(const double& target, const double& p, const double& q) const{
+double LDSlave<T>::EstimateChiSq(const double& target, const double& p, const double& q) const{
 	const double f12 = p - target;
 	const double f21 = q - target;
 	const double f22 = 1 - (target + f12 + f21);
@@ -554,7 +562,7 @@ double TomahawkCalculateSlave<T>::EstimateChiSq(const double& target, const doub
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const double& p, const double& q){
+bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const double& q){
 	this->helper.haplotypeCounts[0] = target;
 	this->helper.haplotypeCounts[1] = p - this->helper.haplotypeCounts[0];
 	this->helper.haplotypeCounts[2] = q - this->helper.haplotypeCounts[0];
@@ -604,7 +612,7 @@ bool TomahawkCalculateSlave<T>::ChooseF11Calculate(const double& target, const d
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
+bool LDSlave<T>::CalculateLDUnphasedMath(void){
 	// Total amount of non-missing alleles
 	this->helper.totalAlleleCounts  = this->helper[0]  + this->helper[1]  + this->helper[4]  + this->helper[5]
 									+ this->helper[16] + this->helper[17] + this->helper[20] + this->helper[21]
@@ -658,10 +666,10 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 	//const double n21 = (2.0*this->helper[80] + this->helper[81] + this->helper[84] + this->helper[16] + this->helper[64]);
 	//const double n22 = (2.0*this->helper[85] + this->helper[81] + this->helper[84] + this->helper[21] + this->helper[85]);
 
-	/////////////////////////
+	/*////////////////////////
 	// Cubic function: a3x^3 + a2x^2 + a1x + d = 0 <==> ax^3 + bx^2 + cx + d = 0
 	// Cubic constants
-	/////////////////////////
+	////////////////////////*/
 	const double G   = 1.0 - 2.0*p - 2.0*q;
 	const double dee = -n11*p*q;
 	const double c   = -n11*G - number_of_hets*(1.0 - p - q) + 2.0*this->helper.totalAlleleCounts*p*q;
@@ -786,7 +794,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedMath(void){
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	this->helper.resetUnphased();
 
 	this->helper_simd.counters[0] = 0;
@@ -914,7 +922,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const U32
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDUnphasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	#if SLAVE_DEBUG_MODE < 6
 	if(manager[block1].getMeta(position1).missing == 0 && manager[block2].getMeta(position2).missing == 0)
 		return(this->CalculateLDUnphasedVectorizedNoMissing(block1, block2, position1, position2));
@@ -1056,7 +1064,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDUnphasedVectorized(const U32& block1,
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDPhasedVectorized(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	#if SLAVE_DEBUG_MODE < 6
 	if(manager[block1].getMeta(position1).missing == 0 && manager[block2].getMeta(position2).missing == 0)
 		return(this->CalculateLDPhasedVectorizedNoMissing(block1, block2, position1, position2));
@@ -1178,7 +1186,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorized(const U32& block1, c
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissing(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	this->helper.resetPhased();
 	this->helper_simd.counters[0] = 0;
 	this->helper_simd.counters[1] = 0;
@@ -1281,7 +1289,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedVectorizedNoMissing(const U32& 
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+bool LDSlave<T>::CalculateLDPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	if(manager[block1].getMeta(position1).MAF == 0 || manager[block2].getMeta(position2).MAF == 0)
 		return false;
 
@@ -1367,7 +1375,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhased(const U32& block1, const U32& 
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
+bool LDSlave<T>::CalculateLDPhasedMath(void){
 	// Trigger phased flag
 	this->helper.setPhased();
 
@@ -1436,7 +1444,7 @@ bool TomahawkCalculateSlave<T>::CalculateLDPhasedMath(void){
 
 // Execute diagonal working order
 template <class T>
-bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
+bool LDSlave<T>::DiagonalWorkOrder(const order_type& order){
 	for(U32 i = order.fromRow; i < order.toRow; ++i){
 		//block_type block1(this->manager[i]);
 
@@ -1455,7 +1463,7 @@ bool TomahawkCalculateSlave<T>::DiagonalWorkOrder(const order_type& order){
 
 // Execute square working order
 template <class T>
-bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
+bool LDSlave<T>::SquareWorkOrder(const order_type& order){
 	if(order.staggered)
 		return(this->DiagonalWorkOrder(order));
 
@@ -1476,7 +1484,7 @@ bool TomahawkCalculateSlave<T>::SquareWorkOrder(const order_type& order){
 }
 
 template <class T>
-bool TomahawkCalculateSlave<T>::Calculate(void){
+bool LDSlave<T>::Calculate(void){
 	// If there is no data
 	if(this->manager.size() == 0){
 		std::cerr << Helpers::timestamp("ERROR", "CONTROLLER") << "There is no data..." << std::endl;
@@ -1503,7 +1511,7 @@ bool TomahawkCalculateSlave<T>::Calculate(void){
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunction(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+void LDSlave<T>::CompareBlocksFunction(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 #if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
 	if(manager[block1].getMeta(position1).MAF == 0 || manager[block2].getMeta(position2).MAF == 0 || manager[block1].getMeta(position1).runs == 1 || manager[block2].getMeta(position2).runs == 1){
@@ -1577,9 +1585,11 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunction(const U32& block1, const U
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+void LDSlave<T>::CompareBlocksFunctionForcedPhased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	// Ignore when one or both is invariant
-	if(manager[block1].getMeta(position1).MAF == 0 || manager[block2].getMeta(position2).MAF == 0 || manager[block1].getMeta(position1).runs == 1 || manager[block2].getMeta(position2).runs == 1){
+	if(manager[block1].getMeta(position1).MAF  == 0 || manager[block2].getMeta(position2).MAF  == 0 ||
+       manager[block1].getMeta(position1).runs == 1 || manager[block2].getMeta(position2).runs == 1)
+	{
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
@@ -1599,9 +1609,11 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedPhased(const U32& blo
 }
 
 template <class T>
-void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
+void LDSlave<T>::CompareBlocksFunctionForcedUnphased(const U32& block1, const U32& block2, const U32& position1, const U32& position2){
 	// Ignore when one or both is invariant
-	if(manager[block1].getMeta(position1).MAF == 0 || manager[block2].getMeta(position2).MAF == 0 || manager[block1].getMeta(position1).runs == 1 || manager[block2].getMeta(position2).runs == 1){
+	if(manager[block1].getMeta(position1).MAF  == 0 || manager[block2].getMeta(position2).MAF  == 0 ||
+       manager[block1].getMeta(position1).runs == 1 || manager[block2].getMeta(position2).runs == 1)
+	{
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
@@ -1621,7 +1633,7 @@ void TomahawkCalculateSlave<T>::CompareBlocksFunctionForcedUnphased(const U32& b
 
 // Within-block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1){
+bool LDSlave<T>::CompareBlocks(const U32& block1){
 	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << *block1.support << '\t' << (block1.size()*block1.size()-block1.size())/2 << std::endl;
 	//block1.reset(); // make sure it is reset
 	//block_type block2(block1);
@@ -1644,7 +1656,7 @@ bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1){
 
 // Across block comparisons
 template <class T>
-bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1, const U32& block2){
+bool LDSlave<T>::CompareBlocks(const U32& block1, const U32& block2){
 	// Reset
 	// Make sure pointers are the beginning
 	//block1.reset();
@@ -1670,4 +1682,4 @@ bool TomahawkCalculateSlave<T>::CompareBlocks(const U32& block1, const U32& bloc
 
 }
 
-#endif /* TOMAHAWK_TOMAHAWKCALCULATESLAVE_H_ */
+#endif /* TOMAHAWK_LDSLAVE_H_ */

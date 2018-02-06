@@ -1,6 +1,8 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
 
+#include "genotype_objects.h"
+
 namespace Tomahawk{
 namespace Base{
 
@@ -15,7 +17,7 @@ template <class T>
 class GenotypeContainerRunlengthObjects{
 private:
     typedef GenotypeContainerRunlengthObjects self_type;
-    typedef Support::TomahawkRun<T>           value_type;
+    typedef Support::GenotypeDiploidRun<T>    value_type;
     typedef value_type&                       reference;
     typedef const value_type&                 const_reference;
     typedef value_type*                       pointer;

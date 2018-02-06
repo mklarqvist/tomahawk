@@ -56,22 +56,37 @@ bool TomahawkCalc::Calculate(){
 		return false;
 	}
 
+	if(!SILENT){
+	#if SIMD_AVAILABLE == 1
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+	#else
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+	#endif
+		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
+	}
+
 	// Construct Tomahawk manager
 	//TomahawkBlockManager<const T> controller(totempole);
-	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()*2);
+	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
 	Base::GenotypeContainerReference<T>* references = static_cast<Base::GenotypeContainerReference<T>*>(::operator new[](this->reader.DataOffsetSize()*sizeof(Base::GenotypeContainerReference<T>)));
 
+	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
+
 		impl.addDataBlock(this->reader.getOffsetPair(i).data,
                           this->reader.getOffsetPair(i).l_buffer,
                           this->reader.getOffsetPair(i).entry);
 
+
+		//std::cerr << impl[i].getMeta(0) << std::endl;
 		new( &references[i] ) Base::GenotypeContainerReference<T>(
                 this->reader.getOffsetPair(i).data,
                 this->reader.getOffsetPair(i).l_buffer,
                 this->reader.getOffsetPair(i).entry,
                 totempole.getSamples()
         );
+		n_variants += references[i].getTotempole().variants;
+
 
 		/*
 		std::cerr << references[i].currentMeta().runs << std::endl;
@@ -88,20 +103,8 @@ bool TomahawkCalc::Calculate(){
 		*/
 	}
 
-	// Cleanup
-	for(std::size_t i = 0; i < this->reader.DataOffsetSize(); ++i)
-		((references + i)->~GenotypeContainerReference)();
-
-	::operator delete[](static_cast<void*>(references));
-
-	if(!SILENT){
-#if SIMD_AVAILABLE == 1
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-#else
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-#endif
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
-	}
+	if(!SILENT)
+		std::cerr << "Done..." << std::endl;
 
 	// Number of variants in memory
 	const U64 variants = impl.countVariants();
@@ -109,7 +112,7 @@ bool TomahawkCalc::Calculate(){
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
-	// Todo: validate
+	// Todo: validate & decouple
 	U64 totalComparisons = 0;
 	for(U32 i = 0; i < this->balancer.thread_distribution.size(); ++i){
 		for(U32 j = 0; j < this->balancer.thread_distribution[i].size(); ++j){
@@ -119,11 +122,13 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = from; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = impl[from].size();
+							//const U32 size = impl[from].size();
+							const U32 size = this->reader.getOffsetPair(from).entry.variants;
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += impl[from].size() * impl[col].size();
+							//totalComparisons += impl[from].size() * impl[col].size();
+							totalComparisons += this->reader.getOffsetPair(from).entry.variants * this->reader.getOffsetPair(col).entry.variants;
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -133,11 +138,13 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = this->balancer.thread_distribution[i][j].fromColumn; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = impl[from].size();
+							//const U32 size = impl[from].size();
+							const U32 size = this->reader.getOffsetPair(from).entry.variants;
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += impl[from].size() * impl[col].size();
+							//totalComparisons += impl[from].size() * impl[col].size();
+							totalComparisons += this->reader.getOffsetPair(from).entry.variants * this->reader.getOffsetPair(col).entry.variants;
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -155,7 +162,7 @@ bool TomahawkCalc::Calculate(){
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
-	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->parameters.n_threads];
+	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
 	std::vector<std::thread*> thread_pool;
 
 	// Setup workers
@@ -165,7 +172,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new TomahawkCalculateSlave<T>(impl, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		slaves[i] = new LDSlave<T>(impl, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
 	}
@@ -220,6 +227,12 @@ bool TomahawkCalc::Calculate(){
 		return false;
 	}
 	writer.close();
+
+	// Cleanup
+	for(std::size_t i = 0; i < this->reader.DataOffsetSize(); ++i)
+		((references + i)->~GenotypeContainerReference)();
+
+	::operator delete[](static_cast<void*>(references));
 
 	return true;
 }

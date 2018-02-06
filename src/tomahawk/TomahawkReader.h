@@ -12,10 +12,10 @@
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
 #include "../algorithm/Balancer.h"
+#include "base/meta_entry.h"
 #include "base/twk_reader_implementation.h"
+#include "LDSlave.h"
 #include "TomahawkCalcParameters.h"
-#include "base/TomahawkEntryMeta.h"
-#include "TomahawkCalculateSlave.h"
 
 namespace Tomahawk {
 

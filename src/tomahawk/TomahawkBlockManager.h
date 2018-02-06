@@ -3,11 +3,11 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/GenotypeBitPacker.h"
-#include "base/TomahawkSupport.h"
-#include "../tomahawk/base/TomahawkEntryMeta.h"
+#include "../tomahawk/base/meta_entry.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "base/genotype_container_bitvector.h"
+#include "base/genotype_objects.h"
 
 namespace Tomahawk{
 
@@ -22,14 +22,14 @@ struct TomahawkBlock{
 	typedef size_t        size_type;
 	typedef ptrdiff_t     difference_type;
 
-	typedef TomahawkEntryMeta<T> meta_type;
+	typedef MetaEntry<T> meta_type;
 
 public:
 	TomahawkBlock(const char* target, const Totempole::TotempoleEntry& support) :
 		metaPointer(0),
 		runsPointer(0),
 		support(&support),
-		meta(reinterpret_cast<const TomahawkEntryMeta<T>* const>(target)),
+		meta(reinterpret_cast<const MetaEntry<T>* const>(target)),
 		runs(reinterpret_cast<const type* const>(&target[(TOMAHAWK_ENTRY_META_SIZE + sizeof(T)) * support.variants])),
 		packed(new Base::GenotypeContainerBitvector)
 	{
@@ -180,7 +180,7 @@ bool TomahawkBlock<T, Y>::buildPacked(const U64& samples){
 template <class T>
 class TomahawkBlockManager{
 	typedef TomahawkBlockManager<T>    self_type;
-	typedef TomahawkBlock<const T, Support::TomahawkRun<T>>     controller_type;
+	typedef TomahawkBlock<const T, Support::GenotypeDiploidRun<T>>     controller_type;
 	typedef Totempole::TotempoleEntry  totempole_entry_type;
 	typedef Totempole::TotempoleReader totempole_reader_type;
 

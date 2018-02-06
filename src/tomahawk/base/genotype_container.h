@@ -20,7 +20,7 @@ private:
 	typedef GenotypeContainerRunlength<T>        container_runlength_type;
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
 	typedef Base::GenotypeBitvector<>            genotype_bitvector_type;
-	typedef TomahawkEntryMeta<T>                 meta_type;
+	typedef MetaEntry<T>                         meta_type;
 	typedef Totempole::TotempoleEntry            header_entry;
     typedef genotype_runlength_type              value_type;
     typedef value_type&                          reference;
@@ -61,7 +61,7 @@ public:
 
 	~GenotypeContainer(){
 		for(size_type i = 0; i < this->size(); ++i)
-			((this->meta_entries + i)->~TomahawkEntryMeta<T>)();
+			((this->meta_entries + i)->~MetaEntry<T>)();
 
 		::operator delete[](static_cast<void*>(this->meta_entries));
 		delete this->container_runlength;

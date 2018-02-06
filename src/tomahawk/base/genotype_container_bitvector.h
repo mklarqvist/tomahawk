@@ -1,10 +1,10 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 
-#include "TomahawkSupport.h"
 #include "genotype_bitvector.h"
 #include "genotype_container_runlength.h"
 #include "../../algorithm/GenotypeBitPacker.h"
+#include "genotype_objects.h"
 
 namespace Tomahawk{
 namespace Base{
@@ -158,7 +158,7 @@ public:
 	bool Build(const GenotypeContainerRunlength<T>& genotype_container, const U64& n_samples);
 
 	template <class T>
-	bool Build(const Support::TomahawkRun<T>* const genotype_runs, const TomahawkEntryMeta<T>* const meta_entries, const size_t& n_entries, const U64& n_samples);
+	bool Build(const Support::GenotypeDiploidRun<T>* const genotype_runs, const MetaEntry<T>* const meta_entries, const size_t& n_entries, const U64& n_samples);
 
 public:
 	size_type n_entries;
@@ -199,7 +199,7 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 
 		// Cycle over runs in container
 		for(U32 j = 0; j < genotype_container[i].size(); ++j){
-			const Support::TomahawkRunPacked<T>* const packed = reinterpret_cast<const Support::TomahawkRunPacked<T>* const>(&genotype_container[i][j]);
+			const Support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<T>* const>(&genotype_container[i][j]);
 			packerA.add(lookup_data[packed->alleles], packed->runs);
 			packerB.add(lookup_mask[packed->alleles], packed->runs);
 		}
@@ -235,8 +235,8 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 }
 
 template <class T>
-bool GenotypeContainerBitvector::Build(const Support::TomahawkRun<T>* const genotype_runs,
-                                          const TomahawkEntryMeta<T>* const meta_entries,
+bool GenotypeContainerBitvector::Build(const Support::GenotypeDiploidRun<T>* const genotype_runs,
+                                          const MetaEntry<T>* const meta_entries,
                                                         const size_t& n_entries,
                                                            const U64& n_samples)
 {
@@ -270,7 +270,7 @@ bool GenotypeContainerBitvector::Build(const Support::TomahawkRun<T>* const geno
 
 		// Cycle over runs in container
 		for(U32 j = 0; j < meta_entries[i].runs; ++j, cumulative_position++){
-			const Support::TomahawkRunPacked<T>* const packed = reinterpret_cast<const Support::TomahawkRunPacked<T>* const>(&genotype_runs[cumulative_position]);
+			const Support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<T>* const>(&genotype_runs[cumulative_position]);
 			packerA.add(lookup_data[packed->alleles], packed->runs);
 			packerB.add(lookup_mask[packed->alleles], packed->runs);
 		}

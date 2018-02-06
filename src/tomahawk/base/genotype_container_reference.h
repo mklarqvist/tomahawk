@@ -34,14 +34,14 @@ protected:
 	typedef Totempole::TotempoleEntry   header_entry_type;
 	typedef GenotypeContainerBitvector  container_bitvector_type;
 	typedef Base::GenotypeBitvector<>   genotype_bitvector_type;
-	typedef Support::TomahawkRun<T>     value_type;
+	typedef Support::GenotypeDiploidRun<T>     value_type;
 	typedef value_type&                 reference;
 	typedef const value_type&           const_reference;
 	typedef value_type*                 pointer;
 	typedef const value_type*           const_pointer;
 	typedef std::ptrdiff_t              difference_type;
 	typedef std::size_t                 size_type;
-	typedef TomahawkEntryMeta<T>        meta_type;
+	typedef MetaEntry<T>        meta_type;
 
 public:
 	GenotypeContainerReference() :
@@ -70,6 +70,7 @@ public:
 		this->bit_vectors->Build(this->genotype_entries, this->meta_entries, this->size(), n_samples);
 	}
 
+	// Copy ctor: copies iterator positions and pointers
 	GenotypeContainerReference(const self_type& other) :
 		n_entries(other.n_entries),
 		iterator_position_meta(other.iterator_position_meta),
@@ -95,7 +96,7 @@ public:
 	}
 
 	// Accessor
-	inline const header_entry_type& getTotempole(void) const{ return(this->index_entry); }
+	inline const header_entry_type& getTotempole(void) const{ return(*this->index_entry); }
 	inline const genotype_bitvector_type& getBitvector(const U32& position) const{ return(this->bit_vectors->at(position)); }
 
 	// Capacity
@@ -110,7 +111,6 @@ public:
 	inline const meta_type& getMeta(const U32& position) const{ return(this->meta_entries[position]); }
 	inline const meta_type& currentMeta(void) const{ return(this->meta_entries[this->iterator_position_meta]); }
 	inline const_pointer current(void) const{ return(&this->genotype_entries[this->iterator_position_runs]); }
-	//inline const T& currentSize(void) const{ return(this->currentMeta().runs); }
 
 	// Psuedo-iterator functionality
 	inline void operator++(void){ this->iterator_position_runs += this->currentMeta().runs; ++this->iterator_position_meta; }
