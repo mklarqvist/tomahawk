@@ -31,17 +31,17 @@ private:
 	typedef GenotypeContainerReference  self_type;
 
 protected:
-	typedef Totempole::TotempoleEntry   header_entry_type;
-	typedef GenotypeContainerBitvector  container_bitvector_type;
-	typedef Base::GenotypeBitvector<>   genotype_bitvector_type;
-	typedef Support::GenotypeDiploidRun<T>     value_type;
-	typedef value_type&                 reference;
-	typedef const value_type&           const_reference;
-	typedef value_type*                 pointer;
-	typedef const value_type*           const_pointer;
-	typedef std::ptrdiff_t              difference_type;
-	typedef std::size_t                 size_type;
-	typedef MetaEntry<T>        meta_type;
+	typedef Totempole::TotempoleEntry      header_entry_type;
+	typedef GenotypeContainerBitvector     container_bitvector_type;
+	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
+	typedef Support::GenotypeDiploidRun<T> value_type;
+	typedef value_type&                    reference;
+	typedef const value_type&              const_reference;
+	typedef value_type*                    pointer;
+	typedef const value_type*              const_pointer;
+	typedef std::ptrdiff_t                 difference_type;
+	typedef std::size_t                    size_type;
+	typedef MetaEntry<T>                   meta_type;
 
 public:
 	GenotypeContainerReference() :

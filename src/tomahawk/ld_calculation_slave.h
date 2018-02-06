@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_LDSLAVE_H_
-#define TOMAHAWK_LDSLAVE_H_
+#ifndef TOMAHAWK_LD_CALCULATION_SLAVE_H_
+#define TOMAHAWK_LD_CALCULATION_SLAVE_H_
 
 #include <cmath>
 #include <thread>
@@ -1682,4 +1682,4 @@ bool LDSlave<T>::CompareBlocks(const U32& block1, const U32& block2){
 
 }
 
-#endif /* TOMAHAWK_LDSLAVE_H_ */
+#endif /* TOMAHAWK_LD_CALCULATION_SLAVE_H_ */

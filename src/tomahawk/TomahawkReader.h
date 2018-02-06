@@ -14,7 +14,7 @@
 #include "../algorithm/Balancer.h"
 #include "base/meta_entry.h"
 #include "base/twk_reader_implementation.h"
-#include "LDSlave.h"
+#include "ld_calculation_slave.h"
 #include "TomahawkCalcParameters.h"
 
 namespace Tomahawk {

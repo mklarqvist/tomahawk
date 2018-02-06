@@ -6,7 +6,7 @@
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
 #include "base/twk_reader_implementation.h"
-#include "base/genotype_container_reference.h"
+#include "base/genotype_meta_container_reference.h"
 
 namespace Tomahawk {
 
@@ -68,7 +68,7 @@ bool TomahawkCalc::Calculate(){
 	// Construct Tomahawk manager
 	//TomahawkBlockManager<const T> controller(totempole);
 	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
-	Base::GenotypeContainerReference<T>* references = static_cast<Base::GenotypeContainerReference<T>*>(::operator new[](this->reader.DataOffsetSize()*sizeof(Base::GenotypeContainerReference<T>)));
+	GenotypeMetaContainerReference<T> references(totempole.header.samples, this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
@@ -79,12 +79,17 @@ bool TomahawkCalc::Calculate(){
 
 
 		//std::cerr << impl[i].getMeta(0) << std::endl;
+		/*
 		new( &references[i] ) Base::GenotypeContainerReference<T>(
                 this->reader.getOffsetPair(i).data,
                 this->reader.getOffsetPair(i).l_buffer,
                 this->reader.getOffsetPair(i).entry,
                 totempole.getSamples()
         );
+        */
+		references.addDataBlock(this->reader.getOffsetPair(i).data,
+		                          this->reader.getOffsetPair(i).l_buffer,
+		                          this->reader.getOffsetPair(i).entry);
 		n_variants += references[i].getTotempole().variants;
 
 
@@ -229,10 +234,12 @@ bool TomahawkCalc::Calculate(){
 	writer.close();
 
 	// Cleanup
+	/*
 	for(std::size_t i = 0; i < this->reader.DataOffsetSize(); ++i)
 		((references + i)->~GenotypeContainerReference)();
 
 	::operator delete[](static_cast<void*>(references));
+	*/
 
 	return true;
 }
