@@ -106,7 +106,13 @@ public:
 	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
-	// Update
+	/**<
+	 * Add a `TWK` block as a reference container to the meta container
+	 * @param data    Input data reference
+	 * @param l_data  Length of input data
+	 * @param support Paired `TWI` header with this block
+	 * @return        Returns TRUE upon success or FALSE otherwise
+	 */
 	bool addDataBlock(const char* const data, const size_t l_data, const support_type& support){
 		// Container is full
 		// Resize is required
@@ -119,6 +125,10 @@ public:
 		return true;
 	}
 
+	/**<
+	 * Counts the number of variants referenced in this meta container
+	 * @return Returns the total number of variants in all containers
+	 */
 	const U64 countVariants(void) const{
 		U64 n_total = 0;
 		for(U32 i = 0; i < this->size(); ++i)

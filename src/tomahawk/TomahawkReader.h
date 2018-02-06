@@ -16,6 +16,7 @@
 #include "base/twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
 #include "TomahawkCalcParameters.h"
+#include "../totempole/TotempoleReader.h"
 
 namespace Tomahawk {
 

@@ -398,6 +398,7 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	phased_unbalanced_adjustment((this->samples*2)%8),
 	unphased_unbalanced_adjustment(this->samples%4)
 {
+	// Decide block comparator function
 	if(this->parameters.force == TomahawkCalcParameters::force_method::none)
 		this->phase_function_across = &self_type::CompareBlocksFunction;
 	else if(this->parameters.force == TomahawkCalcParameters::force_method::phasedFunction)
@@ -412,15 +413,15 @@ LDSlave<T>::~LDSlave(){ }
 // Reduce function
 template <class T>
 LDSlave<T>& LDSlave<T>::operator+=(const LDSlave<T>& other){
-	this->block_comparisons += other.block_comparisons;
+	this->block_comparisons   += other.block_comparisons;
 	this->variant_comparisons += other.variant_comparisons;
-	this->impossible += other.impossible;
-	this->possible += other.possible;
-	this->no_uncertainty += other.no_uncertainty;
+	this->impossible          += other.impossible;
+	this->possible            += other.possible;
+	this->no_uncertainty      += other.no_uncertainty;
 	this->insufficent_alleles += other.insufficent_alleles;
-	//this->false_positive += other.false_positive;
-	//this->false_negative += other.false_negative;
-	this->output_manager += other.output_manager;
+	//this->false_positive    += other.false_positive;
+	//this->false_negative    += other.false_negative;
+	this->output_manager      += other.output_manager;
 	return(*this);
 }
 
@@ -573,7 +574,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 	this->helper[4] = this->helper.haplotypeCounts[2] * 2*this->helper.totalAlleleCounts;
 	this->helper[5] = this->helper.haplotypeCounts[3] * 2*this->helper.totalAlleleCounts;
 
-	this->helper.D = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
+	this->helper.D  = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
 	this->helper.R2 = this->helper.D*this->helper.D / (p * (1 - p) * q * (1 - q));
 
 	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
@@ -591,7 +592,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 		}
 		this->helper.Dprime = this->helper.D / this->helper.Dmax;
 
-		 if(this->helper.D < 0)
+		if(this->helper.D < 0)
 			this->helper.P = this->fisherController.fisherTestLess(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
 		else
 			this->helper.P = this->fisherController.fisherTestGreater(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
@@ -816,8 +817,8 @@ bool LDSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const U32& block1, const
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
 	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
-	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus = (datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero);
+	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
+	const U32 tailBonus     = (datA.tailZero != tailSmallest  ? datA.tailZero  : datB.tailZero);
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
@@ -949,10 +950,10 @@ bool LDSlave<T>::CalculateLDUnphasedVectorized(const U32& block1, const U32& blo
 
 #if SIMD_AVAILABLE == 1
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
-	const U32 tailSmallest = datA.tailZero < datB.tailZero ? datA.tailZero : datB.tailZero;
+	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
-	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus = (datA.tailZero != tailSmallest ? datA.tailZero : datB.tailZero);
+	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
+	const U32 tailBonus     = (datA.tailZero != tailSmallest  ? datA.tailZero  : datB.tailZero);
 
 	//std::cerr << frontSmallest << '\t' << tailSmallest << std::endl;
 
@@ -1084,10 +1085,10 @@ bool LDSlave<T>::CalculateLDPhasedVectorized(const U32& block1, const U32& block
 
 #if SIMD_AVAILABLE == 1
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
-	const U32 tailSmallest = datA.tailZero < datB.tailZero ? datA.tailZero : datB.tailZero;
+	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
-	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus = (datA.tailZero != tailSmallest ? datA.tailZero : datB.tailZero);
+	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
+	const U32 tailBonus     = (datA.tailZero != tailSmallest  ? datA.tailZero  : datB.tailZero);
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
@@ -1201,8 +1202,8 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissing(const U32& block1, const U
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
 	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
 	U32 i = frontSmallest;
-	const U32 frontBonus = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
-	const U32 tailBonus  = datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero;
+	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
+	const U32 tailBonus     = datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero;
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;

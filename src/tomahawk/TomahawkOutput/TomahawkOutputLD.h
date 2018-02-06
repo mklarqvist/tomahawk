@@ -7,27 +7,30 @@ namespace Tomahawk {
 namespace Support{
 
 struct TomahawkOutputLD{
+private:
+	typedef TomahawkOutputLD self_type;
+
 public:
 	TomahawkOutputLD();
 	~TomahawkOutputLD();
 
 	inline void resetPhased(void){
-		this->controller = 0;
+		this->controller      = 0;
 		this->alleleCounts[0] = 0;
 		this->alleleCounts[1] = 0;
 		this->alleleCounts[4] = 0;
 		this->alleleCounts[5] = 0;
-		this->chiSqModel = 0;
+		this->chiSqModel      = 0;
 		// All other values can legally overflow
 		// They are not used
 	}
 
 	inline void resetUnphased(void){
-		this->controller = 0;
-		this->alleleCounts[0] = 0;
-		this->alleleCounts[1] = 0;
-		this->alleleCounts[4] = 0;
-		this->alleleCounts[5] = 0;
+		this->controller       = 0;
+		this->alleleCounts[0]  = 0;
+		this->alleleCounts[1]  = 0;
+		this->alleleCounts[4]  = 0;
+		this->alleleCounts[5]  = 0;
 		this->alleleCounts[16] = 0;
 		this->alleleCounts[17] = 0;
 		this->alleleCounts[20] = 0;
@@ -71,16 +74,16 @@ public:
 		return os;
 	}
 
-	inline void setPhased(void){ this->controller |= 1; }
-	inline void setHasMissingValues(void){ this->controller |= 2; }
-	inline void setIncomplete(void){ this->controller |= 4; }
-	inline void setMultipleRoots(void){ this->controller |= 8; }
-	inline void setSameContig(void){ this->controller |= 16; }
-	inline void setLongRange(void){ this->controller |= 32; }
-	inline void setFailedHWEA(void){ this->controller |= 64; }
-	inline void setFailedHWEB(void){ this->controller |= 128; }
-	inline void setLowMAFA(void){ this->controller |= 256; }
-	inline void setLowMAFB(void){ this->controller |= 512; }
+	inline void setPhased(void)          { this->controller |= 1;   }
+	inline void setHasMissingValues(void){ this->controller |= 2;   }
+	inline void setIncomplete(void)      { this->controller |= 4;   }
+	inline void setMultipleRoots(void)   { this->controller |= 8;   }
+	inline void setSameContig(void)      { this->controller |= 16;  }
+	inline void setLongRange(void)       { this->controller |= 32;  }
+	inline void setFailedHWEA(void)      { this->controller |= 64;  }
+	inline void setFailedHWEB(void)      { this->controller |= 128; }
+	inline void setLowMAFA(void)         { this->controller |= 256; }
+	inline void setLowMAFB(void)         { this->controller |= 512; }
 
 	inline const float countAlternatives(void) const{
 		// Find largest
@@ -100,19 +103,19 @@ public:
 	}
 
 public:
-	U16 controller;				// FLAG byte
-	float R2;					// R squared
-	float D;					// D
-	float Dprime;				// D'
-	float Dmax;					// Dmax
-	double P;					// Fisher or Chi-Squared P value for 2x2 contingency table
-	double chiSqModel;			// Chi-Squared critical value for 3x3 contingency table
-	double chiSqFisher;			// Chi-Squared critical value for 2x2 contingency table
-	float totalAlleleCounts;	// Total number of alleles
+	U16    controller;        // FLAG byte
+	float  R2;                // R squared
+	float  D;                 // D
+	float  Dprime;            // D'
+	float  Dmax;              // Dmax
+	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
+	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
+	double chiSqFisher;       // Chi-Squared critical value for 2x2 contingency table
+	float  totalAlleleCounts; // Total number of alleles
 
 	// Counters
-	float alleleCounts[171];
-	float haplotypeCounts[4];
+	float  alleleCounts[171];
+	float  haplotypeCounts[4];
 };
 
 } /* namespace Support */

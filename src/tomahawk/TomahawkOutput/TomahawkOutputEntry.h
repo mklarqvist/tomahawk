@@ -41,16 +41,16 @@ struct __attribute__((packed, aligned(1))) TomahawkOutputEntry{
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& entry){
 		os << std::setprecision(8) << (int)entry.FLAGS << '\t' << entry.AcontigID << '\t' << entry.Aposition << '\t' << entry.BcontigID << '\t' << entry.Bposition
-				<< '\t' << entry.p1 << '\t' << entry.p2 << '\t' << entry.q1 << '\t' << entry.q2 << '\t' << entry.D << '\t' << entry.Dprime
-				<< '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher << '\t' << entry.chiSqModel;
+			<< '\t' << entry.p1 << '\t' << entry.p2 << '\t' << entry.q1 << '\t' << entry.q2 << '\t' << entry.D << '\t' << entry.Dprime
+			<< '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher << '\t' << entry.chiSqModel;
 
 		return(os);
 	}
 
 	std::ostream& write(std::ostream& os, const contig_type* const contigs) const{
 		os << std::setprecision(8) << (int)this->FLAGS << '\t' << contigs[this->AcontigID].name << '\t' << this->Aposition << '\t' << contigs[this->BcontigID].name << '\t' << this->Bposition
-				<< '\t' << this->p1 << '\t' << this->p2 << '\t' << this->q1 << '\t' << this->q2 << '\t' << this->D << '\t' << this->Dprime
-				<< '\t' << this->R2 << '\t' << this->P << '\t' << this->chiSqFisher << '\t' << this->chiSqModel << '\n';
+			<< '\t' << this->p1 << '\t' << this->p2 << '\t' << this->q1 << '\t' << this->q2 << '\t' << this->D << '\t' << this->Dprime
+			<< '\t' << this->R2 << '\t' << this->P << '\t' << this->chiSqFisher << '\t' << this->chiSqModel << '\n';
 
 		return(os);
 	}
@@ -67,19 +67,19 @@ struct __attribute__((packed, aligned(1))) TomahawkOutputEntry{
 		U32 Bc = this->BcontigID;
 		this->AcontigID = Bc;
 		this->BcontigID = Ac;
-		U32& A = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + sizeof(U32)));
+		U32& A = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) +   sizeof(U32)));
 		U32& B = *reinterpret_cast<U32*>(((char*)this + sizeof(U16) + 3*sizeof(U32)));
 		std::swap(A,B);
 	}
 
-	U16 FLAGS;
-	U32 AcontigID;
-	U32 Amissing: 1, Aphased: 1, Aposition: 30;
-	U32 BcontigID;
-	U32 Bmissing: 1, Bphased: 1, Bposition: 30;
-	float p1, p2, q1, q2;
-	float D, Dprime;
-	float R2;
+	U16    FLAGS;
+	U32    AcontigID;
+	U32    Amissing: 1, Aphased: 1, Aposition: 30;
+	U32    BcontigID;
+	U32    Bmissing: 1, Bphased: 1, Bposition: 30;
+	float  p1, p2, q1, q2;
+	float  D, Dprime;
+	float  R2;
 	double P;
 	double chiSqFisher;
 	double chiSqModel;
@@ -120,6 +120,7 @@ struct __attribute__((packed, aligned(1))) TomahawkOutputEntrySort{
 
 	BYTE data[sizeof(parent_type)]; // reinterpret me as entry
 };
+#pragma pack(pop)
 
 // comparator functions for output entry
 namespace Support{
@@ -141,7 +142,7 @@ static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry& s
 }
 
 }
-#pragma pack(pop)
+
 }
 }
 
