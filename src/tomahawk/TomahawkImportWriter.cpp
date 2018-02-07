@@ -183,7 +183,7 @@ void TomahawkImportWriter::WriteFinal(void){
 
 void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
 	this->vcf_header_ = &header;
-	this->rleController_ = new Algorithm::TomahawkImportRLE(header.samples);
+	this->rleController_ = new Algorithm::GenotypeEncoder(header.samples);
 	this->rleController_->DetermineBitWidth();
 }
 

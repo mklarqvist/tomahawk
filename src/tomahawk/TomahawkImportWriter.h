@@ -3,6 +3,7 @@
 
 #include <fstream>
 
+#include "../algorithm/compression/genotype_encoder.h"
 #include "../support/TypeDefinitions.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
@@ -10,7 +11,6 @@
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
-#include "../algorithm/compression/TomahawkImportRLE.h"
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
@@ -82,7 +82,7 @@ public:
 
 	Totempole::TotempoleEntry totempole_entry;
 	IO::TGZFController gzip_controller_;
-	Algorithm::TomahawkImportRLE* rleController_;
+	Algorithm::GenotypeEncoder* rleController_;
 	IO::BasicBuffer buffer_rle_;	// run lengths
 	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 

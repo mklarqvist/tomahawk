@@ -21,15 +21,15 @@ struct LoadBalancerBlock{
 	{}
 
 	LoadBalancerBlock(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn, const U32 fromRowAbsolute, const U32 toRowAbsolute, const U32 fromColumnAbsolute, const U32 toColumnAbsolute, bool stagger = false) :
-			fromRow(fromRow),
-			toRow(toRow),
-			fromColumn(fromColumn),
-			toColumn(toColumn),
-			staggered(stagger),
-			fromRowAbsolute(fromRowAbsolute),
-			toRowAbsolute(toRowAbsolute),
-			fromColumnAbsolute(fromColumnAbsolute),
-			toColumnAbsolute(toColumnAbsolute)
+		fromRow(fromRow),
+		toRow(toRow),
+		fromColumn(fromColumn),
+		toColumn(toColumn),
+		staggered(stagger),
+		fromRowAbsolute(fromRowAbsolute),
+		toRowAbsolute(toRowAbsolute),
+		fromColumnAbsolute(fromColumnAbsolute),
+		toColumnAbsolute(toColumnAbsolute)
 	{}
 
 	~LoadBalancerBlock(){}
@@ -44,10 +44,10 @@ struct LoadBalancerBlock{
 	}
 
 	inline LoadBalancerBlock& operator()(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn, const bool diagonal){
-		this->fromRow = fromRow;
-		this->toRow = toRow;
+		this->fromRow    = fromRow;
+		this->toRow      = toRow;
 		this->fromColumn = fromColumn;
-		this->toColumn= toColumn;
+		this->toColumn   = toColumn;
 		return(*this);
 	}
 

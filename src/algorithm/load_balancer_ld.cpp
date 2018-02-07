@@ -103,10 +103,10 @@ bool LoadBalancerLD::getSelectedLoadThreads(const U32 threads){
 		}
 
 		U32 loadThread = selected.getSize()/threads;
-		U32 it = 0;
-		U32 from = 0;
-		U32 fromCol = selected.getRows();
-		U32 threadID = 0;
+		U32 it         = 0;
+		U32 from       = 0;
+		U32 fromCol    = selected.getRows();
+		U32 threadID   = 0;
 
 		//
 		for(U32 i = 0; i < selected.getRows(); ++i){

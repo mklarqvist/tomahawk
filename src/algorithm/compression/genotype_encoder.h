@@ -6,7 +6,7 @@
 
 #include "../../math/FisherMath.h"
 #include "../../io/bcf/BCFReader.h"
-#include "RunLengthEncoding.h"
+#include "../../io/vcf/VCFLines.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -181,26 +181,26 @@ struct TomahawkImportRLEHelper{
 
 	inline const U64 countAlleles(void) const{ return(this->countsAlleles[0] + this->countsAlleles[1] + this->countsAlleles[2]); }
 
-	U64 countsGenotypes[16];
-	U64 countsAlleles[3];
+	U64   countsGenotypes[16];
+	U64   countsAlleles[3];
 	float MAF;
 	float MGF;
 	float HWE_P;
-	bool missingValues;
-	bool phased;
-	const U64 expectedSamples;
+	bool  missingValues;
+	bool  phased;
+	const U64  expectedSamples;
 	FisherMath fisherTable;
 };
 
-class TomahawkImportRLE {
-	typedef TomahawkImportRLE self_type;
-	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*rleFunction)(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
-	typedef bool (Tomahawk::Algorithm::TomahawkImportRLE::*bcfFunction)(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+class GenotypeEncoder {
+	typedef GenotypeEncoder self_type;
+	typedef bool (self_type::*rleFunction)(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+	typedef bool (self_type::*bcfFunction)(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
 
 	typedef TomahawkImportRLEHelper helper_type;
 
 public:
-	TomahawkImportRLE(const U64 samples) :
+	GenotypeEncoder(const U64 samples) :
 		n_samples(samples),
 		encode(nullptr),
 		encodeComplex(nullptr),
@@ -212,7 +212,7 @@ public:
 	{
 	}
 
-	~TomahawkImportRLE(){
+	~GenotypeEncoder(){
 	}
 
 	void DetermineBitWidth(void){
@@ -284,12 +284,12 @@ private:
 	template <class T> bool RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs);
 
 private:
-	U64 n_samples;
-	rleFunction encode;			// encoding function
-	rleFunction encodeComplex;	// encoding function
+	U64         n_samples;
+	rleFunction encode;        // encoding function
+	rleFunction encodeComplex; // encoding function
 	bcfFunction encodeBCF;
-	BYTE bit_width;
-	BYTE shiftSize;				// bit shift size
+	BYTE        bit_width;
+	BYTE        shiftSize;     // bit shift size
 	helper_type helper;
 
 public:
@@ -297,7 +297,7 @@ public:
 };
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
 	//std::cerr << meta.size() << '\t' << runs.size();
 
 	meta += (U32)line.body->POS + 1;
@@ -374,16 +374,16 @@ bool TomahawkImportRLE::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicB
 }
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
 	meta += line.position;
 	meta += line.ref_alt;
 
-	///////////////////////////////
+	/*//////////////////////////////
 	// Encoding:
 	// First 8|T| - TOMAHAWK_SNP_PACK_WIDTH bits encode the run length
 	// remaining TOMAHAWK_SNP_PACK_WIDTH bits encode
 	// TOMAHAWK_ALLELE_PACK_WIDTH bits of snpA and TOMAHAWK_ALLELE_PACK_WIDTH bits of snpB
-	///////////////////////////////
+	//////////////////////////////*/
 	T run_length = 1;
 
 	// ASCII value for '.' is 46
@@ -480,16 +480,16 @@ bool TomahawkImportRLE::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::Basi
 
 
 template <class T>
-bool TomahawkImportRLE::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
 	meta += line.position;
 	meta += line.ref_alt;
 
-	///////////////////////////////
+	/*//////////////////////////////
 	// Encoding:
 	// First 8|T| - TOMAHAWK_SNP_PACK_WIDTH bits encode the run length
 	// remaining TOMAHAWK_SNP_PACK_WIDTH bits encode
 	// TOMAHAWK_ALLELE_PACK_WIDTH bits of snpA and TOMAHAWK_ALLELE_PACK_WIDTH bits of snpB
-	///////////////////////////////
+	//////////////////////////////*/
 	T run_length = 1;
 
 	// ASCII value for '.' is 46
