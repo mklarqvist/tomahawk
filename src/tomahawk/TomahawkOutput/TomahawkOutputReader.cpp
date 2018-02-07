@@ -1,14 +1,18 @@
-#include <algorithm>
-#include <bitset>
-#include <queue>
-
-#include "../../support/helpers.h"
-#include "../../support/MagicConstants.h"
-#include "../../algorithm/OpenHashTable.h"
 #include "TomahawkOutputReader.h"
-#include "../../algorithm/sort/TomahawkOutputSort.h"
-#include "TomahawkOutputWriter.h"
+
+#include <bits/move.h>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+
+#include "../../io/compression/GZFConstants.h"
+#include "../../io/compression/GZFHeader.h"
+#include "../../support/helpers.h"
+#include "../../totempole/TotempoleContig.h"
+#include "../../totempole/TotempoleOutputEntry.h"
 #include "TomahawkOutputStats.h"
+
+#include "../base/output_container_reference.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -292,15 +296,21 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	// Natural output required parsing
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		const entry_type* entry = nullptr;
-		while(this->nextVariant(entry))
-			*this->writer << entry;
+		while(this->nextBlock()){
+			OutputContainerReference o(this->output_buffer);
+			std::cerr << o.size() << '\t' << this->output_buffer.size() << std::endl;
+			for(auto it = o.begin(); it != o.end(); ++it)
+				std::cout << *it << '\n';
+		}
 
 	}
 	// Binary output without filtering simply writes it back out
 	else if(this->writer_output_type == WRITER_TYPE::binary){
-		while(this->nextBlock())
-			this->writer->write(this->output_buffer);
+		while(this->nextBlock()){
+			OutputContainerReference o(this->buffer);
+			//this->writer->write(this->output_buffer);
+			std::cout << o[0] << std::endl;
+		}
 	}
 
 	return true;

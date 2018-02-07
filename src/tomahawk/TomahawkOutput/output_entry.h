@@ -8,13 +8,22 @@ namespace Tomahawk{
 namespace IO{
 
 #pragma pack(push, 1)
-struct __attribute__((packed, aligned(1))) TomahawkOutputEntry{
-	typedef TomahawkOutputEntry self_type;
+struct __attribute__((packed, aligned(1))) OutputEntry{
+	typedef OutputEntry                    self_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 
-	TomahawkOutputEntry(){};
-	~TomahawkOutputEntry(){};
-	TomahawkOutputEntry(const self_type* const other){
+	OutputEntry(){};
+	// Copy data from stream
+	OutputEntry(const char* const data_buffer){
+		memcpy(this, data_buffer, sizeof(self_type));
+	}
+
+	OutputEntry(const IO::BasicBuffer& data_buffer){
+		memcpy(this, data_buffer.data, sizeof(self_type));
+	}
+
+	~OutputEntry(){};
+	OutputEntry(const self_type* const other){
 		memcpy(this, other, sizeof(self_type));
 	}
 
@@ -92,25 +101,25 @@ struct __attribute__((packed, aligned(1))) TomahawkOutputEntry{
 // is illegal. Instead a BYTE array literals stored as
 // a hard copy and reinterpreted as an entry in the
 // overloaded operator<
-struct __attribute__((packed, aligned(1))) TomahawkOutputEntrySort{
-	typedef TomahawkOutputEntrySort self_type;
-	typedef TomahawkOutputEntry parent_type;
+struct __attribute__((packed, aligned(1))) OutputEntrySort{
+	typedef OutputEntrySort self_type;
+	typedef OutputEntry     parent_type;
 
-	TomahawkOutputEntrySort(){}
-	TomahawkOutputEntrySort(const self_type& other){
+	OutputEntrySort(){}
+	OutputEntrySort(const self_type& other){
 		memcpy(this->data, other.data, sizeof(parent_type));
 	}
-	TomahawkOutputEntrySort(self_type&& other) noexcept{ std::swap(this->data, other.data); }
-	TomahawkOutputEntrySort& operator=(const self_type& other){
+	OutputEntrySort(self_type&& other) noexcept{ std::swap(this->data, other.data); }
+	OutputEntrySort& operator=(const self_type& other){
 		self_type tmp(other);	// re-use copy-constructor
 		*this = std::move(tmp); // re-use move-assignment
 		return *this;
 	}
-	TomahawkOutputEntrySort& operator=(self_type&& other) noexcept{
+	OutputEntrySort& operator=(self_type&& other) noexcept{
 		std::swap(this->data, other.data);
 		return *this;
 	}
-	~TomahawkOutputEntrySort(){ }
+	~OutputEntrySort(){ }
 
 	bool operator<(const self_type& other) const{
 		const parent_type& self_parent  = *reinterpret_cast<const parent_type* const>(&this->data[0]);
@@ -125,7 +134,7 @@ struct __attribute__((packed, aligned(1))) TomahawkOutputEntrySort{
 // comparator functions for output entry
 namespace Support{
 
-static inline bool TomahawkOutputEntryCompFuncConst(const TomahawkOutputEntry& self, const TomahawkOutputEntry& other){
+static inline bool TomahawkOutputEntryCompFuncConst(const OutputEntry& self, const OutputEntry& other){
 	if (self.AcontigID < other.AcontigID) return true;
 	if (other.AcontigID < self.AcontigID) return false;
 

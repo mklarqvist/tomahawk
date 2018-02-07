@@ -83,7 +83,7 @@ struct TomahawkOutputStats{
 
 struct TomahawkOutputStatsContainer{
 	typedef TomahawkOutputStats stats_type;
-	typedef IO::TomahawkOutputEntry entry_type;
+	typedef IO::OutputEntry entry_type;
 
 	TomahawkOutputStatsContainer(const U32& bins) : n_bins(bins), R2(this->n_bins), D(this->n_bins), Dprime(this->n_bins){}
 

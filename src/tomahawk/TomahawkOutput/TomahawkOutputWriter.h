@@ -19,7 +19,7 @@ protected:
 	typedef IO::BasicBuffer buffer_type;
 
 protected:
-	typedef TomahawkOutputEntry entry_type;
+	typedef OutputEntry entry_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 

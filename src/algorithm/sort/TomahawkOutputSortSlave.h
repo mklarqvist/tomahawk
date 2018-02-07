@@ -9,8 +9,8 @@ namespace Output{
 
 class TomahawkOutputSortSlave{
 	typedef TomahawkOutputSortSlave self_type;
-	typedef IO::TomahawkOutputEntry entry_type;
-	typedef IO::TomahawkOutputEntrySort entry_sort_type;
+	typedef IO::OutputEntry entry_type;
+	typedef IO::OutputEntrySort entry_sort_type;
 	typedef Totempole::TotempoleOutputEntry totempole_entry;
 	typedef IO::WriterFile writer_type;
 	typedef IO::TomahawkOutputReader two_reader_type;

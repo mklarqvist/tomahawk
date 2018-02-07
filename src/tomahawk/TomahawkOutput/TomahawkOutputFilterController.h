@@ -6,14 +6,14 @@
 #include <vector>
 
 #include "../../support/TypeDefinitions.h"
-#include "TomahawkOutputEntry.h"
 #include "../../support/MagicConstants.h"
+#include "output_entry.h"
 
 namespace Tomahawk {
 
 class TomahawkOutputFilterController {
 	typedef TomahawkOutputFilterController self_type;
-	typedef IO::TomahawkOutputEntry entry_type;
+	typedef IO::OutputEntry entry_type;
 	typedef bool (self_type::*filterFunction)(const entry_type& entry) const;
 
 public:

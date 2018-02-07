@@ -15,7 +15,7 @@
 #include "../../totempole/TotempoleMagic.h"
 #include "../../third_party/intervalTree.h"
 #include "../../totempole/TotempoleOutputReader.h"
-#include "TomahawkOutputEntry.h"
+#include "output_entry.h"
 #include "TomahawkOutputFilterController.h"
 #include "TomahawkOutputWriter.h"
 
@@ -23,7 +23,7 @@ namespace Tomahawk {
 namespace IO {
 
 class TomahawkOutputReader {
-	typedef TomahawkOutputEntry entry_type;
+	typedef OutputEntry entry_type;
 	typedef TomahawkOutputFilterController filter_type;
 	typedef Tomahawk::IO::TomahawkOutputWriterInterface writer_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;

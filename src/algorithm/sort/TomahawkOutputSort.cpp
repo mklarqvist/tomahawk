@@ -38,9 +38,9 @@ bool TomahawkOutputSorter::sort(const std::string& input, const std::string& des
 	// writer
 	basic_writer_type& stream = *reinterpret_cast<basic_writer_type*>(this->reader.writer->getStream());
 
-	if(memory_limit < 10e6){
-		memory_limit = 10e6;
-		std::cerr << Helpers::timestamp("SORT") << "Setting memory limit to 10 MB..." << std::endl;
+	if(memory_limit < 100e6){
+		memory_limit = 100e6;
+		std::cerr << Helpers::timestamp("SORT") << "Setting memory limit to 100 MB..." << std::endl;
 	}
 
 	if(this->reverse_entries){

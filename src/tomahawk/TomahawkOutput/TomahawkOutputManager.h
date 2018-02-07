@@ -7,10 +7,10 @@
 #include "../../totempole/TotempoleContig.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../totempole/TotempoleOutputEntry.h"
-#include "TomahawkOutputEntry.h"
 #include "TomahawkOutputLD.h"
 #include "../../totempole/TotempoleReader.h"
 #include "../../tomahawk/base/meta_entry.h"
+#include "output_entry.h"
 
 #define SLAVE_FLUSH_LIMIT 10000000	// 10 MB
 
@@ -25,7 +25,7 @@ struct TomahawkOutputManager{
 	typedef Tomahawk::Support::TomahawkOutputLD       helper_type;
 	typedef IO::BasicBuffer                           buffer_type;
 	typedef TGZFController                            tgzf_controller;
-	typedef IO::TomahawkOutputEntry                   entry_type;
+	typedef IO::OutputEntry                   entry_type;
 	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 	typedef MetaEntry<T>                              meta_type;

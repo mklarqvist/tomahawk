@@ -4,7 +4,7 @@
 #include <vector>
 #include <fstream>
 
-#include "../tomahawk/TomahawkOutput/TomahawkOutputEntry.h"
+#include "../tomahawk/TomahawkOutput/output_entry.h"
 #include "TotempoleContig.h"
 #include "TotempoleOutputEntry.h"
 
@@ -12,7 +12,7 @@ namespace Tomahawk {
 namespace Totempole {
 
 #define TOTEMPOLE_OUTPUT_SORT_CHUNKS 1024
-#define TOTEMPOLE_OUTPUT_SORT_SHIFT 9
+#define TOTEMPOLE_OUTPUT_SORT_SHIFT  9
 
 struct TotempoleOutputSortedIndexBin{
 	typedef TotempoleOutputSortedIndexBin self_type;
@@ -76,7 +76,7 @@ struct TotempoleOutputSortedIndexBin{
 class TotempoleOutputSortedIndex {
 	typedef TotempoleOutputSortedIndex self_type;
 	typedef TotempoleOutputSortedEntry totempole_entry;
-	typedef IO::TomahawkOutputEntry two_entry;
+	typedef IO::OutputEntry two_entry;
 	typedef Totempole::TotempoleContigBase contig_type;
 	typedef TotempoleOutputSortedIndexBin chunk_type;
 

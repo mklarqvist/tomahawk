@@ -3,7 +3,7 @@
 
 namespace Tomahawk{
 // Size of meta entry BEFORE run entries
-#define TOMAHAWK_ENTRY_META_SIZE	(sizeof(U32) + sizeof(BYTE) + 2*sizeof(float))
+#define TOMAHAWK_ENTRY_META_SIZE (sizeof(U32) + sizeof(BYTE) + 2*sizeof(float))
 
 /*
  TomahawkEntryMetaBase is used for reinterpreting

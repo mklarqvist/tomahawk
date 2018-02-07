@@ -17,8 +17,8 @@ namespace Output{
 
 // Sorter
 class TomahawkOutputSorter{
-	typedef IO::TomahawkOutputEntry entry_type;
-	typedef IO::TomahawkOutputEntrySort entry_sort_type;
+	typedef IO::OutputEntry entry_type;
+	typedef IO::OutputEntrySort entry_sort_type;
 	typedef TomahawkOutputSorter self_type;
 	typedef TomahawkOutputSortMergeQueueContainer<entry_type> queue_entry;
 	typedef std::priority_queue< queue_entry > queue_type; // prio queue
