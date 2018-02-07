@@ -6,12 +6,12 @@
 #include <algorithm>
 #include <bitset>
 
+#include "../algorithm/load_balancer_ld.h"
 #include "../support/MagicConstants.h"
 #include "../io/compression/TGZFController.h"
 #include "../io/compression/GZFConstants.h"
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
-#include "../algorithm/Balancer.h"
 #include "base/meta_entry.h"
 #include "base/twk_reader_implementation.h"
 #include "ld_calculation_slave.h"

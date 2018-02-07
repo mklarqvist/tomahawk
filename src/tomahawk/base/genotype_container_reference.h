@@ -111,6 +111,8 @@ public:
 	inline const meta_type& getMeta(const U32& position) const{ return(this->meta_entries[position]); }
 	inline const meta_type& currentMeta(void) const{ return(this->meta_entries[this->iterator_position_meta]); }
 	inline const_pointer current(void) const{ return(&this->genotype_entries[this->iterator_position_runs]); }
+	inline const genotype_bitvector_type& currentBitvector(void) const{ return(this->bit_vectors->at(this->iterator_position_meta)); }
+
 
 	// Psuedo-iterator functionality
 	inline void operator++(void){ this->iterator_position_runs += this->currentMeta().runs; ++this->iterator_position_meta; }

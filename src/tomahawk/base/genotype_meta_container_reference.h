@@ -114,14 +114,7 @@ public:
 		if(this->n_entries + 1 == this->n_capacity || this->capacity() == 0)
 			return false;
 
-		//std::cerr << "constructing new @ " << this->n_entries << "/" << this->n_capacity << " and samples: " << this->n_samples << std::endl;
-		//new( &this->__entries[this->n_entries] ) value_type( data, l_data, header, this->n_samples );
-		new( &this->__entries[this->n_entries] ) Base::GenotypeContainerReference<T>(
-		                data,
-		                l_data,
-		                header,
-		                this->n_samples
-		        );
+		new( &this->__entries[this->n_entries] ) value_type(data, l_data, header, this->n_samples);
 		++this->n_entries;
 		return true;
 	}

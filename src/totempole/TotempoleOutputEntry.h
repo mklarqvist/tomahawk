@@ -62,9 +62,9 @@ public:
 	}
 
 	void reset(void){
-		this->byte_offset = 0;
-		this->byte_offset_end = 0;
-		this->entries = 0;
+		this->byte_offset       = 0;
+		this->byte_offset_end   = 0;
+		this->entries           = 0;
 		this->uncompressed_size = 0;
 	}
 
@@ -115,10 +115,10 @@ public:
 
 	void reset(void){
 		//this->contigID = 0;
-		this->fromBlock = -1;
+		this->fromBlock                = -1;
 		this->fromBlock_entries_offset = 0;
-		this->toBlock = -1;
-		this->toBlock_entries_offset = 0;
+		this->toBlock                  = -1;
+		this->toBlock_entries_offset   = 0;
 	}
 
 	inline void update(const U32& block, const U32& offset){

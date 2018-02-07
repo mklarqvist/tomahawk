@@ -4,7 +4,6 @@
 #include "../totempole/TotempoleReader.h"
 #include "TomahawkReader.h"
 #include "TomahawkOutput/TomahawkOutputManager.h"
-
 #include "base/twk_reader_implementation.h"
 #include "base/genotype_meta_container_reference.h"
 
@@ -15,7 +14,7 @@ class TomahawkCalc{
 	typedef TomahawkCalcParameters     parameter_type;
 	typedef std::pair<U32,U32>         pair_type;
 	typedef std::vector<pair_type>     pair_vector;
-	typedef Balancer                   balancer_type;
+	typedef LoadBalancerLD                   balancer_type;
 	typedef Totempole::TotempoleReader totempole_reader;
 	typedef Interface::ProgressBar     progress_type;
 	typedef TomahawkReader             reader_type;
@@ -66,15 +65,17 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	// Construct Tomahawk manager
-	TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
+	//TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
 	GenotypeMetaContainerReference<T> references(totempole.header.samples, this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
 		// Hard copy of data into STL-like containers
+		/*
 		impl.addDataBlock(this->reader.getOffsetPair(i).data,
                           this->reader.getOffsetPair(i).l_buffer,
                           this->reader.getOffsetPair(i).entry);
+		*/
 
 		// Reference interpretation of char buffer in psuedo-iterator containers
 		// directly from unaligned memory
@@ -83,29 +84,13 @@ bool TomahawkCalc::Calculate(){
                                 this->reader.getOffsetPair(i).entry);
 
 		n_variants += references[i].getTotempole().variants;
-
-
-		/*
-		// Dump out genotypes
-		std::cerr << references[i].currentMeta().runs << std::endl;
-		for(U32 k = 0; k < references[i].size(); ++k){
-			size_t n_total = 0;
-			for(U32 j = 0; j < references[i].currentMeta().runs; ++j){
-				std::cerr << references[i][j].alleleA << "|" << references[i][j].alleleB << ',' << references[i][j].runs << ' ';
-				n_total += references[i][j].runs;
-			}
-			assert(n_total == totempole.getSamples());
-			++references[i];
-			std::cerr << '\n';
-		}
-		*/
 	}
 
 	if(!SILENT)
 		std::cerr << "Done..." << std::endl;
 
 	// Number of variants in memory
-	const U64 variants = impl.countVariants();
+	const U64 variants = references.countVariants();
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
@@ -170,7 +155,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new LDSlave<T>(impl, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		slaves[i] = new LDSlave<T>(references, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
 	}
