@@ -5,28 +5,28 @@
 
 namespace Tomahawk{
 namespace Algorithm{
-namespace Output{
 
-class TomahawkOutputSortSlave{
-	typedef TomahawkOutputSortSlave self_type;
-	typedef IO::OutputEntry entry_type;
-	typedef IO::OutputEntrySort entry_sort_type;
-	typedef Totempole::TotempoleOutputEntry totempole_entry;
-	typedef IO::WriterFile writer_type;
-	typedef IO::TomahawkOutputReader two_reader_type;
-	typedef Tomahawk::IO::TomahawkOutputWriterInterface two_writer_interface;
-	typedef Tomahawk::IO::TomahawkOutputWriter two_writer_type;
-	typedef IO::TGZFController tgzf_controller_type;
+class OutputSortSlave{
+private:
+	typedef OutputSortSlave                   self_type;
+	typedef IO::OutputEntry                   entry_type;
+	typedef IO::OutputEntrySort               entry_sort_type;
+	typedef Totempole::TotempoleOutputEntry   totempole_entry;
+	typedef IO::WriterFile                    writer_type;
+	typedef IO::TomahawkOutputReader          two_reader_type;
+	typedef IO::TomahawkOutputWriterInterface two_writer_interface;
+	typedef IO::TomahawkOutputWriter          two_writer_type;
+	typedef IO::TGZFController                tgzf_controller_type;
 
 public:
-	TomahawkOutputSortSlave(two_writer_interface* writer, writer_type& toi_writer, const U32 memory_limit) :
+	OutputSortSlave(two_writer_interface* writer, writer_type& toi_writer, const U32 memory_limit) :
 		memory_limit(memory_limit),
 		blocks_written(0),
 		writer(reinterpret_cast<two_writer_type*>(writer)),
 		toi_writer(toi_writer),
 		reverse_entries(true)
 	{}
-	~TomahawkOutputSortSlave(){}
+	~OutputSortSlave(){}
 
 	inline void reverseEntries(const bool yes = true){ this->reverse_entries = yes; }
 
@@ -65,35 +65,35 @@ private:
 				trigger_break = true;
 
 
-			if(this->reader.output_buffer.size() == 0){
+			if(this->reader.data_buffer.size() == 0){
 				trigger_break = true;
 				break;
 			}
 
-			assert((this->reader.output_buffer.size() % sizeof(entry_type)) == 0);
+			assert((this->reader.data_buffer.size() % sizeof(entry_type)) == 0);
 
 			if(this->reverse_entries){
 				const entry_type* entry = nullptr;
-				totempole.entries += 2*((this->reader.output_buffer.size() % sizeof(entry_type)));
+				totempole.entries += 2*((this->reader.data_buffer.size() % sizeof(entry_type)));
 				while(this->reader.nextVariantLimited(entry)){
 					// Flip cA,pA with cB,pB
 					entry_type temp(entry);
 					temp.swapDirection();
-					this->reader.output_buffer.Add((char*)&temp, sizeof(entry_type));
+					this->reader.data_buffer.Add((char*)&temp, sizeof(entry_type));
 				}
 			} else {
 				// Do not reverse
-				totempole.entries = (this->reader.output_buffer.size() % sizeof(entry_type));
+				totempole.entries = (this->reader.data_buffer.size() % sizeof(entry_type));
 			}
 
-			std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[0]),
-					  reinterpret_cast<entry_sort_type*>(&this->reader.output_buffer.data[this->reader.output_buffer.size()]));
+			std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[0]),
+					  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[this->reader.data_buffer.size()]));
 
 			totempole.reset();
-			totempole.uncompressed_size = this->reader.output_buffer.size();
+			totempole.uncompressed_size = this->reader.data_buffer.size();
 
 			this->controller.Clear();
-			this->controller.Deflate(this->reader.output_buffer);
+			this->controller.Deflate(this->reader.data_buffer);
 
 			this->writer->getLock()->lock();
 			totempole.byte_offset = stream.getNativeStream().tellp();
@@ -121,7 +121,6 @@ private:
 };
 
 
-}
 }
 }
 

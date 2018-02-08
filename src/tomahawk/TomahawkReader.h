@@ -147,6 +147,8 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < o.size(); ++j){
+		const char separator = o.currentMeta().phased == 1 ? '|' : '/';
+
 		//tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_, this->dropGenotypes);
 		this->outputBuffer_ += this->totempole_.getContig(this->totempole_[blockID].contigID).name;
 		this->outputBuffer_ += '\t';
@@ -166,12 +168,12 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleA];
 			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleB];
 			this->outputBuffer_ += left;
-			this->outputBuffer_ += '|';
+			this->outputBuffer_ += separator;
 			this->outputBuffer_ += right;
 			for(U32 r = 1; r < o[i].runs; ++r){
 				this->outputBuffer_ += '\t';
 				this->outputBuffer_ += left;
-				this->outputBuffer_ += '|';
+				this->outputBuffer_ += separator;
 				this->outputBuffer_ += right;
 			}
 		}

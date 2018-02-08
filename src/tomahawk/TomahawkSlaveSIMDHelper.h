@@ -44,7 +44,7 @@ public:
 	}
 
 public:
-	U64* counters;
+	U64*  counters;
 	BYTE* scalarA;
 	BYTE* scalarB;
 	BYTE* scalarC;

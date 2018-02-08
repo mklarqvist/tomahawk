@@ -20,11 +20,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
+#include "algorithm/sort/output_sorter.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
-#include "algorithm/sort/TomahawkOutputSort.h"
 
 void sort_usage(void){
 	programMessage();
@@ -138,7 +138,7 @@ int sort(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
 	}
 
-	Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
+	Tomahawk::Algorithm::OutputSorter reader;
 	reader.n_threads = threads;
 	reader.reverse_entries = expand;
 

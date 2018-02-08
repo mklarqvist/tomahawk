@@ -7,22 +7,31 @@
 namespace Tomahawk{
 namespace IO{
 
+/**<
+ * Primary data structure for Tomahawk-generated LD output.
+ * This higher-order primitive can be interpreted directly
+ * from a packed buffer (unaligned memory access) or
+ * explicitly by invoking a valid constructor
+ */
 #pragma pack(push, 1)
 struct __attribute__((packed, aligned(1))) OutputEntry{
 	typedef OutputEntry                    self_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 
-	OutputEntry(){};
+	// if interpreted directly from buffer stream
+	OutputEntry()  = default;
+	~OutputEntry() = default;
+
 	// Copy data from stream
 	OutputEntry(const char* const data_buffer){
 		memcpy(this, data_buffer, sizeof(self_type));
 	}
 
+	// Copy data from stream
 	OutputEntry(const IO::BasicBuffer& data_buffer){
 		memcpy(this, data_buffer.data, sizeof(self_type));
 	}
 
-	~OutputEntry(){};
 	OutputEntry(const self_type* const other){
 		memcpy(this, other, sizeof(self_type));
 	}

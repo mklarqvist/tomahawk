@@ -3,17 +3,16 @@
 
 namespace Tomahawk{
 namespace Algorithm{
-namespace Output{
-
 template <class T>
-struct TomahawkOutputSortMergeQueueContainer {
+struct OutputSortMergeQueue {
+private:
 	typedef T entry_type;
-	typedef TomahawkOutputSortMergeQueueContainer<entry_type> self_type;
+	typedef OutputSortMergeQueue<entry_type> self_type;
 
 public:
-	TomahawkOutputSortMergeQueueContainer(const entry_type* data,
-										  U32 streamID,
-										  bool (*compFunc)(const entry_type& a, const entry_type& b) = T::operator<)
+	OutputSortMergeQueue(const entry_type* data,
+                         U32  streamID,
+                         bool (*compFunc)(const entry_type& a, const entry_type& b) = T::operator<)
 	: streamID(streamID)
 	, data(*data)
 	, compFunc(compFunc)
@@ -29,7 +28,6 @@ public:
     bool (*compFunc)(const entry_type& a, const entry_type& b);
 };
 
-}
 }
 }
 

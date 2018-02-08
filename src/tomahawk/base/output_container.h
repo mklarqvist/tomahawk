@@ -26,10 +26,18 @@ public:
 
 	}
 
+    OutputContainer(const size_t capacity) :
+    	n_entries(0),
+		n_capacity(capacity),
+		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+    {
+
+    }
+
     OutputContainer(char* const data, const U64 l_data) :
     	n_entries(l_data / sizeof(value_type)),
 		n_capacity(n_entries),
-		__entries(static_cast<pointer>(::operator new[](this->n_entries*sizeof(value_type))))
+		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
 		assert(n_entries > 0);
 		assert(l_data % sizeof(value_type) == 0);
@@ -45,7 +53,7 @@ public:
     OutputContainer(const buffer_type& data_buffer) :
 		n_entries(data_buffer.size() / sizeof(value_type)),
 		n_capacity(n_entries),
-		__entries(static_cast<pointer>(::operator new[](this->n_entries*sizeof(value_type))))
+		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
 		assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);
@@ -123,6 +131,29 @@ public:
 	inline const_iterator end()    const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
+
+	// Add
+	inline bool addData(const buffer_type& buffer){ return(this->addData(buffer.data, buffer.size())); }
+	bool addData(char* const data, const U64 l_data){
+		assert(l_data % sizeof(value_type) == 0);
+		const size_t entries_adding = l_data / sizeof(value_type);
+
+		// Check
+		if(entries_adding + this->size() > this->capacity()){
+			std::cerr << "could not fit!" << std::endl;
+			return false;
+		}
+
+		U32 cumulative_position = 0;
+		size_t start_position = this->size();
+		for(size_t i = 0; i < entries_adding; ++i){
+			new( &this->__entries[start_position + i] ) value_type( &data[cumulative_position] );
+			cumulative_position += sizeof(value_type);
+		}
+		assert(cumulative_position == l_data);
+
+		return true;
+	}
 
 protected:
 	size_type  n_entries;

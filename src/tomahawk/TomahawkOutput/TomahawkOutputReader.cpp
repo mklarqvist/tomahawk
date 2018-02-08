@@ -20,7 +20,7 @@ namespace IO {
 
 TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
-		position(0),
+		iterator_position(0),
 		size(0),
 		hasIndex(false),
 		output_header(true),
@@ -43,8 +43,8 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	//delete interval_tree;
 	delete [] interval_tree_entries;
 	delete interval_tree;
-	this->buffer.deleteAll();
-	this->output_buffer.deleteAll();
+	this->compressed_buffer.deleteAll();
+	this->data_buffer.deleteAll();
 	delete this->writer;
 	delete this->interval_totempole_enties;
 }
@@ -143,7 +143,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->position = entry.fromBlock_entries_offset;
+			this->iterator_position = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -156,7 +156,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->position = entry.fromBlock_entries_offset;
+			this->iterator_position = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -182,7 +182,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->position = entry.fromBlock_entries_offset;
+			this->iterator_position = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -298,8 +298,8 @@ bool TomahawkOutputReader::__viewOnly(void){
 	// Natural output required parsing
 	if(this->writer_output_type == WRITER_TYPE::natural){
 		while(this->nextBlock()){
-			OutputContainerReference o(this->output_buffer);
-			std::cerr << o.size() << '\t' << this->output_buffer.size() << std::endl;
+			OutputContainerReference o(this->data_buffer);
+			std::cerr << o.size() << '\t' << this->data_buffer.size() << std::endl;
 			for(auto it = o.begin(); it != o.end(); ++it)
 				std::cout << *it << '\n';
 		}
@@ -307,8 +307,8 @@ bool TomahawkOutputReader::__viewOnly(void){
 	// Binary output without filtering simply writes it back out
 	else if(this->writer_output_type == WRITER_TYPE::binary){
 		while(this->nextBlock()){
-			OutputContainerReference o(this->buffer);
-			//this->writer->write(this->output_buffer);
+			OutputContainerReference o(this->compressed_buffer);
+			//this->writer->write(this->data_buffer);
 			std::cout << o[0] << std::endl;
 		}
 	}
@@ -694,7 +694,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 
 	while(this->nextBlock()){
-		this->writer->write(this->output_buffer);
+		this->writer->write(this->data_buffer);
 	}
 
 	for(U32 i = 1; i < files.size(); ++i){
@@ -708,7 +708,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		}
 
 		while(this->nextBlock()){
-			this->writer->write(this->output_buffer);
+			this->writer->write(this->data_buffer);
 		}
 	}
 
@@ -774,7 +774,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 		}
 	}
 
-	if(!this->gzip_controller.InflateBlock(this->stream, this->buffer)){
+	if(!this->gzip_controller.InflateBlock(this->stream, this->compressed_buffer)){
 		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
 		return false;
 	}
@@ -798,7 +798,7 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 		}
 	}
 
-	if(!this->gzip_controller.InflateBlock(this->stream, this->buffer)){
+	if(!this->gzip_controller.InflateBlock(this->stream, this->compressed_buffer)){
 		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
 		return false;
 	}
@@ -839,57 +839,60 @@ bool TomahawkOutputReader::nextBlock(const bool clear){
 	}
 
 	// EOF
-	if(this->stream.tellg() == this->filesize)
+	// tellg will always return a positive value here
+	// or it would've failed at good() check
+	if((U64)this->stream.tellg() == this->filesize)
 		return false;
 
-	buffer.resize(sizeof(tgzf_type));
-	this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-	const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
-	buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+	// Read TGZF header
+	compressed_buffer.resize(sizeof(tgzf_header_type));
+	this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+	compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
 		return false;
 	}
 
-	buffer.resize(h->BSIZE); // make sure all data will fit
+	compressed_buffer.resize(h->BSIZE); // make sure all data will fit
 
-	// Recast because if buffer is (actually) resized then the pointer address is incorrect
+	// Recast because if compressed_buffer is (actually) resized then the pointer address is incorrect
 	// resulting in segfault
-	h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+	h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
 
-	this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+	this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 		return false;
 	}
 
-	buffer.pointer = h->BSIZE;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&buffer[buffer.pointer -  sizeof(U32)]);
-	output_buffer.resize(uncompressed_size);
+	compressed_buffer.pointer = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&compressed_buffer[compressed_buffer.pointer -  sizeof(U32)]);
+	data_buffer.resize(uncompressed_size);
 
-	// Clear output buffer
+	// Clear output compressed_buffer
 	if(clear)
-		this->output_buffer.reset();
+		this->data_buffer.reset();
 
-	if(!this->gzip_controller.Inflate(buffer, output_buffer)){
+	if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 		return false;
 	}
 
-	if(this->output_buffer.size() == 0){
+	if(this->data_buffer.size() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 		return false;
 	}
 
-	// Reset buffer
-	this->buffer.reset();
+	// Reset compressed_buffer
+	this->compressed_buffer.reset();
 
 	// Reset iterator position and size
-	this->position = 0;
-	this->size = this->output_buffer.size() / sizeof(entry_type);
+	this->iterator_position = 0;
+	this->size = this->data_buffer.size() / sizeof(entry_type);
 
 	// Validity check
-	if(this->output_buffer.size() % sizeof(entry_type) != 0){
+	if(this->data_buffer.size() % sizeof(entry_type) != 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 		return false;
 	}
@@ -899,14 +902,14 @@ bool TomahawkOutputReader::nextBlock(const bool clear){
 
 bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 	// Check if resize required
-	if(this->output_buffer.capacity() < limit + 65536)
-		this->output_buffer.resize(limit + 65536);
+	if(this->data_buffer.capacity() < limit + 65536)
+		this->data_buffer.resize(limit + 65536);
 
-	this->position = 0;
-	this->output_buffer.reset();
+	this->iterator_position = 0;
+	this->data_buffer.reset();
 
 	// Keep inflating DATA until bounds is reached
-	while(this->output_buffer.size() <= limit){
+	while(this->data_buffer.size() <= limit){
 		// Stream died
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -921,47 +924,47 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 			return false;
 		}
 
-		buffer.resize(sizeof(tgzf_type));
-		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-		const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
-		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		compressed_buffer.resize(sizeof(tgzf_header_type));
+		this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+		compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 			return false;
 		}
 
-		buffer.resize(h->BSIZE); // make sure all data will fit
+		compressed_buffer.resize(h->BSIZE); // make sure all data will fit
 
-		// Recast because if buffer is resized then the pointer address is incorrect
+		// Recast because if compressed_buffer is resized then the pointer address is incorrect
 		// resulting in segfault
-		h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+		h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
 
-		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 			return false;
 		}
 
-		buffer.pointer = h->BSIZE;
+		compressed_buffer.pointer = h->BSIZE;
 
-		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
+		if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 			return false;
 		}
 
-		if(this->output_buffer.size() == 0){
+		if(this->data_buffer.size() == 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 			return false;
 		}
 
-		// Reset buffer
-		this->buffer.reset();
+		// Reset compressed_buffer
+		this->compressed_buffer.reset();
 
 		// Reset iterator position and size
-		this->size = this->output_buffer.size() / sizeof(entry_type);
+		this->size = this->data_buffer.size() / sizeof(entry_type);
 
 		// Validity check
-		if(this->output_buffer.size() % sizeof(entry_type) != 0){
+		if(this->data_buffer.size() % sizeof(entry_type) != 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 			return false;
 		}
@@ -971,14 +974,14 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 
 bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_offset){
 	// Check if resize required
-	if(this->output_buffer.capacity() < limit + 65536)
-		this->output_buffer.resize(limit + 65536);
+	if(this->data_buffer.capacity() < limit + 65536)
+		this->data_buffer.resize(limit + 65536);
 
-	this->position = 0;
-	this->output_buffer.reset();
+	this->iterator_position = 0;
+	this->data_buffer.reset();
 
 	// Keep inflating DATA until bounds is reached
-	while(this->output_buffer.size() <= limit && this->stream.tellg() != (U64)virtual_offset){
+	while(this->data_buffer.size() <= limit && this->stream.tellg() != (U64)virtual_offset){
 		// Stream died
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -993,47 +996,47 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 			return false;
 		}
 
-		buffer.resize(sizeof(tgzf_type));
-		this->stream.read(&buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-		const tgzf_type* h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
-		buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		compressed_buffer.resize(sizeof(tgzf_header_type));
+		this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+		compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 			return false;
 		}
 
-		buffer.resize(h->BSIZE); // make sure all data will fit
+		compressed_buffer.resize(h->BSIZE); // make sure all data will fit
 
-		// Recast because if buffer is resized then the pointer address is incorrect
+		// Recast because if compressed_buffer is resized then the pointer address is incorrect
 		// resulting in segfault
-		h = reinterpret_cast<const tgzf_type*>(&buffer.data[0]);
+		h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
 
-		this->stream.read(&buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 			return false;
 		}
 
-		buffer.pointer = h->BSIZE;
+		compressed_buffer.pointer = h->BSIZE;
 
-		if(!this->gzip_controller.Inflate(buffer, output_buffer)){
+		if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 			return false;
 		}
 
-		if(this->output_buffer.size() == 0){
+		if(this->data_buffer.size() == 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 			return false;
 		}
 
-		// Reset buffer
-		this->buffer.reset();
+		// Reset compressed_buffer
+		this->compressed_buffer.reset();
 
 		// Reset iterator position and size
-		this->size = this->output_buffer.size() / sizeof(entry_type);
+		this->size = this->data_buffer.size() / sizeof(entry_type);
 
 		// Validity check
-		if(this->output_buffer.size() % sizeof(entry_type) != 0){
+		if(this->data_buffer.size() % sizeof(entry_type) != 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 			return false;
 		}
@@ -1042,25 +1045,25 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 }
 
 bool TomahawkOutputReader::nextVariant(const entry_type*& entry){
-	if(this->position == this->size){
+	if(this->iterator_position == this->size){
 		if(!this->nextBlock())
 			return false;
 	}
 
-	entry = (*this)[this->position];
-	++this->position;
+	entry = (*this)[this->iterator_position];
+	++this->iterator_position;
 
 	return true;
 }
 
 // Do NOT get a new variant when reaching end of data
 bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
-	if(this->position == this->size){
+	if(this->iterator_position == this->size){
 		return false;
 	}
 
-	entry = (*this)[this->position];
-	++this->position;
+	entry = (*this)[this->iterator_position];
+	++this->iterator_position;
 
 	return true;
 }
