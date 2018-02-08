@@ -349,7 +349,7 @@ int view(int argc, char** argv){
 		if(!reader.Open(input))
 			return 1;
 
-		if(!reader.AddRegions(filter_regions)){
+		if(!reader.addRegions(filter_regions)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
 		}

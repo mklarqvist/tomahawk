@@ -48,6 +48,7 @@ public:
 
 private:
 	bool sort(const totempole_entry& workload){
+		/*
 		bool trigger_break = false;
 		writer_type& stream = *reinterpret_cast<writer_type*>(this->writer->getStream());
 		this->reader.stream.seekg(workload.byte_offset);
@@ -74,7 +75,7 @@ private:
 
 			if(this->reverse_entries){
 				const entry_type* entry = nullptr;
-				totempole.entries += 2*((this->reader.data_buffer.size() % sizeof(entry_type)));
+				totempole.n_entries += 2*((this->reader.data_buffer.size() % sizeof(entry_type)));
 				while(this->reader.nextVariantLimited(entry)){
 					// Flip cA,pA with cB,pB
 					entry_type temp(entry);
@@ -83,7 +84,7 @@ private:
 				}
 			} else {
 				// Do not reverse
-				totempole.entries = (this->reader.data_buffer.size() % sizeof(entry_type));
+				totempole.n_entries = (this->reader.data_buffer.size() % sizeof(entry_type));
 			}
 
 			std::sort(reinterpret_cast<entry_sort_type*>(this->reader.data_buffer.data()),
@@ -105,7 +106,7 @@ private:
 
 			if(trigger_break) break;
 		}
-
+		*/
 		return true;
 	}
 

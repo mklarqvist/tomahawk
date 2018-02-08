@@ -54,8 +54,25 @@ struct __attribute__((packed, aligned(1))) OutputEntry{
 		return false;
 	}
 
+	bool operator<=(const self_type& other) const{
+		if (this->AcontigID < other.AcontigID) return true;
+		if (other.AcontigID < this->AcontigID) return false;
+
+		if (this->Aposition < other.Aposition) return true;
+		if (other.Aposition < this->Aposition) return false;
+
+		if (this->BcontigID < other.BcontigID) return true;
+		if (other.BcontigID < this->BcontigID) return false;
+
+		if (this->Bposition < other.Bposition) return true;
+		if (other.Bposition < this->Bposition) return false;
+
+		return true;
+	}
+
 	// Comparator function: inverse of lesser comparator
-	bool operator>(const self_type& other){ return(!((*this) < other)); }
+	bool operator> (const self_type& other){ return(!((*this) <  other)); }
+	bool operator>=(const self_type& other){ return(!((*this) <= other)); }
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& entry){
 		os << std::setprecision(8) << (int)entry.FLAGS << '\t' << entry.AcontigID << '\t' << entry.Aposition << '\t' << entry.BcontigID << '\t' << entry.Bposition

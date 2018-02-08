@@ -313,7 +313,7 @@ public:
 	}
 
 	void operator<<(const entry_type* const entry){
-		++this->totempole_entry.entries;
+		++this->totempole_entry.n_entries;
 
 		this->index.update(*entry, this->current_blockID, this->buffer.size() / sizeof(entry_type));
 		this->buffer.Add(reinterpret_cast<const char* const>(&entry), sizeof(entry_type));
@@ -323,7 +323,7 @@ public:
 	}
 
 	void operator<<(const entry_type& entry){
-		++this->totempole_entry.entries;
+		++this->totempole_entry.n_entries;
 
 		this->index.update(entry, this->current_blockID, this->buffer.size() / sizeof(entry_type));
 		this->buffer.Add(reinterpret_cast<const char* const>(&entry), sizeof(entry_type));

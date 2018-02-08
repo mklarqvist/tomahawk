@@ -25,25 +25,23 @@ namespace Tomahawk {
 namespace IO {
 
 class TomahawkOutputReader {
-	typedef OutputEntry entry_type;
-	typedef OutputFilter filter_type;
-	typedef OutputWriterInterface writer_type;
+private:
+	typedef OutputEntry                    entry_type;
+	typedef OutputFilter                   filter_type;
+	typedef OutputWriterInterface          writer_type;
+	typedef OutputWriterIndex              twoi_writer_type;
+	typedef OutputContainer                output_container_type;
+	typedef OutputContainerReference       output_container_reference_type;
+	typedef IO::BasicBuffer                buffer_type;
 	typedef Totempole::TotempoleContigBase contig_type;
-	typedef TGZFHeader tgzf_header_type;
-	typedef Hash::HashTable<std::string, U32> hash_table;
-	typedef TGZFController tgzf_controller_type;
-	typedef Algorithm::ContigInterval interval_type;
-	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
-	typedef OutputWriterIndex twoi_writer_type;
-	typedef IO::BasicBuffer buffer_type;
-
-	typedef OutputContainer          output_container_type;
-	typedef OutputContainerReference output_container_reference_type;
-
+	typedef TGZFHeader                     tgzf_header_type;
+	typedef TGZFController                 tgzf_controller_type;
+	typedef Hash::HashTable<std::string, U32> hash_table;
+	typedef Algorithm::ContigInterval      interval_type;
+	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	typedef TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
-
 
 public:
 	typedef Totempole::TotempoleOutputReader toi_reader_type;
@@ -55,44 +53,46 @@ public:
 
 	const entry_type* operator[](const U32 p) const{ return(reinterpret_cast<const entry_type*>(&this->data_buffer[sizeof(entry_type)*p])); }
 
-	bool AddRegions(std::vector<std::string>& positions);
+	bool addRegions(std::vector<std::string>& positions);
 	bool Open(const std::string input);
 	bool OpenExtend(const std::string input);
 	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	// Streaming functions
-	bool getBlock(const U32 blockID);
-	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
-	bool parseBlock(const bool clear = true);
+	/**<
+	 * Seek to block at a given position and load that
+	 * data into memory
+	 * @param position Target block position
+	 * @return         Returns TRUE upon success or FALSE otherwise
+	 */
+	bool seekBlock(const U32 position);
 
-	//
-	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
-	output_container_reference_type getContainerReferenceBlock(std::vector<U32> blocks);
-	output_container_reference_type getContainerReferenceBlock(std::vector< std::pair<U32, U32> > blocks);
+	/**<
+	 * Parses TWO data that has been loaded into memory after invoking
+	 * either getBlock functions. This function also increments the internal
+	 * position of the file handler.
+	 * @param clear Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @return      Returns TRUE upon success or FALSE otherwis
+	 */
+	int parseBlock(const bool clear = true);
 
-	output_container_type getContainerBlock(const U32 blockID);
-	output_container_type getContainerBlock(std::vector<U32> blocks);
-	output_container_type getContainerBlock(std::vector< std::pair<U32, U32> > blocks);
-
-	//
-	bool view(void);
-	bool view(const interval_type& interval);
-	bool view(const std::vector<interval_type>& intervals);
-
-	// Accessors
+	// Access: no random access. All these functions
+	//         assumes that data is loaded linearly from disk
 	inline output_container_type getContainer(void){ return(output_container_type(this->data_buffer)); }
-	output_container_type getContainerVariants(const U32 n_variants);
+	output_container_type getContainerVariants(const U64 n_variants);
 	output_container_type getContainerBytes(const size_t l_data);
 	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_buffer)); }
 
+	// Access: requires random access
+	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
+	output_container_reference_type getContainerReferenceBlock(std::vector<U32> blocks);
+	output_container_type getContainerBlock(const U32 blockID);
+	output_container_type getContainerBlock(std::vector<U32> blocks);
 
-	// Todo: remove these four
-	bool nextVariant(const entry_type*& entry);
-	bool nextVariantLimited(const entry_type*& entry);
-
-	bool nextBlockUntil(const U32 limit);
-	bool nextBlockUntil(const U32 limit, const U64 virtual_offset);
-
+	// Basic operations
+	bool view(void);
+	bool view(const interval_type& interval);
+	bool view(const std::vector<interval_type>& intervals);
 
 	// Other
 	bool view(const std::string& filename);
@@ -122,12 +122,12 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 	bool __viewRegionIndexed(void);
-	bool __checkRegionIndex(const entry_type* const entry);
-	bool __checkRegionNoIndex(const entry_type* const entry);
+	bool __checkRegionIndex(const entry_type& entry);
+	bool __checkRegionNoIndex(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
-	bool AddRegionsIndexed(std::vector<std::string>& positions);
-	bool AddRegionsUnindexed(std::vector<std::string>& positions);
+	bool addRegionsIndexed(std::vector<std::string>& positions);
+	bool addRegionsUnindexed(std::vector<std::string>& positions);
 
 public:
 	U64 filesize;	// input file size

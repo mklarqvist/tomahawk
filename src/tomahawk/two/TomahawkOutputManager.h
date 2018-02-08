@@ -167,7 +167,7 @@ public:
 		this->buffer << helper;
 		++this->outCount;
 		++this->progressCount;
-		++this->entry.entries;
+		++this->entry.n_entries;
 
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT)
 			this->flushBlock();

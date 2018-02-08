@@ -30,16 +30,16 @@ public:
 	TotempoleOutputEntry() :
 		byte_offset(0),
 		byte_offset_end(0),
-		entries(0),
+		n_entries(0),
 		uncompressed_size(0)
 	{}
 	~TotempoleOutputEntry(){}
 
 	inline const bool isValid(void) const{ return(this->byte_offset != 0); }
-	inline void operator++(void){ ++this->entries; }
+	inline void operator++(void){ ++this->n_entries; }
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.byte_offset << '-' << entry.byte_offset_end << '\t' << entry.entries << '\t'
+		stream << entry.byte_offset << '-' << entry.byte_offset_end << '\t' << entry.n_entries << '\t'
 				<< entry.uncompressed_size;
 		return stream;
 	}
@@ -47,7 +47,7 @@ public:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset_end), sizeof(U64));
-		stream.write(reinterpret_cast<const char*>(&entry.entries),    sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&entry.n_entries),    sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&entry.uncompressed_size), sizeof(U32));
 		return stream;
 	}
@@ -55,7 +55,7 @@ public:
 	friend std::istream& operator>>(std::istream& stream, self_type& entry){
 		stream.read(reinterpret_cast<char*>(&entry.byte_offset), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&entry.byte_offset_end), sizeof(U64));
-		stream.read(reinterpret_cast<char*>(&entry.entries),    sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&entry.n_entries),    sizeof(U32));
 		stream.read(reinterpret_cast<char*>(&entry.uncompressed_size), sizeof(U32));
 
 		return(stream);
@@ -64,14 +64,25 @@ public:
 	void reset(void){
 		this->byte_offset       = 0;
 		this->byte_offset_end   = 0;
-		this->entries           = 0;
+		this->n_entries           = 0;
 		this->uncompressed_size = 0;
 	}
+
+	inline const U32& size(void) const{ return(this->n_entries); }
+	inline const U64& getStartOffset(void) const{ return(this->byte_offset); }
+	inline const U64& getEndOffset(void) const{ return(this->byte_offset_end); }
+	inline const U64  sizeCompressed(void) const{ return(this->byte_offset_end - this->byte_offset); }
+	inline const U32& sizeUncompressed(void) const{ return(this->uncompressed_size); }
+
+	inline void setStartOffset(const U64& byte_offset){ this->byte_offset = byte_offset; }
+	inline void setEndOffset(const U64& byte_offset){ this->byte_offset_end = byte_offset_end; }
+	inline void setSize(const U32& n_entries){ this->n_entries = n_entries; }
+	inline void setUncompressedSize(const U32& l_bytes){ this->uncompressed_size = l_bytes; }
 
 public:
 	U64 byte_offset;		// tellg() position in stream for start of record in Tomahawk file
 	U64 byte_offset_end;	// tellg() position in stream for start of record in Tomahawk file
-	U32 entries; 			// number of variants in this block
+	U32 n_entries; 			// number of variants in this block
 	U32 uncompressed_size;	// uncompressed size of this block
 };
 

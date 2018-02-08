@@ -17,8 +17,28 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		return false;
 	}
 
-	std::cerr << Helpers::timestamp("LOG") << "Size of an entry is: " << sizeof(entry_type) << " closest match = " << round((double)memory_limit/sizeof(entry_type)) << std::endl;
+	std::cerr << this->reader.filesize << "->" << this->reader.filesize / 8 << std::endl;
+	const U64 n_variants_chunk = this->reader.filesize / this->n_threads;
+	for(U32 i = 0; i < 8; ++i){
+		OutputContainer o = this->reader.getContainerBytes(n_variants_chunk);
+		std::cerr << "Size: " << o.size() << std::endl;
+		if(o.size())
+			std::sort(&o[0], &o[o.size()]);
 
+		const entry_type* prev = &o[0];
+		for(size_t j = 0; j < o.size(); ++j){
+			std::cout << o[j] << '\n';
+			if(!(*prev <= o[j])){
+				std::cerr << j-1 << ',' << j << std::endl;
+				std::cerr << *prev << std::endl;
+				std::cerr << o[j] << std::endl;
+				exit(1);
+			}
+			prev = &o[j];
+		}
+	}
+
+	/*
 	//
 	std::vector<std::string> paths = Helpers::filePathBaseExtension(destinationPrefix);
 	this->basePath = paths[0];
@@ -81,9 +101,9 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 
 		totempole_entry totempole;
 		if(this->reverse_entries)
-			totempole.entries = 2*(this->reader.data_buffer.size() / sizeof(entry_type));
+			totempole.n_entries = 2*(this->reader.data_buffer.size() / sizeof(entry_type));
 		else
-			totempole.entries = this->reader.data_buffer.size() / sizeof(entry_type);
+			totempole.n_entries = this->reader.data_buffer.size() / sizeof(entry_type);
 
 		if(this->reverse_entries){
 			const entry_type* entry = nullptr;
@@ -146,6 +166,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 
 	this->reader.writer->flush();
 	this->reader.writer->close();
+	*/
 
 	return true;
 }
@@ -164,12 +185,12 @@ bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::strin
 			totempole.byte_offset_end = this->reader.toi_reader[i].byte_offset;
 			blocks.push_back(totempole);
 			totempole.byte_offset = this->reader.toi_reader[i].byte_offset;
-			totempole.entries = 0;
+			totempole.n_entries = 0;
 			totempole.uncompressed_size = 0;
 		}
-		totempole.entries += this->reader.toi_reader[i].entries;
+		totempole.n_entries += this->reader.toi_reader[i].n_entries;
 		totempole.uncompressed_size += this->reader.toi_reader[i].uncompressed_size;
-		n_entries += totempole.entries;
+		n_entries += totempole.n_entries;
 	}
 
 	// Have to add final
@@ -178,7 +199,7 @@ bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::strin
 		blocks.push_back(totempole);
 	}
 
-	if(totempole.entries != 0)
+	if(totempole.n_entries != 0)
 		blocks.push_back(totempole);
 
 	// Todo: if n_threads > blocks.size()

@@ -154,27 +154,29 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 		this->outputBuffer_ += '\t';
 		this->outputBuffer_ += std::to_string(o.currentMeta().position);
 		this->outputBuffer_ += "\t.\t";
-		this->outputBuffer_ += Constants::REF_ALT_LOOKUP[o.currentMeta().ref_alt >> 4];
+		this->outputBuffer_ += o.currentMeta().getRefAllele();
 		this->outputBuffer_ += '\t';
-		this->outputBuffer_ += Constants::REF_ALT_LOOKUP[o.currentMeta().ref_alt & ((1 << 4) - 1)];
-		this->outputBuffer_ += "\t100\tPASS\t";
-		this->outputBuffer_ += std::string("HWE_P=");
+		this->outputBuffer_ += o.currentMeta().getAltAllele();
+		this->outputBuffer_ += "\t.\t.\t";
+		this->outputBuffer_ += "HWE_P=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
-		this->outputBuffer_ += std::string(";MAF=");
+		this->outputBuffer_ += ";MAF=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().MAF);
-		this->outputBuffer_ += "\tGT\t";
-		for(U32 i = 0; i < o.currentMeta().runs; ++i){
-			if(i != 0) this->outputBuffer_ += '\t';
-			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleA];
-			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleB];
-			this->outputBuffer_ += left;
-			this->outputBuffer_ += separator;
-			this->outputBuffer_ += right;
-			for(U32 r = 1; r < o[i].runs; ++r){
-				this->outputBuffer_ += '\t';
+		if(this->dropGenotypes == false){
+			this->outputBuffer_ += "\tGT\t";
+			for(U32 i = 0; i < o.currentMeta().runs; ++i){
+				if(i != 0) this->outputBuffer_ += '\t';
+				const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleA];
+				const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleB];
 				this->outputBuffer_ += left;
 				this->outputBuffer_ += separator;
 				this->outputBuffer_ += right;
+				for(U32 r = 1; r < o[i].runs; ++r){
+					this->outputBuffer_ += '\t';
+					this->outputBuffer_ += left;
+					this->outputBuffer_ += separator;
+					this->outputBuffer_ += right;
+				}
 			}
 		}
 		this->outputBuffer_ += '\n';

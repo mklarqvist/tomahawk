@@ -156,6 +156,18 @@ public:
 		return true;
 	}
 
+	bool addEntry(const char* const data){
+		// Check
+		if(this->size() + 1 > this->capacity()){
+			std::cerr << "could not fit!" << std::endl;
+			return false;
+		}
+
+		new ( &this->__entries[this->size()] ) value_type( data );
+
+		return true;
+	}
+
 protected:
 	size_type  n_entries;
 	size_type  n_capacity;

@@ -28,7 +28,9 @@ public:
 	MetaEntryBase(const char* const buffer_stream){ memcpy(this, buffer_stream, sizeof(self_type)); }
 	~MetaEntryBase() = default;
 
-	bool isSingleton(void) const{ return(this->MAF == 0); }
+	inline bool isSingleton(void) const{ return(this->MAF == 0); }
+	inline const char getRefAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt >> 4]); }
+	inline const char getAltAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt & ((1 << 4) - 1)]); }
 
 	// Overloaded operator for debug use
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){
