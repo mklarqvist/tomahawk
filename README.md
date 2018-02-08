@@ -98,5 +98,9 @@ Perform k-way merge of partially sorted blocks
 tomahawk sort -i partial.two -o sorted.two -M
 ```
 
+### Plotting data
+Plotting data from the `examples` directory
+![screenshot](R/1kgp3_chr20_105_1.jpeg)
+
 ### License
 [MIT](LICENSE)

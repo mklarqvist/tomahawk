@@ -68,12 +68,12 @@ public:
 		this->uncompressed_size = 0;
 	}
 
-	inline const U32& size(void) const{ return(this->n_entries); }
-	inline const U64& getStartOffset(void) const{ return(this->byte_offset); }
-	inline const U64& getEndOffset(void) const{ return(this->byte_offset_end); }
-	inline const U64  sizeCompressed(void) const{ return(this->byte_offset_end - this->byte_offset); }
-	inline const U32& sizeUncompressed(void) const{ return(this->uncompressed_size); }
-
+	// Do not return const_reference as it might be a temporary address
+	inline const U32 size(void) const{ return(this->n_entries); }
+	inline const U64 getStartOffset(void) const{ return(this->byte_offset); }
+	inline const U64 getEndOffset(void) const{ return(this->byte_offset_end); }
+	inline const U64 sizeCompressed(void) const{ return(this->byte_offset_end - this->byte_offset); }
+	inline const U32 sizeUncompressed(void) const{ return(this->uncompressed_size); }
 	inline void setStartOffset(const U64& byte_offset){ this->byte_offset = byte_offset; }
 	inline void setEndOffset(const U64& byte_offset){ this->byte_offset_end = byte_offset_end; }
 	inline void setSize(const U32& n_entries){ this->n_entries = n_entries; }

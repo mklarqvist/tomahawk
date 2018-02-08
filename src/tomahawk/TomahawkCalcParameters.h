@@ -13,10 +13,12 @@ namespace Tomahawk{
 #define CALC_DEFAULT_MAXALLELES std::numeric_limits<int64_t>::max()
 
 struct TomahawkCalcParameters{
-	typedef TomahawkCalcParameters self_type;
+public:
+	typedef TomahawkCalcParameters    self_type;
 	typedef IO::GenericWriterInterace writer_type;
 	enum force_method {none, phasedFunction, unphasedFunction};
 
+public:
 	TomahawkCalcParameters() :
 		n_threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 		n_chunks(1),
@@ -123,17 +125,18 @@ struct TomahawkCalcParameters{
 		return(os);
 	}
 
-	S32 n_threads;
-	S32 n_chunks;
-	S32 chunk_selected;
-	double R2_min;
-	double R2_max;
-	double P_threshold;
+public:
+	S32     n_threads;
+	S32     n_chunks;
+	S32     chunk_selected;
+	double  R2_min;
+	double  R2_max;
+	double  P_threshold;
 	int64_t minimum_alleles;
 	int64_t maximum_alleles;
 	writer_type::compression compression_type;
 	force_method force;
-	bool detailed_progress;
+	bool    detailed_progress;
 };
 
 }

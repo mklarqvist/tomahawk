@@ -20,7 +20,7 @@ public:
 		uncompressed_size(other.uncompressed_size)
 	{
 	}
-	~TotempoleEntry(){}
+	~TotempoleEntry() = default;
 
 	inline U16 size(void) const{ return(this->variants); }
 	inline bool isValid(void) const{ return(this->byte_offset != 0); }
