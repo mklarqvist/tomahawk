@@ -12,6 +12,7 @@
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "TomahawkOutputStats.h"
 
+#include "../base/output_container.h"
 #include "../base/output_container_reference.h"
 
 namespace Tomahawk {
@@ -302,7 +303,6 @@ bool TomahawkOutputReader::__viewOnly(void){
 			for(auto it = o.begin(); it != o.end(); ++it)
 				std::cout << *it << '\n';
 		}
-
 	}
 	// Binary output without filtering simply writes it back out
 	else if(this->writer_output_type == WRITER_TYPE::binary){

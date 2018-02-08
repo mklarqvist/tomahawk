@@ -6,13 +6,13 @@
 namespace Tomahawk {
 namespace Support{
 
-struct TomahawkOutputLD{
+struct OutputEntrySupport{
 private:
-	typedef TomahawkOutputLD self_type;
+	typedef OutputEntrySupport self_type;
 
 public:
-	TomahawkOutputLD();
-	~TomahawkOutputLD();
+	OutputEntrySupport();
+	~OutputEntrySupport();
 
 	inline void resetPhased(void){
 		this->controller      = 0;
@@ -49,11 +49,11 @@ public:
 
 	inline float& operator[](const U32& p){ return(this->alleleCounts[p]); }
 	inline const float& operator[](const U32& p) const{ return(this->alleleCounts[p]); }
-	void operator=(const TomahawkOutputLD& other);
+	void operator=(const OutputEntrySupport& other);
 	void printUnphasedCounts(void) const;
 	void printPhasedCounts(void) const;
 
-	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& os, const TomahawkOutputLD& entry){
+	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& os, const OutputEntrySupport& entry){
 		// Notice that CONTROLLER is written separately
 		os += entry.alleleCounts[0];
 		os += entry.alleleCounts[1];
@@ -68,7 +68,7 @@ public:
 		return os;
 	}
 
-	friend std::ostream& operator<<(std::ostream& os, const TomahawkOutputLD& entry){
+	friend std::ostream& operator<<(std::ostream& os, const OutputEntrySupport& entry){
 		os << entry.alleleCounts[0] << '\t' << entry.alleleCounts[1] << '\t' << entry.alleleCounts[4] << '\t' << entry.alleleCounts[5] << '\t'
 		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher;
 		return os;

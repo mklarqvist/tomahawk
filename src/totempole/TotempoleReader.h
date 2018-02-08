@@ -77,17 +77,17 @@ private:
 
 public:
 	std::ifstream stream;	// filestream
-	std::string filename;	// filename
-	U32 filesize;			// filesize
-	U32 n_contigs;			// number of contigs
-	header_type header;		// header information
-	std::string literals;	// literal data
+	std::string   filename;	// filename
+	U32           filesize;	// filesize
+	U32           n_contigs;// number of contigs
+	header_type   header;   // header information
+	std::string   literals;	// literal data
 	tgzf_controller_type tgzf_controller;	// tgzf controller
-	contig_type* contigs;	// contig data
-	std::string* samples;	// sample names
-	entry_type* entries;	// totempole entries data
-	hash_table* contigsHashTable;	// contig name hash table
-	hash_table* sampleHashTable;	// sample name hash table
+	contig_type*  contigs;  // contig data
+	std::string*  samples;  // sample names
+	entry_type*   entries;  // totempole entries data
+	hash_table*   contigsHashTable; // contig name hash table
+	hash_table*   sampleHashTable;  // sample name hash table
 };
 
 }

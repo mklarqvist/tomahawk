@@ -17,13 +17,17 @@
 #include "ld_calculation_slave.h"
 #include "TomahawkCalcParameters.h"
 #include "../totempole/TotempoleReader.h"
+#include "base/genotype_container_reference.h"
 
 namespace Tomahawk {
 
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
-	typedef TomahawkCalcParameters    parameter_type;
-	typedef Totempole::TotempoleEntry totempole_entry;
+	typedef TomahawkCalcParameters     parameter_type;
+	typedef Totempole::TotempoleEntry  totempole_entry;
+	typedef Totempole::TotempoleReader index_reader_type;
+	typedef IO::BasicBuffer            buffer_type;
+	typedef IO::TGZFController         tgzf_controller_type;
 
 public:
 	// Used to keep track of char pointer offsets in buffer
@@ -54,7 +58,7 @@ public:
 	bool outputBlocks();
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
-	inline Totempole::TotempoleReader& getTotempole(void){ return(this->totempole_); }
+	inline index_reader_type& getTotempole(void){ return(this->totempole_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
 	inline const size_t DataOffsetSize(void) const{ return(this->blockDataOffsets_.size()); }
 	inline void setDropGenotypes(const bool yes){ this->dropGenotypes = yes; }
@@ -68,20 +72,20 @@ private:
 	bool ValidateHeader(std::ifstream& in) const;
 
 private:
-	U64 samples;     // has to match header
-	float version;   // has to match header
-	U64 filesize_;   // filesize
-	BYTE bit_width_; // bit width
-	bool dropGenotypes;
-	bool showHeader; // flag to output header or not
-	std::ifstream stream_; // reader stream
-	Totempole::TotempoleReader totempole_;
+	U64               samples;    // has to match header
+	float             version;    // has to match header
+	U64               filesize_;  // filesize
+	BYTE              bit_width_; // bit width
+	bool              dropGenotypes;
+	bool              showHeader; // flag to output header or not
+	std::ifstream     stream_;    // reader stream
+	index_reader_type totempole_;
 
 
-	IO::BasicBuffer buffer_; // input buffer
-	IO::BasicBuffer data_; // inflate buffer
-	IO::BasicBuffer outputBuffer_; // output buffer
-	IO::TGZFController tgzf_controller_;
+	buffer_type          buffer_;       // input buffer
+	buffer_type          data_;         // inflate buffer
+	buffer_type          outputBuffer_; // output buffer
+	tgzf_controller_type tgzf_controller_;
 
 	std::vector<DataOffsetPair> blockDataOffsets_;
 
@@ -132,26 +136,47 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 		return false;
 	}
 
-	// Todo: move to function
 	this->WriteBlock<T>(data_position, blockID);
 
 	return true;
 }
 
 template <class T>
-bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
-	//Todo
-	/*
-	TomahawkBlock<T> tomahawk_controller(data, this->totempole_[blockID]);
+bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
+	Base::GenotypeContainerReference<T> o(data, this->totempole_[blockID].uncompressed_size, this->totempole_[blockID], this->samples);
 
 	// For each variant in Tomahawk block
-	for(U32 j = 0; j < tomahawk_controller.support->variants; ++j){
-		tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_, this->dropGenotypes);
-
-		// Next variant
-		++tomahawk_controller;
-
-		// Keep flushing regularly
+	for(U32 j = 0; j < o.size(); ++j){
+		//tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_, this->dropGenotypes);
+		this->outputBuffer_ += this->totempole_.getContig(this->totempole_[blockID].contigID).name;
+		this->outputBuffer_ += '\t';
+		this->outputBuffer_ += std::to_string(o.currentMeta().position);
+		this->outputBuffer_ += "\t.\t";
+		this->outputBuffer_ += Constants::REF_ALT_LOOKUP[o.currentMeta().ref_alt >> 4];
+		this->outputBuffer_ += '\t';
+		this->outputBuffer_ += Constants::REF_ALT_LOOKUP[o.currentMeta().ref_alt & ((1 << 4) - 1)];
+		this->outputBuffer_ += "\t100\tPASS\t";
+		this->outputBuffer_ += std::string("HWE_P=");
+		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
+		this->outputBuffer_ += std::string(";MAF=");
+		this->outputBuffer_ += std::to_string(o.currentMeta().MAF);
+		this->outputBuffer_ += "\tGT\t";
+		for(U32 i = 0; i < o.currentMeta().runs; ++i){
+			if(i != 0) this->outputBuffer_ += '\t';
+			const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleA];
+			const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleB];
+			this->outputBuffer_ += left;
+			this->outputBuffer_ += '|';
+			this->outputBuffer_ += right;
+			for(U32 r = 1; r < o[i].runs; ++r){
+				this->outputBuffer_ += '\t';
+				this->outputBuffer_ += left;
+				this->outputBuffer_ += '|';
+				this->outputBuffer_ += right;
+			}
+		}
+		this->outputBuffer_ += '\n';
+		++o;
 
 		if(this->outputBuffer_.size() > 65536){
 			//this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
@@ -167,7 +192,6 @@ bool TomahawkReader::WriteBlock(const char* data, const U32 blockID){
 	// Reset buffers
 	this->outputBuffer_.reset(); // reset
 	this->data_.reset(); // reset
-	*/
 
 	return true;
 }

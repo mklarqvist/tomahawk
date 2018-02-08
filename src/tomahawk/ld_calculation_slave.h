@@ -8,7 +8,6 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/spinlock.h"
-#include "TomahawkOutput/TomahawkOutputLD.h"
 #include "../interface/ProgressBar.h"
 #include "TomahawkCalcParameters.h"
 #include "../math/FisherMath.h"
@@ -19,6 +18,7 @@
 #include "TomahawkOutput/TomahawkOutputManager.h"
 
 #include "base/genotype_meta_container_reference.h"
+#include "TomahawkOutput/output_entry_support.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -58,7 +58,7 @@ struct __attribute__((packed, aligned(1))) __costHelper{
  */
 struct __methodCompare{
 	typedef __methodCompare self_type;
-	typedef Tomahawk::Support::TomahawkOutputLD helper_type;
+	typedef Tomahawk::Support::OutputEntrySupport helper_type;
 
 	__methodCompare(){}
 	~__methodCompare(){}
@@ -260,7 +260,7 @@ class LDSlave{
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::TotempoleEntry            totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T>         output_manager_type;
-	typedef Support::TomahawkOutputLD            helper_type;
+	typedef Support::OutputEntrySupport            helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
 	typedef Interface::ProgressBar               progress_bar_type;
