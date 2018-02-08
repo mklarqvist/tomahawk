@@ -7,27 +7,27 @@
 #include <stddef.h>
 #include <regex>
 
-#include "../../support/TypeDefinitions.h"
 #include "../../io/BasicBuffer.h"
 #include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
 #include "../../algorithm/OpenHashTable.h"
+#include "../../support/type_definitions.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../third_party/intervalTree.h"
 #include "../../totempole/TotempoleOutputReader.h"
 #include "../../tomahawk/output_container.h"
 #include "../../tomahawk/output_container_reference.h"
 #include "../two/output_entry.h"
-#include "../two/TomahawkOutputFilterController.h"
-#include "../two/TomahawkOutputWriter.h"
+#include "output_filter.h"
+#include "output_writer.h"
 
 namespace Tomahawk {
 namespace IO {
 
 class TomahawkOutputReader {
 	typedef OutputEntry entry_type;
-	typedef TomahawkOutputFilterController filter_type;
-	typedef TomahawkOutputWriterInterface writer_type;
+	typedef OutputFilter filter_type;
+	typedef OutputWriterInterface writer_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 	typedef TGZFHeader tgzf_header_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
@@ -35,7 +35,7 @@ class TomahawkOutputReader {
 	typedef Algorithm::ContigInterval interval_type;
 	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
-	typedef TomahawkOutputWriterIndex twoi_writer_type;
+	typedef OutputWriterIndex twoi_writer_type;
 	typedef IO::BasicBuffer buffer_type;
 
 	typedef OutputContainer          output_container_type;
@@ -53,7 +53,7 @@ public:
 	TomahawkOutputReader();
 	~TomahawkOutputReader();
 
-	const entry_type* operator[](const U32 p) const{ return(reinterpret_cast<const entry_type*>(&this->data_buffer.data[sizeof(entry_type)*p])); }
+	const entry_type* operator[](const U32 p) const{ return(reinterpret_cast<const entry_type*>(&this->data_buffer[sizeof(entry_type)*p])); }
 
 	bool AddRegions(std::vector<std::string>& positions);
 	bool Open(const std::string input);

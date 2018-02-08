@@ -74,7 +74,7 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		}
 
 		U32 ret_size = 0;
-		if(!parent_type::Inflate(this->stream, (BYTE*)&output_buffer.data[0], this->chunk_size, ret_size)){
+		if(!parent_type::Inflate(this->stream, (BYTE*)output_buffer.data(), this->chunk_size, ret_size)){
 			if(this->STATE != TGZF_STATE::TGZF_END){
 				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid state (" << this->STATE << ")" << std::endl;
 				exit(1);
@@ -97,7 +97,7 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 				this->reset(); // reset state
 			}
 
-			if(!parent_type::Inflate(this->stream, (BYTE*)&output_buffer.data[0], this->chunk_size, ret_size)){
+			if(!parent_type::Inflate(this->stream, (BYTE*)output_buffer.data(), this->chunk_size, ret_size)){
 				if(this->STATE != TGZF_STATE::TGZF_END){
 					std::cerr << Helpers::timestamp("ERROR","TGZF") << "Invalid state (" << this->STATE << ")" << std::endl;
 					exit(1);
@@ -111,10 +111,10 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 
 		}
 
-		this->output_buffer.pointer = ret_size;
+		this->output_buffer.n_chars = ret_size;
 		this->n_entries = ret_size / sizeof(T);
 		this->pointer = 0;
-		this->entries = reinterpret_cast<const T*>(this->output_buffer.data);
+		this->entries = reinterpret_cast<const T*>(this->output_buffer.data());
 	}
 
 	entry = &this->entries[this->pointer++];

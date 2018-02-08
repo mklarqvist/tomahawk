@@ -9,7 +9,7 @@
 #include <thread>
 
 #include "../support/helpers.h"
-#include "Timer.h"
+#include "timer.h"
 
 namespace Tomahawk{
 namespace Interface{

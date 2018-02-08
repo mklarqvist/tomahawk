@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
-#include "tomahawk/two/TomahawkOutputFilterController.h"
+#include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "totempole/TotempoleReader.h"
@@ -102,7 +102,7 @@ int view(int argc, char** argv){
 
 	// Parameter defaults
 	std::string input, output;
-	Tomahawk::TomahawkOutputFilterController two_filter;
+	Tomahawk::OutputFilter two_filter;
 	bool outputHeader = true;
 	int outputType = 1;
 	bool dropGenotypes = false;
@@ -340,8 +340,8 @@ int view(int argc, char** argv){
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::IO::TomahawkOutputReader reader;
 		reader.setWriteHeader(outputHeader);
-		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
-		filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
+		Tomahawk::OutputFilter& filter = reader.getFilter();
+		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
 		if(!reader.setWriterType(outputType))
 			return 1;

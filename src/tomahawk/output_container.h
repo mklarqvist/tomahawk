@@ -61,7 +61,7 @@ public:
 
 		U32 cumulative_position = 0;
 		for(size_t i = 0; i < this->size(); ++i){
-			new( &this->__entries[i] ) value_type( &data_buffer.data[cumulative_position] );
+			new( &this->__entries[i] ) value_type( &data_buffer[cumulative_position] );
 			cumulative_position += sizeof(value_type);
 		}
 		assert(cumulative_position == data_buffer.size());
@@ -134,8 +134,8 @@ public:
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
 	// Add
-	inline bool addData(const buffer_type& buffer){ return(this->addData(buffer.data, buffer.size())); }
-	bool addData(char* const data, const U64 l_data){
+	inline bool addData(const buffer_type& buffer){ return(this->addData(buffer.data(), buffer.size())); }
+	bool addData(const char* const data, const U64 l_data){
 		assert(l_data % sizeof(value_type) == 0);
 		const size_t entries_adding = l_data / sizeof(value_type);
 

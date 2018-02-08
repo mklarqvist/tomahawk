@@ -4,7 +4,7 @@
 #include <fstream>
 
 #include "../algorithm/compression/genotype_encoder.h"
-#include "../support/TypeDefinitions.h"
+#include "../support/type_definitions.h"
 #include "../io/BasicBuffer.h"
 #include "../io/BasicWriters.h"
 #include "../io/compression/TGZFController.h"

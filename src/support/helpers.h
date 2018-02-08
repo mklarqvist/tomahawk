@@ -10,7 +10,7 @@
 #include <iostream>
 #include <cstring>
 
-#include "TypeDefinitions.h"
+#include "type_definitions.h"
 
 namespace Tomahawk{
 namespace Helpers{

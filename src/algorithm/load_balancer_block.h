@@ -1,8 +1,8 @@
-#ifndef ALGORITHM_LOADBALANCERBLOCK_H_
-#define ALGORITHM_LOADBALANCERBLOCK_H_
+#ifndef ALGORITHM_LOAD_BALANCER_BLOCK_H_
+#define ALGORITHM_LOAD_BALANCER_BLOCK_H_
 
 #include <vector>
-#include "../support/TypeDefinitions.h"
+#include "../support/type_definitions.h"
 
 namespace Tomahawk{
 
@@ -80,4 +80,4 @@ struct LoadBalancerBlock{
 
 }
 
-#endif /* ALGORITHM_LOADBALANCERBLOCK_H_ */
+#endif /* ALGORITHM_LOAD_BALANCER_BLOCK_H_ */

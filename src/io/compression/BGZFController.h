@@ -27,7 +27,7 @@ class BGZFController {
 		bool InflateBlock(std::ifstream& stream, buffer_type& input);
 
 		friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-			stream.write(entry.buffer.data, entry.buffer.pointer);
+			stream.write(entry.buffer.data(), entry.buffer.size());
 			return stream;
 		}
 

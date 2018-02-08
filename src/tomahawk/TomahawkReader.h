@@ -7,11 +7,11 @@
 #include <bitset>
 
 #include "../algorithm/load_balancer_ld.h"
+#include "../interface/progressbar.h"
 #include "../support/MagicConstants.h"
 #include "../io/compression/TGZFController.h"
 #include "../io/compression/GZFConstants.h"
-#include "../interface/Timer.h"
-#include "../interface/ProgressBar.h"
+#include "../interface/timer.h"
 #include "meta_entry.h"
 #include "twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
@@ -119,16 +119,16 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 	}
 
 	// Read from start to start + byte-width
-	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
+	if(!this->stream_.read(this->buffer_.data(), readLength)){
 		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
 		std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
 		return false;
 	}
 	// Set buffer byte-width to data loaded
-	this->buffer_.pointer = readLength;
+	this->buffer_.n_chars = readLength;
 
 	// Keep track of position because inflate function moves pointer
-	char* data_position = &this->data_.data[this->data_.pointer];
+	char* data_position = &this->data_[this->data_.n_chars];
 
 	// Inflate TGZF block
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
@@ -181,15 +181,15 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 		++o;
 
 		if(this->outputBuffer_.size() > 65536){
-			//this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
-			std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+			//this->writer->write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+			std::cout.write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
 			this->outputBuffer_.reset();
 		}
 	}
 
 	// Flush last
-	//this->writer->write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
-	std::cout.write(&this->outputBuffer_.data[0], this->outputBuffer_.pointer);
+	//this->writer->write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+	std::cout.write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
 
 	// Reset buffers
 	this->outputBuffer_.reset(); // reset

@@ -55,10 +55,10 @@ public:
 
 	// Updated second when read
 	// contigID is implicit
-	U32 minPosition;	// start position of contig
-	U32 maxPosition;	// end position of contig
-	U32 blocksStart; 	// start IO-seek position of blocks
-	U32 blocksEnd;		// end IO-seek position of blocks
+	U32 minPosition;  // start position of contig
+	U32 maxPosition;  // end position of contig
+	U32 blocksStart;  // start IO-seek position of blocks
+	U32 blocksEnd;    // end IO-seek position of blocks
 };
 
 }

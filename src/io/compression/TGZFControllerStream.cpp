@@ -13,8 +13,8 @@ bool TGZFControllerStream::InflateOpen(std::ifstream& stream){
 	this->buffer.reset();
 	this->buffer.resize(this->chunk_size);
 	this->bytes_read = 0;
-	stream.read(&this->buffer.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
-	const header_type* h = reinterpret_cast<const header_type*>(&this->buffer.data[0]);
+	stream.read(this->buffer.data(), IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(this->buffer.data());
 
 	if(!h->Validate()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Failed to validate!" << std::endl;
@@ -80,19 +80,19 @@ bool TGZFControllerStream::__Inflate(std::ifstream& stream, const BYTE* output, 
 		if(this->bytes_read + this->chunk_size > this->BSIZE)
 			read_amount = this->BSIZE - this->bytes_read;
 
-		stream.read(&this->buffer.data[0], read_amount);
+		stream.read(this->buffer.data(), read_amount);
 		size_t total = stream.gcount();
 		this->bytes_read += total;
 
 		//std::cerr << "READ: " << total << "\t" << stream.tellg() << std::endl;
 		this->d_stream.avail_in = total;
-		this->d_stream.next_in  = (Bytef*)&this->buffer.data[0];
+		this->d_stream.next_in  = (Bytef*)this->buffer.data();
 
 		if(total == 0){
 			std::cerr << Helpers::timestamp("WARNING","TGZF") << "Nothing read!" << std::endl;
 			return false;
 		}
-		this->buffer.pointer = total;
+		this->buffer.n_chars = total;
 	}
 
 	const U32 tot_out = this->d_stream.total_out;

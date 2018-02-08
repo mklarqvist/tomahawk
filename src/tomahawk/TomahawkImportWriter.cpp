@@ -147,7 +147,7 @@ void TomahawkImportWriter::WriteHeaders(void){
 
 	temp += command;
 	this->gzip_controller_.Deflate(temp);
-	this->streamTotempole.write(&this->gzip_controller_.buffer.data[0], this->gzip_controller_.buffer.pointer);
+	this->streamTotempole.write(this->gzip_controller_.buffer.data(), this->gzip_controller_.buffer.n_chars);
 	this->gzip_controller_.Clear();
 	temp.deleteAll();
 
@@ -188,34 +188,34 @@ void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
 }
 
 bool TomahawkImportWriter::add(const VCF::VCFLine& line){
-	const U32 meta_start_pos = this->buffer_meta_.pointer;
-	const U32 rle_start_pos  = this->buffer_rle_.pointer;
+	const U32 meta_start_pos = this->buffer_meta_.n_chars;
+	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
+	const U64 n_runs = (this->buffer_rle_.n_chars - rle_start_pos)/this->rleController_->getBitWidth();
 	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 	if(n_runs == 1){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "singleton" << std::endl;
 		return false;
 	}
 
 	if(base_meta.HWE_P < this->filter.HWE_P){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << '\t' << base_meta << std::endl;
 		return false;
 	}
 
 	if(base_meta.MAF < this->filter.MAF){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
 		return false;
 	}
@@ -230,33 +230,33 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 }
 
 bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
-	const U32 meta_start_pos = this->buffer_meta_.pointer;
-	const U32 rle_start_pos  = this->buffer_rle_.pointer;
+	const U32 meta_start_pos = this->buffer_meta_.n_chars;
+	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.pointer - rle_start_pos)/this->rleController_->getBitWidth();
+	const U64 n_runs = (this->buffer_rle_.n_chars - rle_start_pos)/this->rleController_->getBitWidth();
 	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
 
 	if(n_runs == 1){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
 	if(base_meta.HWE_P < this->filter.HWE_P){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << std::endl;
 		return false;
 	}
 
 	if(base_meta.MAF < this->filter.MAF){
-		this->buffer_meta_.pointer = meta_start_pos; // reroll back
-		this->buffer_rle_.pointer  = rle_start_pos; // reroll back
+		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;
 		return false;
 	}

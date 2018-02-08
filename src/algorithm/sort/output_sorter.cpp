@@ -97,8 +97,8 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.data_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
 
-		std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[0]),
-				  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[this->reader.data_buffer.size()]));
+		std::sort(reinterpret_cast<entry_sort_type*>(this->reader.data_buffer.data()),
+				  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer[this->reader.data_buffer.size()]));
 
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;

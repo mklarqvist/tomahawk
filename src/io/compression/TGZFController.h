@@ -35,7 +35,7 @@ public:
 	bool Deflate(buffer_type& meta, buffer_type& rle);
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream.write(entry.buffer.data, entry.buffer.pointer);
+		stream.write(entry.buffer.data(), entry.buffer.size());
 		return stream;
 	}
 

@@ -8,13 +8,13 @@
 
 #include "../support/simd_definitions.h"
 #include "../algorithm/spinlock.h"
-#include "../interface/ProgressBar.h"
+#include "../interface/progressbar.h"
 #include "TomahawkCalcParameters.h"
-#include "../math/FisherMath.h"
-#include "../algorithm/LoadBalancerBlock.h"
+#include "../algorithm/load_balancer_block.h"
 #include "../algorithm/GenotypeBitPacker.h"
 #include "TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
+#include "../math/fisher_math.h"
 #include "genotype_meta_container_reference.h"
 #include "two/output_entry_support.h"
 #include "two/TomahawkOutputManager.h"
@@ -26,7 +26,7 @@
 // Method 5: Phased A1 and Phased A2
 // Method 6: All algorithms comparison (debug)
 // Method 7: All algorithms run-time output (debug)
-#define SLAVE_DEBUG_MODE	1
+#define SLAVE_DEBUG_MODE 1
 
 namespace Tomahawk{
 

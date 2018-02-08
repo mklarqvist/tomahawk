@@ -29,7 +29,7 @@ struct __attribute__((packed, aligned(1))) OutputEntry{
 
 	// Copy data from stream
 	OutputEntry(const IO::BasicBuffer& data_buffer){
-		memcpy(this, data_buffer.data, sizeof(self_type));
+		memcpy(this, data_buffer.data(), sizeof(self_type));
 	}
 
 	OutputEntry(const self_type* const other){

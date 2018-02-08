@@ -3,7 +3,7 @@
 
 #include <cstring>  // size_t, ptrdiff_t
 
-#include "../support/TypeDefinitions.h"
+#include "../support/type_definitions.h"
 #include "../totempole/TotempoleEntry.h"
 #include "genotype_container_reference.h"
 

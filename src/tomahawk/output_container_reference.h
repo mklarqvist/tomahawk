@@ -36,7 +36,7 @@ public:
 
     OutputContainerReference(const buffer_type& data_buffer) :
 		n_entries(data_buffer.size() / sizeof(value_type)),
-		__entries(reinterpret_cast<IO::OutputEntry* const>(data_buffer.data))
+		__entries(reinterpret_cast<IO::OutputEntry* const>(data_buffer.buffer))
 	{
 		assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);

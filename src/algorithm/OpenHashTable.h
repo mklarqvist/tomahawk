@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "../support/TypeDefinitions.h"
+#include "../support/type_definitions.h"
 #include "../third_party/xxhash/xxhash.h"
 
 namespace Tomahawk {

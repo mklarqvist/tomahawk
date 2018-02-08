@@ -76,8 +76,8 @@ public:
 	}
 
 	inline const size_t writeNoLock(const buffer_type& buffer){
-		std::cout.write(&buffer.data[0], buffer.pointer);
-		return(buffer.pointer);
+		std::cout.write(buffer.data(), buffer.size());
+		return(buffer.size());
 	}
 
 	void operator<<(void* entry){}
@@ -87,7 +87,7 @@ public:
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
 		this->lock.lock();
-		std::cout.write(&buffer.data[0], buffer.size());
+		std::cout.write(buffer.data(), buffer.size());
 		this->lock.unlock();
 	}
 };
@@ -135,7 +135,7 @@ public:
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
 		this->lock.lock();
-		this->stream.write(&buffer.data[0], buffer.size());
+		this->stream.write(buffer.data(), buffer.size());
 		this->lock.unlock();
 	}
 
@@ -153,8 +153,8 @@ public:
 	}
 
 	inline const size_t writeNoLock(const buffer_type& buffer){
-		this->stream.write(&buffer.data[0], buffer.pointer);
-		return(buffer.pointer);
+		this->stream.write(buffer.data(), buffer.size());
+		return(buffer.size());
 	}
 
 private:

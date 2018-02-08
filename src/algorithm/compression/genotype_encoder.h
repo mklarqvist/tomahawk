@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../../math/FisherMath.h"
+#include "../../math/fisher_math.h"
 #include "../../io/bcf/BCFReader.h"
 #include "../../io/vcf/VCFLines.h"
 
@@ -360,7 +360,7 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 	this->helper.calculateHardyWeinberg();
 
 	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
+	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
 	position <<= 2;
 	position |= this->helper.phased << 1;
 	position |= this->helper.missingValues << 0;
@@ -466,7 +466,7 @@ bool GenotypeEncoder::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::BasicB
 	this->helper.calculateHardyWeinberg();
 
 	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
+	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
 	position <<= 2;
 	position |= this->helper.phased << 1;
 	position |= this->helper.missingValues << 0;
@@ -570,7 +570,7 @@ bool GenotypeEncoder::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::Basic
 	this->helper.calculateHardyWeinberg();
 
 	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.pointer - 5]);
+	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
 	position <<= 2;
 	position |= this->helper.phased << 1;
 	position |= this->helper.missingValues << 0;

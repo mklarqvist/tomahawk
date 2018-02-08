@@ -14,8 +14,8 @@ private:
 	typedef Totempole::TotempoleOutputEntry   totempole_entry;
 	typedef IO::WriterFile                    writer_type;
 	typedef IO::TomahawkOutputReader          two_reader_type;
-	typedef IO::TomahawkOutputWriterInterface two_writer_interface;
-	typedef IO::TomahawkOutputWriter          two_writer_type;
+	typedef IO::OutputWriterInterface two_writer_interface;
+	typedef IO::OutputWriter          two_writer_type;
 	typedef IO::TGZFController                tgzf_controller_type;
 
 public:
@@ -86,8 +86,8 @@ private:
 				totempole.entries = (this->reader.data_buffer.size() % sizeof(entry_type));
 			}
 
-			std::sort(reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[0]),
-					  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer.data[this->reader.data_buffer.size()]));
+			std::sort(reinterpret_cast<entry_sort_type*>(this->reader.data_buffer.data()),
+					  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer[this->reader.data_buffer.size()]));
 
 			totempole.reset();
 			totempole.uncompressed_size = this->reader.data_buffer.size();
@@ -97,7 +97,7 @@ private:
 
 			this->writer->getLock()->lock();
 			totempole.byte_offset = stream.getNativeStream().tellp();
-			this->writer->getStream()->writeNoLock(this->controller.buffer.data, this->controller.buffer.pointer);
+			this->writer->getStream()->writeNoLock(this->controller.buffer.data(), this->controller.buffer.size());
 			++this->blocks_written;
 			totempole.byte_offset_end = stream.getNativeStream().tellp();
 			toi_writer.getNativeStream() << totempole;

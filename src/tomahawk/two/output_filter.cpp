@@ -1,11 +1,10 @@
-#include "../two/TomahawkOutputFilterController.h"
-
 #include <limits>
 #include <string>
+#include "output_filter.h"
 
 namespace Tomahawk {
 
-TomahawkOutputFilterController::TomahawkOutputFilterController() :
+OutputFilter::OutputFilter() :
 	any_filter_user_set(false),
 	minP1(0),
 	minP2(0),
@@ -27,9 +26,9 @@ TomahawkOutputFilterController::TomahawkOutputFilterController() :
 	filterValueExclude(0)
 {}
 
-TomahawkOutputFilterController::~TomahawkOutputFilterController(){}
+OutputFilter::~OutputFilter(){}
 
-std::string TomahawkOutputFilterController::getInterpretedString(void) const{
+std::string OutputFilter::getInterpretedString(void) const{
 	if(this->any_filter_user_set){
 		return(std::string(
 				"minP1=" + std::to_string(this->minP1) + " " +
@@ -62,7 +61,7 @@ std::string TomahawkOutputFilterController::getInterpretedString(void) const{
 	}
 }
 
-bool TomahawkOutputFilterController::filter(const entry_type& target) const{
+bool OutputFilter::filter(const entry_type& target) const{
 	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0))
 		return false;
 
@@ -81,11 +80,11 @@ bool TomahawkOutputFilterController::filter(const entry_type& target) const{
 	return true;
 }
 
-bool TomahawkOutputFilterController::filterHF(const entry_type& target) const{
+bool OutputFilter::filterHF(const entry_type& target) const{
 	return(target.p1 >= this->minP1 || target.p2 >= this->minP2 || target.q1 >= this->minQ1 || target.q2 >= this->minQ2);
 }
 
-bool TomahawkOutputFilterController::filterJointHF(const entry_type& target) const{
+bool OutputFilter::filterJointHF(const entry_type& target) const{
 	// find largest
 	const float* max = &target.p1;
 	if(target.p2 > *max) max = &target.p2;
@@ -102,7 +101,7 @@ bool TomahawkOutputFilterController::filterJointHF(const entry_type& target) con
 	return(total > this->minMHF);
 }
 
-bool TomahawkOutputFilterController::setFilterTable(const double& a, const double& b, const double& c, const double& d){
+bool OutputFilter::setFilterTable(const double& a, const double& b, const double& c, const double& d){
 	if(a < 0 || b < 0 || c < 0 || d < 0){
 		std::cerr << "cannot have negative filter values" << std::endl;
 		return false;
@@ -121,7 +120,7 @@ bool TomahawkOutputFilterController::setFilterTable(const double& a, const doubl
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterTable(const double& all){
+bool OutputFilter::setFilterTable(const double& all){
 	if(all < 0){
 		std::cerr << "cannot have negative filter values" << std::endl;
 		return false;
@@ -138,7 +137,7 @@ bool TomahawkOutputFilterController::setFilterTable(const double& all){
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterD(const float& min, const float& max){
+bool OutputFilter::setFilterD(const float& min, const float& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -158,7 +157,7 @@ bool TomahawkOutputFilterController::setFilterD(const float& min, const float& m
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterDprime(const float& min, const float& max){
+bool OutputFilter::setFilterDprime(const float& min, const float& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -178,7 +177,7 @@ bool TomahawkOutputFilterController::setFilterDprime(const float& min, const flo
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterRsquared(const float& min, const float& max){
+bool OutputFilter::setFilterRsquared(const float& min, const float& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -198,7 +197,7 @@ bool TomahawkOutputFilterController::setFilterRsquared(const float& min, const f
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterP(const double& min, const double& max){
+bool OutputFilter::setFilterP(const double& min, const double& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -218,7 +217,7 @@ bool TomahawkOutputFilterController::setFilterP(const double& min, const double&
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterPmodel(const double& min, const double& max){
+bool OutputFilter::setFilterPmodel(const double& min, const double& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -238,7 +237,7 @@ bool TomahawkOutputFilterController::setFilterPmodel(const double& min, const do
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, const double& max){
+bool OutputFilter::setFilterChiSquared(const double& min, const double& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -254,7 +253,7 @@ bool TomahawkOutputFilterController::setFilterChiSquared(const double& min, cons
 	return true;
 }
 
-bool TomahawkOutputFilterController::setFilterMHF(const double& min, const double& max){
+bool OutputFilter::setFilterMHF(const double& min, const double& max){
 	if(min < 0){
 		std::cerr << "min < 0" << std::endl;
 		return false;

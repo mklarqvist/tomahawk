@@ -19,7 +19,7 @@ BGZFController::~BGZFController(){ this->buffer.deleteAll(); }
 void BGZFController::Clear(){ this->buffer.reset(); }
 
 U32 BGZFController::InflateSize(buffer_type& input) const{
-	const header_type& header = *reinterpret_cast<const header_type* const>(&input.data[0]);
+	const header_type& header = *reinterpret_cast<const header_type* const>(input.data());
 	if(!header.Validate()){
 		 std::cerr << Helpers::timestamp("ERROR","BGZF") << "Invalid BGZF header" << std::endl;
 		 std::cerr << Helpers::timestamp("DEBUG","BGZF") << "Output length: " << header.BSIZE << std::endl;
@@ -49,7 +49,7 @@ bool BGZFController::Inflate(buffer_type& input, buffer_type& output, const head
 }
 
 bool BGZFController::__Inflate(buffer_type& input, buffer_type& output, const header_type& header) const{
-	const U32& uncompressedLength = *reinterpret_cast<const U32*>(&input.data[input.size() - sizeof(U32)]);
+	const U32& uncompressedLength = *reinterpret_cast<const U32*>(&input[input.size() - sizeof(U32)]);
 	if(output.size() + uncompressedLength >= output.capacity())
 		output.resize((output.size() + uncompressedLength) + 65536);
 
@@ -63,9 +63,9 @@ bool BGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	z_stream zs;
 	zs.zalloc    = NULL;
 	zs.zfree     = NULL;
-	zs.next_in   = (Bytef*)&input.data[Constants::BGZF_BLOCK_HEADER_LENGTH];
+	zs.next_in   = (Bytef*)&input[Constants::BGZF_BLOCK_HEADER_LENGTH];
 	zs.avail_in  = (header.BSIZE + 1) - 16;
-	zs.next_out  = (Bytef*)&output.data[output.pointer];
+	zs.next_out  = (Bytef*)&output[output.size()];
 	zs.avail_out = (U32)avail_out;
 
 	int status = inflateInit2(&zs, Constants::GZIP_WINDOW_BITS);
@@ -94,16 +94,16 @@ bool BGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	//if(zs.total_out == 0)
 	//	std::cerr << Helpers::timestamp("LOG", "BGZF") << "Detected empty BGZF block" << std::endl;
 
-	output.pointer += zs.total_out;
+	output.n_chars += zs.total_out;
 
 	return(true);
 }
 
 bool BGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
 	input.resize(sizeof(header_type));
-	stream.read(&input.data[0], IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
-	const header_type* h = reinterpret_cast<const header_type*>(&input.data[0]);
-	input.pointer = IO::Constants::BGZF_BLOCK_HEADER_LENGTH;
+	stream.read(input.data(), IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(input.data());
+	input.n_chars = IO::Constants::BGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Failed to validate!" << std::endl;
 		std::cerr << *h << std::endl;
@@ -114,16 +114,16 @@ bool BGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
 
 	// Recast because if buffer is resized then the pointer address is incorrect
 	// resulting in segfault
-	h = reinterpret_cast<const header_type*>(&input.data[0]);
+	h = reinterpret_cast<const header_type*>(input.data());
 
-	stream.read(&input.data[IO::Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
+	stream.read(&input[IO::Constants::BGZF_BLOCK_HEADER_LENGTH], (h->BSIZE + 1) - IO::Constants::BGZF_BLOCK_HEADER_LENGTH);
 	if(!stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "BCF") << "Truncated file..." << std::endl;
 		return false;
 	}
 
-	input.pointer = h->BSIZE + 1;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.pointer -  sizeof(U32)]);
+	input.n_chars = h->BSIZE + 1;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.size() - sizeof(U32)]);
 	this->buffer.resize(uncompressed_size + 1);
 	this->buffer.reset();
 

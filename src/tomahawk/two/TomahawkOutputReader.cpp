@@ -60,9 +60,9 @@ bool TomahawkOutputReader::view(const std::string& input){
 
 bool TomahawkOutputReader::OpenWriter(void){
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
+		this->writer = new OutputWriterNatural(this->contigs, &this->header);
 	}
-	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
+	else this->writer = new OutputWriter(this->contigs, &this->header);
 
 	if(!this->writer->open())
 		return false;
@@ -75,9 +75,9 @@ bool TomahawkOutputReader::OpenWriter(void){
 
 bool TomahawkOutputReader::OpenWriter(const std::string output_file){
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		this->writer = new TomahawkOutputWriterNatural(this->contigs, &this->header);
+		this->writer = new OutputWriterNatural(this->contigs, &this->header);
 	}
-	else this->writer = new TomahawkOutputWriter(this->contigs, &this->header);
+	else this->writer = new OutputWriter(this->contigs, &this->header);
 
 	if(!this->writer->open(output_file)){
 		std::cerr << Helpers::timestamp("ERROR","WRITER") << "Failed to open output file: " << output_file << std::endl;
@@ -779,7 +779,7 @@ bool TomahawkOutputReader::ParseHeader(void){
 		return false;
 	}
 
-	this->literals = std::string(this->tgzf_controller.buffer.data);
+	this->literals = std::string(this->tgzf_controller.buffer.data());
 
 	return true;
 }
@@ -846,9 +846,9 @@ bool TomahawkOutputReader::parseBlock(const bool clear){
 
 	// Read TGZF header
 	compressed_buffer.resize(sizeof(tgzf_header_type));
-	this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
-	compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+	this->stream.read(compressed_buffer.data(),  Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data());
+	compressed_buffer.n_chars = Constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
 		return false;
@@ -858,16 +858,16 @@ bool TomahawkOutputReader::parseBlock(const bool clear){
 
 	// Recast because if compressed_buffer is (actually) resized then the pointer address is incorrect
 	// resulting in segfault
-	h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+	h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data());
 
-	this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+	this->stream.read(&compressed_buffer.buffer[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 		return false;
 	}
 
-	compressed_buffer.pointer = h->BSIZE;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&compressed_buffer[compressed_buffer.pointer -  sizeof(U32)]);
+	compressed_buffer.n_chars = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&compressed_buffer[compressed_buffer.n_chars - sizeof(U32)]);
 	data_buffer.resize(uncompressed_size);
 
 	// Clear output compressed_buffer
@@ -925,9 +925,9 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 		}
 
 		compressed_buffer.resize(sizeof(tgzf_header_type));
-		this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
-		compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		this->stream.read(compressed_buffer.data(),  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data());
+		compressed_buffer.n_chars = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 			return false;
@@ -937,15 +937,15 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 
 		// Recast because if compressed_buffer is resized then the pointer address is incorrect
 		// resulting in segfault
-		h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+		h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data());
 
-		this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&compressed_buffer.buffer[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 			return false;
 		}
 
-		compressed_buffer.pointer = h->BSIZE;
+		compressed_buffer.n_chars = h->BSIZE;
 
 		if(!this->tgzf_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
@@ -997,9 +997,9 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 		}
 
 		compressed_buffer.resize(sizeof(tgzf_header_type));
-		this->stream.read(&compressed_buffer.data[0],  Constants::TGZF_BLOCK_HEADER_LENGTH);
-		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
-		compressed_buffer.pointer = Constants::TGZF_BLOCK_HEADER_LENGTH;
+		this->stream.read(compressed_buffer.data(),  Constants::TGZF_BLOCK_HEADER_LENGTH);
+		const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data()) ;
+		compressed_buffer.n_chars = Constants::TGZF_BLOCK_HEADER_LENGTH;
 		if(!h->Validate()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate header!" << std::endl;
 			return false;
@@ -1009,15 +1009,15 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 
 		// Recast because if compressed_buffer is resized then the pointer address is incorrect
 		// resulting in segfault
-		h = reinterpret_cast<const tgzf_header_type*>(&compressed_buffer.data[0]);
+		h = reinterpret_cast<const tgzf_header_type*>(compressed_buffer.data());
 
-		this->stream.read(&compressed_buffer.data[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
+		this->stream.read(&compressed_buffer.buffer[Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - Constants::TGZF_BLOCK_HEADER_LENGTH);
 		if(!this->stream.good()){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 			return false;
 		}
 
-		compressed_buffer.pointer = h->BSIZE;
+		compressed_buffer.n_chars = h->BSIZE;
 
 		if(!this->tgzf_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;

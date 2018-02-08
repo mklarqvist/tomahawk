@@ -168,13 +168,13 @@ bool TomahawkReader::getBlock(const U32 blockID){
 		exit(1);
 	}
 
-	this->blockDataOffsets_.push_back(DataOffsetPair(&this->data_.data[this->data_.pointer], this->totempole_[blockID].uncompressed_size, this->totempole_[blockID]));
-	if(!this->stream_.read(&this->buffer_.data[0], readLength)){
+	this->blockDataOffsets_.push_back(DataOffsetPair(&this->data_[this->data_.size()], this->totempole_[blockID].uncompressed_size, this->totempole_[blockID]));
+	if(!this->stream_.read(this->buffer_.data(), readLength)){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
 		//std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
 		return false;
 	}
-	this->buffer_.pointer = readLength;
+	this->buffer_.n_chars = readLength;
 
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate data..." << std::endl;

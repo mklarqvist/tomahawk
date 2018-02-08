@@ -76,7 +76,7 @@ public:
 			temp += this->literal_lines[i];
 		}
 		tgzf_controller.Deflate(temp);
-		stream.write(&temp.data[0], temp.size());
+		stream.write(temp.data(), temp.size());
 		tgzf_controller.Clear();
 		temp.deleteAll();
 

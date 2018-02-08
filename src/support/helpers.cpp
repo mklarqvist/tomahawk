@@ -6,10 +6,10 @@
 #include <sys/time.h>
 #include <regex>
 
-#include "TypeDefinitions.h"
 #include "helpers.h"
 #include "simd_definitions.h"
 #include "MagicConstants.h"
+#include "type_definitions.h"
 
 namespace Tomahawk{
 namespace Helpers{

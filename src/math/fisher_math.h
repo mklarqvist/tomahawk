@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 #include <cerrno>
-#include "../support/TypeDefinitions.h"
+#include "../support/type_definitions.h"
 
 namespace Tomahawk {
 namespace Algorithm {

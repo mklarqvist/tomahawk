@@ -3,7 +3,7 @@
 
 #include "../support/MagicConstants.h"
 #include "../support/helpers.h"
-#include "LoadBalancerBlock.h"
+#include "load_balancer_block.h"
 
 namespace Tomahawk{
 

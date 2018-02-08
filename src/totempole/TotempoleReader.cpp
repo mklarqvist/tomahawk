@@ -88,10 +88,10 @@ bool TotempoleReader::Open(const std::string filename){
 	buffer_type buffer(65536);
 	this->samples = new std::string[this->getSamples()];
 	for(U32 i = 0; i < this->getSamples(); ++i){
-		this->stream.read(&buffer.data[0], sizeof(U32));
-		const U32 length = *reinterpret_cast<const U32*>(&buffer.data[0]);
-		this->stream.read(&buffer.data[sizeof(U32)], length);
-		this->samples[i] = std::string(&buffer.data[sizeof(U32)], length);
+		this->stream.read(buffer.data(), sizeof(U32));
+		const U32 length = *reinterpret_cast<const U32*>(buffer.data());
+		this->stream.read(&buffer[sizeof(U32)], length);
+		this->samples[i] = std::string(&buffer[sizeof(U32)], length);
 #if DEBUG_MODE == 1
 		std::cerr << i << '\t' << samples[i] << std::endl;
 #endif
@@ -103,7 +103,7 @@ bool TotempoleReader::Open(const std::string filename){
 		return false;
 	}
 
-	this->literals = std::string(&this->tgzf_controller.buffer.data[0], this->tgzf_controller.buffer.size());
+	this->literals = std::string(this->tgzf_controller.buffer.data(), this->tgzf_controller.buffer.size());
 #if DEBUG_MODE == 1
 	std::cerr << this->literals << std::endl;
 #endif
@@ -256,7 +256,7 @@ bool TotempoleReader::writeLiterals(std::ofstream& stream){
 		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 		return false;
 	}
-	stream.write(&this->tgzf_controller.buffer.data[0], this->tgzf_controller.buffer.pointer);
+	stream.write(this->tgzf_controller.buffer.data(), this->tgzf_controller.buffer.size());
 
 	return true;
 }

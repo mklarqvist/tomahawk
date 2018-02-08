@@ -35,8 +35,8 @@ bool TotempoleOutputReader::Open(const std::string& input, const contig_type* co
 		exit(1);
 	}
 
-	this->stream.read(this->buffer.data, readUntil);
-	this->entries = reinterpret_cast<const entry_type*>(this->buffer.data);
+	this->stream.read(this->buffer.data(), readUntil);
+	this->entries = reinterpret_cast<const entry_type*>(this->buffer.data());
 	this->n_entries = readUntil / sizeof(entry_type);
 
 	if(!(this->header.controller.sorted && this->header.controller.expanded)){

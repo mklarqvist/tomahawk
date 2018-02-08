@@ -5,20 +5,20 @@
 #include <iomanip>
 #include <vector>
 
-#include "../../support/TypeDefinitions.h"
+#include "../../support/type_definitions.h"
 #include "../../support/MagicConstants.h"
 #include "../two/output_entry.h"
 
 namespace Tomahawk {
 
-class TomahawkOutputFilterController {
-	typedef TomahawkOutputFilterController self_type;
+class OutputFilter {
+	typedef OutputFilter self_type;
 	typedef IO::OutputEntry entry_type;
 	typedef bool (self_type::*filterFunction)(const entry_type& entry) const;
 
 public:
-	TomahawkOutputFilterController();
-	~TomahawkOutputFilterController();
+	OutputFilter();
+	~OutputFilter();
 
 	inline const bool& isAnySet(void) const{ return(this->any_filter_user_set); }
 
@@ -71,7 +71,7 @@ public:
 };
 
 template <class T, class Y>
-inline bool TomahawkOutputFilterController::filter(const T& value, const Y& min, const Y& max) const{
+inline bool OutputFilter::filter(const T& value, const Y& min, const Y& max) const{
 	if(value < min || value > max)
 		return false;
 
