@@ -26,9 +26,9 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 			std::sort(&o[0], &o[o.size()]);
 
 		const entry_type* prev = &o[0];
-		for(size_t j = 0; j < o.size(); ++j){
-			std::cout << o[j] << '\n';
-			if(!(*prev <= o[j])){
+		for(size_t j = 1; j < o.size(); ++j){
+			std::cout.write((char*)&o[j], sizeof(entry_type));
+			if(*prev >= o[j]){
 				std::cerr << j-1 << ',' << j << std::endl;
 				std::cerr << *prev << std::endl;
 				std::cerr << o[j] << std::endl;
