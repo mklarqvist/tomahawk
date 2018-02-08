@@ -4,13 +4,13 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/algorithm/sort/TomahawkOutputSort.cpp 
+../src/algorithm/sort/output_sorter.cpp 
 
 OBJS += \
-./src/algorithm/sort/TomahawkOutputSort.o 
+./src/algorithm/sort/output_sorter.o 
 
 CPP_DEPS += \
-./src/algorithm/sort/TomahawkOutputSort.d 
+./src/algorithm/sort/output_sorter.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

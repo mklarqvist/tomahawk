@@ -9,7 +9,7 @@ RM := rm
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include src/totempole/subdir.mk
--include src/tomahawk/TomahawkOutput/subdir.mk
+-include src/tomahawk/two/subdir.mk
 -include src/tomahawk/subdir.mk
 -include src/third_party/zlib/subdir.mk
 -include src/third_party/xxhash/subdir.mk
