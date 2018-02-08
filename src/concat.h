@@ -22,8 +22,8 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <vector>
 
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 void concat_usage(void){
 	programMessage();

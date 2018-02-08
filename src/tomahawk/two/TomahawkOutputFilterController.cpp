@@ -1,6 +1,7 @@
+#include "../two/TomahawkOutputFilterController.h"
+
 #include <limits>
 #include <string>
-#include "TomahawkOutputFilterController.h"
 
 namespace Tomahawk {
 

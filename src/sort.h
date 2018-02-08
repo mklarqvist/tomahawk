@@ -21,10 +21,10 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 #include "algorithm/sort/output_sorter.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 void sort_usage(void){
 	programMessage();

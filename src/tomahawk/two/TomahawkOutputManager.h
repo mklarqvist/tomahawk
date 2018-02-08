@@ -8,9 +8,9 @@
 #include "../../totempole/TotempoleMagic.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "../../totempole/TotempoleReader.h"
-#include "../../tomahawk/base/meta_entry.h"
-#include "output_entry.h"
-#include "output_entry_support.h"
+#include "../../tomahawk/meta_entry.h"
+#include "../two/output_entry.h"
+#include "../two/output_entry_support.h"
 
 #define SLAVE_FLUSH_LIMIT 10000000	// 10 MB
 

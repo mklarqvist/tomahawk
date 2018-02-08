@@ -22,11 +22,11 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
+#include "tomahawk/two/TomahawkOutputFilterController.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputFilterController.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 void view_usage(void){
 	programMessage();

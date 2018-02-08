@@ -1,5 +1,5 @@
 #include "TomahawkReader.h"
-#include "base/genotype_container.h"
+#include "genotype_container.h"
 
 namespace Tomahawk {
 

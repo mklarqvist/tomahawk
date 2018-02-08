@@ -20,10 +20,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 #include "totempole/TotempoleReader.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 int index(int argc, char** argv){
 	argc -= 2; argv += 2;

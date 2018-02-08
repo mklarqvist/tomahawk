@@ -4,8 +4,8 @@
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 
-#include "../../support/TypeDefinitions.h"
-#include "../../totempole/TotempoleEntry.h"
+#include "../support/TypeDefinitions.h"
+#include "../totempole/TotempoleEntry.h"
 #include "genotype_container_bitvector.h"
 #include "genotype_container_runlength.h"
 

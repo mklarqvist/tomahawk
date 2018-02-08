@@ -3,8 +3,8 @@
 
 #include <cstring>  // size_t, ptrdiff_t
 
-#include "../../support/TypeDefinitions.h"
-#include "../../totempole/TotempoleEntry.h"
+#include "../support/TypeDefinitions.h"
+#include "../totempole/TotempoleEntry.h"
 #include "genotype_container_reference.h"
 
 namespace Tomahawk{

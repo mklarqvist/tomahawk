@@ -3,9 +3,9 @@
 
 #include "../totempole/TotempoleReader.h"
 #include "TomahawkReader.h"
-#include "TomahawkOutput/TomahawkOutputManager.h"
-#include "base/twk_reader_implementation.h"
-#include "base/genotype_meta_container_reference.h"
+#include "twk_reader_implementation.h"
+#include "genotype_meta_container_reference.h"
+#include "two/TomahawkOutputManager.h"
 
 namespace Tomahawk {
 

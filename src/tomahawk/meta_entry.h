@@ -25,18 +25,8 @@ public:
 		HWE_P(0)
 	{}
 
-	MetaEntryBase(const char* const buffer_stream) :
-		missing(0),
-		phased(0),
-		position(0),
-		ref_alt(*reinterpret_cast<const BYTE* const>(&buffer_stream[sizeof(U32)])),
-		MAF(*reinterpret_cast<const float* const>(&buffer_stream[sizeof(U32)+sizeof(BYTE)])),
-		HWE_P(*reinterpret_cast<const float* const>(&buffer_stream[sizeof(U32)+sizeof(BYTE)+sizeof(float)]))
-	{
-		memcpy(this, buffer_stream, sizeof(U32));
-	}
-
-	~MetaEntryBase(){}
+	MetaEntryBase(const char* const buffer_stream){ memcpy(this, buffer_stream, sizeof(self_type)); }
+	~MetaEntryBase() = default;
 
 	bool isSingleton(void) const{ return(this->MAF == 0); }
 

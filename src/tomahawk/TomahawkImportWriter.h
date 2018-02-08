@@ -14,7 +14,7 @@
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
-#include "base/meta_entry.h"
+#include "meta_entry.h"
 #include "TomahawkImporterFilters.h"
 
 namespace Tomahawk {

@@ -15,10 +15,9 @@
 #include "../algorithm/GenotypeBitPacker.h"
 #include "TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
-#include "TomahawkOutput/TomahawkOutputManager.h"
-
-#include "base/genotype_meta_container_reference.h"
-#include "TomahawkOutput/output_entry_support.h"
+#include "genotype_meta_container_reference.h"
+#include "two/output_entry_support.h"
+#include "two/TomahawkOutputManager.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing

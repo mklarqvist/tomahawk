@@ -15,11 +15,9 @@ private:
 protected:
 	typedef GenericWriterInterace stream_type;
 	typedef IO::WriterStandardOut cout_type;
-	typedef IO::WriterFile file_type;
-	typedef IO::BasicBuffer buffer_type;
-
-protected:
-	typedef OutputEntry entry_type;
+	typedef IO::WriterFile        file_type;
+	typedef IO::BasicBuffer       buffer_type;
+	typedef OutputEntry           entry_type;
 	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
 	typedef Totempole::TotempoleContigBase contig_type;
 

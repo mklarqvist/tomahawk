@@ -1,13 +1,13 @@
-#ifndef TOMAHAWK_BASE_OUTPUT_CONTAINER_REFERENCE_H_
-#define TOMAHAWK_BASE_OUTPUT_CONTAINER_REFERENCE_H_
+#ifndef TOMAHAWK_BASE_OUTPUT_CONTAINER_H_
+#define TOMAHAWK_BASE_OUTPUT_CONTAINER_H_
 
 #include <cassert>
 
-#include "../TomahawkOutput/output_entry.h"
+#include "two/output_entry.h"
 
 namespace Tomahawk{
 
-class OutputContainerReference{
+class OutputContainer{
 private:
     typedef IO::OutputEntry    value_type;
     typedef value_type&        reference;
@@ -19,30 +19,60 @@ private:
     typedef IO::BasicBuffer    buffer_type;
 
 public:
-    OutputContainerReference() :
+    OutputContainer() :
     	n_entries(0),
+		n_capacity(0),
 		__entries(nullptr)
 	{
 
 	}
 
-    OutputContainerReference(char* const data, const U64 l_data) :
+    OutputContainer(const size_t capacity) :
+    	n_entries(0),
+		n_capacity(capacity),
+		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+    {
+
+    }
+
+    OutputContainer(char* const data, const U64 l_data) :
     	n_entries(l_data / sizeof(value_type)),
-		__entries(reinterpret_cast<IO::OutputEntry* const>(data))
+		n_capacity(n_entries),
+		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
 		assert(n_entries > 0);
 		assert(l_data % sizeof(value_type) == 0);
+
+		U32 cumulative_position = 0;
+		for(size_t i = 0; i < this->size(); ++i){
+			new( &this->__entries[i] ) value_type( &data[cumulative_position] );
+			cumulative_position += sizeof(value_type);
+		}
+		assert(cumulative_position == l_data);
 	}
 
-    OutputContainerReference(const buffer_type& data_buffer) :
+    OutputContainer(const buffer_type& data_buffer) :
 		n_entries(data_buffer.size() / sizeof(value_type)),
-		__entries(reinterpret_cast<IO::OutputEntry* const>(data_buffer.data))
+		n_capacity(n_entries),
+		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
 		assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);
+
+		U32 cumulative_position = 0;
+		for(size_t i = 0; i < this->size(); ++i){
+			new( &this->__entries[i] ) value_type( &data_buffer.data[cumulative_position] );
+			cumulative_position += sizeof(value_type);
+		}
+		assert(cumulative_position == data_buffer.size());
 	}
 
-    ~OutputContainerReference(){}
+    ~OutputContainer(){
+    	for(size_type i = 0; i < this->size(); ++i)
+			((this->__entries + i)->~OutputEntry)();
+
+		::operator delete[](static_cast<void*>(this->__entries));
+    }
 
     class iterator{
 	private:
@@ -93,6 +123,7 @@ public:
 	// Capacity
 	inline const bool empty(void) const{ return(this->n_entries == 0); }
 	inline const size_type& size(void) const{ return(this->n_entries); }
+	inline const size_type& capacity(void) const{ return(this->capacity()); }
 
 	// Iterator
 	inline iterator begin(){ return iterator(&this->__entries[0]); }
@@ -102,11 +133,35 @@ public:
 	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
+	// Add
+	inline bool addData(const buffer_type& buffer){ return(this->addData(buffer.data, buffer.size())); }
+	bool addData(char* const data, const U64 l_data){
+		assert(l_data % sizeof(value_type) == 0);
+		const size_t entries_adding = l_data / sizeof(value_type);
+
+		// Check
+		if(entries_adding + this->size() > this->capacity()){
+			std::cerr << "could not fit!" << std::endl;
+			return false;
+		}
+
+		U32 cumulative_position = 0;
+		size_t start_position = this->size();
+		for(size_t i = 0; i < entries_adding; ++i){
+			new( &this->__entries[start_position + i] ) value_type( &data[cumulative_position] );
+			cumulative_position += sizeof(value_type);
+		}
+		assert(cumulative_position == l_data);
+
+		return true;
+	}
+
 protected:
 	size_type  n_entries;
+	size_type  n_capacity;
 	pointer    __entries;
 };
 
 }
 
-#endif /* TOMAHAWK_BASE_OUTPUT_CONTAINER_REFERENCE_H_ */
+#endif /* TOMAHAWK_BASE_OUTPUT_CONTAINER_H_ */

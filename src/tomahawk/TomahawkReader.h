@@ -12,12 +12,12 @@
 #include "../io/compression/GZFConstants.h"
 #include "../interface/Timer.h"
 #include "../interface/ProgressBar.h"
-#include "base/meta_entry.h"
-#include "base/twk_reader_implementation.h"
+#include "meta_entry.h"
+#include "twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
 #include "TomahawkCalcParameters.h"
 #include "../totempole/TotempoleReader.h"
-#include "base/genotype_container_reference.h"
+#include "genotype_container_reference.h"
 
 namespace Tomahawk {
 

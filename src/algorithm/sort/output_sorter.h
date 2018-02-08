@@ -5,9 +5,9 @@
 #include <queue>
 
 #include "../../io/compression/TGZFEntryIterator.h"
+#include "../../tomahawk/two/TomahawkOutputManager.h"
+#include "../../tomahawk/two/TomahawkOutputReader.h"
 #include "../../totempole/TotempoleOutputEntry.h"
-#include "../../tomahawk/TomahawkOutput/TomahawkOutputReader.h"
-#include "../../tomahawk/TomahawkOutput/TomahawkOutputManager.h"
 #include "output_sort_merge_queue.h"
 #include "output_sort_slave.h"
 

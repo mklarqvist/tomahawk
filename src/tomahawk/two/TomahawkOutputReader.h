@@ -15,12 +15,11 @@
 #include "../../totempole/TotempoleMagic.h"
 #include "../../third_party/intervalTree.h"
 #include "../../totempole/TotempoleOutputReader.h"
-#include "output_entry.h"
-#include "TomahawkOutputFilterController.h"
-#include "TomahawkOutputWriter.h"
-
-#include "../../tomahawk/base/output_container.h"
-#include "../../tomahawk/base/output_container_reference.h"
+#include "../../tomahawk/output_container.h"
+#include "../../tomahawk/output_container_reference.h"
+#include "../two/output_entry.h"
+#include "../two/TomahawkOutputFilterController.h"
+#include "../two/TomahawkOutputWriter.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -37,6 +36,7 @@ class TomahawkOutputReader {
 	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
 	typedef TomahawkOutputWriterIndex twoi_writer_type;
+	typedef IO::BasicBuffer buffer_type;
 
 	typedef OutputContainer          output_container_type;
 	typedef OutputContainerReference output_container_reference_type;
@@ -58,22 +58,41 @@ public:
 	bool AddRegions(std::vector<std::string>& positions);
 	bool Open(const std::string input);
 	bool OpenExtend(const std::string input);
-
+	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	// Streaming functions
 	bool getBlock(const U32 blockID);
 	bool getBlock(std::vector< std::pair<U32, U32> >& pairs);
-	bool nextBlock(const bool clear = true);
+	bool parseBlock(const bool clear = true);
 
+	//
+	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
+	output_container_reference_type getContainerReferenceBlock(std::vector<U32> blocks);
+	output_container_reference_type getContainerReferenceBlock(std::vector< std::pair<U32, U32> > blocks);
+
+	output_container_type getContainerBlock(const U32 blockID);
+	output_container_type getContainerBlock(std::vector<U32> blocks);
+	output_container_type getContainerBlock(std::vector< std::pair<U32, U32> > blocks);
+
+	//
+	bool view(void);
+	bool view(const interval_type& interval);
+	bool view(const std::vector<interval_type>& intervals);
+
+	// Accessors
 	inline output_container_type getContainer(void){ return(output_container_type(this->data_buffer)); }
+	output_container_type getContainerVariants(const U32 n_variants);
+	output_container_type getContainerBytes(const size_t l_data);
 	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_buffer)); }
 
+
+	// Todo: remove these four
 	bool nextVariant(const entry_type*& entry);
 	bool nextVariantLimited(const entry_type*& entry);
 
 	bool nextBlockUntil(const U32 limit);
 	bool nextBlockUntil(const U32 limit, const U64 virtual_offset);
-	inline void addLiteral(const std::string& string){ this->literals += string; }
+
 
 	// Other
 	bool view(const std::string& filename);
@@ -112,15 +131,16 @@ private:
 
 public:
 	U64 filesize;	// input file size
-	U64 iterator_position;
+	U64 iterator_position_block;
+	U64 iterator_position_variant;
 	U64 size;
 	bool hasIndex;
 	std::ifstream stream; // reader stream
 	header_type header; // header
 	bool output_header;
-	IO::BasicBuffer compressed_buffer; // internal buffer
-	IO::BasicBuffer data_buffer; // internal buffer
-	tgzf_controller_type gzip_controller; // TGZF controller
+	buffer_type compressed_buffer; // internal buffer
+	buffer_type data_buffer; // internal buffer
+	tgzf_controller_type tgzf_controller; // TGZF controller
 	filter_type filter;	// filter parameters
 	WRITER_TYPE writer_output_type;
 	std::string literals; // header literals

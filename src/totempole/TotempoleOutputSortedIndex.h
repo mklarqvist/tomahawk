@@ -4,7 +4,7 @@
 #include <vector>
 #include <fstream>
 
-#include "../tomahawk/TomahawkOutput/output_entry.h"
+#include "../tomahawk/two/output_entry.h"
 #include "TotempoleContig.h"
 #include "TotempoleOutputEntry.h"
 

@@ -1,4 +1,4 @@
-#include "TomahawkOutputReader.h"
+#include "../two/TomahawkOutputReader.h"
 
 #include <bits/move.h>
 #include <cstdlib>
@@ -10,17 +10,17 @@
 #include "../../support/helpers.h"
 #include "../../totempole/TotempoleContig.h"
 #include "../../totempole/TotempoleOutputEntry.h"
-#include "TomahawkOutputStats.h"
-
-#include "../base/output_container.h"
-#include "../base/output_container_reference.h"
+#include "../output_container.h"
+#include "../output_container_reference.h"
+#include "../two/TomahawkOutputStats.h"
 
 namespace Tomahawk {
 namespace IO {
 
 TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
-		iterator_position(0),
+		iterator_position_block(0),
+		iterator_position_variant(0),
 		size(0),
 		hasIndex(false),
 		output_header(true),
@@ -143,7 +143,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->iterator_position = entry.fromBlock_entries_offset;
+			this->iterator_position_block = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -156,7 +156,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->iterator_position = entry.fromBlock_entries_offset;
+			this->iterator_position_block = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -182,7 +182,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 				std::cerr << Helpers::timestamp("ERROR","TWO") << "Could not get block" << std::endl;
 				return false;
 			}
-			this->iterator_position = entry.fromBlock_entries_offset;
+			this->iterator_position_block = entry.fromBlock_entries_offset;
 
 			while(this->nextVariantLimited(two_entry)){
 				this->__checkRegionIndex(two_entry);
@@ -297,8 +297,8 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	// Natural output required parsing
 	if(this->writer_output_type == WRITER_TYPE::natural){
-		while(this->nextBlock()){
-			OutputContainerReference o(this->data_buffer);
+		while(this->parseBlock()){
+			OutputContainerReference o = this->getContainerReference();
 			std::cerr << o.size() << '\t' << this->data_buffer.size() << std::endl;
 			for(auto it = o.begin(); it != o.end(); ++it)
 				std::cout << *it << '\n';
@@ -306,7 +306,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 	}
 	// Binary output without filtering simply writes it back out
 	else if(this->writer_output_type == WRITER_TYPE::binary){
-		while(this->nextBlock()){
+		while(this->parseBlock()){
 			OutputContainerReference o(this->compressed_buffer);
 			//this->writer->write(this->data_buffer);
 			std::cout << o[0] << std::endl;
@@ -693,7 +693,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		return false;
 	}
 
-	while(this->nextBlock()){
+	while(this->parseBlock()){
 		this->writer->write(this->data_buffer);
 	}
 
@@ -707,7 +707,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 			return false;
 		}
 
-		while(this->nextBlock()){
+		while(this->parseBlock()){
 			this->writer->write(this->data_buffer);
 		}
 	}
@@ -774,12 +774,12 @@ bool TomahawkOutputReader::ParseHeader(void){
 		}
 	}
 
-	if(!this->gzip_controller.InflateBlock(this->stream, this->compressed_buffer)){
+	if(!this->tgzf_controller.InflateBlock(this->stream, this->compressed_buffer)){
 		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
 		return false;
 	}
 
-	this->literals = std::string(this->gzip_controller.buffer.data);
+	this->literals = std::string(this->tgzf_controller.buffer.data);
 
 	return true;
 }
@@ -798,7 +798,7 @@ bool TomahawkOutputReader::ParseHeaderExtend(void){
 		}
 	}
 
-	if(!this->gzip_controller.InflateBlock(this->stream, this->compressed_buffer)){
+	if(!this->tgzf_controller.InflateBlock(this->stream, this->compressed_buffer)){
 		std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed to get TWO block" << std::endl;
 		return false;
 	}
@@ -828,10 +828,10 @@ bool TomahawkOutputReader::getBlock(const U32 blockID){
 		return false;
 	}
 
-	return(this->nextBlock());
+	return(this->parseBlock());
 }
 
-bool TomahawkOutputReader::nextBlock(const bool clear){
+bool TomahawkOutputReader::parseBlock(const bool clear){
 	// Stream died
 	if(!this->stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -874,7 +874,7 @@ bool TomahawkOutputReader::nextBlock(const bool clear){
 	if(clear)
 		this->data_buffer.reset();
 
-	if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
+	if(!this->tgzf_controller.Inflate(compressed_buffer, data_buffer)){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 		return false;
 	}
@@ -888,7 +888,7 @@ bool TomahawkOutputReader::nextBlock(const bool clear){
 	this->compressed_buffer.reset();
 
 	// Reset iterator position and size
-	this->iterator_position = 0;
+	this->iterator_position_block = 0;
 	this->size = this->data_buffer.size() / sizeof(entry_type);
 
 	// Validity check
@@ -905,7 +905,7 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 	if(this->data_buffer.capacity() < limit + 65536)
 		this->data_buffer.resize(limit + 65536);
 
-	this->iterator_position = 0;
+	this->iterator_position_block = 0;
 	this->data_buffer.reset();
 
 	// Keep inflating DATA until bounds is reached
@@ -947,7 +947,7 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit){
 
 		compressed_buffer.pointer = h->BSIZE;
 
-		if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
+		if(!this->tgzf_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 			return false;
 		}
@@ -977,7 +977,7 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 	if(this->data_buffer.capacity() < limit + 65536)
 		this->data_buffer.resize(limit + 65536);
 
-	this->iterator_position = 0;
+	this->iterator_position_block = 0;
 	this->data_buffer.reset();
 
 	// Keep inflating DATA until bounds is reached
@@ -1019,7 +1019,7 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 
 		compressed_buffer.pointer = h->BSIZE;
 
-		if(!this->gzip_controller.Inflate(compressed_buffer, data_buffer)){
+		if(!this->tgzf_controller.Inflate(compressed_buffer, data_buffer)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 			return false;
 		}
@@ -1045,25 +1045,25 @@ bool TomahawkOutputReader::nextBlockUntil(const U32 limit, const U64 virtual_off
 }
 
 bool TomahawkOutputReader::nextVariant(const entry_type*& entry){
-	if(this->iterator_position == this->size){
-		if(!this->nextBlock())
+	if(this->iterator_position_block == this->size){
+		if(!this->parseBlock())
 			return false;
 	}
 
-	entry = (*this)[this->iterator_position];
-	++this->iterator_position;
+	entry = (*this)[this->iterator_position_block];
+	++this->iterator_position_block;
 
 	return true;
 }
 
 // Do NOT get a new variant when reaching end of data
 bool TomahawkOutputReader::nextVariantLimited(const entry_type*& entry){
-	if(this->iterator_position == this->size){
+	if(this->iterator_position_block == this->size){
 		return false;
 	}
 
-	entry = (*this)[this->iterator_position];
-	++this->iterator_position;
+	entry = (*this)[this->iterator_position_block];
+	++this->iterator_position_block;
 
 	return true;
 }
