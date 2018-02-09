@@ -11,7 +11,7 @@
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
-#include "../totempole/TotempoleEntry.h"
+#include "../totempole/index_entry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
 #include "import_filters.h"
@@ -54,7 +54,7 @@ public:
 	inline bool checkSize() const{
 		// if the current size is larger than our desired output block size, return TRUE to trigger a flush
 		// or if the number of entries written to buffer exceeds our set limit
-		if(this->totempole_entry.variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
+		if(this->totempole_entry.n_variants >= this->n_variants_limit || this->buffer_rle_.size() >= this->flush_limit){
 			//std::cerr << "flushing: " << this->totempole_entry_.variants << '/' << this->n_variants_limit << '\t' << this->buffer_rle_.size() << '/' << this->flush_limit << std::endl;
 			return true;
 		}
@@ -69,7 +69,7 @@ public:
 
 
 	inline U32 GetVariantsWritten(void) const{ return this->variants_written_; }
-	inline Totempole::TotempoleEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
+	inline Totempole::IndexEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
 	std::ofstream streamTomahawk;	// stream
@@ -81,7 +81,7 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 	const filter_type& filter;		// filters
 
-	Totempole::TotempoleEntry totempole_entry;
+	Totempole::IndexEntry totempole_entry;
 	IO::TGZFController gzip_controller_;
 	Algorithm::GenotypeEncoder* rleController_;
 	IO::BasicBuffer buffer_rle_;	// run lengths

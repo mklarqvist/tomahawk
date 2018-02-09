@@ -17,8 +17,8 @@ private:
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
 	typedef MetaEntry<T>               meta_type;
-	typedef Totempole::TotempoleEntry  header_entry;
-	typedef Totempole::TotempoleEntry  support_type;
+	typedef Totempole::IndexEntry  header_entry;
+	typedef Totempole::IndexEntry  support_type;
 
 public:
 	TomahawkReaderImpl(const U64 n_samples) :

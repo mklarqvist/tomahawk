@@ -87,7 +87,7 @@ bool TomahawkCalc::Calculate(){
                                 this->reader.getOffsetPair(i).l_buffer,
                                 this->reader.getOffsetPair(i).entry);
 
-		n_variants += references[i].getTotempole().variants;
+		n_variants += references[i].getTotempole().size();
 	}
 
 	if(!SILENT)
@@ -110,12 +110,12 @@ bool TomahawkCalc::Calculate(){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
 							//const U32 size = impl[from].size();
-							const U32 size = this->reader.getOffsetPair(from).entry.variants;
+							const U32 size = this->reader.getOffsetPair(from).entry.size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
 							//totalComparisons += impl[from].size() * impl[col].size();
-							totalComparisons += this->reader.getOffsetPair(from).entry.variants * this->reader.getOffsetPair(col).entry.variants;
+							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -126,12 +126,12 @@ bool TomahawkCalc::Calculate(){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
 							//const U32 size = impl[from].size();
-							const U32 size = this->reader.getOffsetPair(from).entry.variants;
+							const U32 size = this->reader.getOffsetPair(from).entry.size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
 							//totalComparisons += impl[from].size() * impl[col].size();
-							totalComparisons += this->reader.getOffsetPair(from).entry.variants * this->reader.getOffsetPair(col).entry.variants;
+							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}

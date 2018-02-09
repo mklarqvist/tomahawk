@@ -7,9 +7,9 @@ namespace Tomahawk{
 namespace Support{
 
 template <int Y = SIMD_ALIGNMENT>
-struct TomahawkSlaveSIMDHelper{
+struct LDCalculationSIMDHelper{
 public:
-	TomahawkSlaveSIMDHelper(void) :
+	LDCalculationSIMDHelper(void) :
 #if SIMD_AVAILABLE == 1
 		counters((U64*)_mm_malloc(sizeof(U64)*16, Y)),
 		scalarA((BYTE*)_mm_malloc(sizeof(BYTE)*8, Y)),
@@ -27,7 +27,7 @@ public:
 		memset(this->counters, 0, sizeof(U64)*16);
 	}
 
-	~TomahawkSlaveSIMDHelper(){
+	~LDCalculationSIMDHelper(){
 #if SIMD_AVAILABLE == 1
 		_mm_free(this->counters);
 		_mm_free(this->scalarA);

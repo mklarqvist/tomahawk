@@ -12,10 +12,10 @@
 #include "TomahawkCalcParameters.h"
 #include "../algorithm/load_balancer_block.h"
 #include "../algorithm/GenotypeBitPacker.h"
-#include "TomahawkSlaveSIMDHelper.h"
 #include "../io/BasicWriters.h"
 #include "../math/fisher_math.h"
 #include "genotype_meta_container_reference.h"
+#include "ld_calculation_simd_helper.h"
 #include "two/output_entry_support.h"
 #include "two/output_slave_writer.h"
 
@@ -257,13 +257,13 @@ class LDSlave{
 	typedef Base::GenotypeContainerReference<T>  block_type;
 	typedef const MetaEntry<T>                   meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
-	typedef Totempole::TotempoleEntry            totempole_entry_type;
+	typedef Totempole::IndexEntry            totempole_entry_type;
 	typedef IO::OutputSlaveWriter<T>             output_manager_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
 	typedef Interface::ProgressBar               progress_bar_type;
-	typedef Support::TomahawkSlaveSIMDHelper<>   simd_helper_type;
+	typedef Support::LDCalculationSIMDHelper<>   simd_helper_type;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock          order_type;

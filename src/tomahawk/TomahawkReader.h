@@ -24,7 +24,7 @@ namespace Tomahawk {
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
 	typedef TomahawkCalcParameters     parameter_type;
-	typedef Totempole::TotempoleEntry  totempole_entry;
+	typedef Totempole::IndexEntry  totempole_entry;
 	typedef Totempole::TotempoleReader index_reader_type;
 	typedef IO::BasicBuffer            buffer_type;
 	typedef IO::TGZFController         tgzf_controller_type;

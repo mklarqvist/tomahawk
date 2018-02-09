@@ -297,7 +297,7 @@ bool ImportWriter::flush(void){
 	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
 	this->streamTotempole << this->totempole_entry; // Write totempole output
 	++this->blocksWritten_; // update number of blocks written
-	this->variants_written_ += this->totempole_entry.variants; // update number of variants written
+	this->variants_written_ += this->totempole_entry.size(); // update number of variants written
 
 	this->reset(); // reset buffers
 	return true;

@@ -144,7 +144,7 @@ bool TotempoleReader::Open(const std::string filename){
 
 	U64 totalEntries = 0;
 	for(U32 i = 0; i < this->getBlocks(); ++i)
-		totalEntries += this->entries[i].variants;
+		totalEntries += this->entries[i].n_variants;
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG", "TOTEMPOLE") << "Found: " << Helpers::NumberThousandsSeparator(std::to_string(totalEntries)) << " variants..." << std::endl;
@@ -191,7 +191,7 @@ void TotempoleReader::BuildUpdateContigs(void){
 		}
 		lastContigID = this->entries[i].contigID;
 	}
-	const TotempoleEntry& lastEntry = this->entries[this->getBlocks() - 1];
+	const IndexEntry& lastEntry = this->entries[this->getBlocks() - 1];
 	this->contigs[lastEntry.contigID].blocksEnd = this->getBlocks();
 	this->contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
 }
@@ -232,7 +232,7 @@ bool TotempoleReader::BuildHashTables(void){
 std::vector<U32> TotempoleReader::findOverlaps(const Interval& interval) const{
 	std::vector<U32> ret;
 	for(U32 i = this->contigs[interval.contigID].blocksStart; i < this->contigs[interval.contigID].blocksEnd; ++i){
-		const TotempoleEntry& current = (*this)[i];
+		const IndexEntry& current = (*this)[i];
 		if((interval.from >= current.minPosition && interval.from <= current.maxPosition) ||
 				(interval.to >= current.minPosition && interval.to <= current.maxPosition) ||
 				(interval.from <= current.minPosition && interval.to >= current.maxPosition))

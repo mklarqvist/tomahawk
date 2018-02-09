@@ -4,7 +4,7 @@
 #include <cstring>  // size_t, ptrdiff_t
 
 #include "../support/type_definitions.h"
-#include "../totempole/TotempoleEntry.h"
+#include "../totempole/index_entry.h"
 #include "genotype_container_reference.h"
 
 namespace Tomahawk{
@@ -20,7 +20,7 @@ private:
     typedef const value_type*                   const_pointer;
     typedef std::ptrdiff_t                      difference_type;
     typedef std::size_t                         size_type;
-	typedef Totempole::TotempoleEntry           header_entry;;
+	typedef Totempole::IndexEntry           header_entry;;
 
 public:
 	GenotypeMetaContainerReference(const U64 n_samples) :

@@ -22,7 +22,7 @@ private:
     typedef const value_type*          const_pointer;
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
-    typedef Totempole::TotempoleEntry  support_type;
+    typedef Totempole::IndexEntry  support_type;
 
 public:
 	GenotypeContainerBitvector() : n_entries(0), n_capacity(0), __entries(nullptr){}

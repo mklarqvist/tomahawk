@@ -12,8 +12,8 @@
 #include "../algorithm/OpenHashTable.h"
 #include "../io/compression/TGZFController.h"
 #include "index_contig.h"
+#include "index_entry.h"
 #include "index_header.h"
-#include "TotempoleEntry.h"
 
 namespace Tomahawk {
 namespace Totempole{
@@ -33,7 +33,7 @@ class TotempoleReader {
 	typedef IndexHeader header_type;
 	typedef IndexContigBase contig_base_type;
 	typedef IndexContig contig_type;
-	typedef TotempoleEntry entry_type;
+	typedef IndexEntry entry_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef IO::TGZFHeader tgzf_type;
 	typedef IO::TGZFController tgzf_controller_type;

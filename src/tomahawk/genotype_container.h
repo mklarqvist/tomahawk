@@ -5,7 +5,7 @@
 #include <iterator> // forward_iterator_tag
 
 #include "../support/type_definitions.h"
-#include "../totempole/TotempoleEntry.h"
+#include "../totempole/index_entry.h"
 #include "genotype_container_bitvector.h"
 #include "genotype_container_runlength.h"
 
@@ -21,7 +21,7 @@ private:
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
 	typedef Base::GenotypeBitvector<>            genotype_bitvector_type;
 	typedef MetaEntry<T>                         meta_type;
-	typedef Totempole::TotempoleEntry            header_entry;
+	typedef Totempole::IndexEntry                header_entry;
     typedef genotype_runlength_type              value_type;
     typedef value_type&                          reference;
     typedef const value_type&                    const_reference;
@@ -32,7 +32,7 @@ private:
 
 public:
 	GenotypeContainer(const char* const data_buffer, const size_t l_buffer_length, const header_entry& support, const U64& n_samples) :
-		n_entries(support.variants),
+		n_entries(support.n_variants),
 		index_entry(support), // invoke copy ctor
 		meta_entries(static_cast<meta_type*>(::operator new[](this->n_entries*sizeof(meta_type)))),
 		container_runlength(nullptr),

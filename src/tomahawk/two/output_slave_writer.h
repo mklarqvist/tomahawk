@@ -33,7 +33,7 @@ struct OutputSlaveWriter{
 	typedef Totempole::TotempoleReader                index_reader_type;
 	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
-	typedef Totempole::TotempoleEntry                 header_entry;
+	typedef Totempole::IndexEntry                 header_entry;
 	typedef MetaEntry<T>                              meta_type;
 	typedef Support::OutputEntrySupport               helper_type;
 	typedef Algorithm::SpinLock                       spin_lock_type;
