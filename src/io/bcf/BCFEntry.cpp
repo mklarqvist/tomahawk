@@ -10,7 +10,7 @@ namespace Tomahawk {
 namespace BCF {
 
 BCFEntry::BCFEntry(void):
-	pointer(0),
+	l_data(0),
 	limit(262144),
 	l_ID(0),
 	p_genotypes(0),
@@ -30,7 +30,7 @@ BCFEntry::~BCFEntry(void){ delete [] this->data; }
 void BCFEntry::resize(const U32 size){
 	char* temp = this->data;
 	this->data = new char[size];
-	memcpy(this->data, temp, this->pointer);
+	memcpy(this->data, temp, this->l_data);
 	std::swap(temp, this->data);
 	delete [] temp;
 	this->body = reinterpret_cast<body_type*>(this->data);
@@ -40,11 +40,11 @@ void BCFEntry::resize(const U32 size){
 }
 
 void BCFEntry::add(const char* const data, const U32 length){
-	if(this->pointer + length > this-> capacity())
-		this->resize(this->pointer + length + 65536);
+	if(this->l_data + length > this-> capacity())
+		this->resize(this->l_data + length + 65536);
 
-	memcpy(&this->data[this->pointer], data, length);
-	this->pointer += length;
+	memcpy(&this->data[this->l_data], data, length);
+	this->l_data += length;
 }
 
 void BCFEntry::__parseID(U32& internal_pos){

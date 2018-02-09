@@ -301,13 +301,16 @@ bool TomahawkOutputReader::__viewOnly(void){
 		return false;
 
 	// Natural output required parsing
+	size_t n_total = 0;
 	if(this->writer_output_type == WRITER_TYPE::natural){
 		while(this->parseBlock()){
 			OutputContainerReference o = this->getContainerReference();
 			std::cerr << o.size() << '\t' << this->data_buffer.size() << std::endl;
-			for(auto it = o.begin(); it != o.end(); ++it)
-				std::cout << *it << '\n';
+			n_total += o.size();
+			for(U32 i = 0; i < o.size(); ++i)
+				std::cout << o[i] << '\n';
 		}
+		std::cerr << "total: " << n_total << std::endl;
 	}
 	// Binary output without filtering simply writes it back out
 	else if(this->writer_output_type == WRITER_TYPE::binary){
@@ -938,6 +941,7 @@ OutputContainer TomahawkOutputReader::getContainerBytes(const size_t l_data){
 		data_loaded = (U64)this->stream.tellg() - start_position;
 		if(data_loaded >= l_data)
 			break;
+
 	}
 
 	return(OutputContainer(this->data_buffer));

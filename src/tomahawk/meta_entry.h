@@ -31,6 +31,7 @@ public:
 	inline bool isSingleton(void) const{ return(this->MAF == 0); }
 	inline const char getRefAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt >> 4]); }
 	inline const char getAltAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt & ((1 << 4) - 1)]); }
+	inline const char getPhaseVCFCharacter(void) const{ return(this->phased == 1 ? '|' : '/'); }
 
 	// Overloaded operator for debug use
 	friend std::ostream& operator<<(std::ostream& out, const self_type& entry){

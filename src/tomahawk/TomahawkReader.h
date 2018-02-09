@@ -147,9 +147,8 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < o.size(); ++j){
-		const char separator = o.currentMeta().phased == 1 ? '|' : '/';
+		const char separator = o.currentMeta().getPhaseVCFCharacter();
 
-		//tomahawk_controller.WriteVariant(this->totempole_, this->outputBuffer_, this->dropGenotypes);
 		this->outputBuffer_ += this->totempole_.getContig(this->totempole_[blockID].contigID).name;
 		this->outputBuffer_ += '\t';
 		this->outputBuffer_ += std::to_string(o.currentMeta().position);

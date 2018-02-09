@@ -259,7 +259,7 @@ class LDSlave{
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::TotempoleEntry            totempole_entry_type;
 	typedef IO::TomahawkOutputManager<T>         output_manager_type;
-	typedef Support::OutputEntrySupport            helper_type;
+	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
 	typedef Interface::ProgressBar               progress_bar_type;

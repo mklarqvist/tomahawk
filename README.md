@@ -99,7 +99,13 @@ tomahawk sort -i partial.two -o sorted.two -M
 ```
 
 ## Plotting
-Plotting `two` data converted into `ld` format using the supplied `R` scripts (in the `R` directory)
+Plotting `two` data converted into `ld` format using the supplied `R` scripts (in the `R` directory).
+First transform a `two` file into human-readable `ld` format:
+```bash
+tomahawk view -hi 1kgp3_chr2_105_1.two > 1kgp3_chr2_105_1.ld
+```
+
+Either `source` the [R/example_region.R](R/example_region.R) file or copy-paste this code into `R`:
 ```R
 # Specify colour scheme
 colors<-paste0(colorRampPalette(c("blue","red"))(10),seq(0,100,length.out = 11))
@@ -120,16 +126,20 @@ plotLDRegionTriangular<-function(dataSource, from, to, ...){
   b<-b[order(b$V12,decreasing = F),]
   plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
 }
+```
 
+Load the `ld` data we generated:
+```R
 # Load some LD data from Tomahawk
 ld<-read.delim("1kgp3_chr2_105_1.ld",h=F)
 ```
-Plotting data as is
+and then plot it using either of the two support functions. First plotting the data as is (upper-triangular)
 ```R
 plotLDRegion(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 2e6-5e6", las=2)
 ```
-![screenshot](R/1kgp3_chr20_105_1.jpeg)  
-Plotting symmetric trangulars
+![screenshot](R/1kgp3_chr20_105_1.jpeg)
+
+or plotting the upper-triangular rotated 45 degrees
 ```R
 plotLDRegionTriangular(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 2e6-5e6", las=2)
 ```

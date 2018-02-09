@@ -81,13 +81,21 @@ public:
 
 	void resize(const U32 size);
 	void add(const char* const data, const U32 length);
-	inline void reset(void){ this->pointer = 0; this->isGood = false; }
-	inline const U32& size(void) const{ return(this->pointer); }
+	inline void reset(void){ this->l_data = 0; this->isGood = false; }
+	inline const U32& size(void) const{ return(this->l_data); }
 	inline const U32& capacity(void) const{ return(this->limit); }
 	inline U64 sizeBody(void) const{ return(this->body->l_shared + this->body->l_indiv); }
 
+	/**<
+	 * Support function:
+	 * Checks that there is exactly two alleles and that both the
+	 * ref and alt allele are of length one (i.e. is a simple SNV->SNV)
+	 * @return Returns TRUE if fulfilling these critera or FALSE otherwise
+	 */
 	inline const bool isSimple(void) const{
-		return((this->body->n_allele == 2) && (this->alleles[0].length == 1 && this->alleles[1].length == 1));
+		return((this->body->n_allele == 2)   &&
+               (this->alleles[0].length == 1 &&
+                this->alleles[1].length == 1));
 	}
 
 	void __parseID(U32& internal_pos);
@@ -99,7 +107,7 @@ public:
 	const bool& good(void) const{ return(this->isGood); }
 
 public:
-	U32   pointer; // byte width
+	U32   l_data; // byte width
 	U32   limit;   // capacity
 	U32   l_ID;
 	U32   p_genotypes; // position genotype data begin

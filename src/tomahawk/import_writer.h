@@ -20,6 +20,7 @@
 namespace Tomahawk {
 
 class ImportWriter {
+private:
 	typedef IO::BasicBuffer buffer_type;
 	typedef ImporterFilters filter_type;
 

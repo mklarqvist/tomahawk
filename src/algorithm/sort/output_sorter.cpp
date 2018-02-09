@@ -19,15 +19,22 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 
 	std::cerr << this->reader.filesize << "->" << this->reader.filesize / 8 << std::endl;
 	const U64 n_variants_chunk = this->reader.filesize / this->n_threads;
+	size_t n_total = 0;
 	for(U32 i = 0; i < 8; ++i){
 		OutputContainer o = this->reader.getContainerBytes(n_variants_chunk);
 		std::cerr << "Size: " << o.size() << std::endl;
-		if(o.size())
-			std::sort(&o[0], &o[o.size()]);
+		if(o.size() == 0)
+			continue;
+
+		n_total += o.size();
+
+		std::sort(&o.front(), &o.back(), &entry_type::sortAscending);
 
 		const entry_type* prev = &o[0];
+		std::cout << o[0] << '\n';
 		for(size_t j = 1; j < o.size(); ++j){
-			std::cout.write((char*)&o[j], sizeof(entry_type));
+			//std::cout.write((char*)&o[j], sizeof(entry_type));
+			std::cout << o[j] << '\n';
 			if(*prev >= o[j]){
 				std::cerr << j-1 << ',' << j << std::endl;
 				std::cerr << *prev << std::endl;
@@ -36,7 +43,34 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 			}
 			prev = &o[j];
 		}
+
+		if(this->reverse_entries){
+			// If we want to reverse the entries
+			// Sketch:
+			// 1: Swap A <> B
+			// 2: Sort again
+			for(size_t j = 1; j < o.size(); ++j)
+				o[j].swapDirection();
+
+			std::sort(&o.front(), &o.back(), &entry_type::sortAscending);
+
+			prev = &o[0];
+			std::cout << o[0] << '\n';
+			for(size_t j = 1; j < o.size(); ++j){
+				//std::cout.write((char*)&o[j], sizeof(entry_type));
+				std::cout << o[j] << '\n';
+				if(*prev >= o[j]){
+					std::cerr << j-1 << ',' << j << std::endl;
+					std::cerr << *prev << std::endl;
+					std::cerr << o[j] << std::endl;
+					exit(1);
+				}
+				prev = &o[j];
+			}
+
+		}
 	}
+	std::cerr << "total: " << n_total << std::endl;
 
 	/*
 	//
@@ -296,6 +330,7 @@ bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::strin
 }
 
 bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& destinationPrefix, const U32 block_size){
+	/*
 	if(!this->reader.Open(inputFile)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << inputFile << "..." << std::endl;
 		return false;
@@ -404,6 +439,8 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 
 	delete [] iterators;
 	delete [] streams;
+	8
+	*/
 
 	return true;
 }

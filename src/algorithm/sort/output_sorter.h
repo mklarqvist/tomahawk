@@ -17,7 +17,6 @@ namespace Algorithm{
 // Sorter
 class OutputSorter{
 	typedef IO::OutputEntry                   entry_type;
-	typedef IO::OutputEntrySort               entry_sort_type;
 	typedef IO::TomahawkOutputReader          two_reader_type;
 	typedef IO::OutputWriterIndex             writer_type;
 	typedef IO::WriterFile                    basic_writer_type;
