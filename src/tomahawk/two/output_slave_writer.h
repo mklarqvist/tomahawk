@@ -43,9 +43,10 @@ public:
 		n_entries(0),
 		progressCount(0),
 		n_blocks(0),
-		//writer(nullptr),
-		//writer_index(nullptr),
-		buffer(2*SLAVE_FLUSH_LIMIT)
+		stream(nullptr),
+		buffer(2*SLAVE_FLUSH_LIMIT),
+		spin_lock(nullptr),
+		owns_data(true)
 	{
 
 	}
@@ -53,15 +54,20 @@ public:
 	~OutputSlaveWriter(){
 		this->flushBlock();
 		this->buffer.deleteAll();
+		if(this->owns_data){
+			delete this->spin_lock;
+			delete this->stream;
+		}
 	}
 
 	OutputSlaveWriter(const self_type& other) :
 		n_entries(0),
 		progressCount(0),
 		n_blocks(0),
-		//writer(other.writer),
-		//writer_index(other.writer_index),
-		buffer(2*SLAVE_FLUSH_LIMIT)
+		stream(other.stream),
+		buffer(2*SLAVE_FLUSH_LIMIT),
+		spin_lock(other.spin_lock),
+		owns_data(false)
 	{
 	}
 
@@ -76,30 +82,21 @@ public:
 		return(*this);
 	}
 
-	inline const U64& GetCounts(void) const{ return this->n_entries; }
+	inline const U64& size(void) const{ return this->n_entries; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
-	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
-	inline const U32& getTotempoleBlocks(void) const{ return(this->n_blocks); }
+	inline const U32& getProgressCounts(void) const{ return this->progressCount; }
+	inline const U32& size_blocks(void) const{ return(this->n_blocks); }
 
-	bool Open(const std::string output, index_reader_type& totempole){
+	bool open(const std::string output, index_reader_type& totempole){
 		if(output.size() == 0)
 			return false;
 
-		//this->writer       = new writer_type;
-		//this->writer_index = new writer_type;
-
 		this->CheckOutputNames(output);
 		this->filename = output;
-		//std::cerr << "here before using pointer: " << (this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX) << std::endl;
-		//std::cerr << (void*)&this->writer << '\t' << (void*)&this->writer_index << std::endl;
-		//if(!this->writer.open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX)){
-		//	std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to open..." << std::endl;
-		//	return false;
-		//}
-		//std::cerr << "after open" << std::endl;
-		// write setuff
-		this->stream.open(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX, std::ios::binary | std::ios::out);
-		if(!this->stream.good()){
+
+		this->spin_lock = new spin_lock_type;
+		this->stream = new std::ofstream(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX, std::ios::binary | std::ios::out);
+		if(!this->stream->good()){
 			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to open: " << this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX << "..." << std::endl;
 			return false;
 		}
@@ -119,15 +116,15 @@ public:
 				exit(1);
 			}
 
-			this->spin_lock.lock();
-			this->index_entry.byte_offset = (U64)this->stream.tellp();
+			this->spin_lock->lock();
+			this->index_entry.byte_offset = (U64)this->stream->tellp();
 			this->index_entry.uncompressed_size = this->buffer.size();
-			this->stream.write(this->compressor.buffer.data(), this->compressor.buffer.size());
-			this->index_entry.byte_offset_end = (U64)this->stream.tellp();
-			this->stream << this->index_entry;
+			this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
+			this->index_entry.byte_offset_end = (U64)this->stream->tellp();
+			*this->stream << this->index_entry;
 			++this->n_blocks;
 			//std::cerr << this->entry << std::endl;
-			this->spin_lock.unlock();
+			this->spin_lock->unlock();
 
 			this->buffer.reset();
 			this->compressor.Clear();
@@ -137,7 +134,7 @@ public:
 
 	bool finalise(void){
 		// Make sure data is flushed
-		this->stream.flush();
+		this->stream->flush();
 
 		// Update blocks written
 		/*
@@ -183,30 +180,30 @@ public:
 	}
 
 	void close(void){
-		this->stream.flush();
-		this->stream.close();
+		if(this->stream != nullptr){
+			this->stream->flush();
+			this->stream->close();
+		}
 	}
 
 private:
 	bool WriteHeader(index_reader_type& totempole){
-		TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> head(Tomahawk::Constants::WRITE_HEADER_LD_MAGIC, totempole.getSamples(), totempole.getContigs());
-		TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, totempole.getSamples(), totempole.getContigs());
-
-		this->stream << head;
+		TomahawkOutputMagicHeader head;
+		head.n_samples = totempole.getSamples();
+		head.n_contigs = totempole.getContigs();
+		*this->stream << head;
 
 		// Write contig data to TWO
 		// length | n_char | chars[0 .. n_char - 1]
 		for(U32 i = 0; i < totempole.getContigs(); ++i)
-			this->stream << *totempole.getContigBase(i);
+			*this->stream << *totempole.getContigBase(i);
 
-		/*
-		if(!totempole.writeLiterals(stream)){
+		if(!totempole.writeLiterals(*this->stream)){
 			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to write literals..." << std::endl;
 			return false;
 		}
-		*/
 
-		return(stream.good());
+		return(stream->good());
 	}
 
 	void CheckOutputNames(const std::string& input){
@@ -220,7 +217,6 @@ private:
 		else this->baseName = paths[1];
 	}
 
-
 private:
 	std::string     filename;
 	std::string     basePath;
@@ -230,10 +226,11 @@ private:
 	U32             progressCount;  // lines added since last flush
 	U32             n_blocks;       // number of index blocks written
 	totempole_entry index_entry;    // keep track of sort order
-	std::ofstream   stream;         // output stream
+	std::ofstream*  stream;         // output stream
 	buffer_type     buffer;         // internal buffer
 	tgzf_controller compressor;     // compressor
-	spin_lock_type  spin_lock;      // spin-lock for parallel writing
+	spin_lock_type* spin_lock;      // spin-lock for parallel writing
+	bool            owns_data;      // keep track of who owns this data
 };
 
 }

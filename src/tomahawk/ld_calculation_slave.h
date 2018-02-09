@@ -351,7 +351,7 @@ private:
 	std::thread thread;
 
 	// writer manager
-	output_manager_type output_manager; // each thread has their own output manager
+	output_manager_type output_manager; // each thread has their own output manager with its own buffer
 
 	// progress
 	progress_bar_type& progress;

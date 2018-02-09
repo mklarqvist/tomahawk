@@ -15,7 +15,7 @@ namespace IO{
 
 class GenericWriterInterace {
 protected:
-	typedef IO::BasicBuffer buffer_type;
+	typedef IO::BasicBuffer     buffer_type;
 	typedef Algorithm::SpinLock lock_type;
 
 public:
@@ -108,12 +108,15 @@ public:
 	}
 
 	bool open(const std::string output){
+		std::cerr << "here in open: " << output << std::endl;
 		if(output.length() == 0){
 			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "No output name provided..." << std::endl;
 			return false;
 		}
 
+		std::cerr << "after test" << std::endl;
 		this->stream.open(output, std::ios::binary | std::ios::out);
+		std::cerr << "after first open" << std::endl;
 		if(!this->stream.good()){
 			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open output file: " << output << "..." << std::endl;
 			return false;
@@ -122,6 +125,8 @@ public:
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening output file: " << output << "..." << std::endl;
 
+		std::cerr << "returnign open" << std::endl;
+		std::cerr << this->stream.good() << std::endl;
 		return true;
 	}
 
@@ -129,6 +134,11 @@ public:
 	inline std::ofstream& getNativeStream(void){ return(this->stream); }
 	inline void flush(void){ this->stream.flush(); }
 	inline bool close(void){ this->stream.close(); return true; }
+
+	template <class Y>
+	void operator<<(const Y& value){
+		this->stream << value;
+	}
 
 	void operator<<(const buffer_type& buffer){
 		// Mutex lock; write; unlock
@@ -140,6 +150,7 @@ public:
 	}
 
 	void operator<<(void* entry){}
+
 	const size_t write(const char* data, const U64& length){
 		this->lock.lock();
 		this->stream.write(&data[0], length);
@@ -158,7 +169,7 @@ public:
 	}
 
 private:
-	std::string outFile;
+	std::string   outFile;
 	std::ofstream stream;
 };
 

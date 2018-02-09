@@ -12,12 +12,12 @@ struct TotempoleHeaderBase{
 public:
 	TotempoleHeaderBase() : version(0), samples(0){}
 	TotempoleHeaderBase(const U64 samples) :
-						version(Constants::PROGRAM_VERSION),
+						version(Constants::PROGRAM_VERSION_MAJOR),
 						samples(samples)
 	{}
 
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		stream.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION), sizeof(float));
+		stream.write(reinterpret_cast<const char*>(&Constants::PROGRAM_VERSION_MAJOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.samples), sizeof(U64));
 		return stream;
 	}
