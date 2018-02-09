@@ -145,5 +145,13 @@ plotLDRegionTriangular(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main=
 ```
 ![screenshot](R/1kgp3_chr20_105_1_triangular.jpeg)  
 
+If your data has been sorted and expanded (symmetric) for rapid queries each data point is represented twice ([A,B], and [B,A]):
+```R
+# Load some symmetric LD data from Tomahawk
+ld<-read.delim("1kgp3_chr2_105_1_symmetric.ld",h=F)
+plotLDRegion(ld, 1e6, 4e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 1e6-4e6", las=2)
+```
+![screenshot](R/1kgp3_chr20_105_1_symmetric.jpeg)
+
 ### License
 [MIT](LICENSE)

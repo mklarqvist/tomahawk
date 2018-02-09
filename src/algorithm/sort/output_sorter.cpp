@@ -19,14 +19,11 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 
 	std::cerr << this->reader.filesize << "->" << this->reader.filesize / 8 << std::endl;
 	const U64 n_variants_chunk = this->reader.filesize / this->n_threads;
-	size_t n_total = 0;
 	for(U32 i = 0; i < 8; ++i){
 		OutputContainer o = this->reader.getContainerBytes(n_variants_chunk);
 		std::cerr << "Size: " << o.size() << std::endl;
 		if(o.size() == 0)
 			continue;
-
-		n_total += o.size();
 
 		std::sort(&o.front(), &o.back(), &entry_type::sortAscending);
 
@@ -70,7 +67,6 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 
 		}
 	}
-	std::cerr << "total: " << n_total << std::endl;
 
 	/*
 	//
