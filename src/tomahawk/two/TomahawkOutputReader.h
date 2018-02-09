@@ -83,7 +83,7 @@ public:
 	output_container_type getContainerBytes(const size_t l_data);
 	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_buffer)); }
 
-	// Access: requires random access
+	// Access: requires complete (if n = 1) or partial (if n > 1) random access
 	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
 	output_container_reference_type getContainerReferenceBlock(std::vector<U32> blocks);
 	output_container_type getContainerBlock(const U32 blockID);

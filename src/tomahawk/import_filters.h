@@ -3,9 +3,9 @@
 
 namespace Tomahawk{
 
-struct TomahawkImporterFilters{
-	TomahawkImporterFilters() : MAF(0), HWE_P(0), missingness(0.2){}
-	~TomahawkImporterFilters(){}
+struct ImporterFilters{
+	ImporterFilters() : MAF(0), HWE_P(0), missingness(0.2){}
+	~ImporterFilters(){}
 
 	double MAF;
 	double HWE_P;

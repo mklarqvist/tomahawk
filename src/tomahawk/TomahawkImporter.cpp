@@ -3,7 +3,7 @@
 #include <string>
 
 #include "../io/reader.h"
-#include "TomahawkImportWriter.h"
+#include "import_writer.h"
 #include "TomahawkReader.h"
 
 namespace Tomahawk {

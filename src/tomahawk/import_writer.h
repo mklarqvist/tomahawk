@@ -14,18 +14,18 @@
 #include "../totempole/TotempoleEntry.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
+#include "import_filters.h"
 #include "meta_entry.h"
-#include "TomahawkImporterFilters.h"
 
 namespace Tomahawk {
 
-class TomahawkImportWriter {
+class ImportWriter {
 	typedef IO::BasicBuffer buffer_type;
-	typedef TomahawkImporterFilters filter_type;
+	typedef ImporterFilters filter_type;
 
 public:
-	TomahawkImportWriter(const filter_type& filter);
-	~TomahawkImportWriter();
+	ImportWriter(const filter_type& filter);
+	~ImportWriter();
 
 	bool Open(const std::string output);
 	void DetermineFlushLimit(void);

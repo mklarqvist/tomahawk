@@ -1,8 +1,8 @@
-#include "TomahawkImportWriter.h"
+#include "import_writer.h"
 
 namespace Tomahawk {
 
-TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
+ImportWriter::ImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
 	n_variants_limit(1024),
 	blocksWritten_(0),
@@ -15,13 +15,13 @@ TomahawkImportWriter::TomahawkImportWriter(const filter_type& filter) :
 	vcf_header_(nullptr)
 {}
 
-TomahawkImportWriter::~TomahawkImportWriter(){
+ImportWriter::~ImportWriter(){
 	delete this->rleController_;
 	this->buffer_rle_.deleteAll();
 	this->buffer_meta_.deleteAll();
 }
 
-bool TomahawkImportWriter::Open(const std::string output){
+bool ImportWriter::Open(const std::string output){
 	this->filename = output;
 	this->CheckOutputNames(output);
 	this->streamTomahawk.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
@@ -51,7 +51,7 @@ bool TomahawkImportWriter::Open(const std::string output){
 	return true;
 }
 
-void TomahawkImportWriter::DetermineFlushLimit(void){
+void ImportWriter::DetermineFlushLimit(void){
 	this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
 	if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1)
 		this->flush_limit *= sizeof(BYTE);
@@ -62,7 +62,7 @@ void TomahawkImportWriter::DetermineFlushLimit(void){
 	else this->flush_limit *= sizeof(U64);
 }
 
-bool TomahawkImportWriter::OpenExtend(const std::string output){
+bool ImportWriter::OpenExtend(const std::string output){
 	this->filename = output;
 	this->CheckOutputNames(output);
 	this->streamTomahawk.open(output, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
@@ -94,7 +94,7 @@ bool TomahawkImportWriter::OpenExtend(const std::string output){
 	return true;
 }
 
-void TomahawkImportWriter::WriteHeaders(void){
+void ImportWriter::WriteHeaders(void){
 	if(this->vcf_header_ == nullptr){
 		std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
 		exit(1);
@@ -157,7 +157,7 @@ void TomahawkImportWriter::WriteHeaders(void){
 	this->streamTotempole.seekp(curPos); // seek back to current IO position
 }
 
-void TomahawkImportWriter::WriteFinal(void){
+void ImportWriter::WriteFinal(void){
 	// Write EOF
 	for(U32 i = 0; i < Constants::eof_length; ++i){
 		this->streamTotempole.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
@@ -181,13 +181,13 @@ void TomahawkImportWriter::WriteFinal(void){
 	streamTemp.close();
 }
 
-void TomahawkImportWriter::setHeader(VCF::VCFHeader& header){
+void ImportWriter::setHeader(VCF::VCFHeader& header){
 	this->vcf_header_ = &header;
 	this->rleController_ = new Algorithm::GenotypeEncoder(header.samples);
 	this->rleController_->DetermineBitWidth();
 }
 
-bool TomahawkImportWriter::add(const VCF::VCFLine& line){
+bool ImportWriter::add(const VCF::VCFLine& line){
 	const U32 meta_start_pos = this->buffer_meta_.n_chars;
 	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
@@ -229,7 +229,7 @@ bool TomahawkImportWriter::add(const VCF::VCFLine& line){
 	return true;
 }
 
-bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
+bool ImportWriter::add(const BCF::BCFEntry& line){
 	const U32 meta_start_pos = this->buffer_meta_.n_chars;
 	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
@@ -271,7 +271,7 @@ bool TomahawkImportWriter::add(const BCF::BCFEntry& line){
 }
 
 // flush and write
-bool TomahawkImportWriter::flush(void){
+bool ImportWriter::flush(void){
 	if(this->buffer_meta_.size() == 0){
 		//std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot flush writer with 0 entries..." << std::endl;
 		return false;
@@ -296,7 +296,7 @@ bool TomahawkImportWriter::flush(void){
 	return true;
 }
 
-void TomahawkImportWriter::CheckOutputNames(const std::string& input){
+void ImportWriter::CheckOutputNames(const std::string& input){
 	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)

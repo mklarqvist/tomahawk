@@ -68,11 +68,14 @@ struct BCFTypeString{
 };
 
 struct BCFEntry{
+public:
+	typedef BCFEntry        self_type;
 	typedef IO::BasicBuffer buffer_type;
-	typedef BCFEntryBody body_type;
-	typedef BCFTypeString string_type;
-	typedef BCFAtomicBase base_type;
+	typedef BCFEntryBody    body_type;
+	typedef BCFTypeString   string_type;
+	typedef BCFAtomicBase   base_type;
 
+public:
 	BCFEntry(void);
 	~BCFEntry(void);
 
@@ -96,12 +99,12 @@ struct BCFEntry{
 	const bool& good(void) const{ return(this->isGood); }
 
 public:
-	U32 pointer; // byte width
-	U32 limit;   // capacity
-	U32 l_ID;
-	U32 p_genotypes; // position genotype data begin
-	BYTE ref_alt; // parsed
-	bool isGood;
+	U32   pointer; // byte width
+	U32   limit;   // capacity
+	U32   l_ID;
+	U32   p_genotypes; // position genotype data begin
+	BYTE  ref_alt; // parsed
+	bool  isGood;
 	char* data; // hard copy data to buffer, interpret internally
 	body_type* body; // BCF2 body
 	string_type* alleles; // pointer to pointer of ref alleles and their lengths
