@@ -50,7 +50,7 @@ bool TomahawkCalc::Calculate(){
 	totempole.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
 	IO::OutputSlaveWriter<T> writer;
-	if(!writer.Open(this->output_file, totempole)){
+	if(!writer.open(this->output_file, totempole)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
@@ -66,7 +66,11 @@ bool TomahawkCalc::Calculate(){
 
 	// Construct Tomahawk manager
 	//TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
-	GenotypeMetaContainerReference<T> references(totempole.header.samples, this->reader.DataOffsetSize()+1);
+
+	//std::cerr << "not implemented" << std::endl;
+	//exit(1);
+
+	GenotypeMetaContainerReference<T> references(2504, this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
@@ -193,7 +197,7 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
-	writer = slaves[0]->getOutputManager().getTotempoleBlocks();
+	writer = slaves[0]->getOutputManager();
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;

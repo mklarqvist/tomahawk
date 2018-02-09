@@ -33,7 +33,7 @@ private:
 	typedef OutputContainer                output_container_type;
 	typedef OutputContainerReference       output_container_reference_type;
 	typedef IO::BasicBuffer                buffer_type;
-	typedef Totempole::TotempoleContigBase contig_type;
+	typedef Totempole::IndexContigBase contig_type;
 	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
 	typedef TGZFHeader                     tgzf_header_type;
 	typedef TGZFController                 tgzf_controller_type;

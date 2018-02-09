@@ -72,7 +72,7 @@ inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
 
 bool TomahawkReader::getBlocks(void){
 	U64 buffer_size = 0;
-	for(U32 i = 0; i < this->totempole_.header.blocks; ++i){
+	for(U32 i = 0; i < this->totempole_.header.size(); ++i){
 		buffer_size += this->totempole_[i].uncompressed_size;
 	}
 
@@ -82,7 +82,7 @@ bool TomahawkReader::getBlocks(void){
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().blocks << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().size() << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
 
 	this->data_.resize(buffer_size + 1000);
 
@@ -194,16 +194,6 @@ bool TomahawkReader::Validate(void){
 	this->version = *version;
 	this->samples = *samples;
 
-	if(this->version != this->totempole_.getHeader().version){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "File discordance: versions do not match..." << std::endl;
-		return false;
-	}
-
-	if(this->samples != this->totempole_.getHeader().samples){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "File discordance:number of samples do not match" << std::endl;
-		return false;
-	}
-
 	// Determine what bit-width functions to use
 	this->DetermineBitWidth();
 
@@ -295,9 +285,11 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
 		std::cout << "##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
 		std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
+		/*
 		for(U32 i = 0; i < this->totempole_.header.samples - 1; ++i)
 			std::cout << this->totempole_.samples[i] << '\t';
 		std::cout << this->totempole_.samples[this->totempole_.header.samples - 1] << std::endl;
+		*/
 	}
 
 	for(U32 i = 0; i < this->totempole_.getBlocks(); ++i)

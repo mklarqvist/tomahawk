@@ -2,7 +2,7 @@
 #define TOMAHAWKOUTPUTENTRY_H_
 
 #include "../../io/BasicBuffer.h"
-#include "../../totempole/TotempoleContig.h"
+#include "../../totempole/index_contig.h"
 
 namespace Tomahawk{
 namespace IO{
@@ -17,7 +17,7 @@ namespace IO{
 struct __attribute__((packed, aligned(1))) OutputEntry{
 public:
 	typedef OutputEntry                    self_type;
-	typedef Totempole::TotempoleContigBase contig_type;
+	typedef Totempole::IndexContigBase contig_type;
 	typedef IO::BasicBuffer                buffer_type;
 
 public:

@@ -16,8 +16,8 @@ For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
 directory. If you see compilation errors, you most likely do not have `SSE4.2`.
 At the present time, we do not support non-x86 CPUs or old CPU architecture.
 ```bash
-git clone --recursive https://github.com/mklarqvist/Tomahawk
-cd Tomahawk
+git clone --recursive https://github.com/mklarqvist/tomahawk
+cd tomahawk
 cd build
 make
 ```

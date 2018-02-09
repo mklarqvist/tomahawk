@@ -49,7 +49,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	*this->header_ = totempole; // Convert data in totempole to VCF header
 
 	// Parse lines
-	line_type line(totempole.getHeader().samples);
+	line_type line(totempole.getHeader().size());
 
 	// Spawn RLE controller
 	this->rle_controller = new rle_controller_type(this->header_->samples);
@@ -68,7 +68,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	this->sort_order_helper.prevcontigID = totempole.back().contigID;
 
 	this->writer_.setHeader(*this->header_);
-	this->writer_.blocksWritten_ = totempole.getHeader().blocks;
+	this->writer_.blocksWritten_ = totempole.getHeader().size();
 	this->writer_.largest_uncompressed_block_ = totempole.getHeader().largest_uncompressed;
 	if(!this->writer_.OpenExtend(extendFile))
 		return false;

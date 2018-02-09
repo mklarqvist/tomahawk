@@ -5,7 +5,7 @@
 #include <fstream>
 
 #include "../tomahawk/two/output_entry.h"
-#include "TotempoleContig.h"
+#include "index_contig.h"
 #include "TotempoleOutputEntry.h"
 
 namespace Tomahawk {
@@ -77,7 +77,7 @@ class TotempoleOutputSortedIndex {
 	typedef TotempoleOutputSortedIndex self_type;
 	typedef TotempoleOutputSortedEntry totempole_entry;
 	typedef IO::OutputEntry two_entry;
-	typedef Totempole::TotempoleContigBase contig_type;
+	typedef Totempole::IndexContigBase contig_type;
 	typedef TotempoleOutputSortedIndexBin chunk_type;
 
 public:
@@ -88,7 +88,7 @@ public:
 	~TotempoleOutputSortedIndex();
 
 	inline chunk_type& operator[](const U32 p){ return(this->linear_index[p]); }
-	inline U32 getBin(const U32& contigID, const U32& position) const{ return(position / ((this->contigs[contigID].bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1)); }
+	inline U32 getBin(const U32& contigID, const U32& position) const{ return(position / ((this->contigs[contigID].n_bases >> TOTEMPOLE_OUTPUT_SORT_SHIFT) + 1)); }
 	inline const TOI_SORTED_ERROR& getState(void) const{ return(this->state); }
 
 	void update(const two_entry& entry, const U32& block, const U32& blockOffset);

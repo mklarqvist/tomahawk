@@ -28,15 +28,17 @@ public:
 	VCFHeader();
 	~VCFHeader();
 	void operator=(const totempole_type& other){
-		this->samples = other.getHeader().samples;
-		this->version = other.getHeader().version;
+		std::cerr << "not implemented" << std::endl;
+		exit(1);
+		//this->samples = other.getHeader().samples;
+		//this->version = other.getHeader().version;
 		this->contigsHashTable = other.getContigHTablePointer();
 		this->sampleHashTable = other.getSampleHTablePointer();
 
 		this->contigs = std::vector<contig_type>(other.n_contigs);
 		for(U32 i = 0; i < other.n_contigs; ++i){
 			this->contigs[i].name = other.contigs[i].name;
-			this->contigs[i].length = other.contigs[i].bases;
+			this->contigs[i].length = other.contigs[i].n_bases;
 			this->contigs[i].tomahawkBlocks = other.contigs[i].blocksEnd-other.contigs[i].blocksStart;
 		}
 	}

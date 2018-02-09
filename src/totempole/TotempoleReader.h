@@ -11,9 +11,9 @@
 #include "../support/helpers.h"
 #include "../algorithm/OpenHashTable.h"
 #include "../io/compression/TGZFController.h"
+#include "index_contig.h"
+#include "index_header.h"
 #include "TotempoleEntry.h"
-#include "TotempoleContig.h"
-#include "TotempoleHeader.h"
 
 namespace Tomahawk {
 namespace Totempole{
@@ -30,9 +30,9 @@ struct Interval{
 
 class TotempoleReader {
 	typedef TotempoleReader self_type;
-	typedef TotempoleHeader header_type;
-	typedef TotempoleContigBase contig_base_type;
-	typedef TotempoleContig contig_type;
+	typedef IndexHeader header_type;
+	typedef IndexContigBase contig_base_type;
+	typedef IndexContig contig_type;
 	typedef TotempoleEntry entry_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef IO::TGZFHeader tgzf_type;
@@ -49,8 +49,8 @@ public:
 	const entry_type& back(void) const{ return(this->entries[this->getBlocks() - 1]); };
 
 	inline const U32& getLargestBlockSize(void) const{ return this->header.largest_uncompressed; }
-	inline const U32& getBlocks(void) const{ return this->header.blocks; }
-	inline const U64& getSamples(void) const{ return this->header.samples; }
+	inline const U32  getBlocks(void) const{ return this->header.size(); }
+	inline const U64  getSamples(void) const{ return 0; }
 	inline const U32& getContigs(void) const{ return this->n_contigs; }
 	inline const U32& size(void) const{ return this->n_contigs; }
 	inline const entry_type& operator[](const U32 p) const{ return this->entries[p]; }

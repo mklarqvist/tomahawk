@@ -109,11 +109,15 @@ bool TotempoleReader::Open(const std::string filename){
 #endif
 	// end parse literals
 
+	std::cerr << "not implemented" << std::endl;
+	exit(1);
+	/*
 	if(this->stream.tellg() != this->header.offset){
 		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Corrupt file" << std::endl;
 		std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << this->stream.tellg() << '/' << this->header.offset << std::endl;
 		return false;
 	}
+	*/
 
 	// Populate Totempole entries
 	this->entries = new entry_type[this->getBlocks()];

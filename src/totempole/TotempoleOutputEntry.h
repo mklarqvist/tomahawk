@@ -10,7 +10,10 @@ namespace Totempole {
 struct __attribute__((packed, aligned(1))) TotempoleOutputEntryController{
 	typedef TotempoleOutputEntryController self_type;
 
-	BYTE sorted: 1, expanded: 1, partial_sort: 1, unused: 5;
+	BYTE sorted: 1,
+	     expanded: 1,
+         partial_sort: 1,
+         unused: 5;
 
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write((const char*)reinterpret_cast<const char*>(&entry), 1);
@@ -138,10 +141,10 @@ public:
 	}
 
 public:
-	//U32 contigID;	// tellg() position in stream for start of record in Tomahawk file
+	//U32 contigID;
 	S32 fromBlock;	// tellg() position in stream for start of record in Tomahawk file
 	U32 fromBlock_entries_offset;
-	S32 toBlock; 	// number of variants in this block
+	S32 toBlock; 	// tellg() position in stream for end of record in Tomahawk file
 	U32 toBlock_entries_offset;
 };
 #pragma pack(pop)

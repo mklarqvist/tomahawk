@@ -16,7 +16,7 @@ class TotempoleOutputReader {
 	typedef TotempoleOutputEntry entry_type;
 	typedef IO::BasicBuffer buffer_type;
 	typedef TotempoleOutputSortedIndex index_type;
-	typedef Totempole::TotempoleContigBase contig_type;
+	typedef Totempole::IndexContigBase contig_type;
 	typedef TotempoleOutputSortedEntry totempole_entry;
 
 public:

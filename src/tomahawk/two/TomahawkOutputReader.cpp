@@ -8,7 +8,7 @@
 #include "../../io/compression/GZFConstants.h"
 #include "../../io/compression/GZFHeader.h"
 #include "../../support/helpers.h"
-#include "../../totempole/TotempoleContig.h"
+#include "../../totempole/index_contig.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "../output_container.h"
 #include "../output_container_reference.h"
@@ -470,7 +470,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
-		interval(*contigID, 0, this->contigs[*contigID].bases);
+		interval(*contigID, 0, this->contigs[*contigID].n_bases);
 
 	} else if(ret.size() == 2){
 		// is contigID:pos-pos
@@ -524,7 +524,7 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
-		interval(*contigID, 0, this->contigs[*contigID].bases);
+		interval(*contigID, 0, this->contigs[*contigID].n_bases);
 		interval.state = interval_type::INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
 	}
 	// If vector contain colon

@@ -19,7 +19,8 @@ public:
 		major_version(Tomahawk::Constants::PROGRAM_VERSION_MAJOR),
 		minor_version(Tomahawk::Constants::PROGRAM_VERSION_MINOR),
 		n_samples(0),
-		n_contigs(0)
+		n_contigs(0),
+		controller(0)
 	{
 		memcpy(&this->magic_string[0],
                &Tomahawk::Constants::WRITE_HEADER_MAGIC[0],
@@ -38,6 +39,7 @@ public:
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MINOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.n_samples), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contigs), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(U16));
 		return stream;
 	}
 
@@ -47,6 +49,7 @@ public:
 		stream.read(reinterpret_cast<char*>(&header.minor_version), sizeof(float));
 		stream.read(reinterpret_cast<char*>(&header.n_samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contigs), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&header.controller), sizeof(U16));
 		return(stream);
 	}
 
@@ -56,6 +59,7 @@ public:
 	float minor_version;
 	U64 n_samples;
 	U32 n_contigs;
+	U16 controller;
 };
 
 struct TomahawkOutputMagicHeader{
@@ -67,7 +71,8 @@ public:
 		major_version(Tomahawk::Constants::PROGRAM_VERSION_MAJOR),
 		minor_version(Tomahawk::Constants::PROGRAM_VERSION_MINOR),
 		n_samples(0),
-		n_contigs(0)
+		n_contigs(0),
+		controller(0)
 	{
 		memcpy(&this->magic_string[0],
                &Tomahawk::Constants::WRITE_HEADER_LD_MAGIC[0],
@@ -86,6 +91,7 @@ public:
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MINOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.n_samples), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contigs), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(U16));
 		return stream;
 	}
 
@@ -95,6 +101,7 @@ public:
 		stream.read(reinterpret_cast<char*>(&header.minor_version), sizeof(float));
 		stream.read(reinterpret_cast<char*>(&header.n_samples), sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contigs), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&header.controller), sizeof(U16));
 		return(stream);
 	}
 
@@ -104,6 +111,7 @@ public:
 	float minor_version;
 	U64 n_samples;
 	U32 n_contigs;
+	U16 controller;
 };
 
 

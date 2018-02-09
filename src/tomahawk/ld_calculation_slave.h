@@ -1645,7 +1645,7 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
 		}
 
 		// Update progress
-		this->progress(block1.size() - (i + 1), this->output_manager.GetProgressCounts());
+		this->progress(block1.size() - (i + 1), this->output_manager.getProgressCounts());
 		this->output_manager.ResetProgress();
 		++block1;
 	}
@@ -1668,7 +1668,7 @@ bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
 		}
 
 		// Update progress
-		this->progress(block2.size(), this->output_manager.GetProgressCounts());
+		this->progress(block2.size(), this->output_manager.getProgressCounts());
 		this->output_manager.ResetProgress();
 
 		// Reset position in block2 and increment position in block1

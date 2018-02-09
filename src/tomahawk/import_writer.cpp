@@ -103,11 +103,16 @@ void ImportWriter::WriteHeaders(void){
 	this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
 	this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
 
+	/*
 	const U64& samples = this->vcf_header_->samples;
 	Totempole::TotempoleHeader h(samples);
 	this->streamTotempole << h;
 	Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
 	this->streamTomahawk << *hB;
+	*/
+	std::cerr << "not implemented; fix me" << std::endl;
+	exit(1);
+
 
 	// Write out dummy variable for IO offset
 	U32 nothing = 0; // Dummy variable
@@ -121,7 +126,7 @@ void ImportWriter::WriteHeaders(void){
 	// Write contig data to Totempole
 	// length | n_char | chars[0 .. n_char - 1]
 	for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
-		Totempole::TotempoleContigBase contig(this->vcf_header_->contigs[i].length,
+		Totempole::IndexContigBase contig(this->vcf_header_->contigs[i].length,
 											  this->vcf_header_->contigs[i].name.size(),
 											  this->vcf_header_->contigs[i].name);
 
@@ -130,11 +135,13 @@ void ImportWriter::WriteHeaders(void){
 
 	// Write sample names
 	// n_char | chars[0..n_char - 1]
+	/*
 	for(U32 i = 0; i < samples; ++i){
 		const U32 n_char = this->vcf_header_->sampleNames[i].size();
 		this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
 		this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
 	}
+	*/
 
 	// Push in VCF header and executed line
 	buffer_type temp(this->vcf_header_->literal_lines.size()*65536);

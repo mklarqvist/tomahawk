@@ -4,7 +4,7 @@
 #include "../../io/BasicWriters.h"
 #include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
-#include "../../totempole/TotempoleContig.h"
+#include "../../totempole/index_contig.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "../../totempole/TotempoleReader.h"
@@ -77,8 +77,9 @@ public:
 		return(*this);
 	}
 
-	inline self_type& operator=(const U32 totempole_blocks){
-		this->n_blocks = totempole_blocks;
+	inline self_type& operator=(const self_type& other){
+		this->n_blocks  = other.n_blocks;
+		this->n_entries = other.n_entries;
 		return(*this);
 	}
 
