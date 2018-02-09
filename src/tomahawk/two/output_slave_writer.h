@@ -11,6 +11,7 @@
 #include "../../tomahawk/meta_entry.h"
 #include "../two/output_entry.h"
 #include "../two/output_entry_support.h"
+#include "../tomahawk_output_magic_header.h"
 
 #define SLAVE_FLUSH_LIMIT 2000000 // 2 MB
 
@@ -189,7 +190,7 @@ public:
 
 private:
 	bool WriteHeader(index_reader_type& totempole){
-		TomahawkOutputMagicHeader head;
+		Base::TomahawkOutputMagicHeader head;
 		head.n_samples = totempole.getSamples();
 		head.n_contigs = totempole.getContigs();
 		*this->stream << head;
