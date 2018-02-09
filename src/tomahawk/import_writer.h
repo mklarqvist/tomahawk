@@ -21,8 +21,9 @@ namespace Tomahawk {
 
 class ImportWriter {
 private:
-	typedef IO::BasicBuffer buffer_type;
-	typedef ImporterFilters filter_type;
+	typedef IO::BasicBuffer       buffer_type;
+	typedef ImporterFilters       filter_type;
+	typedef Totempole::IndexEntry index_entry_type;
 
 public:
 	ImportWriter(const filter_type& filter);
@@ -69,11 +70,12 @@ public:
 
 
 	inline U32 GetVariantsWritten(void) const{ return this->variants_written_; }
-	inline Totempole::IndexEntry& getTotempoleEntry(void){ return(this->totempole_entry); }
+	inline index_entry_type& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
 	std::ofstream streamTomahawk;	// stream
 	std::ofstream streamTotempole;	// stream
+
 	U32 flush_limit;
 	U32 n_variants_limit;
 	U32 blocksWritten_;				// number of blocks written
@@ -81,11 +83,11 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 	const filter_type& filter;		// filters
 
-	Totempole::IndexEntry totempole_entry;
+	index_entry_type totempole_entry;
 	IO::TGZFController gzip_controller_;
 	Algorithm::GenotypeEncoder* rleController_;
-	IO::BasicBuffer buffer_rle_;	// run lengths
-	IO::BasicBuffer buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
+	buffer_type buffer_rle_;	// run lengths
+	buffer_type buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 
 	VCF::VCFHeader* vcf_header_;
 

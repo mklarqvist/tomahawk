@@ -257,13 +257,14 @@ class LDSlave{
 	typedef Base::GenotypeContainerReference<T>  block_type;
 	typedef const MetaEntry<T>                   meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
-	typedef Totempole::IndexEntry            totempole_entry_type;
+	typedef Totempole::IndexEntry                totempole_entry_type;
 	typedef IO::OutputSlaveWriter<T>             output_manager_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
 	typedef Interface::ProgressBar               progress_bar_type;
 	typedef Support::LDCalculationSIMDHelper<>   simd_helper_type;
+	typedef TomahawkCalcParameters               parameter_type;
 
 	// Work orders
 	typedef Tomahawk::LoadBalancerBlock          order_type;
@@ -327,7 +328,7 @@ private:
 	void setFLAGs(const block_type& block1, const block_type& block2);
 
 private:
-	const TomahawkCalcParameters& parameters;
+	const parameter_type& parameters;
 
 	// Counters
 	U32 block_comparisons;
@@ -374,7 +375,7 @@ template <class T>
 LDSlave<T>::LDSlave(const manager_type& manager,
 		output_manager_type& writer,
 		progress_bar_type& progress,
-		const TomahawkCalcParameters& parameters,
+		const parameter_type& parameters,
 		const work_order& orders) :
 	parameters(parameters),
 	block_comparisons(0),
@@ -399,9 +400,9 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	unphased_unbalanced_adjustment(this->samples%4)
 {
 	// Decide block comparator function
-	if(this->parameters.force == TomahawkCalcParameters::force_method::none)
+	if(this->parameters.force == parameter_type::force_method::none)
 		this->phase_function_across = &self_type::CompareBlocksFunction;
-	else if(this->parameters.force == TomahawkCalcParameters::force_method::phasedFunction)
+	else if(this->parameters.force == parameter_type::force_method::phasedFunction)
 		this->phase_function_across = &self_type::CompareBlocksFunctionForcedPhased;
 	else
 		this->phase_function_across = &self_type::CompareBlocksFunctionForcedUnphased;
