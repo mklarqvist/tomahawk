@@ -7,6 +7,7 @@ namespace Tomahawk {
 namespace Totempole {
 
 struct IndexHeader{
+public:
 	typedef IndexHeader self_type;
 
 public:
@@ -28,17 +29,9 @@ public:
 	inline const U32 getLargestUncompressedBlock(void) const{ return(this->largest_uncompressed); }
 
 	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
-		stream.write(reinterpret_cast<const char*>(&header.n_blocks), sizeof(U32)); // Number of blocks in Tomahawk
-		stream.write(reinterpret_cast<const char*>(&header.largest_uncompressed), sizeof(U32)); // Size of largest uncompressed block
+		stream.write(reinterpret_cast<const char*>(&header.n_blocks), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&header.largest_uncompressed), sizeof(U32));
 		return(stream);
-	}
-
-	friend std::ostream& operator<<(std::ostream& os, const self_type& block){
-		os <<
-		"blocks: "  << block.n_blocks << '\n' <<
-		"largest: " << block.largest_uncompressed << '\n';
-
-		return(os);
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& block){

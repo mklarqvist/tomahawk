@@ -4,7 +4,7 @@
 #include <cstring>  // size_t, ptrdiff_t
 
 #include "../support/type_definitions.h"
-#include "../totempole/index_entry.h"
+#include "../index/index_entry.h"
 #include "genotype_container_bitvector.h"
 
 namespace Tomahawk{
@@ -31,7 +31,7 @@ private:
 	typedef GenotypeContainerReference  self_type;
 
 protected:
-	typedef Totempole::IndexEntry      header_entry_type;
+	typedef Totempole::IndexEntry          header_entry_type;
 	typedef GenotypeContainerBitvector     container_bitvector_type;
 	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
 	typedef Support::GenotypeDiploidRun<T> value_type;

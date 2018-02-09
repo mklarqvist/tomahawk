@@ -44,7 +44,8 @@ public:
 
 struct IndexContig : public IndexContigBase{
 public:
-	typedef IndexContig self_type;
+	typedef IndexContig     self_type;
+	typedef IndexContigBase parent_type;
 
 public:
 	IndexContig() : minPosition(0), maxPosition(0), blocksStart(0), blocksEnd(0){}
@@ -55,7 +56,29 @@ public:
 		return stream;
 	}
 
-	// Updated second when read
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& base){
+		const parent_type* const parent = reinterpret_cast<const parent_type* const>(&base);
+		stream << *parent;
+
+		stream.write(reinterpret_cast<const char*>(&base.minPosition), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.maxPosition), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.blocksStart), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.blocksEnd), sizeof(U32));
+		return(stream);
+	}
+
+	friend std::istream& operator>>(std::istream& stream, self_type& base){
+		parent_type* parent = reinterpret_cast<parent_type*>(&base);
+		stream >> *parent;
+
+		stream.read(reinterpret_cast<char*>(&base.minPosition), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.maxPosition), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.blocksStart), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.blocksEnd), sizeof(U32));
+		return(stream);
+	}
+
+public:
 	// contigID is implicit
 	U32 minPosition;  // start position of contig
 	U32 maxPosition;  // end position of contig

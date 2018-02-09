@@ -4,7 +4,7 @@
 #include "../../io/BasicWriters.h"
 #include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
-#include "../../totempole/index_contig.h"
+#include "../../index/index_contig.h"
 #include "../../totempole/TotempoleMagic.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "../../totempole/TotempoleReader.h"

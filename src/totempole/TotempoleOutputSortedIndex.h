@@ -5,7 +5,7 @@
 #include <fstream>
 
 #include "../tomahawk/two/output_entry.h"
-#include "index_contig.h"
+#include "../index/index_contig.h"
 #include "TotempoleOutputEntry.h"
 
 namespace Tomahawk {

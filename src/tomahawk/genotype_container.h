@@ -5,7 +5,7 @@
 #include <iterator> // forward_iterator_tag
 
 #include "../support/type_definitions.h"
-#include "../totempole/index_entry.h"
+#include "../index/index_entry.h"
 #include "genotype_container_bitvector.h"
 #include "genotype_container_runlength.h"
 

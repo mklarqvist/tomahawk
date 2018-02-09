@@ -2,7 +2,7 @@
 #define TOMAHAWKOUTPUTENTRY_H_
 
 #include "../../io/BasicBuffer.h"
-#include "../../totempole/index_contig.h"
+#include "../../index/index_contig.h"
 
 namespace Tomahawk{
 namespace IO{

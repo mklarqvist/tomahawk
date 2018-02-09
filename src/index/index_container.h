@@ -1,49 +1,35 @@
-#ifndef TOMAHAWK_BASE_GENOTYPE_META_CONTAINER_REFERENCE_H_
-#define TOMAHAWK_BASE_GENOTYPE_META_CONTAINER_REFERENCE_H_
+#ifndef INDEX_INDEX_CONTAINER_H_
+#define INDEX_INDEX_CONTAINER_H_
 
 #include <cstring>  // size_t, ptrdiff_t
+#include <iterator> // forward_iterator_tag
 
 #include "../support/type_definitions.h"
-#include "../index/index_entry.h"
-#include "genotype_container_reference.h"
+#include "index_entry.h"
 
 namespace Tomahawk{
+namespace Totempole{
 
-template <class T>
-class GenotypeMetaContainerReference{
+class IndexContainer{
 private:
-	typedef GenotypeMetaContainerReference      self_type;
-	typedef Base::GenotypeContainerReference<T> value_type;
-    typedef value_type&                         reference;
-    typedef const value_type&                   const_reference;
-    typedef value_type*                         pointer;
-    typedef const value_type*                   const_pointer;
-    typedef std::ptrdiff_t                      difference_type;
-    typedef std::size_t                         size_type;
-	typedef Totempole::IndexEntry           header_entry;;
+	typedef IndexContainer        self_type;
+	typedef IndexEntry            value_type;
+    typedef value_type&           reference;
+    typedef const value_type&     const_reference;
+    typedef value_type*           pointer;
+    typedef const value_type*     const_pointer;
+    typedef std::ptrdiff_t        difference_type;
+    typedef std::size_t           size_type;
+    typedef IO::BasicBuffer       buffer_type;
 
 public:
-	GenotypeMetaContainerReference(const U64 n_samples) :
-		n_entries(0),
-		n_capacity(0),
-		n_samples(n_samples),
-		__entries(nullptr)
-	{
+    IndexContainer(const size_t n_capacity);
+	IndexContainer(const char* const data_buffer, const size_t l_buffer_length);
+	IndexContainer(const buffer_type& data_buffer);
 
-	}
-
-	GenotypeMetaContainerReference(const U64 n_samples, const size_t n_capacity) :
-		n_entries(0),
-		n_capacity(n_capacity),
-		n_samples(n_samples),
-		__entries(static_cast<pointer>(::operator new[](this->n_capacity*sizeof(value_type))))
-	{
-
-	}
-
-	~GenotypeMetaContainerReference(){
+	~IndexContainer(){
 		for(size_type i = 0; i < this->size(); ++i)
-			((this->__entries + i)->~value_type)();
+			((this->__entries + i)->~IndexEntry)();
 
 		::operator delete[](static_cast<void*>(this->__entries));
 	}
@@ -107,35 +93,50 @@ public:
 	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
-	// Update
-	bool addDataBlock(const char* const data, const size_t l_data, const header_entry& header){
-		// Container is full
-		// Resize is required
-		if(this->n_entries + 1 == this->n_capacity || this->capacity() == 0)
-			return false;
+	// Overload basic operator
+	self_type& operator+=(const value_type& index_entry){
+		if(this->size() + 1 >= this->capacity()){
+			std::cerr << "is full resizing" << std::endl;
+			this->resize();
+		}
 
-		new( &this->__entries[this->n_entries] ) value_type(data, l_data, header, this->n_samples);
+		new( &this->__entries[this->n_entries] ) value_type(index_entry); // invoke copy ctor
 		++this->n_entries;
-		return true;
+		return(this);
 	}
 
-	const U64 countVariants(void) const{
-		U64 n_total = 0;
+	void resize(const size_t new_capacity){
+		// if resizing to a smaller size
+		if(new_capacity < this->capacity()){
+			// Call destructor for values between shrunk size and previous numbers
+			for(size_type i = new_capacity; i < this->size(); ++i)
+				((this->__entries + i)->~IndexEntry)();
+
+			this->n_entries = new_capacity;
+			return;
+		}
+
+		pointer temp = this->__entries; // Move current data pointer
+		this->__entries = static_cast<pointer>(::operator new[](new_capacity*sizeof(value_type))); // Allocate new memory at old pointer
+		// Copy data over from temporary data pointer to new pointer
 		for(U32 i = 0; i < this->size(); ++i)
-			n_total += this->at(i).getTotempole().size();
+			new( &this->__entries[i] ) value_type(temp[i]);
 
-		return(n_total);
+		// Release memory from the temporary address
+		for(size_type i = 0; i < this->size(); ++i)
+			((temp + i)->~IndexEntry)();
+
+		::operator delete[](static_cast<void*>(temp));
 	}
-
-	const U64& numberSamples(void) const{ return(this->n_samples); }
+	inline void resize(void){ this->resize(this->capacity()*2); }
 
 private:
-	size_type n_entries;
-	size_type n_capacity;
-	U64       n_samples;
-	pointer   __entries;
+	size_type  n_entries;
+	size_type  n_capacity;
+	pointer    __entries;
 };
 
 }
+}
 
-#endif /* TOMAHAWK_BASE_GENOTYPE_META_CONTAINER_REFERENCE_H_ */
+#endif /* INDEX_INDEX_CONTAINER_H_ */

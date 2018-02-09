@@ -8,7 +8,7 @@
 #include "../../io/compression/GZFConstants.h"
 #include "../../io/compression/GZFHeader.h"
 #include "../../support/helpers.h"
-#include "../../totempole/index_contig.h"
+#include "../../index/index_contig.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "../output_container.h"
 #include "../output_container_reference.h"

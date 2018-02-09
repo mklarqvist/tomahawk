@@ -11,9 +11,9 @@
 #include "../support/helpers.h"
 #include "../algorithm/OpenHashTable.h"
 #include "../io/compression/TGZFController.h"
-#include "index_contig.h"
-#include "index_entry.h"
-#include "index_header.h"
+#include "../index/index_contig.h"
+#include "../index/index_entry.h"
+#include "../index/index_header.h"
 
 namespace Tomahawk {
 namespace Totempole{
