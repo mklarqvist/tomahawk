@@ -17,7 +17,7 @@
 #include "../math/fisher_math.h"
 #include "genotype_meta_container_reference.h"
 #include "two/output_entry_support.h"
-#include "two/TomahawkOutputManager.h"
+#include "two/output_slave_writer.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -258,7 +258,7 @@ class LDSlave{
 	typedef const MetaEntry<T>                   meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::TotempoleEntry            totempole_entry_type;
-	typedef IO::TomahawkOutputManager<T>         output_manager_type;
+	typedef IO::OutputSlaveWriter<T>             output_manager_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;

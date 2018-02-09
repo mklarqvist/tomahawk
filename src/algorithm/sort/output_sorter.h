@@ -5,7 +5,7 @@
 #include <queue>
 
 #include "../../io/compression/TGZFEntryIterator.h"
-#include "../../tomahawk/two/TomahawkOutputManager.h"
+#include "../../tomahawk/two/output_slave_writer.h"
 #include "../../tomahawk/two/TomahawkOutputReader.h"
 #include "../../totempole/TotempoleOutputEntry.h"
 #include "output_sort_merge_queue.h"
@@ -14,7 +14,9 @@
 namespace Tomahawk{
 namespace Algorithm{
 
-// Sorter
+/**<
+ * Primary class for sorting `TWO` data
+ */
 class OutputSorter{
 	typedef IO::OutputEntry                   entry_type;
 	typedef IO::TomahawkOutputReader          two_reader_type;

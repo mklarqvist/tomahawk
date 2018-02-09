@@ -17,71 +17,73 @@
 namespace Tomahawk{
 namespace IO {
 
+/**<
+ * Internal use only
+ * This writer class provides lock-based writing to a target disk destination
+ * when multiple slaves share the same file-handle. Each of the computational
+ * slaves gets a reference of this object.
+ */
 template <class T>
-struct TomahawkOutputManager{
-	typedef TomahawkOutputManager                     self_type;
+struct OutputSlaveWriter{
+	typedef OutputSlaveWriter                         self_type;
 	typedef IO::WriterFile                            writer_type;
-	//typedef TomahawkBlock<const T, Tomahawk::Support::TomahawkRun<T>> controller_type;
-	typedef Tomahawk::Support::OutputEntrySupport       helper_type;
+	typedef Tomahawk::Support::OutputEntrySupport     helper_type;
 	typedef IO::BasicBuffer                           buffer_type;
 	typedef TGZFController                            tgzf_controller;
-	typedef IO::OutputEntry                   entry_type;
+	typedef IO::OutputEntry                           entry_type;
 	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
 	typedef MetaEntry<T>                              meta_type;
 	typedef Totempole::TotempoleEntry                 header_entry;
 
 public:
-	TomahawkOutputManager() :
-		outCount(0),
+	OutputSlaveWriter() :
+		n_entries(0),
 		progressCount(0),
-		totempole_blocks_written(0),
+		n_index_blocks(0),
 		writer(nullptr),
 		writer_index(nullptr),
-		buffer(2*SLAVE_FLUSH_LIMIT),
-		sprintf_buffer(new char[255])
+		buffer(2*SLAVE_FLUSH_LIMIT)
 	{
 
 	}
 
-	~TomahawkOutputManager(){
+	~OutputSlaveWriter(){
 		this->flushBlock();
 		this->buffer.deleteAll();
-		delete [] this->sprintf_buffer;
 	}
 
-	TomahawkOutputManager(const self_type& other) :
-		outCount(0),
+	OutputSlaveWriter(const self_type& other) :
+		n_entries(0),
 		progressCount(0),
-		totempole_blocks_written(0),
+		n_index_blocks(0),
 		writer(other.writer),
 		writer_index(other.writer_index),
-		buffer(2*SLAVE_FLUSH_LIMIT),
-		sprintf_buffer(new char[255])
+		buffer(2*SLAVE_FLUSH_LIMIT)
 	{
 	}
 
-	self_type& operator+=(const self_type& other){
-		this->outCount += other.outCount;
-		this->totempole_blocks_written += other.totempole_blocks_written;
+	inline self_type& operator+=(const self_type& other){
+		this->n_entries += other.n_entries;
+		this->n_index_blocks += other.n_index_blocks;
 		return(*this);
 	}
 
-	self_type& operator=(const U32 totempole_blocks){
-		this->totempole_blocks_written = totempole_blocks;
+	inline self_type& operator=(const U32 totempole_blocks){
+		this->n_index_blocks = totempole_blocks;
 		return(*this);
 	}
 
-	inline const U64& GetCounts(void) const{ return this->outCount; }
+	inline const U64& GetCounts(void) const{ return this->n_entries; }
 	inline void ResetProgress(void){ this->progressCount = 0; }
 	inline const U32& GetProgressCounts(void) const{ return this->progressCount; }
-	inline const U32& getTotempoleBlocks(void) const{ return(this->totempole_blocks_written); }
+	inline const U32& getTotempoleBlocks(void) const{ return(this->n_index_blocks); }
 
 	bool Open(const std::string output, Totempole::TotempoleReader& totempole){
 		if(output.size() == 0)
 			return false;
 
-		this->writer = new writer_type;
+		this->writer       = new writer_type;
 		this->writer_index = new writer_type;
 
 		this->CheckOutputNames(output);
@@ -117,7 +119,7 @@ public:
 			this->writer->writeNoLock(this->compressor.buffer);
 			this->entry.byte_offset_end = (U64)this->writer->getNativeStream().tellp();
 			this->writer_index->getNativeStream() << this->entry;
-			++this->totempole_blocks_written;
+			++this->n_index_blocks;
 			//std::cerr << this->entry << std::endl;
 			this->writer->getLock()->unlock();
 
@@ -145,7 +147,7 @@ public:
 			return false;
 		}
 
-		re.write((char*)&this->totempole_blocks_written, sizeof(U32));
+		re.write((char*)&this->n_index_blocks, sizeof(U32));
 		if(!re.good()){
 			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
 			return false;
@@ -165,7 +167,7 @@ public:
 		this->buffer += header_b.contigID;
 		this->buffer += writePosB;
 		this->buffer << helper;
-		++this->outCount;
+		++this->n_entries;
 		++this->progressCount;
 		++this->entry.n_entries;
 
@@ -222,15 +224,14 @@ private:
 	std::string     filename;
 	std::string     basePath;
 	std::string     baseName;
-	U64             outCount;      // lines written
-	U32             progressCount; // lines added since last flush
-	U32             totempole_blocks_written;
-	totempole_entry entry; // track stuff
-	writer_type*    writer;	// writer
-	writer_type*    writer_index; // writer index
-	buffer_type     buffer; // internal buffer
-	tgzf_controller compressor; // compressor
-	char*           sprintf_buffer; // special buffer used for sprintf writing scientific output in natural mode
+	U64             n_entries;      // number of entries written
+	U32             progressCount;  // lines added since last flush
+	U32             n_index_blocks; // number of index blocks written
+	totempole_entry entry;          // track stuff
+	writer_type*    writer;	        // writer
+	writer_type*    writer_index;   // writer index
+	buffer_type     buffer;         // internal buffer
+	tgzf_controller compressor;     // compressor
 };
 
 }

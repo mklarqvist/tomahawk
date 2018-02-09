@@ -10,7 +10,6 @@ namespace Algorithm{
 // 2: Load partitioned data into containers
 // 3: Perform sort
 // 4: Perform merge if desired
-
 bool OutputSorter::sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit){
 	if(!this->reader.Open(input)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
@@ -20,12 +19,12 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	std::cerr << this->reader.filesize << "->" << this->reader.filesize / 8 << std::endl;
 	const U64 n_variants_chunk = this->reader.filesize / this->n_threads;
 	for(U32 i = 0; i < 8; ++i){
+		// Load a chunk of data
 		OutputContainer o = this->reader.getContainerBytes(n_variants_chunk);
-		std::cerr << "Size: " << o.size() << std::endl;
 		if(o.size() == 0)
 			continue;
 
-		std::sort(&o.front(), &o.back(), &entry_type::sortAscending);
+		std::sort(&o.front(), &o.back());
 
 		const entry_type* prev = &o[0];
 		std::cout << o[0] << '\n';
@@ -41,16 +40,15 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 			prev = &o[j];
 		}
 
-		if(this->reverse_entries){
-			// If we want to reverse the entries
-			// Sketch:
+		if(this->isReverseEntries()){
 			// 1: Swap A <> B
-			// 2: Sort again
 			for(size_t j = 1; j < o.size(); ++j)
 				o[j].swapDirection();
 
-			std::sort(&o.front(), &o.back(), &entry_type::sortAscending);
+			// 2: sort
+			std::sort(&o.front(), &o.back());
 
+			// 3: output
 			prev = &o[0];
 			std::cout << o[0] << '\n';
 			for(size_t j = 1; j < o.size(); ++j){
@@ -64,7 +62,6 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 				}
 				prev = &o[j];
 			}
-
 		}
 	}
 

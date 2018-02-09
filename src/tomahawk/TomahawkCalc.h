@@ -5,7 +5,7 @@
 #include "TomahawkReader.h"
 #include "twk_reader_implementation.h"
 #include "genotype_meta_container_reference.h"
-#include "two/TomahawkOutputManager.h"
+#include "two/output_slave_writer.h"
 
 namespace Tomahawk {
 
@@ -49,7 +49,7 @@ bool TomahawkCalc::Calculate(){
 	totempole.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
 	totempole.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
-	IO::TomahawkOutputManager<T> writer;
+	IO::OutputSlaveWriter<T> writer;
 	if(!writer.Open(this->output_file, totempole)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
