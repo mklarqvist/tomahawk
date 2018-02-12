@@ -4,6 +4,9 @@
 #include <ostream>
 #include <fstream>
 
+#include "../support/type_definitions.h"
+#include "../io/BasicBuffer.h"
+
 namespace Tomahawk{
 namespace Totempole{
 
@@ -13,7 +16,12 @@ public:
 	typedef IO::BasicBuffer buffer_type;
 
 public:
-	HeaderContig(const U32& bases, const U32& n_char, const std::string& name) : n_bases(bases), n_char(n_char), name(name){}
+	HeaderContig(const U32& bases, const U32& n_char, const std::string& name) :
+		n_bases(bases),
+		n_char(n_char),
+		name(name)
+	{}
+
 	HeaderContig() : n_bases(0), n_char(0){}
 
 	HeaderContig(const char* const data) :
@@ -31,6 +39,13 @@ public:
 		this->n_char = *reinterpret_cast<const U32* const>(&data[sizeof(U32)]);
 		this->name.resize(this->n_char);
 		memcpy(&this->name[0], &data[sizeof(U32)+sizeof(U32)], this->n_char);
+		return(sizeof(U32) + sizeof(U32) + this->n_char);
+	}
+
+	const U32 interpret(const U32& bases, const U32& n_char, const std::string& name){
+		this->n_bases = bases;
+		this->n_char  = n_char;
+		this->name    = name;
 		return(sizeof(U32) + sizeof(U32) + this->n_char);
 	}
 

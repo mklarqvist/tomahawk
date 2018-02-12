@@ -1,3 +1,4 @@
+#include "../index/tomahawk_header.h"
 #include "import_writer.h"
 
 namespace Tomahawk {
@@ -10,8 +11,8 @@ ImportWriter::ImportWriter(const filter_type& filter) :
 	largest_uncompressed_block_(0),
 	filter(filter),
 	rleController_(nullptr),
-	buffer_rle_(flush_limit*2),
-	buffer_meta_(flush_limit*2),
+	buffer_rle_(this->flush_limit*2),
+	buffer_meta_(this->flush_limit*2),
 	vcf_header_(nullptr)
 {}
 
@@ -24,22 +25,16 @@ ImportWriter::~ImportWriter(){
 bool ImportWriter::Open(const std::string output){
 	this->filename = output;
 	this->CheckOutputNames(output);
-	this->streamTomahawk.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
-	this->streamTotempole.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::out | std::ios::binary);
+	this->stream.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
 
 	// Check streams
-	if(!this->streamTomahawk.good()){
+	if(!this->stream.good()){
 		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX << "!" << std::endl;
-		return false;
-	}
-	if(!this->streamTotempole.good()){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX << "!" << std::endl;
 		return false;
 	}
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX << "..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX << "..." << std::endl;
 	}
 
 	// Write Tomahawk and Totempole headers
@@ -63,129 +58,52 @@ void ImportWriter::DetermineFlushLimit(void){
 }
 
 bool ImportWriter::OpenExtend(const std::string output){
-	this->filename = output;
-	this->CheckOutputNames(output);
-	this->streamTomahawk.open(output, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
-	this->streamTotempole.open(output + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
-
-	// Check streams
-	if(!this->streamTomahawk.good()){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << output << "!" << std::endl;
-		return false;
-	}
-	if(!this->streamTotempole.good()){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "!" << std::endl;
-		return false;
-	}
-
-	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Extending: " << output << "..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Extending: " << output + '.' + Constants::OUTPUT_INDEX_SUFFIX << "..." << std::endl;
-	}
-
-	U64 tempsize = this->streamTomahawk.tellp();
-	this->streamTomahawk.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
-	tempsize = this->streamTotempole.tellp();
-	this->streamTotempole.seekp(tempsize - sizeof(U64)*Tomahawk::Constants::eof_length);
-
-	// Determine flush limit
-	this->DetermineFlushLimit();
 
 	return true;
 }
 
-void ImportWriter::WriteHeaders(void){
+int ImportWriter::WriteHeaders(void){
 	if(this->vcf_header_ == nullptr){
 		std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
 		exit(1);
 	}
 
-	this->streamTotempole.write(Constants::WRITE_HEADER_INDEX_MAGIC, Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH);
-	this->streamTomahawk.write(Constants::WRITE_HEADER_MAGIC, Constants::WRITE_HEADER_MAGIC_LENGTH);
+	// Move data from VCF header to TomahawkHeader
+	TomahawkHeader header;
+	header.magic_.n_contigs = this->vcf_header_->contigs.size();
+	header.magic_.n_samples = this->vcf_header_->samples;
+	header.sample_names_    = new std::string[this->vcf_header_->samples];
+	header.contigs_         = new Totempole::HeaderContig[this->vcf_header_->contigs.size()];
 
-	/*
-	const U64& samples = this->vcf_header_->samples;
-	Totempole::TotempoleHeader h(samples);
-	this->streamTotempole << h;
-	Totempole::TotempoleHeaderBase* hB = reinterpret_cast<Totempole::TotempoleHeaderBase*>(&h);
-	this->streamTomahawk << *hB;
-	*/
-	std::cerr << "not implemented; fix me" << std::endl;
-	exit(1);
-
-
-	// Write out dummy variable for IO offset
-	U32 nothing = 0; // Dummy variable
-	size_t posOffset = this->streamTotempole.tellp(); // remember current IO position
-	this->streamTotempole.write(reinterpret_cast<const char*>(&nothing), sizeof(U32)); // data offset
-
-	// Write the number of contigs
-	const U32 n_contigs = this->vcf_header_->contigs.size();
-	this->streamTotempole.write(reinterpret_cast<const char*>(&n_contigs), sizeof(U32));
-
-	// Write contig data to Totempole
-	// length | n_char | chars[0 .. n_char - 1]
 	for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
-		Totempole::HeaderContig contig(this->vcf_header_->contigs[i].length,
-											  this->vcf_header_->contigs[i].name.size(),
-											  this->vcf_header_->contigs[i].name);
 
-		this->streamTotempole << contig;
+		header.contigs_[i].interpret(this->vcf_header_->contigs[i].length,
+                                     this->vcf_header_->contigs[i].name.size(),
+                                     this->vcf_header_->contigs[i].name);
 	}
 
-	// Write sample names
-	// n_char | chars[0..n_char - 1]
-	/*
-	for(U32 i = 0; i < samples; ++i){
-		const U32 n_char = this->vcf_header_->sampleNames[i].size();
-		this->streamTotempole.write(reinterpret_cast<const char*>(&n_char), sizeof(U32));
-		this->streamTotempole.write(reinterpret_cast<const char*>(&this->vcf_header_->sampleNames[i][0]), n_char);
-	}
-	*/
+	for(U32 i = 0; i < this->vcf_header_->samples; ++i)
+		header.sample_names_[i] = this->vcf_header_->sampleNames[i];
 
-	// Push in VCF header and executed line
-	buffer_type temp(this->vcf_header_->literal_lines.size()*65536);
 	for(U32 i = 0; i < this->vcf_header_->literal_lines.size(); ++i)
-		temp += this->vcf_header_->literal_lines[i] + '\n';
+		header.literals_ += this->vcf_header_->literal_lines[i] + '\n';
 
 	const std::string command = "##tomahawk_importCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
-		+ "; VERSION=" + std::string(VERSION)
-		+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
+			+ "; VERSION=" + std::string(VERSION)
+			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
 
-	temp += command;
-	this->gzip_controller_.Deflate(temp);
-	this->streamTotempole.write(this->gzip_controller_.buffer.data(), this->gzip_controller_.buffer.n_chars);
-	this->gzip_controller_.Clear();
-	temp.deleteAll();
+	header.literals_ += command;
 
-	U32 curPos = this->streamTotempole.tellp(); // remember current IO position
-	this->streamTotempole.seekp(posOffset); // seek to previous position
-	this->streamTotempole.write(reinterpret_cast<const char*>(&curPos), sizeof(U32)); // overwrite data offset
-	this->streamTotempole.seekp(curPos); // seek back to current IO position
+	return(header.write(this->stream));
 }
 
 void ImportWriter::WriteFinal(void){
 	// Write EOF
 	for(U32 i = 0; i < Constants::eof_length; ++i){
-		this->streamTotempole.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
-		this->streamTomahawk.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
+		this->stream.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
 	}
 
-	// Re-open file and overwrite block counts and offset
-	const U32 shift = Constants::WRITE_HEADER_MAGIC_INDEX_LENGTH + sizeof(float) + sizeof(U64) + sizeof(BYTE);
-	this->streamTotempole.flush();
-	std::fstream streamTemp(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX + '.' + Constants::OUTPUT_INDEX_SUFFIX, std::ios_base::binary | std::ios_base::out | std::ios_base::in);
-
-	if(!streamTemp.good()){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not re-open file!" << std::endl;
-		exit(1);
-	}
-
-	streamTemp.seekg(shift);
-	streamTemp.write(reinterpret_cast<const char*>(&this->blocksWritten_), sizeof(U32));
-	streamTemp.write(reinterpret_cast<const char*>(&this->largest_uncompressed_block_), sizeof(U32));
-	streamTemp.flush();
-	streamTemp.close();
+	// write index here
 }
 
 void ImportWriter::setHeader(VCF::VCFHeader& header){
@@ -284,9 +202,9 @@ bool ImportWriter::flush(void){
 		return false;
 	}
 
-	this->totempole_entry.byte_offset = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
+	this->totempole_entry.byte_offset = this->stream.tellp(); // IO offset in Tomahawk output
 	this->gzip_controller_.Deflate(this->buffer_meta_, this->buffer_rle_); // Deflate block
-	this->streamTomahawk << this->gzip_controller_; // Write tomahawk output
+	this->stream << this->gzip_controller_; // Write tomahawk output
 	this->gzip_controller_.Clear(); // Clean up gzip controller
 
 	// Keep track of largest block observed
@@ -294,8 +212,11 @@ bool ImportWriter::flush(void){
 		this->largest_uncompressed_block_ = this->buffer_meta_.size();
 
 	this->totempole_entry.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
-	this->totempole_entry.byte_offset_end = this->streamTomahawk.tellp(); // IO offset in Tomahawk output
-	this->streamTotempole << this->totempole_entry; // Write totempole output
+	this->totempole_entry.byte_offset_end = this->stream.tellp(); // IO offset in Tomahawk output
+
+	// Todo: update index here
+	//this->streamTotempole << this->totempole_entry; // Write totempole output
+
 	++this->blocksWritten_; // update number of blocks written
 	this->variants_written_ += this->totempole_entry.size(); // update number of variants written
 

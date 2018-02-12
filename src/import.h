@@ -151,10 +151,13 @@ int import(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling import..." << std::endl;
 	}
 
+
 	Tomahawk::TomahawkImporter importer(input, output);
 	importer.getFilters().HWE_P = hwe_p;
 	importer.getFilters().MAF = maf;
 	importer.getFilters().missingness = missingness;
+
+	return true;
 
 	if(!extension_mode){
 		if(!importer.Build())

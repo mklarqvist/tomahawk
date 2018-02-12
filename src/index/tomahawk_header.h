@@ -16,7 +16,7 @@ namespace Tomahawk{
  * a `twk` file
  */
 class TomahawkHeader{
-private:
+public:
 	typedef TomahawkHeader                    self_type;
 	typedef Totempole::HeaderContig           contig_type;
     typedef Base::TomahawkMagicHeader         magic_type;
@@ -47,7 +47,7 @@ public:
     }
 
     // Open and close functions
-    int open(std::ifstream& stream = std::cin){
+    int open(std::istream& stream = std::cin){
     	if(stream.good() == false){
     		std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
     		return(-1);
@@ -129,17 +129,21 @@ public:
     	const U32 l_uncompressed_size = this->DetermineUncompressedSize();
 
 		buffer_type buffer(l_uncompressed_size + 1024);
-		for(U32 i = 0; i < this->magic_.getNumberContigs(); ++i)
+		for(U32 i = 0; i < this->magic_.getNumberContigs(); ++i){
+			//std::cerr << Helpers::timestamp("DEBUG") << this->contigs_[i] << std::endl;
 			buffer += this->contigs_[i];
+		}
 
 		for(U32 i = 0; i < this->magic_.getNumberSamples(); ++i){
 			buffer += (U32)this->sample_names_[i].size();
+			//std::cerr << Helpers::timestamp("DEBUG") << this->sample_names_[i] << std::endl;
 			buffer.Add(this->sample_names_[i].data(), this->sample_names_[i].size());
 		}
 
 		buffer.Add(this->literals_.data(), this->literals_.size());
 		this->magic_.l_header_uncompressed = buffer.size();
 		assert(this->magic_.l_header_uncompressed == l_uncompressed_size);
+
 
 		compressor_type tgzf_controller(this->magic_.l_header_uncompressed + 1024);
 		if(!tgzf_controller.Deflate(buffer)){
@@ -156,6 +160,8 @@ public:
 			return(-1);
 		}
 		stream.write(tgzf_controller.buffer.data(), tgzf_controller.buffer.size());
+
+		std::cerr << Helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
 
 		// Cleanup buffer
 		buffer.deleteAll();
@@ -181,7 +187,7 @@ public:
 
 		S32* target = nullptr;
 		if(this->sample_hash_table_->GetItem(&sample_name[0], &sample_name, target, sample_name.length())){
-			return_target = this->sample_names_[*target];
+			return_target = &this->sample_names_[*target];
 			return true;
 		}
 		return false;
@@ -199,7 +205,7 @@ public:
 
 		S32* target = nullptr;
 		if(this->contigs_hash_table_->GetItem(&contig_name[0], &contig_name, target, contig_name.length())){
-			return_target = this->contig_type[*target];
+			return_target = &this->contigs_[*target];
 			return true;
 		}
 		return false;

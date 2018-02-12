@@ -32,7 +32,7 @@ public:
 	bool Open(const std::string output);
 	void DetermineFlushLimit(void);
 	bool OpenExtend(const std::string output);
-	void WriteHeaders(void);
+	int WriteHeaders(void);
 	void WriteFinal(void);
 	void setHeader(VCF::VCFHeader& header);
 	bool add(const VCF::VCFLine& line);
@@ -73,8 +73,7 @@ public:
 	inline index_entry_type& getTotempoleEntry(void){ return(this->totempole_entry); }
 
 public:
-	std::ofstream streamTomahawk;	// stream
-	std::ofstream streamTotempole;	// stream
+	std::ofstream stream;	// stream
 
 	U32 flush_limit;
 	U32 n_variants_limit;

@@ -15,12 +15,12 @@ namespace Tomahawk {
 class TomahawkImporter {
 	typedef TomahawkImporter           self_type;
 	typedef reader                     reader_type;
-	typedef VCF::VCFHeader             header_type;
-	typedef VCF::VCFLine               line_type;
+	typedef VCF::VCFHeader             vcf_header_type;
+	typedef VCF::VCFLine               vcf_entry_type;
 	typedef ImportWriter               writer_type;
 	typedef IO::BasicBuffer            buffer_type;
 	typedef Algorithm::GenotypeEncoder rle_controller_type;
-	typedef Totempole::IndexEntry  totempole_entry_type;
+	typedef Totempole::IndexEntry      totempole_entry_type;
 	typedef BCF::BCFReader             bcf_reader_type;
 	typedef BCF::BCFEntry              bcf_entry_type;
 	typedef ImporterFilters            filter_type;
@@ -83,7 +83,7 @@ private:
 	bool ExtendBCF(); // extend a Twk file with a BCF file
 
 	// Parse a `bcf`/`vcf` line
-	bool parseVCFLine(line_type& line);      // Import a VCF line
+	bool parseVCFLine(vcf_entry_type& line);      // Import a VCF line
 	bool parseBCFLine(bcf_entry_type& line); // Import a BCF line
 
 	// Check if the current meta and RLE buffers exceeds
@@ -100,7 +100,7 @@ private:
 	buffer_type rle_buffer;   // RLE buffer
 	totempole_entry_type totempole_entry;  // totempole entry for indexing
 	filter_type filters;      // filters
-	header_type* header_;     // header
+	vcf_header_type* header_;     // header
 	rle_controller_type* rle_controller; // RLE packer
 };
 

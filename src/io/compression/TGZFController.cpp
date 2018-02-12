@@ -191,7 +191,7 @@ bool TGZFController::Deflate(buffer_type& meta, buffer_type& rle){
 	return(this->Deflate(meta));
 }
 
-bool TGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
+bool TGZFController::InflateBlock(std::istream& stream, buffer_type& input){
 	input.resize(sizeof(header_type));
 	stream.read(input.data(), IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
 	const header_type* h = reinterpret_cast<const header_type*>(input.data());

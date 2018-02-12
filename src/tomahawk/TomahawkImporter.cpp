@@ -49,7 +49,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	*this->header_ = totempole; // Convert data in totempole to VCF header
 
 	// Parse lines
-	line_type line(totempole.getHeader().getNumberBlocks());
+	vcf_entry_type line(totempole.getHeader().getNumberBlocks());
 
 	// Spawn RLE controller
 	this->rle_controller = new rle_controller_type(this->header_->samples);
@@ -237,7 +237,7 @@ bool TomahawkImporter::BuildVCF(void){
 		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to open file..." << std::endl;
 		return false;
 	}
-	this->header_ = new header_type;
+	this->header_ = new vcf_header_type;
 
 	if(!this->header_->parse(this->reader_)){
 		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to parse VCF..." << std::endl;
@@ -263,7 +263,7 @@ bool TomahawkImporter::BuildVCF(void){
 	this->rle_controller->DetermineBitWidth();
 
 	// Parse lines
-	line_type line(this->header_->size());
+	vcf_entry_type line(this->header_->size());
 
 	this->reader_.clear();
 	this->writer_.setHeader(*this->header_);
@@ -410,7 +410,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	return true;
 }
 
-bool TomahawkImporter::parseVCFLine(line_type& line){
+bool TomahawkImporter::parseVCFLine(vcf_entry_type& line){
 	// Parse a VCF line
 	if(!line.Parse(&this->reader_[0], this->reader_.size())){
 		std::cerr << Helpers::timestamp("ERROR", "VCF") << "Could not parse..." << std::endl;

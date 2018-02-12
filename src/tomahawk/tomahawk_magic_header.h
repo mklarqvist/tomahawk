@@ -43,8 +43,8 @@ public:
 
 	inline const U64& getNumberSamples(void) const{ return(this->n_samples); }
 	inline U64& getNumberSamples(void){ return(this->n_samples); }
-	inline const U64& getNumberContigs(void) const{ return(this->n_contigs); }
-	inline U64& getNumberContigs(void){ return(this->n_contigs); }
+	inline const U32& getNumberContigs(void) const{ return(this->n_contigs); }
+	inline U32& getNumberContigs(void){ return(this->n_contigs); }
 
 	inline bool validateMagic(void) const{ return(strncmp(&this->magic_string[0], &Tomahawk::Constants::WRITE_HEADER_MAGIC[0], Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH) == 0); }
 	inline bool validate(void) const{
@@ -52,7 +52,7 @@ public:
 	}
 
 private:
-	friend std::ostream& operator<<(std::ofstream& stream, const self_type& header){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& header){
 		stream.write(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MAJOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MINOR), sizeof(float));
