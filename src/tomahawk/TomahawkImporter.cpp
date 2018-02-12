@@ -139,6 +139,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->writer_.flush();
 	// Update container with this totempole entry
 	this->index += this->writer_.totempole_entry;
+	this->index.buildMetaIndex(this->vcf_header_->contigs.size());
 	this->writer_.WriteFinal(this->index, this->footer_);
 
 	if(this->writer_.GetVariantsWritten() == 0){
@@ -236,7 +237,7 @@ bool TomahawkImporter::BuildVCF(void){
 	this->index += this->writer_.totempole_entry;
 
 	//		return false;
-
+	this->index.buildMetaIndex(this->vcf_header_->contigs.size());
 	this->writer_.WriteFinal(this->index, this->footer_);
 
 	if(this->writer_.GetVariantsWritten() == 0){

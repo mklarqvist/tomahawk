@@ -52,7 +52,6 @@ bool TomahawkReader::open(const std::string input){
 	buffer_type index_buffer(l_index_data + 1024);
 	this->stream_.read(index_buffer.data(), l_index_data);
 	index_buffer.n_chars = l_index_data;
-	std::cerr << "index read: " << index_buffer.size() << std::endl;
 	this->index_ = new index_type(index_buffer.data(), index_buffer.size());
 	index_buffer.deleteAll();
 
@@ -287,7 +286,7 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << "##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
 		std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 
-		std::cout << this->header_.getSample(0) << '\t';
+		std::cout << this->header_.getSample(0);
 		for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
 			std::cout << '\t' << this->header_.getSample(i);
 		std::cout.put('\n');

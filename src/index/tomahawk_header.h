@@ -76,7 +76,6 @@ public:
 			return(-1);
 		}
 
-    	std::cerr << "inflating: " << buffer.size() << std::endl;
 		if(!tgzf_controller.Inflate(buffer, buffer_uncompressed)){
 			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 			return(-3);
