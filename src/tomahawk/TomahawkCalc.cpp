@@ -10,7 +10,7 @@ TomahawkCalc::TomahawkCalc(void) :
 TomahawkCalc::~TomahawkCalc(){}
 
 bool TomahawkCalc::Open(const std::string input, const std::string output){
-	if(!this->reader.Open(input)){
+	if(!this->reader.open(input)){
 		return false;
 	}
 

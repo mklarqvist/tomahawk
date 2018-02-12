@@ -5,8 +5,6 @@ namespace Tomahawk {
 
 // Remember to resize buffers to header.getLargestBlockSize()+64 after header is loaded
 TomahawkReader::TomahawkReader() :
-	samples(0),
-	version(0),
 	filesize_(0),
 	offset_end_of_data_(0),
 	bit_width_(0),
@@ -24,7 +22,7 @@ TomahawkReader::~TomahawkReader(){
 	delete this->index_;
 }
 
-bool TomahawkReader::Open(const std::string input){
+bool TomahawkReader::open(const std::string input){
 	if(input.size() == 0){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "No input filename..." << std::endl;
 		return false;
@@ -53,6 +51,8 @@ bool TomahawkReader::Open(const std::string input){
 	const U32 l_index_data = (this->filesize_ - TWK_FOOTER_LENGTH) - this->stream_.tellg();
 	buffer_type index_buffer(l_index_data + 1024);
 	this->stream_.read(index_buffer.data(), l_index_data);
+	index_buffer.n_chars = l_index_data;
+	std::cerr << "index read: " << index_buffer.size() << std::endl;
 	this->index_ = new index_type(index_buffer.data(), index_buffer.size());
 	index_buffer.deleteAll();
 
@@ -202,33 +202,33 @@ bool TomahawkReader::getBlock(const U32 blockID){
 }
 
 void TomahawkReader::DetermineBitWidth(void){
-	if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
+	if(this->header_.magic_.getNumberSamples() <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
 		if(!SILENT){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
 		}
 		this->bit_width_ = sizeof(BYTE);
-	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
+	} else if(this->header_.magic_.getNumberSamples() <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
 		if(!SILENT){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
 		}
 		this->bit_width_ = sizeof(U16);
-	} else if(this->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
+	} else if(this->header_.magic_.getNumberSamples() <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
 		if(!SILENT){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
 		}
 		this->bit_width_ = sizeof(U32);
 	} else {
 		if(!SILENT){
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
-			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->samples << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
+			std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->header_.magic_.getNumberSamples() << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
 		}
 		this->bit_width_ = sizeof(U64);
@@ -286,15 +286,17 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
 		std::cout << "##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
 		std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
-		/*
-		for(U32 i = 0; i < this->totempole_.header.samples - 1; ++i)
-			std::cout << this->totempole_.samples[i] << '\t';
-		std::cout << this->totempole_.samples[this->totempole_.header.samples - 1] << std::endl;
-		*/
+
+		std::cout << this->header_.getSample(0) << '\t';
+		for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
+			std::cout << '\t' << this->header_.getSample(i);
+		std::cout.put('\n');
+
 	}
 
-	for(U32 i = 0; i <this->index_->getContainer().size(); ++i)
+	for(U32 i = 0; i < this->index_->getContainer().size(); ++i){
 		(*this.*func__)(i);
+	}
 
 	return true;
 }

@@ -48,7 +48,7 @@ public:
 	TomahawkReader();
 	~TomahawkReader();
 
-	bool Open(const std::string input);
+	bool open(const std::string input);
 
 	// Reader functions
 	bool getBlocks(void);
@@ -58,6 +58,11 @@ public:
 
     inline footer_type& getFooter(void){ return(this->footer_); }
     inline const footer_type& getFooter(void) const{ return(this->footer_); }
+	inline const index_type& getIndex(void) const{ return(*this->index_); }
+	inline index_type& getIndex(void){ return(*this->index_); }
+	inline const header_type& getHeader(void) const{ return(this->header_); }
+	inline header_type& getHeader(void){ return(this->header_); }
+	inline index_type* getIndexPointer(void){ return(this->index_); }
 
 	// Output functions
 	bool outputBlocks(std::vector<U32>& blocks);
@@ -66,14 +71,9 @@ public:
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
 	inline const size_t DataOffsetSize(void) const{ return(this->blockDataOffsets_.size()); }
+
 	inline void setDropGenotypes(const bool yes){ this->dropGenotypes = yes; }
 	inline void setShowHeader(const bool yes){ this->showHeader = yes; }
-
-	inline const index_type& getIndex(void) const{ return(*this->index_); }
-	inline index_type& getIndex(void){ return(*this->index_); }
-	inline const header_type& getHeader(void) const{ return(this->header_); }
-	inline header_type& getHeader(void){ return(this->header_); }
-	inline index_type* getIndexPointer(void){ return(this->index_); }
 
 private:
 	void DetermineBitWidth(void);
@@ -81,8 +81,6 @@ private:
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 
 private:
-	U64            samples;    // has to match header
-	float          version;    // has to match header
 	U64            filesize_;  // filesize
 	U64            offset_end_of_data_;
 	BYTE           bit_width_; // bit width
@@ -112,7 +110,6 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 		return false;
 	}
 
-	//std::cerr << "getblock " << blockID  << " seek to " << this->index_->getContainer()[blockID].byte_offset << std::endl;
 	this->stream_.seekg(this->index_->getContainer()[blockID].byte_offset);
 	if(!this->stream_.good()){
 		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed search..." << std::endl;
@@ -120,11 +117,7 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 	}
 
 	// Determine byte-width of data
-	U32 readLength = 0;
-	if(blockID != this->index_->getContainer().size() - 1)
-		readLength = this->index_->getContainer()[blockID + 1].byte_offset - this->index_->getContainer()[blockID].byte_offset;
-	else
-		readLength = this->filesize_ - Constants::eof_length*sizeof(U64) - this->index_->getContainer()[this->index_->getContainer().size()-1].byte_offset;
+	U32 readLength = this->index_->getContainer()[blockID].byte_offset_end - this->index_->getContainer()[blockID].byte_offset;
 
 	if(readLength > this->buffer_.capacity()){
 		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Impossible: " << readLength << '/' << this->buffer_.capacity() << std::endl;
@@ -141,14 +134,13 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 	this->buffer_.n_chars = readLength;
 
 	// Keep track of position because inflate function moves pointer
-	char* data_position = &this->data_[this->data_.n_chars];
+	char* data_position = &this->data_[this->data_.size()];
 
 	// Inflate TGZF block
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
 		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate DATA..." << std::endl;
 		return false;
 	}
-
 	this->WriteBlock<T>(data_position, blockID);
 
 	return true;
@@ -156,7 +148,11 @@ bool TomahawkReader::outputBlock(const U32 blockID){
 
 template <class T>
 bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
-	Base::GenotypeContainerReference<T> o(data, this->index_->getContainer()[blockID].uncompressed_size, this->index_->getContainer()[blockID], this->samples);
+	Base::GenotypeContainerReference<T> o(data,
+                                          this->index_->getContainer()[blockID].uncompressed_size,
+                                          this->index_->getContainer()[blockID],
+                                          this->header_.magic_.getNumberSamples(),
+                                          false);
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < o.size(); ++j){

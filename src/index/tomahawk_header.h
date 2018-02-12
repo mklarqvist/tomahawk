@@ -67,14 +67,17 @@ public:
     	// Parse literal block
     	compressor_type tgzf_controller(this->magic_.l_header_uncompressed + 1024);
     	buffer_type buffer(this->magic_.l_header + 1024);
+    	buffer_type buffer_uncompressed(this->magic_.l_header_uncompressed + 1024);
     	stream.read(buffer.data(), this->magic_.l_header);
+    	buffer.n_chars = this->magic_.l_header;
 
     	if(stream.good() == false){
 			std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 			return(-1);
 		}
 
-		if(!tgzf_controller.InflateBlock(stream, buffer)){
+    	std::cerr << "inflating: " << buffer.size() << std::endl;
+		if(!tgzf_controller.Inflate(buffer, buffer_uncompressed)){
 			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 			return(-3);
 		}
@@ -87,25 +90,25 @@ public:
 		// Parse contigs
 		this->contigs_ = new contig_type[this->magic_.getNumberContigs()];
 		for(U32 i = 0; i < this->magic_.getNumberContigs(); ++i){
-			buffer_position += this->contigs_[i].interpret(&buffer[buffer_position]);
-			assert(buffer_position < buffer.size());
+			buffer_position += this->contigs_[i].interpret(&buffer_uncompressed[buffer_position]);
+			assert(buffer_position < buffer_uncompressed.size());
 		}
 
 		// Parse sample names
 		// Encoded as |length in characters|character buffer|
 		this->sample_names_ = new std::string[this->magic_.getNumberSamples()];
 		for(U32 i = 0; i < this->magic_.getNumberSamples(); ++i){
-			const U32 length = *reinterpret_cast<const U32*>(&buffer[buffer_position]);
+			const U32 length = *reinterpret_cast<const U32*>(&buffer_uncompressed[buffer_position]);
 			buffer_position += sizeof(U32);
 
-			this->sample_names_[i] = std::string(&buffer[buffer_position], length);
+			this->sample_names_[i] = std::string(&buffer_uncompressed[buffer_position], length);
 			buffer_position += length;
-			assert(buffer_position < buffer.size());
+			assert(buffer_position < buffer_uncompressed.size());
 		}
 
 		// Remainder is literal data
-		const U32 l_literals = buffer.size() - buffer_position;
-		this->literals_ = std::string(&buffer[buffer_position], l_literals);
+		const U32 l_literals = buffer_uncompressed.size() - buffer_position;
+		this->literals_ = std::string(&buffer_uncompressed[buffer_position], l_literals);
 
 		// Build hash tables for contigs and sample names
 		if(this->BuildHashTables() == false){
@@ -115,6 +118,7 @@ public:
 
 		// Buffer cleanup
 		buffer.deleteAll();
+		buffer_uncompressed.deleteAll();
 
 		return(1);
     }

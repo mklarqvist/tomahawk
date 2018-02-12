@@ -22,7 +22,16 @@ public:
 	{
 	}
 
-	IndexEntry(const char* const data){ memcpy(this, data, TWK_INDEX_ENTRY_SIZE); }
+	IndexEntry(const char* const data) :
+		byte_offset(*reinterpret_cast<const U64* const>(data)),
+		byte_offset_end(*reinterpret_cast<const U64* const>(&data[sizeof(U64)])),
+		contigID(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2])),
+		min_position(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)])),
+		max_position(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)+sizeof(U64)])),
+		n_variants(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)+sizeof(U64)*2])),
+		uncompressed_size(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)+sizeof(U64)*2+sizeof(U32)]))
+	{
+	}
 
 	// Copy ctor
 	IndexEntry(const self_type& other) :

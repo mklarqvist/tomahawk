@@ -56,7 +56,7 @@ public:
 	{
 	}
 
-	GenotypeContainerReference(const char* const data, const size_t l_data, const header_entry_type& index_entry, const size_t n_samples) :
+	GenotypeContainerReference(const char* const data, const size_t l_data, const header_entry_type& index_entry, const size_t n_samples, const bool build_bitvectors = true) :
 		n_entries(index_entry.n_variants),
 		iterator_position_meta(0),
 		iterator_position_runs(0),
@@ -66,8 +66,10 @@ public:
 		index_entry(&index_entry),
 		bit_vectors(nullptr)
 	{
-		this->bit_vectors = new container_bitvector_type();
-		this->bit_vectors->Build(this->genotype_entries, this->meta_entries, this->size(), n_samples);
+		if(build_bitvectors){
+			this->bit_vectors = new container_bitvector_type();
+			this->bit_vectors->Build(this->genotype_entries, this->meta_entries, this->size(), n_samples);
+		}
 	}
 
 	// Copy ctor: copies iterator positions and pointers
