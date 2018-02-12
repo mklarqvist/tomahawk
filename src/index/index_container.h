@@ -28,17 +28,17 @@ private:
 
 public:
     IndexContainer(void) :
-		n_entries(0),
-		n_capacity(1000),
-		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+		n_entries_(0),
+		n_capacity_(1000),
+		entries_(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
 	{
 
 	}
 
-    IndexContainer(const size_t n_capacity) :
-    	n_entries(0),
-		n_capacity(n_capacity),
-		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+    IndexContainer(const size_t n_capacity_) :
+    	n_entries_(0),
+		n_capacity_(n_capacity_),
+		entries_(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
 	{
 
 	}
@@ -49,9 +49,9 @@ public:
 
 	~IndexContainer(){
 		for(size_type i = 0; i < this->size(); ++i)
-			((this->__entries + i)->~IndexEntry)();
+			((this->entries_ + i)->~IndexEntry)();
 
-		::operator delete[](static_cast<void*>(this->__entries));
+		::operator delete[](static_cast<void*>(this->entries_));
 	}
 
 	class iterator{
@@ -89,29 +89,29 @@ public:
 	};
 
 	// Element access
-	inline reference at(const size_type& position){ return(this->__entries[position]); }
-	inline const_reference at(const size_type& position) const{ return(this->__entries[position]); }
-	inline reference operator[](const size_type& position){ return(this->__entries[position]); }
-	inline const_reference operator[](const size_type& position) const{ return(this->__entries[position]); }
-	inline pointer data(void){ return(this->__entries); }
-	inline const_pointer data(void) const{ return(this->__entries); }
-	inline reference front(void){ return(this->__entries[0]); }
-	inline const_reference front(void) const{ return(this->__entries[0]); }
-	inline reference back(void){ return(this->__entries[this->n_entries - 1]); }
-	inline const_reference back(void) const{ return(this->__entries[this->n_entries - 1]); }
+	inline reference at(const size_type& position){ return(this->entries_[position]); }
+	inline const_reference at(const size_type& position) const{ return(this->entries_[position]); }
+	inline reference operator[](const size_type& position){ return(this->entries_[position]); }
+	inline const_reference operator[](const size_type& position) const{ return(this->entries_[position]); }
+	inline pointer data(void){ return(this->entries_); }
+	inline const_pointer data(void) const{ return(this->entries_); }
+	inline reference front(void){ return(this->entries_[0]); }
+	inline const_reference front(void) const{ return(this->entries_[0]); }
+	inline reference back(void){ return(this->entries_[this->n_entries_ - 1]); }
+	inline const_reference back(void) const{ return(this->entries_[this->n_entries_ - 1]); }
 
 	// Capacity
-	inline const bool empty(void) const{ return(this->n_entries == 0); }
-	inline const size_type& size(void) const{ return(this->n_entries); }
-	inline const size_type& capacity(void) const{ return(this->n_capacity); }
+	inline const bool empty(void) const{ return(this->n_entries_ == 0); }
+	inline const size_type& size(void) const{ return(this->n_entries_); }
+	inline const size_type& capacity(void) const{ return(this->n_capacity_); }
 
 	// Iterator
-	inline iterator begin(){ return iterator(&this->__entries[0]); }
-	inline iterator end()  { return iterator(&this->__entries[this->n_entries - 1]); }
-	inline const_iterator begin()  const{ return const_iterator(&this->__entries[0]); }
-	inline const_iterator end()    const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
-	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
-	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
+	inline iterator begin(){ return iterator(&this->entries_[0]); }
+	inline iterator end()  { return iterator(&this->entries_[this->n_entries_]); }
+	inline const_iterator begin()  const{ return const_iterator(&this->entries_[0]); }
+	inline const_iterator end()    const{ return const_iterator(&this->entries_[this->n_entries_]); }
+	inline const_iterator cbegin() const{ return const_iterator(&this->entries_[0]); }
+	inline const_iterator cend()   const{ return const_iterator(&this->entries_[this->n_entries_]); }
 
 	// Overload basic operator
 	self_type& operator+=(const value_type& index_entry){
@@ -120,8 +120,8 @@ public:
 			this->resize();
 		}
 
-		new( &this->__entries[this->n_entries] ) value_type(index_entry); // invoke copy ctor
-		++this->n_entries;
+		new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
+		++this->n_entries_;
 		return(this);
 	}
 
@@ -130,17 +130,17 @@ public:
 		if(new_capacity < this->capacity()){
 			// Call destructor for values between shrunk size and previous numbers
 			for(size_type i = new_capacity; i < this->size(); ++i)
-				((this->__entries + i)->~IndexEntry)();
+				((this->entries_ + i)->~IndexEntry)();
 
-			this->n_entries = new_capacity;
+			this->n_entries_ = new_capacity;
 			return;
 		}
 
-		pointer temp = this->__entries; // Move current data pointer
-		this->__entries = static_cast<pointer>(::operator new[](new_capacity*sizeof(value_type))); // Allocate new memory at old pointer
+		pointer temp = this->entries_; // Move current data pointer
+		this->entries_ = static_cast<pointer>(::operator new[](new_capacity*sizeof(value_type))); // Allocate new memory at old pointer
 		// Copy data over from temporary data pointer to new pointer
 		for(U32 i = 0; i < this->size(); ++i)
-			new( &this->__entries[i] ) value_type(temp[i]);
+			new( &this->entries_[i] ) value_type(temp[i]);
 
 		// Release memory from the temporary address
 		for(size_type i = 0; i < this->size(); ++i)
@@ -151,9 +151,9 @@ public:
 	inline void resize(void){ this->resize(this->capacity()*2); }
 
 private:
-	size_type  n_entries;
-	size_type  n_capacity;
-	pointer    __entries;
+	size_type  n_entries_;
+	size_type  n_capacity_;
+	pointer    entries_;
 };
 
 }

@@ -77,7 +77,7 @@ class TotempoleOutputSortedIndex {
 	typedef TotempoleOutputSortedIndex self_type;
 	typedef TotempoleOutputSortedEntry totempole_entry;
 	typedef IO::OutputEntry two_entry;
-	typedef Totempole::IndexContigBase contig_type;
+	typedef Totempole::HeaderContig contig_type;
 	typedef TotempoleOutputSortedIndexBin chunk_type;
 
 public:

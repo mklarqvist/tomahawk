@@ -16,7 +16,7 @@ namespace Tomahawk{
  */
 class Index{
 private:
-	typedef Index                self_type;
+	typedef Index                     self_type;
 	typedef Totempole::IndexHeader    header_type;
 	typedef Totempole::IndexEntry     value_type;
 	typedef Totempole::IndexContainer container_type;

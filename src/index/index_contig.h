@@ -7,14 +7,32 @@
 namespace Tomahawk{
 namespace Totempole{
 
-struct IndexContigBase{
+struct HeaderContig{
 public:
-	typedef IndexContigBase self_type;
+	typedef HeaderContig    self_type;
+	typedef IO::BasicBuffer buffer_type;
 
 public:
-	IndexContigBase(const U32& bases, const U32& n_char, const std::string& name) : n_bases(bases), n_char(n_char), name(name){}
-	IndexContigBase() : n_bases(0), n_char(0){}
-	~IndexContigBase(){}
+	HeaderContig(const U32& bases, const U32& n_char, const std::string& name) : n_bases(bases), n_char(n_char), name(name){}
+	HeaderContig() : n_bases(0), n_char(0){}
+
+	HeaderContig(const char* const data) :
+		n_bases(*reinterpret_cast<const U32* const>(data)),
+		n_char(*reinterpret_cast<const U32* const>(&data[sizeof(U32)]))
+	{
+		this->name.resize(this->n_char);
+		memcpy(&this->name[0], &data[sizeof(U32)+sizeof(U32)], this->n_char);
+	}
+
+	~HeaderContig(){}
+
+	const U32 interpret(const char* const data){
+		this->n_bases = *reinterpret_cast<const U32* const>(data);
+		this->n_char = *reinterpret_cast<const U32* const>(&data[sizeof(U32)]);
+		this->name.resize(this->n_char);
+		memcpy(&this->name[0], &data[sizeof(U32)+sizeof(U32)], this->n_char);
+		return(sizeof(U32) + sizeof(U32) + this->n_char);
+	}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.n_bases << '\t' << entry.n_char << '\t' << entry.name;
@@ -36,23 +54,30 @@ public:
 		return(stream);
 	}
 
+	friend buffer_type& operator+=(buffer_type& buffer, self_type& base){
+		buffer += base.n_bases;
+		buffer += base.n_char;
+		buffer.Add(base.name.data(), base.name.size());
+		return(buffer);
+	}
+
 public:
 	U32 n_bases;      // length of contig
 	U32 n_char;       // number of chars
 	std::string name; // contig name
 };
 
-struct IndexContig : public IndexContigBase{
+struct IndexContig : public HeaderContig{
 public:
 	typedef IndexContig     self_type;
-	typedef IndexContigBase parent_type;
+	typedef HeaderContig    parent_type;
 
 public:
-	IndexContig() : minPosition(0), maxPosition(0), blocksStart(0), blocksEnd(0){}
+	IndexContig() : min_position(0), max_position(0), blocks_start(0), blocks_end(0){}
 	~IndexContig(){}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.name << '\t' << entry.n_bases << '\t' << entry.minPosition << "-" << entry.maxPosition << '\t' << entry.blocksStart << "->" << entry.blocksEnd;
+		stream << entry.name << '\t' << entry.n_bases << '\t' << entry.min_position << "-" << entry.max_position << '\t' << entry.blocks_start << "->" << entry.blocks_end;
 		return stream;
 	}
 
@@ -60,10 +85,10 @@ public:
 		const parent_type* const parent = reinterpret_cast<const parent_type* const>(&base);
 		stream << *parent;
 
-		stream.write(reinterpret_cast<const char*>(&base.minPosition), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.maxPosition), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.blocksStart), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&base.blocksEnd), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.min_position), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.max_position), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.blocks_start), sizeof(U32));
+		stream.write(reinterpret_cast<const char*>(&base.blocks_end), sizeof(U32));
 		return(stream);
 	}
 
@@ -71,19 +96,19 @@ public:
 		parent_type* parent = reinterpret_cast<parent_type*>(&base);
 		stream >> *parent;
 
-		stream.read(reinterpret_cast<char*>(&base.minPosition), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&base.maxPosition), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&base.blocksStart), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&base.blocksEnd), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.min_position), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.max_position), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.blocks_start), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&base.blocks_end), sizeof(U32));
 		return(stream);
 	}
 
 public:
 	// contigID is implicit
-	U32 minPosition;  // start position of contig
-	U32 maxPosition;  // end position of contig
-	U32 blocksStart;  // start IO-seek position of blocks
-	U32 blocksEnd;    // end IO-seek position of blocks
+	U32 min_position;  // start position of contig
+	U32 max_position;  // end position of contig
+	U32 blocks_start;  // start IO-seek position of blocks
+	U32 blocks_end;    // end IO-seek position of blocks
 };
 
 }

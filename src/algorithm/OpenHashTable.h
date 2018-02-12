@@ -38,8 +38,8 @@ public:
     bool GetItem(const T* key, K*& entry, U32 length = sizeof(T));
     bool GetItem(const void* key_address, const T* key, K*& entry, U32 length = sizeof(T));
     void clear();
-    U32 size(void) const{return this->__size;}
-    U32 occupied(void) const{return this->__occupied;}
+    inline const U32& size(void) const{return this->__size;}
+    inline const U32& occupied(void) const{return this->__occupied;}
 
     Entry& operator[](const U32 position){return *this->__entries[position];}
     K& at(const U32 position){return this->__entries.at(position);}

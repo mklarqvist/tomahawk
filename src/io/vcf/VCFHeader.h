@@ -39,7 +39,7 @@ public:
 		for(U32 i = 0; i < other.n_contigs; ++i){
 			this->contigs[i].name = other.contigs[i].name;
 			this->contigs[i].length = other.contigs[i].n_bases;
-			this->contigs[i].tomahawkBlocks = other.contigs[i].blocksEnd-other.contigs[i].blocksStart;
+			this->contigs[i].tomahawkBlocks = other.contigs[i].blocks_end-other.contigs[i].blocks_start;
 		}
 	}
 

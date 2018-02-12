@@ -46,7 +46,7 @@ public:
 	inline void TotempoleSwitch(const U32 contig, const U32 minPos){
 		this->totempole_entry.reset();
 		this->totempole_entry.contigID = contig;
-		this->totempole_entry.minPosition = minPos;
+		this->totempole_entry.min_position = minPos;
 	}
 
 	// flush and write

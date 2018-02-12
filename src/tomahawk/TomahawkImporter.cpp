@@ -64,7 +64,7 @@ bool TomahawkImporter::Extend(std::string extendFile){
 	}
 	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
 
-	this->sort_order_helper.previous_position = totempole.back().maxPosition;
+	this->sort_order_helper.previous_position = totempole.back().max_position;
 	this->sort_order_helper.prevcontigID = totempole.back().contigID;
 
 	this->writer_.setHeader(*this->header_);
@@ -183,7 +183,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.contigID = &contigID;
 	this->sort_order_helper.prevcontigID = contigID;
 	this->writer_.totempole_entry.contigID = contigID;
-	this->writer_.totempole_entry.minPosition = entry.body->POS;
+	this->writer_.totempole_entry.min_position = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;

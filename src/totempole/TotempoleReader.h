@@ -31,7 +31,7 @@ struct Interval{
 class TotempoleReader {
 	typedef TotempoleReader self_type;
 	typedef IndexHeader header_type;
-	typedef IndexContigBase contig_base_type;
+	typedef HeaderContig contig_base_type;
 	typedef IndexContig contig_type;
 	typedef IndexEntry entry_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
@@ -50,7 +50,7 @@ public:
 
 	inline const U32& getLargestBlockSize(void) const{ return this->header.getLargestUncompressedBlock(); }
 	inline const U32  getBlocks(void) const{ return this->header.getNumberBlocks(); }
-	inline const U64  getSamples(void) const{ return this->header.getNumberSamples(); }
+	inline const U64  getSamples(void) const{ return 0; }
 	inline const U32& getContigs(void) const{ return this->n_contigs; }
 	inline const U32& size(void) const{ return this->n_contigs; }
 	inline const entry_type& operator[](const U32 p) const{ return this->entries[p]; }

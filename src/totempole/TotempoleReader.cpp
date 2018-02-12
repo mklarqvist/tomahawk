@@ -180,20 +180,20 @@ void TotempoleReader::BuildUpdateContigs(void){
 	// Master index of indices
 	// Update contig data
 	U32 lastContigID = this->entries[0].contigID;
-	this->contigs[lastContigID].minPosition = this->entries[0].minPosition;
-	this->contigs[lastContigID].blocksStart = 0;
+	this->contigs[lastContigID].min_position = this->entries[0].min_position;
+	this->contigs[lastContigID].blocks_start = 0;
 	for(U32 i = 1; i < this->getBlocks(); ++i){
 		if(lastContigID != this->entries[i].contigID){
-			this->contigs[lastContigID].maxPosition = this->entries[i-1].maxPosition;
-			this->contigs[lastContigID].blocksEnd = i;
-			this->contigs[this->entries[i].contigID].minPosition = this->entries[i].minPosition;
-			this->contigs[this->entries[i].contigID].blocksStart = i;
+			this->contigs[lastContigID].max_position = this->entries[i-1].max_position;
+			this->contigs[lastContigID].blocks_end = i;
+			this->contigs[this->entries[i].contigID].min_position = this->entries[i].min_position;
+			this->contigs[this->entries[i].contigID].blocks_start = i;
 		}
 		lastContigID = this->entries[i].contigID;
 	}
 	const IndexEntry& lastEntry = this->entries[this->getBlocks() - 1];
-	this->contigs[lastEntry.contigID].blocksEnd = this->getBlocks();
-	this->contigs[lastEntry.contigID].maxPosition = lastEntry.maxPosition;
+	this->contigs[lastEntry.contigID].blocks_end = this->getBlocks();
+	this->contigs[lastEntry.contigID].max_position = lastEntry.max_position;
 }
 
 bool TotempoleReader::BuildHashTables(void){
@@ -231,17 +231,17 @@ bool TotempoleReader::BuildHashTables(void){
 // Find overlaps function using Totempole data
 std::vector<U32> TotempoleReader::findOverlaps(const Interval& interval) const{
 	std::vector<U32> ret;
-	for(U32 i = this->contigs[interval.contigID].blocksStart; i < this->contigs[interval.contigID].blocksEnd; ++i){
+	for(U32 i = this->contigs[interval.contigID].blocks_start; i < this->contigs[interval.contigID].blocks_end; ++i){
 		const IndexEntry& current = (*this)[i];
-		if((interval.from >= current.minPosition && interval.from <= current.maxPosition) ||
-				(interval.to >= current.minPosition && interval.to <= current.maxPosition) ||
-				(interval.from <= current.minPosition && interval.to >= current.maxPosition))
+		if((interval.from >= current.min_position && interval.from <= current.max_position) ||
+				(interval.to >= current.min_position && interval.to <= current.max_position) ||
+				(interval.from <= current.min_position && interval.to >= current.max_position))
 			ret.push_back(i);
 
 		// No need to continue searching as file is ordered
 
-		if(current.minPosition > interval.to){
-			std::cerr << "break: " << current.minPosition << ">" << interval.to << std::endl;
+		if(current.min_position > interval.to){
+			std::cerr << "break: " << current.min_position << ">" << interval.to << std::endl;
 			break;
 		}
 

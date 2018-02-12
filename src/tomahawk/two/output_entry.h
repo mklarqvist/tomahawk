@@ -17,7 +17,7 @@ namespace IO{
 struct __attribute__((packed, aligned(1))) OutputEntry{
 public:
 	typedef OutputEntry                    self_type;
-	typedef Totempole::IndexContigBase contig_type;
+	typedef Totempole::HeaderContig        contig_type;
 	typedef IO::BasicBuffer                buffer_type;
 
 public:

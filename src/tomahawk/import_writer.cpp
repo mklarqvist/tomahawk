@@ -126,7 +126,7 @@ void ImportWriter::WriteHeaders(void){
 	// Write contig data to Totempole
 	// length | n_char | chars[0 .. n_char - 1]
 	for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
-		Totempole::IndexContigBase contig(this->vcf_header_->contigs[i].length,
+		Totempole::HeaderContig contig(this->vcf_header_->contigs[i].length,
 											  this->vcf_header_->contigs[i].name.size(),
 											  this->vcf_header_->contigs[i].name);
 
@@ -227,10 +227,10 @@ bool ImportWriter::add(const VCF::VCFLine& line){
 		return false;
 	}
 
-	if(this->totempole_entry.minPosition == 0)
-		this->totempole_entry.minPosition = line.position;
+	if(this->totempole_entry.min_position == 0)
+		this->totempole_entry.min_position = line.position;
 
-	this->totempole_entry.maxPosition = line.position;
+	this->totempole_entry.max_position = line.position;
 	++this->totempole_entry;
 
 	return true;
@@ -268,10 +268,10 @@ bool ImportWriter::add(const BCF::BCFEntry& line){
 		return false;
 	}
 
-	if(this->totempole_entry.minPosition == 0)
-		this->totempole_entry.minPosition = line.body->POS + 1;
+	if(this->totempole_entry.min_position == 0)
+		this->totempole_entry.min_position = line.body->POS + 1;
 
-	this->totempole_entry.maxPosition = line.body->POS + 1;
+	this->totempole_entry.max_position = line.body->POS + 1;
 	++this->totempole_entry;
 
 	return true;
