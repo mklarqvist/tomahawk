@@ -5,24 +5,21 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../src/tomahawk/TomahawkCalc.cpp \
-../src/tomahawk/TomahawkCalcParameters.cpp \
-../src/tomahawk/TomahawkImportWriter.cpp \
 ../src/tomahawk/TomahawkImporter.cpp \
-../src/tomahawk/TomahawkReader.cpp 
+../src/tomahawk/TomahawkReader.cpp \
+../src/tomahawk/import_writer.cpp 
 
 OBJS += \
 ./src/tomahawk/TomahawkCalc.o \
-./src/tomahawk/TomahawkCalcParameters.o \
-./src/tomahawk/TomahawkImportWriter.o \
 ./src/tomahawk/TomahawkImporter.o \
-./src/tomahawk/TomahawkReader.o 
+./src/tomahawk/TomahawkReader.o \
+./src/tomahawk/import_writer.o 
 
 CPP_DEPS += \
 ./src/tomahawk/TomahawkCalc.d \
-./src/tomahawk/TomahawkCalcParameters.d \
-./src/tomahawk/TomahawkImportWriter.d \
 ./src/tomahawk/TomahawkImporter.d \
-./src/tomahawk/TomahawkReader.d 
+./src/tomahawk/TomahawkReader.d \
+./src/tomahawk/import_writer.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

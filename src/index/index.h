@@ -91,7 +91,7 @@ public:
 		temp_entries[reference_contig] = reference_entry;
 
 		for(U32 i = 0; i < n_contigs; ++i){
-			std::cerr << temp_entries[i] << std::endl;
+			//std::cerr << temp_entries[i] << std::endl;
 			this->meta_container_ += temp_entries[i];
 		}
 		delete [] temp_entries;
