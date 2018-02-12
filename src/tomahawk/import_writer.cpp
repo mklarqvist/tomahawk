@@ -3,19 +3,6 @@
 
 namespace Tomahawk {
 
-ImportWriter::ImportWriter(void) :
-	flush_limit(1000000),
-	n_variants_limit(1024),
-	blocksWritten_(0),
-	variants_written_(0),
-	largest_uncompressed_block_(0),
-	filter(),
-	rleController_(nullptr),
-	buffer_rle_(this->flush_limit*2),
-	buffer_meta_(this->flush_limit*2),
-	vcf_header_(nullptr)
-{}
-
 ImportWriter::ImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
 	n_variants_limit(1024),
@@ -110,13 +97,11 @@ int ImportWriter::WriteHeaders(void){
 	return(header.write(this->stream));
 }
 
-void ImportWriter::WriteFinal(void){
-	// Write EOF
-	for(U32 i = 0; i < Constants::eof_length; ++i){
-		this->stream.write(reinterpret_cast<const char*>(&Constants::eof[i]), sizeof(U64));
-	}
+void ImportWriter::WriteFinal(index_type& index){
+	index.getFooter().l_largest_uncompressed = this->largest_uncompressed_block_;
+	index.getFooter().offset_end_of_data = this->stream.tellp();
 
-	// write index here
+	this->stream << index;
 }
 
 void ImportWriter::setHeader(VCF::VCFHeader& header){
@@ -126,8 +111,8 @@ void ImportWriter::setHeader(VCF::VCFHeader& header){
 }
 
 bool ImportWriter::add(const VCF::VCFLine& line){
-	const U32 meta_start_pos = this->buffer_meta_.n_chars;
-	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
+	const U32 meta_start_pos = this->buffer_meta_.size();
+	const U32 rle_start_pos  = this->buffer_rle_.size();
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
@@ -168,8 +153,9 @@ bool ImportWriter::add(const VCF::VCFLine& line){
 }
 
 bool ImportWriter::add(const BCF::BCFEntry& line){
-	const U32 meta_start_pos = this->buffer_meta_.n_chars;
-	const U32 rle_start_pos  = this->buffer_rle_.n_chars;
+	const U32 meta_start_pos = this->buffer_meta_.size();
+	const U32 rle_start_pos  = this->buffer_rle_.size();
+
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
@@ -191,6 +177,8 @@ bool ImportWriter::add(const BCF::BCFEntry& line){
 		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << std::endl;
 		return false;
 	}
+
+
 
 	if(base_meta.MAF < this->filter.MAF){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
@@ -226,9 +214,6 @@ bool ImportWriter::flush(void){
 
 	this->totempole_entry.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
 	this->totempole_entry.byte_offset_end = this->stream.tellp(); // IO offset in Tomahawk output
-
-	// Todo: update index here
-	//this->streamTotempole << this->totempole_entry; // Write totempole output
 
 	++this->blocksWritten_; // update number of blocks written
 	this->variants_written_ += this->totempole_entry.size(); // update number of variants written

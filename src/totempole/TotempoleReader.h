@@ -10,10 +10,10 @@
 #include "../support/MagicConstants.h"
 #include "../support/helpers.h"
 #include "../algorithm/OpenHashTable.h"
+#include "../index/footer.h"
 #include "../io/compression/TGZFController.h"
 #include "../index/index_contig.h"
 #include "../index/index_entry.h"
-#include "../index/index_header.h"
 
 namespace Tomahawk {
 namespace Totempole{
@@ -30,7 +30,7 @@ struct Interval{
 
 class TotempoleReader {
 	typedef TotempoleReader self_type;
-	typedef IndexHeader header_type;
+	typedef Totempole::Footer header_type;
 	typedef HeaderContig contig_base_type;
 	typedef IndexContig contig_type;
 	typedef IndexEntry entry_type;
@@ -49,7 +49,7 @@ public:
 	const entry_type& back(void) const{ return(this->entries[this->getBlocks() - 1]); };
 
 	inline const U32& getLargestBlockSize(void) const{ return this->header.getLargestUncompressedBlock(); }
-	inline const U32  getBlocks(void) const{ return this->header.getNumberBlocks(); }
+	inline const U32  getBlocks(void) const{ return 0; }
 	inline const U64  getSamples(void) const{ return 0; }
 	inline const U32& getContigs(void) const{ return this->n_contigs; }
 	inline const U32& size(void) const{ return this->n_contigs; }

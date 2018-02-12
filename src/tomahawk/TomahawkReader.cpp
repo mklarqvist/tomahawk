@@ -81,8 +81,8 @@ bool TomahawkReader::getBlocks(void){
 		return false;
 	}
 
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().getNumberBlocks() << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
+	//if(!SILENT)
+	//	std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().getNumberBlocks() << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
 
 	this->data_.resize(buffer_size + 1000);
 

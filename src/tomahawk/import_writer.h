@@ -11,7 +11,7 @@
 #include "../io/vcf/VCFHeaderConstants.h"
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
-#include "../index/index_entry.h"
+#include "../index/index.h"
 #include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
 #include "import_filters.h"
@@ -21,12 +21,13 @@ namespace Tomahawk {
 
 class ImportWriter {
 private:
-	typedef IO::BasicBuffer       buffer_type;
-	typedef ImporterFilters       filter_type;
-	typedef Totempole::IndexEntry index_entry_type;
+	typedef ImportWriter              self_type;
+	typedef IO::BasicBuffer           buffer_type;
+	typedef ImporterFilters           filter_type;
+	typedef Totempole::IndexEntry     index_entry_type;
+	typedef Index                     index_type;
 
 public:
-	ImportWriter(void);
 	ImportWriter(const filter_type& filter);
 	~ImportWriter();
 
@@ -34,7 +35,8 @@ public:
 	void DetermineFlushLimit(void);
 	bool OpenExtend(const std::string output);
 	int WriteHeaders(void);
-	void WriteFinal(void);
+	void WriteFinal(index_type& container);
+
 	void setHeader(VCF::VCFHeader& header);
 	bool add(const VCF::VCFLine& line);
 	bool add(const BCF::BCFEntry& line);
@@ -81,7 +83,7 @@ public:
 	U32 blocksWritten_;				// number of blocks written
 	U32 variants_written_;			// number of variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
-	filter_type filter;		// filters
+	const filter_type& filter;		// filters
 
 	index_entry_type totempole_entry;
 	IO::TGZFController gzip_controller_;

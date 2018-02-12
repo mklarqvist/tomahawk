@@ -161,7 +161,7 @@ public:
 		}
 		stream.write(tgzf_controller.buffer.data(), tgzf_controller.buffer.size());
 
-		std::cerr << Helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
+		//std::cerr << Helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
 
 		// Cleanup buffer
 		buffer.deleteAll();

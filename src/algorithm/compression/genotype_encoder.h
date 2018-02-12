@@ -366,6 +366,7 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 	position |= this->helper.missingValues << 0;
 	meta += this->helper.MGF;
 	meta += this->helper.HWE_P;
+	//std::cerr << this->helper.MGF << std::endl;
 	//n_runs = runs.pointer - runs_pointer_begin; // temp
 	meta += n_runs;
 

@@ -126,25 +126,14 @@ bool BCFEntry::parse(void){
 
 	// Format key
 	const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-	//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
-	//std::cerr << (int)fmt_type_value2 << '\t' << (int)fmt_type_value1 << std::endl;
-	//assert(fmt_type.high == 2);
 
 	if(fmt_type.high != 2){
 		this->isGood = false;
 		return false;
 	}
 
-	this->isGood = true;
-
-	/*
-	for(U32 i = 0; i < 44; ++i){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
-	}
-	*/
-	this->genotypes = &this->data[internal_pos];
+	this->isGood      = true;
+	this->genotypes   = &this->data[internal_pos];
 	this->p_genotypes = internal_pos;
 
 	return true;

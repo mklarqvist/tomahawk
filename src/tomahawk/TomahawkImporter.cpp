@@ -26,86 +26,7 @@ TomahawkImporter::~TomahawkImporter(){
 }
 
 bool TomahawkImporter::Extend(std::string extendFile){
-	if(this->input_file.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "No input file provided..." << std::endl;
-		return false;
-	}
 
-	if(extendFile.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "No file to extend provided..." << std::endl;
-		return false;
-	}
-
-	if(!this->reader_.open()){
-		std::cerr << Helpers::timestamp("ERROR","VCF") << "Failed to open file..." << std::endl;
-		return false;
-	}
-
-	TomahawkReader tReader;
-	if(!tReader.Open(extendFile)){
-		std::cerr << Helpers::timestamp("ERROR","IMPORT") <<  "Failed to read file..." << std::endl;
-		return false;
-	}
-
-	const Totempole::TotempoleReader& totempole = tReader.getTotempole();
-	*this->vcf_header_ = totempole; // Convert data in totempole to VCF header
-
-	// Parse lines
-	vcf_entry_type line(totempole.getHeader().getNumberBlocks());
-
-	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->vcf_header_->samples);
-	this->rle_controller->DetermineBitWidth();
-
-	this->reader_.clear();
-	// seek reader until line does not start with '#'
-	std::string templine;
-	while(getline(this->reader_.stream_, templine)){
-		if(templine[0] != '#')
-			break;
-	}
-	this->reader_.stream_.seekg((U64)this->reader_.stream_.tellg() - templine.size() - 1);
-
-	this->sort_order_helper.previous_position = totempole.back().max_position;
-	this->sort_order_helper.prevcontigID = totempole.back().contigID;
-
-	this->writer_.setHeader(*this->vcf_header_);
-	this->writer_.blocksWritten_ = totempole.getHeader().getNumberBlocks();
-	this->writer_.largest_uncompressed_block_ = totempole.getHeader().getLargestUncompressedBlock();
-	if(!this->writer_.OpenExtend(extendFile))
-		return false;
-
-	// While there are lines
-	while(this->reader_.getLine()){
-		// Parse them
-		if(!this->parseVCFLine(line)){
-			return false;
-		}
-	} // end while there are vcf lines
-
-	// This only happens if there are no valid entries in the file
-	if(this->sort_order_helper.contigID == nullptr){
-		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
-		return false;
-	}
-
-	++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
-	this->writer_.flush();
-
-	this->writer_.WriteFinal();
-
-	if(this->writer_.GetVariantsWritten() == 0){
-		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
-		return false;
-	}
-
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
-														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
-														 << " blocks..." << std::endl;
-
-	// Garbage
-	this->vcf_header_->unsetBorrowedPointers();
 	return true;
 }
 
@@ -181,10 +102,10 @@ bool TomahawkImporter::BuildBCF(void){
 	entry.reset();
 
 	S32 contigID = entry.body->CHROM;
-	this->sort_order_helper.previous_position = entry.body->POS;
-	this->sort_order_helper.contigID = &contigID;
-	this->sort_order_helper.prevcontigID = contigID;
-	this->writer_.totempole_entry.contigID = contigID;
+	this->sort_order_helper.previous_position  = entry.body->POS;
+	this->sort_order_helper.contigID           = &contigID;
+	this->sort_order_helper.prevcontigID       = contigID;
+	this->writer_.totempole_entry.contigID     = contigID;
 	this->writer_.totempole_entry.min_position = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
@@ -216,9 +137,16 @@ bool TomahawkImporter::BuildBCF(void){
 
 	++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
+	// Update container with this totempole entry
+	this->index += this->writer_.totempole_entry;
+
 	//		return false;
 
-	this->writer_.WriteFinal();
+	for(U32 i = 0; i < this->index.getContainer().size(); ++i){
+		std::cerr << this->index.getContainer()[i] << std::endl;
+	}
+
+	this->writer_.WriteFinal(this->index);
 
 	if(this->writer_.GetVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
@@ -229,7 +157,6 @@ bool TomahawkImporter::BuildBCF(void){
 		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
 														 << " blocks..." << std::endl;
-
 
 	return true;
 }
@@ -312,9 +239,12 @@ bool TomahawkImporter::BuildVCF(void){
 
 	++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
+	// Update container with this totempole entry
+	this->index += this->writer_.totempole_entry;
+
 	//		return false;
 
-	this->writer_.WriteFinal();
+	this->writer_.WriteFinal(this->index);
 
 	if(this->writer_.GetVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
@@ -347,6 +277,9 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		// and flush out data
 		++this->vcf_header_->getContig(line.body->CHROM);
 		this->writer_.flush();
+
+		// Update container with this totempole entry
+		this->index += this->writer_.totempole_entry;
 
 		// Update index values
 		this->writer_.TotempoleSwitch(line.body->CHROM, 0);
@@ -383,20 +316,20 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
-		/*
 		if(missing > this->filters.missingness){
 			//if(!SILENT)
 			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
 			this->sort_order_helper.previous_included = false;
 			goto next;
 		}
-		*/
-
 
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(line.body->CHROM); // update block count for this contigID
 			this->writer_.flush();
+
+			// Update container with this totempole entry
+			this->index += this->writer_.totempole_entry;
 
 			this->writer_.TotempoleSwitch(line.body->CHROM, this->sort_order_helper.previous_position);
 		}
@@ -444,6 +377,9 @@ bool TomahawkImporter::parseVCFLine(vcf_entry_type& line){
 		++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
 		this->writer_.flush();
 
+		// Update container with this totempole entry
+		this->index += this->writer_.totempole_entry;
+
 		// Update index values
 		this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, 0);
 	}
@@ -488,6 +424,9 @@ bool TomahawkImporter::parseVCFLine(vcf_entry_type& line){
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(*this->sort_order_helper.contigID); // update block count for this contigID
 			this->writer_.flush();
+
+			// Update container with this totempole entry
+			this->index += this->writer_.totempole_entry;
 
 			this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, this->sort_order_helper.previous_position);
 		}

@@ -44,7 +44,8 @@ public:
 	}
 
     // Functions for when interpreting from a byte stream
-	IndexContainer(const char* const data_buffer, const size_t l_buffer_length);
+    // first value is the number of indices
+	IndexContainer(const char* const data_buffer);
 	IndexContainer(const buffer_type& data_buffer);
 
 	~IndexContainer(){
@@ -116,16 +117,18 @@ public:
 	// Overload basic operator
 	self_type& operator+=(const value_type& index_entry){
 		if(this->size() + 1 >= this->capacity()){
-			std::cerr << "is full resizing" << std::endl;
+			//std::cerr << "is full resizing" << std::endl;
 			this->resize();
 		}
 
+		//std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
 		new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
 		++this->n_entries_;
-		return(this);
+		return(*this);
 	}
 
 	void resize(const size_t new_capacity){
+		//std::cerr << Helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
 		// if resizing to a smaller size
 		if(new_capacity < this->capacity()){
 			// Call destructor for values between shrunk size and previous numbers
@@ -147,8 +150,18 @@ public:
 			((temp + i)->~IndexEntry)();
 
 		::operator delete[](static_cast<void*>(temp));
+		this->n_capacity_ = new_capacity;
 	}
 	inline void resize(void){ this->resize(this->capacity()*2); }
+
+private:
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& container){
+		stream.write(reinterpret_cast<const char*>(&container.n_entries_), sizeof(size_type));
+		for(size_type i = 0; i < container.size(); ++i)
+			stream << container[i];
+
+		return stream;
+	}
 
 private:
 	size_type  n_entries_;

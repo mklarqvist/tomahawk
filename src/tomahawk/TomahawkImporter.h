@@ -6,6 +6,7 @@
 #include "../io/bcf/BCFReader.h"
 #include "import_filters.h"
 #include "import_writer.h"
+#include "../index/index.h"
 
 namespace Tomahawk {
 
@@ -24,6 +25,7 @@ class TomahawkImporter {
 	typedef VCF::VCFLine               vcf_entry_type;
 	typedef BCF::BCFReader             bcf_reader_type;
 	typedef BCF::BCFEntry              bcf_entry_type;
+	typedef Index                      index_type;
 
 	/**<
 	 * This supportive structure keeps track of the current and
@@ -100,6 +102,7 @@ private:
 	buffer_type          rle_buffer;       // RLE buffer
 	totempole_entry_type totempole_entry;  // current (active) index entry
 	filter_type          filters;          // filters
+	index_type           index;
 	vcf_header_type*     vcf_header_;      // vcf header
 	rle_controller_type* rle_controller;   // RLE packer algorithms
 };

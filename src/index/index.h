@@ -1,11 +1,11 @@
 #ifndef INDEX_INDEX_H_
 #define INDEX_INDEX_H_
 
-#include "index_header.h"
 #include "index_entry.h"
 #include "index_contig.h"
 #include "index_container.h"
 #include "../io/BasicBuffer.h"
+#include "footer.h"
 
 namespace Tomahawk{
 
@@ -17,7 +17,7 @@ namespace Tomahawk{
 class Index{
 private:
 	typedef Index                     self_type;
-	typedef Totempole::IndexHeader    header_type;
+	typedef Totempole::Footer         footer_type;
 	typedef Totempole::IndexEntry     value_type;
 	typedef Totempole::IndexContainer container_type;
     typedef value_type&               reference;
@@ -31,10 +31,23 @@ private:
 public:
 
     inline const size_type& size(void) const{ return(this->container_.size()); }
+    inline footer_type& getFooter(void){ return(this->footer_); }
+    inline const footer_type& getFooter(void) const{ return(this->footer_); }
+    inline container_type& getContainer(void){ return(this->container_); }
+	inline const container_type& getContainer(void) const{ return(this->container_); }
+
+	inline void operator+=(const_reference entry){ this->container_ += entry; }
 
 private:
-    header_type    header_;
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
+		stream << index.getFooter();
+		stream << index.getContainer();
+		return(stream);
+	}
+
+private:
     container_type container_;
+    footer_type    footer_;
 };
 
 }
