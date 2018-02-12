@@ -26,6 +26,7 @@ class TomahawkImporter {
 	typedef BCF::BCFReader             bcf_reader_type;
 	typedef BCF::BCFEntry              bcf_entry_type;
 	typedef Index                      index_type;
+	typedef Totempole::Footer          footer_type;
 
 	/**<
 	 * This supportive structure keeps track of the current and
@@ -103,6 +104,7 @@ private:
 	totempole_entry_type totempole_entry;  // current (active) index entry
 	filter_type          filters;          // filters
 	index_type           index;
+	footer_type          footer_;
 	vcf_header_type*     vcf_header_;      // vcf header
 	rle_controller_type* rle_controller;   // RLE packer algorithms
 };

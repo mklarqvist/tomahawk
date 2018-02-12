@@ -29,10 +29,18 @@ private:
     typedef IO::BasicBuffer           buffer_type;
 
 public:
+    Index(){}
+    ~Index(){}
+
+    // Reading an index from a byte stream
+    Index(const char* const data, const U32 l_data) :
+    	container_(data, l_data)
+    {
+
+    }
 
     inline const size_type& size(void) const{ return(this->container_.size()); }
-    inline footer_type& getFooter(void){ return(this->footer_); }
-    inline const footer_type& getFooter(void) const{ return(this->footer_); }
+
     inline container_type& getContainer(void){ return(this->container_); }
 	inline const container_type& getContainer(void) const{ return(this->container_); }
 
@@ -40,14 +48,13 @@ public:
 
 private:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
-		stream << index.getFooter();
 		stream << index.getContainer();
 		return(stream);
 	}
 
 private:
     container_type container_;
-    footer_type    footer_;
+    // Todo: meta_index_container
 };
 
 }

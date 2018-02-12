@@ -6,6 +6,8 @@
 namespace Tomahawk {
 namespace Totempole {
 
+#define TWK_FOOTER_LENGTH	(6*sizeof(U64) + sizeof(U32) + sizeof(U64))
+
 struct Footer{
 public:
 	typedef Footer self_type;
@@ -16,6 +18,13 @@ public:
 		l_largest_uncompressed(0)
 	{
 		memcpy(&this->EOF_marker[0], Constants::eof, sizeof(U64)*Constants::eof_length);
+	}
+
+	Footer(const char* const data) :
+		offset_end_of_data(*reinterpret_cast<const U64* const>(data)),
+		l_largest_uncompressed(*reinterpret_cast<const U64* const>(&data[sizeof(U64)]))
+	{
+		memcpy(&this->EOF_marker[0], &data[sizeof(U64)+sizeof(U32)], sizeof(U64)*Constants::eof_length);
 	}
 
 	~Footer() = default;

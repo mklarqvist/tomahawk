@@ -77,7 +77,7 @@ bool TomahawkCalc::Calculate(){
 	this->balancer.setSelected(this->parameters.chunk_selected);
 	this->balancer.setDesired(this->parameters.n_chunks);
 
-	if(!this->balancer.Build(this->reader.getTotempole().getBlocks(), this->parameters.n_threads)){
+	if(!this->balancer.Build(this->reader.getIndex().getContainer().size(), this->parameters.n_threads)){
 		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 		return false;
 	}

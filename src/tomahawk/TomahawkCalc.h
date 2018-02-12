@@ -6,6 +6,8 @@
 #include "twk_reader_implementation.h"
 #include "genotype_meta_container_reference.h"
 #include "two/output_slave_writer.h"
+#include "../index/index.h"
+
 
 namespace Tomahawk {
 
@@ -15,7 +17,7 @@ class TomahawkCalc{
 	typedef std::pair<U32,U32>         pair_type;
 	typedef std::vector<pair_type>     pair_vector;
 	typedef LoadBalancerLD             balancer_type;
-	typedef Totempole::TotempoleReader totempole_reader;
+	typedef TomahawkHeader             header_type;
 	typedef Interface::ProgressBar     progress_type;
 	typedef TomahawkReader             reader_type;
 
@@ -45,12 +47,12 @@ private:
 template <class T>
 bool TomahawkCalc::Calculate(){
 	// Retrieve reference to Totempole reader
-	totempole_reader& totempole = this->reader.getTotempole();
-	totempole.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
-	totempole.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
+	header_type& header = this->reader.getHeader();
+	header.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
+	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
 	IO::OutputSlaveWriter<T> writer;
-	if(!writer.open(this->output_file, totempole)){
+	if(!writer.open(this->output_file, header.magic_)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
@@ -142,7 +144,7 @@ bool TomahawkCalc::Calculate(){
 
 	// Update progress bar with data
 	this->progress.SetComparisons(totalComparisons);
-	this->progress.SetSamples(totempole.getSamples());
+	this->progress.SetSamples(header.magic_.getNumberSamples());
 	this->progress.SetDetailed(this->parameters.detailed_progress);
 
 	if(!SILENT)
@@ -200,8 +202,8 @@ bool TomahawkCalc::Calculate(){
 	writer = slaves[0]->getOutputManager();
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*totempole.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
 	}
 
 	// Cleanup

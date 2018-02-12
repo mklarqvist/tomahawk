@@ -12,6 +12,7 @@
 #include "../two/output_entry.h"
 #include "../two/output_entry_support.h"
 #include "../tomahawk_output_magic_header.h"
+#include "../tomahawk_magic_header.h"
 
 #define SLAVE_FLUSH_LIMIT 2000000 // 2 MB
 
@@ -31,10 +32,10 @@ struct OutputSlaveWriter{
 	typedef IO::BasicBuffer                           buffer_type;
 	typedef IO::OutputEntry                           entry_type;
 	typedef TGZFController                            tgzf_controller;
-	typedef Totempole::TotempoleReader                index_reader_type;
+	typedef Base::TomahawkMagicHeader                 header_type;
 	typedef Totempole::TotempoleOutputEntry           totempole_entry;
 	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
-	typedef Totempole::IndexEntry                 header_entry;
+	typedef Totempole::IndexEntry                     header_entry;
 	typedef MetaEntry<T>                              meta_type;
 	typedef Support::OutputEntrySupport               helper_type;
 	typedef Algorithm::SpinLock                       spin_lock_type;
@@ -89,7 +90,7 @@ public:
 	inline const U32& getProgressCounts(void) const{ return this->progressCount; }
 	inline const U32& size_blocks(void) const{ return(this->n_blocks); }
 
-	bool open(const std::string output, index_reader_type& totempole){
+	bool open(const std::string output, header_type& header){
 		if(output.size() == 0)
 			return false;
 
@@ -103,7 +104,7 @@ public:
 			return false;
 		}
 
-		if(!this->WriteHeader(totempole)){
+		if(!this->WriteHeader(header)){
 			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to write header" << std::endl;
 			return false;
 		}
@@ -189,23 +190,8 @@ public:
 	}
 
 private:
-	bool WriteHeader(index_reader_type& totempole){
-		Base::TomahawkOutputMagicHeader head;
-		head.n_samples = totempole.getSamples();
-		head.n_contigs = totempole.getContigs();
-		*this->stream << head;
-
-		// Write contig data to TWO
-		// length | n_char | chars[0 .. n_char - 1]
-		for(U32 i = 0; i < totempole.getContigs(); ++i)
-			*this->stream << *totempole.getContigBase(i);
-
-		if(!totempole.writeLiterals(*this->stream)){
-			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to write literals..." << std::endl;
-			return false;
-		}
-
-		return(stream->good());
+	bool WriteHeader(header_type& header){
+		return true;
 	}
 
 	void CheckOutputNames(const std::string& input){

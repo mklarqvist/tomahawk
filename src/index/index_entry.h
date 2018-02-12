@@ -4,6 +4,8 @@
 namespace Tomahawk{
 namespace Totempole{
 
+#define TWK_INDEX_ENTRY_SIZE (sizeof(U64)*4 + sizeof(S32) + sizeof(U32)*2)
+
 struct IndexEntry{
 public:
 	typedef IndexEntry self_type;
@@ -19,6 +21,8 @@ public:
 		uncompressed_size(0)
 	{
 	}
+
+	IndexEntry(const char* const data){ memcpy(this, data, TWK_INDEX_ENTRY_SIZE); }
 
 	// Copy ctor
 	IndexEntry(const self_type& other) :

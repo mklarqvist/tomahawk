@@ -16,6 +16,7 @@
 #include "../support/simd_definitions.h"
 #include "import_filters.h"
 #include "meta_entry.h"
+#include "../index/footer.h"
 
 namespace Tomahawk {
 
@@ -26,6 +27,7 @@ private:
 	typedef ImporterFilters           filter_type;
 	typedef Totempole::IndexEntry     index_entry_type;
 	typedef Index                     index_type;
+	typedef Totempole::Footer         footer_type;
 
 public:
 	ImportWriter(const filter_type& filter);
@@ -35,7 +37,7 @@ public:
 	void DetermineFlushLimit(void);
 	bool OpenExtend(const std::string output);
 	int WriteHeaders(void);
-	void WriteFinal(index_type& container);
+	void WriteFinal(index_type& container, footer_type& footer);
 
 	void setHeader(VCF::VCFHeader& header);
 	bool add(const VCF::VCFLine& line);

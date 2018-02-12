@@ -139,14 +139,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->writer_.flush();
 	// Update container with this totempole entry
 	this->index += this->writer_.totempole_entry;
-
-	//		return false;
-
-	for(U32 i = 0; i < this->index.getContainer().size(); ++i){
-		std::cerr << this->index.getContainer()[i] << std::endl;
-	}
-
-	this->writer_.WriteFinal(this->index);
+	this->writer_.WriteFinal(this->index, this->footer_);
 
 	if(this->writer_.GetVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;
@@ -244,7 +237,7 @@ bool TomahawkImporter::BuildVCF(void){
 
 	//		return false;
 
-	this->writer_.WriteFinal(this->index);
+	this->writer_.WriteFinal(this->index, this->footer_);
 
 	if(this->writer_.GetVariantsWritten() == 0){
 		std::cerr << Helpers::timestamp("ERROR","IMPORT") << "Did not import any variants..." << std::endl;

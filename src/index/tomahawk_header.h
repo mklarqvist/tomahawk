@@ -193,6 +193,24 @@ public:
 		return false;
 	}
 
+	inline const bool getContigName(const std::string& contig_name, const std::string*& return_target) const{
+		if(this->contigs_hash_table_ == nullptr)
+			return false;
+
+		if(contig_name.size() == 0)
+			return false;
+
+		if(this->contigs_hash_table_->occupied() == 0)
+			return false;
+
+		S32* target = nullptr;
+		if(this->contigs_hash_table_->GetItem(&contig_name[0], &contig_name, target, contig_name.length())){
+			return_target = &this->contigs_[*target].name;
+			return true;
+		}
+		return false;
+	}
+
 	inline const bool getContig(const std::string& contig_name, const contig_type*& return_target) const{
 		if(this->contigs_hash_table_ == nullptr)
 			return false;
@@ -213,10 +231,9 @@ public:
 
 	// Updater
 	inline void addLiteral(const std::string& string){ this->literals_ += string; }
-
-private:
 	inline const bool validate(void) const{ return(this->magic_.validate()); }
 
+private:
 	bool BuildHashTables(void){
 		// For contigs
 		if(this->magic_.getNumberContigs() * 2 < 1024)
@@ -265,10 +282,10 @@ private:
 	}
 
 public:
-	magic_type     magic_;    // magic header
-	std::string    literals_; // literal data
-	contig_type*   contigs_;  // contig data
-	std::string*   sample_names_;  // sample names
+	magic_type     magic_;              // magic header
+	std::string    literals_;           // literal data
+	contig_type*   contigs_;            // contig data
+	std::string*   sample_names_;       // sample names
 	hash_table*    contigs_hash_table_; // contig name hash table
 	hash_table*    sample_hash_table_;  // sample name hash table
 };
