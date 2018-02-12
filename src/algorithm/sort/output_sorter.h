@@ -7,7 +7,6 @@
 #include "../../io/compression/TGZFEntryIterator.h"
 #include "../../tomahawk/two/output_slave_writer.h"
 #include "../../tomahawk/two/TomahawkOutputReader.h"
-#include "../../totempole/TotempoleOutputEntry.h"
 #include "output_sort_merge_queue.h"
 #include "output_sort_slave.h"
 
@@ -20,15 +19,11 @@ namespace Algorithm{
 class OutputSorter{
 	typedef IO::OutputEntry                   entry_type;
 	typedef IO::TomahawkOutputReader          two_reader_type;
-	typedef IO::OutputWriterIndex             writer_type;
 	typedef IO::WriterFile                    basic_writer_type;
 	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
-	typedef IO::TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
-	typedef Totempole::TotempoleOutputEntry   totempole_entry;
-	typedef Totempole::TotempoleOutputSortedIndex index_type;
 	typedef OutputSorter                      self_type;
 	typedef OutputSortMergeQueue<entry_type>  queue_entry;
-	typedef OutputSortSlave                   slave_sorter;
+	//typedef OutputSortSlave                   slave_sorter;
 	typedef std::priority_queue<queue_entry>  queue_type; // prio queue
 
 public:

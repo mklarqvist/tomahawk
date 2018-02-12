@@ -12,7 +12,6 @@
 #include "../io/vcf/VCFLines.h"
 #include "../io/vcf/VCFHeader.h"
 #include "../index/index.h"
-#include "../totempole/TotempoleReader.h"
 #include "../support/simd_definitions.h"
 #include "import_filters.h"
 #include "meta_entry.h"

@@ -9,13 +9,13 @@
 #include "../../io/compression/GZFHeader.h"
 #include "../../support/helpers.h"
 #include "../../index/index_contig.h"
-#include "../../totempole/TotempoleOutputEntry.h"
 #include "../output_container.h"
 #include "../output_container_reference.h"
 #include "../two/TomahawkOutputStats.h"
 
 namespace Tomahawk {
 namespace IO {
+
 
 TomahawkOutputReader::TomahawkOutputReader() :
 		filesize(0),
@@ -25,29 +25,31 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		hasIndex(false),
 		output_header(true),
 		writer_output_type(WRITER_TYPE::natural),
-		writer(nullptr),
+		//writer(nullptr),
 		contigs(nullptr),
 		contig_htable(nullptr),
 		interval_tree(nullptr),
-		interval_tree_entries(nullptr),
-		interval_totempole_enties(nullptr)
+		interval_tree_entries(nullptr)
+		//interval_totempole_enties(nullptr)
 {}
 
 TomahawkOutputReader::~TomahawkOutputReader(){
 	delete [] this->contigs;
 	delete contig_htable;
 	if(interval_tree != nullptr){
-		for(U32 i = 0; i < this->header.n_contig; ++i)
-			delete this->interval_tree[i];
+		//for(U32 i = 0; i < this->header.n_contig; ++i)
+		//	delete this->interval_tree[i];
 	}
 	//delete interval_tree;
 	delete [] interval_tree_entries;
 	delete interval_tree;
 	this->compressed_buffer.deleteAll();
 	this->data_buffer.deleteAll();
-	delete this->writer;
-	delete this->interval_totempole_enties;
+	//delete this->writer;
+	//delete this->interval_totempole_enties;
 }
+
+/*
 
 bool TomahawkOutputReader::view(const std::string& input){
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
@@ -117,6 +119,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	return true;
 }
+*/
 
 bool TomahawkOutputReader::__viewRegionIndexed(void){
 	/*
@@ -223,6 +226,7 @@ bool TomahawkOutputReader::__viewRegionIndexed(void){
 	return true;
 }
 
+/*
 bool TomahawkOutputReader::__checkRegionIndex(const entry_type& entry){
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
@@ -1048,7 +1052,7 @@ bool TomahawkOutputReader::setWriterType(const int type){
 	}
 	return true;
 }
-
+*/
 
 }
 } /* namespace Tomahawk */

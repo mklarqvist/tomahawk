@@ -6,18 +6,17 @@
 namespace Tomahawk{
 namespace Algorithm{
 
+/*
 class OutputSortSlave{
 private:
 	typedef OutputSortSlave                   self_type;
 	typedef IO::OutputEntry                   entry_type;
-	typedef Totempole::TotempoleOutputEntry   totempole_entry;
 	typedef IO::WriterFile                    writer_type;
 	typedef IO::TomahawkOutputReader          two_reader_type;
-	typedef IO::OutputWriterInterface         two_writer_interface;
-	typedef IO::OutputWriter                  two_writer_type;
 	typedef IO::TGZFController                tgzf_controller_type;
 
 public:
+
 	OutputSortSlave(two_writer_interface* writer, writer_type& toi_writer, const U32 memory_limit) :
 		memory_limit(memory_limit),
 		blocks_written(0),
@@ -45,9 +44,11 @@ public:
 
 	inline const U32& getBlocksWritten(void) const{ return(this->blocks_written); }
 
+
 private:
+
 	bool sort(const totempole_entry& workload){
-		/*
+
 		bool trigger_break = false;
 		writer_type& stream = *reinterpret_cast<writer_type*>(this->writer->getStream());
 		this->reader.stream.seekg(workload.byte_offset);
@@ -105,9 +106,10 @@ private:
 
 			if(trigger_break) break;
 		}
-		*/
+
 		return true;
 	}
+
 
 private:
 	const U32 memory_limit;
@@ -119,7 +121,7 @@ private:
 	tgzf_controller_type controller;
 	bool reverse_entries;
 };
-
+*/
 
 }
 }

@@ -56,7 +56,6 @@ public:
 			new( &this->entries_[i] ) value_type(&data_buffer[cumulative_position]);
 			cumulative_position += TWK_INDEX_META_ENTRY_SIZE;
 		}
-		std::cerr << "cum: " << cumulative_position << "/" << l_data << std::endl;
 		assert(cumulative_position == l_data);
 	}
 

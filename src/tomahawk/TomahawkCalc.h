@@ -1,7 +1,6 @@
 #ifndef TOMAHAWK_TOMAHAWKCALC_H_
 #define TOMAHAWK_TOMAHAWKCALC_H_
 
-#include "../totempole/TotempoleReader.h"
 #include "TomahawkReader.h"
 #include "twk_reader_implementation.h"
 #include "genotype_meta_container_reference.h"

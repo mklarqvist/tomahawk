@@ -25,7 +25,6 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
 void stats_usage(void){
@@ -116,16 +115,16 @@ int stats(int argc, char** argv){
 		//if(!reader.setWriterType(outputType))
 		//	return 1;
 
-		if(!reader.Open(input))
-			return 1;
+		//if(!reader.Open(input))
+		//	return 1;
 
 		//if(!reader.AddRegions(filter_regions)){
 		//	std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 		//	return 1;
 		//}
 
-		if(!reader.summary(input, bins))
-			return 1;
+		//if(!reader.summary(input, bins))
+		//	return 1;
 
 	} else {
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;

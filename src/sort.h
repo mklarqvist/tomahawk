@@ -24,7 +24,6 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
-#include "totempole/TotempoleReader.h"
 
 void sort_usage(void){
 	programMessage();

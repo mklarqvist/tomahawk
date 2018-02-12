@@ -25,7 +25,6 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
 
 void view_usage(void){
@@ -343,6 +342,7 @@ int view(int argc, char** argv){
 		Tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
+		/*
 		if(!reader.setWriterType(outputType))
 			return 1;
 
@@ -356,6 +356,7 @@ int view(int argc, char** argv){
 
 		if(!reader.view(input))
 			return 1;
+	*/
 
 	} else {
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;

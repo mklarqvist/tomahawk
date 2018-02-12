@@ -5,9 +5,7 @@
 #include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
 #include "../../index/index_contig.h"
-#include "../../totempole/TotempoleMagic.h"
-#include "../../totempole/TotempoleOutputEntry.h"
-#include "../../totempole/TotempoleReader.h"
+#include "../../index/index_output_entry.h"
 #include "../../tomahawk/meta_entry.h"
 #include "../two/output_entry.h"
 #include "../two/output_entry_support.h"
@@ -27,18 +25,16 @@ namespace IO {
  */
 template <class T>
 struct OutputSlaveWriter{
-	typedef OutputSlaveWriter                         self_type;
-	typedef IO::WriterFile                            writer_type;
-	typedef IO::BasicBuffer                           buffer_type;
-	typedef IO::OutputEntry                           entry_type;
-	typedef TGZFController                            tgzf_controller;
-	typedef Base::TomahawkMagicHeader                 header_type;
-	typedef Totempole::TotempoleOutputEntry           totempole_entry;
-	typedef Totempole::TotempoleOutputEntryController totempole_controller_byte;
-	typedef Totempole::IndexEntry                     header_entry;
-	typedef MetaEntry<T>                              meta_type;
-	typedef Support::OutputEntrySupport               helper_type;
-	typedef Algorithm::SpinLock                       spin_lock_type;
+	typedef OutputSlaveWriter            self_type;
+	typedef IO::WriterFile               writer_type;
+	typedef IO::BasicBuffer              buffer_type;
+	typedef IO::OutputEntry              entry_type;
+	typedef TGZFController               tgzf_controller;
+	typedef Base::TomahawkMagicHeader    header_type;
+	typedef Totempole::IndexOutputEntry  index_entry_type;
+	typedef MetaEntry<T>                 meta_type;
+	typedef Support::OutputEntrySupport  helper_type;
+	typedef Algorithm::SpinLock          spin_lock_type;
 
 public:
 	OutputSlaveWriter() :
@@ -120,10 +116,10 @@ public:
 			}
 
 			this->spin_lock->lock();
-			this->index_entry.byte_offset = (U64)this->stream->tellp();
+			this->index_entry.byte_offset_from = (U64)this->stream->tellp();
 			this->index_entry.uncompressed_size = this->buffer.size();
 			this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
-			this->index_entry.byte_offset_end = (U64)this->stream->tellp();
+			this->index_entry.byte_offset_to = (U64)this->stream->tellp();
 			*this->stream << this->index_entry;
 			++this->n_blocks;
 			//std::cerr << this->entry << std::endl;
@@ -136,35 +132,11 @@ public:
 	}
 
 	bool finalise(void){
-		// Make sure data is flushed
 		this->stream->flush();
-
-		// Update blocks written
-		/*
-		std::fstream re(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
-		if(!re.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
-			return false;
-		}
-
-		re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
-		if(!re.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
-			return false;
-		}
-
-		re.write((char*)&this->n_blocks, sizeof(U32));
-		if(!re.good()){
-			std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
-			return false;
-		}
-		re.flush();``
-		re.close();
-		*/
-
 		return true;
 	}
 
+	/*
 	void Add(const meta_type& meta_a, const meta_type& meta_b, const header_entry& header_a, const header_entry& header_b, const helper_type& helper){
 		const U32 writePosA = meta_a.position << 2 | meta_a.phased << 1 | meta_a.missing;
 		const U32 writePosB = meta_b.position << 2 | meta_b.phased << 1 | meta_b.missing;
@@ -181,6 +153,7 @@ public:
 		if(this->buffer.size() > SLAVE_FLUSH_LIMIT)
 			this->flushBlock();
 	}
+	*/
 
 	void close(void){
 		if(this->stream != nullptr){
@@ -213,7 +186,7 @@ private:
 	U64             n_entries;      // number of entries written
 	U32             progressCount;  // lines added since last flush
 	U32             n_blocks;       // number of index blocks written
-	totempole_entry index_entry;    // keep track of sort order
+	index_entry_type index_entry;    // keep track of sort order
 	std::ofstream*  stream;         // output stream
 	buffer_type     buffer;         // internal buffer
 	tgzf_controller compressor;     // compressor

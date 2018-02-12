@@ -11,6 +11,7 @@ namespace Algorithm{
 // 3: Perform sort
 // 4: Perform merge if desired
 bool OutputSorter::sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit){
+	/*
 	if(!this->reader.Open(input)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 		return false;
@@ -64,6 +65,8 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 			}
 		}
 	}
+
+	*/
 
 	/*
 	//
@@ -199,6 +202,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 }
 
 bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit){
+	/*
 	std::cerr << Helpers::timestamp("SORT") << "Index found..." << std::endl;
 
 	std::vector< totempole_entry > blocks;
@@ -318,7 +322,7 @@ bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::strin
 	}
 	delete [] instances;
 	delete [] slaves;
-
+	*/
 	return true;
 }
 

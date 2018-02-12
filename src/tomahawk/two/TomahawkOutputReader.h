@@ -12,14 +12,11 @@
 #include "../../support/MagicConstants.h"
 #include "../../algorithm/OpenHashTable.h"
 #include "../../support/type_definitions.h"
-#include "../../totempole/TotempoleMagic.h"
 #include "../../third_party/intervalTree.h"
-#include "../../totempole/TotempoleOutputReader.h"
 #include "../../tomahawk/output_container.h"
 #include "../../tomahawk/output_container_reference.h"
 #include "../two/output_entry.h"
 #include "output_filter.h"
-#include "output_writer.h"
 
 namespace Tomahawk {
 namespace IO {
@@ -28,23 +25,17 @@ class TomahawkOutputReader {
 private:
 	typedef OutputEntry                    entry_type;
 	typedef OutputFilter                   filter_type;
-	typedef OutputWriterInterface          writer_type;
-	typedef OutputWriterIndex              twoi_writer_type;
 	typedef OutputContainer                output_container_type;
 	typedef OutputContainerReference       output_container_reference_type;
 	typedef IO::BasicBuffer                buffer_type;
 	typedef Totempole::HeaderContig        contig_type;
-	typedef Totempole::TotempoleOutputSortedEntry totempole_sorted_entry_type;
 	typedef TGZFHeader                     tgzf_header_type;
 	typedef TGZFController                 tgzf_controller_type;
 	typedef Hash::HashTable<std::string, U32> hash_table;
 	typedef Algorithm::ContigInterval      interval_type;
 	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
-	typedef TomahawkOutputHeader<Tomahawk::Constants::WRITE_HEADER_LD_MAGIC_LENGTH> header_type;
-	typedef TomahawkOutputSortHeader<Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH> toi_header_type;
 
 public:
-	typedef Totempole::TotempoleOutputReader toi_reader_type;
 	enum WRITER_TYPE {binary, natural};
 
 public:
@@ -136,7 +127,7 @@ public:
 	U64 size;
 	bool hasIndex;
 	std::ifstream stream; // reader stream
-	header_type header; // header
+	//header_type header; // header
 	bool output_header;
 	buffer_type compressed_buffer; // internal buffer
 	buffer_type data_buffer; // internal buffer
@@ -144,13 +135,11 @@ public:
 	filter_type filter;	// filter parameters
 	WRITER_TYPE writer_output_type;
 	std::string literals; // header literals
-	writer_type* writer; // writer interface
+	//writer_type* writer; // writer interface
 	contig_type* contigs;
 	hash_table* contig_htable; // map input string to internal contigID
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
-	std::vector<totempole_sorted_entry_type>* interval_totempole_enties;
-	toi_reader_type toi_reader;
 };
 
 }

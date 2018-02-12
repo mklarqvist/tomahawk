@@ -23,7 +23,6 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
-#include "totempole/TotempoleReader.h"
 
 int index(int argc, char** argv){
 	argc -= 2; argv += 2;
@@ -54,11 +53,12 @@ int index(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","INDEX") << "Twk files are already indexed..." << std::endl;
 	} else if(files[1] == Tomahawk::Constants::OUTPUT_LD_SUFFIX) {
 		Tomahawk::IO::TomahawkOutputReader reader;
-
+		/*
 		if(!reader.index(inputFile)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "INDEX") << "Failed to index file!" << std::endl;
 			return 1;
 		}
+		*/
 	} else {
 		std::cerr << "Unknown file type" << std::endl;
 	}

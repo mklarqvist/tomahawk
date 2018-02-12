@@ -1522,24 +1522,24 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
 		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2)){
-				this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDPhasedVectorized(block1, block2)){
-				this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
 	} else {
 		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2)){
-				this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDUnphasedVectorized(block1, block2)){
-				this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
@@ -1596,12 +1596,12 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 
 	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2)){
-			this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDPhasedVectorized(block1, block2)){
-			this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
@@ -1620,12 +1620,12 @@ void LDSlave<T>::CompareBlocksFunctionForcedUnphased(const block_type& block1, c
 
 	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2)){
-			this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDUnphasedVectorized(block1, block2)){
-			this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
