@@ -9,7 +9,16 @@ public:
 	typedef IndexEntry self_type;
 
 public:
-	IndexEntry() : byte_offset(0), byte_offset_end(0), contigID(0), minPosition(0), maxPosition(0), n_variants(0), uncompressed_size(0){}
+	IndexEntry() :
+		byte_offset(0),
+		byte_offset_end(0),
+		contigID(0),
+		minPosition(0),
+		maxPosition(0),
+		n_variants(0),
+		uncompressed_size(0)
+	{
+	}
 
 	// Copy ctor
 	IndexEntry(const self_type& other) :

@@ -23,7 +23,22 @@ private:
     typedef IO::BasicBuffer       buffer_type;
 
 public:
-    IndexContainer(const size_t n_capacity);
+    IndexContainer(void) :
+		n_entries(0),
+		n_capacity(1000),
+		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+	{
+
+	}
+
+    IndexContainer(const size_t n_capacity) :
+    	n_entries(0),
+		n_capacity(n_capacity),
+		__entries(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
+	{
+
+	}
+
 	IndexContainer(const char* const data_buffer, const size_t l_buffer_length);
 	IndexContainer(const buffer_type& data_buffer);
 
