@@ -3,6 +3,19 @@
 
 namespace Tomahawk {
 
+ImportWriter::ImportWriter(void) :
+	flush_limit(1000000),
+	n_variants_limit(1024),
+	blocksWritten_(0),
+	variants_written_(0),
+	largest_uncompressed_block_(0),
+	filter(),
+	rleController_(nullptr),
+	buffer_rle_(this->flush_limit*2),
+	buffer_meta_(this->flush_limit*2),
+	vcf_header_(nullptr)
+{}
+
 ImportWriter::ImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
 	n_variants_limit(1024),

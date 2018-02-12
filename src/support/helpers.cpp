@@ -76,7 +76,7 @@ std::string datetime(){
 	struct tm      	*now = localtime(&t);
 	gettimeofday(&tv, &tz);
 
-	char buffer[48];
+	char buffer[128];
 	sprintf(buffer, "%04u-%02u-%02u %02u:%02u:%02u,%03u",
 			now->tm_year + 1900,
 			now->tm_mon + 1,

@@ -80,6 +80,7 @@ public:
 	double chiSqFisher;
 	double chiSqModel;
 };
+#pragma pack(pop)
 
 }
 }

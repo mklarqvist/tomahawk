@@ -10,20 +10,20 @@
 namespace Tomahawk {
 
 /**<
- * This class handles importing `bcf`/`vcf` into `twk` format.
+ * This class handles importing `bcf`/`vcf` into the `twk` file format.
  */
 class TomahawkImporter {
 	typedef TomahawkImporter           self_type;
 	typedef reader                     reader_type;
-	typedef VCF::VCFHeader             vcf_header_type;
-	typedef VCF::VCFLine               vcf_entry_type;
 	typedef ImportWriter               writer_type;
+	typedef ImporterFilters            filter_type;
 	typedef IO::BasicBuffer            buffer_type;
 	typedef Algorithm::GenotypeEncoder rle_controller_type;
 	typedef Totempole::IndexEntry      totempole_entry_type;
+	typedef VCF::VCFHeader             vcf_header_type;
+	typedef VCF::VCFLine               vcf_entry_type;
 	typedef BCF::BCFReader             bcf_reader_type;
 	typedef BCF::BCFEntry              bcf_entry_type;
-	typedef ImporterFilters            filter_type;
 
 	/**<
 	 * This supportive structure keeps track of the current and
@@ -52,7 +52,7 @@ class TomahawkImporter {
 	} sort_order_helper;
 
 public:
-	TomahawkImporter(std::string inputFile, std::string outputPrefix);
+	TomahawkImporter(const std::string inputFile, const std::string outputPrefix);
 	~TomahawkImporter();
 
 	/**<
@@ -91,17 +91,17 @@ private:
 	inline bool checkSize(void) const{ return(this->meta_buffer.size() + this->rle_buffer.size() >= this->block_flush_limit); }
 
 private:
-	U32 block_flush_limit;    // limit in bytes when to flush to disk
-	std::string inputFile;    // input file name
-	std::string outputPrefix; // output file prefix
-	reader_type reader_;      // reader
-	writer_type writer_;      // writer
-	buffer_type meta_buffer;  // meta buffer
-	buffer_type rle_buffer;   // RLE buffer
-	totempole_entry_type totempole_entry;  // totempole entry for indexing
-	filter_type filters;      // filters
-	vcf_header_type* header_;     // header
-	rle_controller_type* rle_controller; // RLE packer
+	U32                  block_flush_limit;// limit in bytes when to flush to disk
+	std::string          input_file;        // input file name
+	std::string          output_prefix;     // output file prefix
+	reader_type          reader_;          // reader
+	writer_type          writer_;          // writer
+	buffer_type          meta_buffer;      // meta buffer
+	buffer_type          rle_buffer;       // RLE buffer
+	totempole_entry_type totempole_entry;  // current (active) index entry
+	filter_type          filters;          // filters
+	vcf_header_type*     vcf_header_;      // vcf header
+	rle_controller_type* rle_controller;   // RLE packer algorithms
 };
 
 

@@ -26,6 +26,7 @@ private:
 	typedef Totempole::IndexEntry index_entry_type;
 
 public:
+	ImportWriter(void);
 	ImportWriter(const filter_type& filter);
 	~ImportWriter();
 
@@ -80,7 +81,7 @@ public:
 	U32 blocksWritten_;				// number of blocks written
 	U32 variants_written_;			// number of variants written
 	U32 largest_uncompressed_block_;// size of largest block in b
-	const filter_type& filter;		// filters
+	filter_type filter;		// filters
 
 	index_entry_type totempole_entry;
 	IO::TGZFController gzip_controller_;

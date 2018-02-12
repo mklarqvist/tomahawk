@@ -21,11 +21,11 @@ private:
     typedef std::size_t       size_type;
 
 public:
-	BasicBuffer() : n_chars(0), width(0), buffer(nullptr){}
-	BasicBuffer(const U64 size) : n_chars(0), width(size), buffer(new char[size]){}
-	BasicBuffer(char* target, const size_t length) : n_chars(length), width(length), buffer(target){}
-	BasicBuffer(const U64 size, char* target) : n_chars(0), width(size), buffer(target){}
-	BasicBuffer(const self_type& other) : n_chars(0), width(other.width), buffer(new char[other.width]){}
+	BasicBuffer(void) : n_chars(0), width(0), buffer(nullptr){}
+	BasicBuffer(const U64 size) : n_chars(0), width(size), buffer(new value_type[size]){}
+	BasicBuffer(pointer target, const size_t length) : n_chars(length), width(length), buffer(target){}
+	BasicBuffer(const U64 size, pointer target) : n_chars(0), width(size), buffer(target){}
+	BasicBuffer(const self_type& other) : n_chars(0), width(other.width), buffer(new value_type[other.width]){}
 	virtual ~BasicBuffer(){}
 
 	class iterator{

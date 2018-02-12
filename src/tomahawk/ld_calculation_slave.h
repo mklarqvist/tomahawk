@@ -49,6 +49,7 @@ struct __attribute__((packed, aligned(1))) __costHelper{
 		buffer.Add(reinterpret_cast<const char*>(&entry), sizeof(__costHelper));
 	}
 };
+#pragma pack(pop)
 #elif SLAVE_DEBUG_MODE == 6
 /*
  This supportive structure is only used internally for
@@ -127,7 +128,7 @@ struct __methodCompare{
 		return true;
 	}
 };
-#pragma pack(pop)
+
 #endif
 
 // Parameter thresholds for FLAGs

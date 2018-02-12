@@ -153,11 +153,9 @@ int import(int argc, char** argv){
 
 
 	Tomahawk::TomahawkImporter importer(input, output);
-	importer.getFilters().HWE_P = hwe_p;
-	importer.getFilters().MAF = maf;
+	importer.getFilters().HWE_P       = hwe_p;
+	importer.getFilters().MAF         = maf;
 	importer.getFilters().missingness = missingness;
-
-	return true;
 
 	if(!extension_mode){
 		if(!importer.Build())
