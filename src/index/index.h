@@ -5,42 +5,38 @@
 #include "index_entry.h"
 #include "index_contig.h"
 #include "index_container.h"
-#include "../algorithm/OpenHashTable.h"
+#include "../io/BasicBuffer.h"
 
 namespace Tomahawk{
 
 /**<
- * This container handles the index for `twk`
+ * This container handles the index entries for `twk` blocks: their
+ * start and end IO positions and what genomic regions they cover.
+ * The value type of this container are containers of entries.
  */
-class BlockIndex{
+class Index{
 private:
-	typedef BlockIndex                self_type;
+	typedef Index                self_type;
 	typedef Totempole::IndexHeader    header_type;
-    typedef Totempole::IndexContig    contig_type;
-    typedef Totempole::IndexEntry     entry_type;
-
+	typedef Totempole::IndexEntry     value_type;
+	typedef Totempole::IndexContainer container_type;
+    typedef value_type&               reference;
+    typedef const value_type&         const_reference;
+    typedef value_type*               pointer;
+    typedef const value_type*         const_pointer;
     typedef std::ptrdiff_t            difference_type;
     typedef std::size_t               size_type;
-
     typedef IO::BasicBuffer           buffer_type;
-    typedef Hash::OpenHashEntry<std::string, U32> hash_table;
 
 public:
 
-
+    inline const size_type& size(void) const{ return(this->container_.size()); }
 
 private:
-    header_type    header;
-	std::string    literals; // literal data
-	contig_type*   contigs;  // contig data
-	std::string*   samples;  // sample names
-	entry_type*    entries;  // totempole entries data
-	hash_table*    contigsHashTable; // contig name hash table
-	hash_table*    sampleHashTable;  // sample name hash table
+    header_type    header_;
+    container_type container_;
 };
 
 }
-
-
 
 #endif /* INDEX_INDEX_H_ */

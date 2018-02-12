@@ -72,7 +72,7 @@ inline bool TomahawkReader::ValidateHeader(std::ifstream& in) const{
 
 bool TomahawkReader::getBlocks(void){
 	U64 buffer_size = 0;
-	for(U32 i = 0; i < this->totempole_.header.size(); ++i){
+	for(U32 i = 0; i < this->totempole_.getBlocks(); ++i){
 		buffer_size += this->totempole_[i].uncompressed_size;
 	}
 
@@ -82,7 +82,7 @@ bool TomahawkReader::getBlocks(void){
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().size() << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflating " << this->totempole_.getHeader().getNumberBlocks() << " blocks into " << Helpers::ToPrettyString(buffer_size/1000) << " kb..." << std::endl;
 
 	this->data_.resize(buffer_size + 1000);
 

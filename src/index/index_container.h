@@ -5,11 +5,15 @@
 #include <iterator> // forward_iterator_tag
 
 #include "../support/type_definitions.h"
+#include "../io/BasicBuffer.h"
 #include "index_entry.h"
 
 namespace Tomahawk{
 namespace Totempole{
 
+/**<
+ * STL-like container for Tomahawk index entries
+ */
 class IndexContainer{
 private:
 	typedef IndexContainer        self_type;
@@ -39,6 +43,7 @@ public:
 
 	}
 
+    // Functions for when interpreting from a byte stream
 	IndexContainer(const char* const data_buffer, const size_t l_buffer_length);
 	IndexContainer(const buffer_type& data_buffer);
 

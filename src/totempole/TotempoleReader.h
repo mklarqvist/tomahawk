@@ -48,9 +48,9 @@ public:
 	const entry_type& front(void) const{ return(this->entries[0]); }
 	const entry_type& back(void) const{ return(this->entries[this->getBlocks() - 1]); };
 
-	inline const U32& getLargestBlockSize(void) const{ return this->header.largest_uncompressed; }
-	inline const U32  getBlocks(void) const{ return this->header.size(); }
-	inline const U64  getSamples(void) const{ return 0; }
+	inline const U32& getLargestBlockSize(void) const{ return this->header.getLargestUncompressedBlock(); }
+	inline const U32  getBlocks(void) const{ return this->header.getNumberBlocks(); }
+	inline const U64  getSamples(void) const{ return this->header.getNumberSamples(); }
 	inline const U32& getContigs(void) const{ return this->n_contigs; }
 	inline const U32& size(void) const{ return this->n_contigs; }
 	inline const entry_type& operator[](const U32 p) const{ return this->entries[p]; }
