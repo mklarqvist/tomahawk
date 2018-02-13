@@ -232,6 +232,23 @@ public:
 		return false;
 	}
 
+	inline const S32 getContigID(const std::string& contig_name) const{
+		if(this->contigs_hash_table_ == nullptr)
+			return false;
+
+		if(contig_name.size() == 0)
+			return false;
+
+		if(this->contigs_hash_table_->occupied() == 0)
+			return false;
+
+		S32* target = nullptr;
+		if(this->contigs_hash_table_->GetItem(&contig_name[0], &contig_name, target, contig_name.length())){
+			return(*target);
+		}
+		return(-1);
+	}
+
 	// Updater
 	inline void addLiteral(const std::string& string){ this->literals_ += string; }
 	inline const bool validate(void) const{ return(this->magic_.validate()); }

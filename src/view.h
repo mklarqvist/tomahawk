@@ -76,26 +76,26 @@ int view(int argc, char** argv){
 	}
 
 	static struct option long_options[] = {
-		{"input",		required_argument, 0, 'i' },
-		{"output",		optional_argument, 0, 'o' },
-		{"minP",		optional_argument, 0, 'p' },
-		{"maxP",		optional_argument, 0, 'P' },
-		{"minR2",		optional_argument, 0, 'r' },
-		{"maxR2",		optional_argument, 0, 'R' },
-		{"minDP",	optional_argument, 0, 'd' },
-		{"maxDP",	optional_argument, 0, 'D' },
-		{"minChi",	optional_argument, 0, 'x' },
-		{"maxChi",	optional_argument, 0, 'X' },
-		{"minAlelles",	optional_argument, 0, 'a' },
-		{"maxAlleles",	optional_argument, 0, 'A' },
-		{"minMP",	optional_argument, 0, 'm' },
-		{"maxMP",	optional_argument, 0, 'M' },
-		{"flagInclude",	optional_argument, 0, 'f' },
-		{"flagExclude",	optional_argument, 0, 'F' },
-		{"headerOnly",	no_argument, 0, 'H' },
-		{"noHeader",	no_argument, 0, 'h' },
-		{"dropGenotypes",	optional_argument, 0, 'G' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",       required_argument, 0, 'i' },
+		{"output",      optional_argument, 0, 'o' },
+		{"minP",        optional_argument, 0, 'p' },
+		{"maxP",        optional_argument, 0, 'P' },
+		{"minR2",       optional_argument, 0, 'r' },
+		{"maxR2",       optional_argument, 0, 'R' },
+		{"minDP",       optional_argument, 0, 'd' },
+		{"maxDP",       optional_argument, 0, 'D' },
+		{"minChi",      optional_argument, 0, 'x' },
+		{"maxChi",      optional_argument, 0, 'X' },
+		{"minAlelles",  optional_argument, 0, 'a' },
+		{"maxAlleles",  optional_argument, 0, 'A' },
+		{"minMP",       optional_argument, 0, 'm' },
+		{"maxMP",       optional_argument, 0, 'M' },
+		{"flagInclude", optional_argument, 0, 'f' },
+		{"flagExclude", optional_argument, 0, 'F' },
+		{"headerOnly",  no_argument, 0, 'H' },
+		{"noHeader",    no_argument, 0, 'h' },
+		{"dropGenotypes",optional_argument, 0, 'G' },
+		{"silent",      no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
@@ -337,7 +337,6 @@ int view(int argc, char** argv){
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		std::cerr << Tomahawk::Helpers::timestamp("DEBUG") << "In TWO reader" << std::endl;
 		Tomahawk::TomahawkOutputReader reader;
 		reader.setWriteHeader(outputHeader);
 		Tomahawk::OutputFilter& filter = reader.getFilter();
@@ -350,10 +349,10 @@ int view(int argc, char** argv){
 		if(!reader.open(input))
 			return 1;
 
-		//if(!reader.addRegions(filter_regions)){
-		//	std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
-		//	return 1;
-		//}
+		if(!reader.addRegions(filter_regions)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+			return 1;
+		}
 
 		if(!reader.view())
 			return 1;

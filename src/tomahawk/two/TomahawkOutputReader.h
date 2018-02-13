@@ -58,7 +58,7 @@ public:
 
 
 	bool addRegions(std::vector<std::string>& positions);
-	bool OpenExtend(const std::string input);
+	//bool OpenExtend(const std::string input);
 
 	// Streaming functions
 	/**<
@@ -91,6 +91,8 @@ public:
 	output_container_type getContainerBlock(const U32 blockID);
 	output_container_type getContainerBlock(std::vector<U32> blocks);
 
+	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
+
 	// Basic operations
 	bool view(void);
 	bool view(const interval_type& interval);
@@ -116,9 +118,7 @@ private:
 	bool __Open(const std::string input);
 	bool ParseHeader(void);
 	bool ParseHeaderExtend(void);
-	bool __ParseRegion(const std::string& region, interval_type& interval);
-	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
-	bool __ParseRegionIndexedBlocks(void);
+
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
@@ -127,8 +127,10 @@ private:
 	bool __checkRegionNoIndex(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
-	bool addRegionsIndexed(std::vector<std::string>& positions);
-	bool addRegionsUnindexed(std::vector<std::string>& positions);
+	bool __addRegions(std::vector<std::string>& positions);
+	bool __ParseRegion(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexedBlocks(void);
 
 public:
 	U64            filesize_;  // filesize
@@ -147,8 +149,8 @@ public:
 
 	filter_type filters_;	// filter parameters
 
-	//tree_type** interval_tree;
-	//std::vector<interval_type>* interval_tree_entries;
+	tree_type** interval_tree;
+	std::vector<interval_type>* interval_tree_entries;
 };
 
 } /* namespace Tomahawk */
