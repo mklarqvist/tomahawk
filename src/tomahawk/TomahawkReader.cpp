@@ -30,14 +30,14 @@ bool TomahawkReader::open(const std::string input){
 
 	this->stream_.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open file..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open file handle: " << input << std::endl;
 	}
 	this->filesize_ = this->stream_.tellg();
 
 	this->stream_.seekg(this->filesize_ - TWK_FOOTER_LENGTH);
 	this->stream_ >> this->footer_;
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open file..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Stream corrupted after loading footer..." << std::endl;
 		return false;
 	}
 

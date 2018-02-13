@@ -13,6 +13,8 @@
 #include "../tomahawk/meta_entry.h"
 #include "../index/index_entry.h"
 #include "../index/index_container.h"
+#include "../index/index.h"
+#include "../index/footer.h"
 
 namespace Tomahawk{
 namespace IO{
@@ -29,6 +31,8 @@ private:
 	typedef Support::OutputEntrySupport     entry_support_type;
 	typedef Totempole::IndexEntry           header_entry_type;
 	typedef Totempole::IndexContainer       index_container_type;
+	typedef Index                           index_type;
+	typedef Totempole::Footer               footer_type;
 
 public:
 	OutputWriter(void) :
@@ -41,7 +45,8 @@ public:
 		stream(nullptr),
 		buffer(this->l_flush_limit*2),
 		spin_lock(new spin_lock_type),
-		index_container(new index_container_type)
+		index_(new index_type),
+		footer_(new footer_type)
 	{
 
 	}
@@ -56,7 +61,8 @@ public:
 		stream(new std::ofstream(input_file, std::ios::binary | std::ios::out)),
 		buffer(this->l_flush_limit*2),
 		spin_lock(new spin_lock_type),
-		index_container(new index_container_type)
+		index_(new index_type),
+		footer_(new footer_type)
 	{
 
 	}
@@ -71,7 +77,8 @@ public:
 		stream(other.stream),
 		buffer(other.buffer.capacity()),
 		spin_lock(other.spin_lock),
-		index_container(other.index_container)
+		index_(other.index_),
+		footer_(other.footer_)
 	{
 
 	}
@@ -82,7 +89,8 @@ public:
 			this->stream->close();
 			delete this->stream;
 			delete this->spin_lock;
-			delete this->index_container;
+			delete this->index_;
+			delete this->footer_;
 		}
 	}
 
@@ -114,6 +122,15 @@ public:
 		return(twk_header.write(*this->stream));
 	}
 
+	void WriteFinal(void){
+		this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
+		this->footer_->offset_end_of_data = this->stream->tellp();
+		this->index_->setSorted(false);
+
+		*this->stream << *this->index_;
+		*this->stream << *this->footer_;
+	}
+
 	void flush(void){
 		if(this->buffer.size() > 0){
 			if(!this->compressor.Deflate(this->buffer)){
@@ -128,7 +145,7 @@ public:
 			this->index_entry.byte_offset_end = (U64)this->stream->tellp();
 			this->index_entry.n_variants = this->buffer.size() / sizeof(entry_type);
 			//*this->stream << this->index_entry;
-			*this->index_container += this->index_entry;
+			this->index_->getContainer() += this->index_entry;
 			//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
 			++this->n_blocks;
 
@@ -231,7 +248,8 @@ private:
 	buffer_type           buffer;
 	compression_type      compressor;
 	spin_lock_type*       spin_lock;
-	index_container_type* index_container;
+	index_type*           index_;
+	footer_type*          footer_;
 };
 
 }

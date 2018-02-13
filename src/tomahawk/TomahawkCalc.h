@@ -7,7 +7,6 @@
 #include "../io/output_writer.h"
 #include "../index/index.h"
 
-
 namespace Tomahawk {
 
 class TomahawkCalc{
@@ -204,8 +203,8 @@ bool TomahawkCalc::Calculate(){
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes. " << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Output " << Helpers::ToPrettyString(writer.sizeEntries()) << " in " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks" << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 	}
 
 	// Cleanup
@@ -213,6 +212,7 @@ bool TomahawkCalc::Calculate(){
 
 	// Flush writer
 	writer.flush();
+	writer.WriteFinal();
 	/*
 	if(!writer.finalise()){
 		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;

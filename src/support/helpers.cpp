@@ -223,5 +223,25 @@ bool parsePositionalStringTWO(const std::string& param){
 	return(matchPositionalStringTWO(param));
 }
 
+S32 char2int(const char& input){
+	if(input >= '0' && input <= '9') return input - '0';
+	else if(input >= 'A' && input <= 'F') return input - 'A' + 10;
+	else if(input >= 'a' && input <= 'f') return input - 'a' + 10;
+	throw std::invalid_argument("Invalid input string");
+}
+
+bool HexToBytes(const std::string& hex, uint8_t* target){
+	if(hex.size() % 2 != 0){
+		std::cerr << "illegal uneven hex" << std::endl;
+		return false;
+	}
+
+	U32 p = 0;
+	for (U32 i = 0; i < hex.length(); i += 2, ++p)
+		target[p] = char2int(hex[i])*16 + char2int(hex[i+1]);
+
+	return true;
+}
+
 }
 }

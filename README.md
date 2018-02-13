@@ -8,8 +8,8 @@ Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic pro
 primary internal functions: 
 
 1) iterate over sites and RLE entries; 
-2) divide compressed genotypic vectors into groups;
-3) computing the inner product of compressed genotypic vectors.
+2) partition compressed genotypic vectors into groups;
+3) computing the inner product of compressed genotypic vectors;
 
 We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
 
@@ -63,14 +63,11 @@ from Hardy-Weinberg equilibrium with a probability < 0.001
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
 ```
 
-### Import-extend
-If you have split up your `vcf`/`bcf` files into multiple disjoint files
-(such as one per chromosome) it is possible to iteratively import and extend a `twk` file:
-```bash
-tomahawk import -i file.bcf -e extend.twk -m 0.2 -H 1e-3
-```
-
-### Calculating linkage disequilibrium
+### Calculating all-vs-all linkage disequilibrium
+In this example we force computations to use phased math (`-p`) and show a live progressbar
+(`-d`). Generated data is filtered for minimum genotype frequency (`-a`), squared correlation
+coefficient (`-r`) and by test statistics P-value (`-p`). Total computation is partitioned into 990 psuedo-balanced blocks (`-c`)
+and select the first partition (`-C`) to compute using 28 threads (`-t`);
 ```bash
 tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28
 ```

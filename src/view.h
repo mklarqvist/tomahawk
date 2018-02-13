@@ -329,7 +329,7 @@ int view(int argc, char** argv){
 		tomahawk.setDropGenotypes(dropGenotypes);
 		tomahawk.setShowHeader(outputHeader);
 		if(!tomahawk.open(input)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to open!" << std::endl;
 			return 1;
 		}
 

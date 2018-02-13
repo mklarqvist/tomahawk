@@ -8,7 +8,7 @@
 namespace Tomahawk {
 namespace Totempole {
 
-#define TWK_FOOTER_LENGTH	(6*sizeof(U64) + sizeof(U32) + sizeof(U64))
+#define TWK_FOOTER_LENGTH	(Constants::eof_length + sizeof(U32) + sizeof(U64))
 
 struct Footer{
 public:
@@ -19,14 +19,14 @@ public:
 		offset_end_of_data(0),
 		l_largest_uncompressed(0)
 	{
-		memcpy(&this->EOF_marker[0], Constants::eof, sizeof(U64)*Constants::eof_length);
+		Helpers::HexToBytes(Constants::eof_hex, &this->EOF_marker[0]);
 	}
 
 	Footer(const char* const data) :
 		offset_end_of_data(*reinterpret_cast<const U64* const>(data)),
 		l_largest_uncompressed(*reinterpret_cast<const U64* const>(&data[sizeof(U64)]))
 	{
-		memcpy(&this->EOF_marker[0], &data[sizeof(U64)+sizeof(U32)], sizeof(U64)*Constants::eof_length);
+		memcpy(&this->EOF_marker[0], &data[sizeof(U64)+sizeof(U32)], Constants::eof_length);
 	}
 
 	~Footer() = default;
@@ -39,28 +39,32 @@ public:
 	inline const bool validate(void) const{
 		if(this->offset_end_of_data == 0) return false;
 		if(this->l_largest_uncompressed == 0) return false;
-		if(strncmp(reinterpret_cast<const char* const>(&this->EOF_marker[0]), reinterpret_cast<const char* const>(&Constants::eof[0]), sizeof(U64)*Constants::eof_length) != 0) return false;
+
+		BYTE reference[Constants::eof_length];
+		Helpers::HexToBytes(Constants::eof_hex, &reference[0]);
+
+		if(strncmp(reinterpret_cast<const char* const>(&this->EOF_marker[0]), reinterpret_cast<const char* const>(&reference[0]), Constants::eof_length) != 0) return false;
 		return true;
 	}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& footer){
 		stream.write(reinterpret_cast<const char*>(&footer.offset_end_of_data), sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&footer.l_largest_uncompressed), sizeof(U32));
-		stream.write(reinterpret_cast<const char*>(&footer.EOF_marker), sizeof(U64)*Constants::eof_length);
+		stream.write(reinterpret_cast<const char*>(&footer.EOF_marker), Constants::eof_length);
 		return(stream);
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& footer){
-		stream.read(reinterpret_cast<char *>(&footer.offset_end_of_data), sizeof(U64));
-		stream.read(reinterpret_cast<char *>(&footer.l_largest_uncompressed), sizeof(U32));
-		stream.read(reinterpret_cast<char*>(&footer.EOF_marker), sizeof(U64)*Constants::eof_length);
+		stream.read(reinterpret_cast<char*>(&footer.offset_end_of_data), sizeof(U64));
+		stream.read(reinterpret_cast<char*>(&footer.l_largest_uncompressed), sizeof(U32));
+		stream.read(reinterpret_cast<char*>(&footer.EOF_marker), Constants::eof_length);
 		return(stream);
 	}
 
 public:
-	U64 offset_end_of_data;      // number of blocks in Tomahawk
-	U32 l_largest_uncompressed;  // largest block-size in bytes
-	U64 EOF_marker[Constants::eof_length];
+	U64  offset_end_of_data;      // number of blocks in Tomahawk
+	U32  l_largest_uncompressed;  // largest block-size in bytes
+    BYTE EOF_marker[Constants::eof_length];
 };
 
 }
