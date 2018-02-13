@@ -22,7 +22,26 @@ public:
 
 public:
 	// if interpreted directly from buffer stream
-	OutputEntry()  = default;
+	OutputEntry() :
+		FLAGS(0),
+		AcontigID(0),
+		Amissing(false),
+		Aphased(false),
+		Aposition(0),
+		BcontigID(0),
+		Bmissing(false),
+		Bphased(false),
+		Bposition(0),
+		p1(0), p2(0), q1(0), q2(0),
+		D(0), Dprime(0),
+		R(0), R2(0),
+		P(0),
+		chiSqFisher(0),
+		chiSqModel(0)
+	{
+
+	}
+
 	~OutputEntry() = default;
 	// Copy data from stream
 	OutputEntry(const char* const data_buffer);
@@ -62,6 +81,7 @@ public:
 		return(os);
 	}
 
+	// Write to buffer
 	friend buffer_type& operator<<(buffer_type& b, const self_type& entry){
 		b.Add(reinterpret_cast<const char*>(&entry), sizeof(self_type));
 		return(b);
@@ -75,8 +95,8 @@ public:
 	U32    Bmissing: 1, Bphased: 1, Bposition: 30;
 	float  p1, p2, q1, q2;
 	float  D, Dprime; // D and D'
-	float  R2; // Correlation coefficient
-	double P;  // P-value
+	float  R, R2;     // Correlation coefficient
+	double P;         // P-value
 	double chiSqFisher;
 	double chiSqModel;
 };

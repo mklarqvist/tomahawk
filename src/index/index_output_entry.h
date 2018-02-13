@@ -58,27 +58,27 @@ public:
 	}
 
 	void reset(void){
-		this->byte_offset_from       = 0;
-		this->byte_offset_to   = 0;
-		this->contigID_from      = 0;
-		this->contigID_to        = 0;
-		this->min_position_from   = 0;
-		this->max_position_from   = 0;
-		this->min_position_to     = 0;
-		this->max_position_to     = 0;
+		this->byte_offset_from  = 0;
+		this->byte_offset_to    = 0;
+		this->contigID_from     = 0;
+		this->contigID_to       = 0;
+		this->min_position_from = 0;
+		this->max_position_from = 0;
+		this->min_position_to   = 0;
+		this->max_position_to   = 0;
 		this->n_entries         = 0;
 		this->uncompressed_size = 0;
 	}
 
 public:
-	U64 byte_offset_from;       // tellg() position in stream for start of record in Tomahawk file
-	U64 byte_offset_to;   // tellg() position in stream for start of record in Tomahawk file
-	S32 contigID_from;      // contig identifier
-	S32 contigID_to;        // contig identifier
-	U64 min_position_from;   // smallest bp position in tomahawk block
-	U64 max_position_from;   // largest bp position in tomahawk block
-	U64 min_position_to;     // smallest bp position in tomahawk block
-	U64 max_position_to;     // largest bp position in tomahawk block
+	U64 byte_offset_from;  // tellg() position in stream for start of record in Tomahawk file
+	U64 byte_offset_to;    // tellg() position in stream for start of record in Tomahawk file
+	S32 contigID_from;     // contig identifier
+	S32 contigID_to;       // contig identifier
+	U64 min_position_from; // smallest bp position in tomahawk block
+	U64 max_position_from; // largest bp position in tomahawk block
+	U64 min_position_to;   // smallest bp position in tomahawk block
+	U64 max_position_to;   // largest bp position in tomahawk block
 	U32 n_entries;         // number of entries in this block
 	U32 uncompressed_size; // uncompressed size of this block
 };

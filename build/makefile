@@ -8,7 +8,6 @@ RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include src/totempole/subdir.mk
 -include src/tomahawk/two/subdir.mk
 -include src/tomahawk/subdir.mk
 -include src/third_party/zlib/subdir.mk
@@ -71,7 +70,6 @@ post-build:
 	-mkdir -p ../bin; mv tomahawk ../bin/;
 	-@echo ' '
 
-.PHONY: all clean dependents
-.SECONDARY: post-build
+.PHONY: all clean dependents post-build
 
 -include ../makefile.targets

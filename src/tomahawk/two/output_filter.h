@@ -58,14 +58,14 @@ public:
 	double minP1, minP2, minQ1, minQ2;
 	double maxP1, maxP2, maxQ1, maxQ2;
 	double minMHF, maxMHF;
-	float minD, maxD;
-	float minDprime, maxDprime;
+	float  minD, maxD;
+	float  minDprime, maxDprime;
 	double minR2, maxR2;
 	double minP, maxP;
 	double minChiSquared, maxChiSquared;
 	double minPmodel, maxPmodel;
-	U16 filterValueInclude;
-	U16 filterValueExclude;
+	U16    filterValueInclude;
+	U16    filterValueExclude;
 
 	std::vector<filterFunction> filter_functions; // push filter functions to array and loop over
 };

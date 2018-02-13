@@ -3,6 +3,7 @@
 namespace Tomahawk{
 namespace IO{
 
+// These memcpy works because the struct is aligned without padding
 OutputEntry::OutputEntry(const char* const data_buffer){
 	memcpy(this, data_buffer, sizeof(self_type));
 }

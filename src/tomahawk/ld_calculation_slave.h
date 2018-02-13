@@ -17,7 +17,7 @@
 #include "genotype_meta_container_reference.h"
 #include "ld_calculation_simd_helper.h"
 #include "two/output_entry_support.h"
-#include "two/output_slave_writer.h"
+#include "../io/output_writer.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -259,7 +259,7 @@ class LDSlave{
 	typedef const MetaEntry<T>                   meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::IndexEntry                totempole_entry_type;
-	typedef IO::OutputSlaveWriter<T>             output_manager_type;
+	typedef IO::OutputWriter                     output_writer_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
@@ -276,7 +276,7 @@ class LDSlave{
 
 public:
 	LDSlave(const manager_type& manager,
-           output_manager_type& writer,
+			output_writer_type& writer,
         Interface::ProgressBar& progress,
   const TomahawkCalcParameters& parameters,
               const work_order& orders);
@@ -297,7 +297,7 @@ public:
 	inline const U64& getNoHets(void) const{ return this->no_uncertainty; }
 	inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
 	inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
-	output_manager_type& getOutputManager(void){ return(this->output_manager); }
+	inline output_writer_type& getWriter(void){ return(this->output_writer); }
 
 private:
 	bool Calculate();
@@ -353,7 +353,7 @@ private:
 	std::thread thread;
 
 	// writer manager
-	output_manager_type output_manager; // each thread has their own output manager with its own buffer
+	output_writer_type output_writer; // each thread has their own output manager with its own buffer
 
 	// progress
 	progress_bar_type& progress;
@@ -374,7 +374,7 @@ private:
 
 template <class T>
 LDSlave<T>::LDSlave(const manager_type& manager,
-		output_manager_type& writer,
+		output_writer_type& writer,
 		progress_bar_type& progress,
 		const parameter_type& parameters,
 		const work_order& orders) :
@@ -390,7 +390,7 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	//false_negative(0),
 	fisherController(1024),
 	manager(manager),
-	output_manager(writer),
+	output_writer(writer),
 	progress(progress),
 	phase_function_across(nullptr),
 	orders(orders),
@@ -423,7 +423,7 @@ LDSlave<T>& LDSlave<T>::operator+=(const LDSlave<T>& other){
 	this->insufficent_alleles += other.insufficent_alleles;
 	//this->false_positive    += other.false_positive;
 	//this->false_negative    += other.false_negative;
-	this->output_manager      += other.output_manager;
+	this->output_writer       += other.output_writer;
 	return(*this);
 }
 
@@ -1505,7 +1505,7 @@ bool LDSlave<T>::Calculate(void){
 	}
 
 	// Finish the output manager
-	this->output_manager.flushBlock();
+	this->output_writer.flush();
 
 	return true;
 }
@@ -1522,24 +1522,24 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
 		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
 			if(this->CalculateLDPhased(block1, block2)){
-				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDPhasedVectorized(block1, block2)){
-				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
 	} else {
 		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
 			if(this->CalculateLDUnphased(block1, block2)){
-				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		} else {
 			if(this->CalculateLDUnphasedVectorized(block1, block2)){
-				//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
 			}
 		}
@@ -1547,7 +1547,7 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 
 #elif SLAVE_DEBUG_MODE == 2
 	if(this->CalculateLDPhasedVectorizedNoMissing(block1, block2)){
-		this->output_manager.Add(block1, block2, this->helper);
+		this->output_writer.Add(block1, block2, this->helper);
 	}
 #elif SLAVE_DEBUG_MODE == 3
 		this->CalculateLDPhased(block1, block2);
@@ -1596,12 +1596,12 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 
 	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
 		if(this->CalculateLDPhased(block1, block2)){
-			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDPhasedVectorized(block1, block2)){
-			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
@@ -1620,12 +1620,12 @@ void LDSlave<T>::CompareBlocksFunctionForcedUnphased(const block_type& block1, c
 
 	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
 		if(this->CalculateLDUnphased(block1, block2)){
-			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDUnphasedVectorized(block1, block2)){
-			//this->output_manager.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
@@ -1647,8 +1647,8 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
 		}
 
 		// Update progress
-		this->progress(block1.size() - (i + 1), this->output_manager.getProgressCounts());
-		this->output_manager.ResetProgress();
+		this->progress(block1.size() - (i + 1), this->output_writer.getProgressCounts());
+		this->output_writer.ResetProgress();
 		++block1;
 	}
 	return true;
@@ -1670,8 +1670,8 @@ bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
 		}
 
 		// Update progress
-		this->progress(block2.size(), this->output_manager.getProgressCounts());
-		this->output_manager.ResetProgress();
+		this->progress(block2.size(), this->output_writer.getProgressCounts());
+		this->output_writer.ResetProgress();
 
 		// Reset position in block2 and increment position in block1
 		block2.resetIterator();

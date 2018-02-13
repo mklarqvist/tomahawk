@@ -201,8 +201,9 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	return true;
 }
 
+/*
 bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit){
-	/*
+
 	std::cerr << Helpers::timestamp("SORT") << "Index found..." << std::endl;
 
 	std::vector< totempole_entry > blocks;
@@ -322,9 +323,10 @@ bool OutputSorter::__sortIndexed(basic_writer_type& toi_writer, const std::strin
 	}
 	delete [] instances;
 	delete [] slaves;
-	*/
+
 	return true;
 }
+*/
 
 bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& destinationPrefix, const U32 block_size){
 	/*

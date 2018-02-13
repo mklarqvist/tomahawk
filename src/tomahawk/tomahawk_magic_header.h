@@ -14,6 +14,7 @@ public:
 	TomahawkMagicHeader() :
 		major_version(Tomahawk::Constants::PROGRAM_VERSION_MAJOR),
 		minor_version(Tomahawk::Constants::PROGRAM_VERSION_MINOR),
+		file_type(0),
 		n_samples(0),
 		n_contigs(0),
 		controller(0),
@@ -28,6 +29,7 @@ public:
 	TomahawkMagicHeader(const self_type& other) :
 		major_version(other.major_version),
 		minor_version(other.minor_version),
+		file_type(other.file_type),
 		n_samples(other.n_samples),
 		n_contigs(other.n_contigs),
 		controller(other.controller),
@@ -56,6 +58,7 @@ private:
 		stream.write(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MAJOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MINOR), sizeof(float));
+		stream.write(reinterpret_cast<const char*>(&header.file_type),  sizeof(BYTE));
 		stream.write(reinterpret_cast<const char*>(&header.n_samples),  sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contigs),  sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&header.controller), sizeof(U16));
@@ -68,6 +71,7 @@ private:
 		stream.read(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
 		stream.read(reinterpret_cast<char*>(&header.major_version), sizeof(float));
 		stream.read(reinterpret_cast<char*>(&header.minor_version), sizeof(float));
+		stream.read(reinterpret_cast<char*>(&header.file_type),     sizeof(BYTE));
 		stream.read(reinterpret_cast<char*>(&header.n_samples),     sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&header.n_contigs),     sizeof(U32));
 		stream.read(reinterpret_cast<char*>(&header.controller),    sizeof(U16));
@@ -80,6 +84,7 @@ public:
 	char  magic_string[Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH];
 	float major_version;
 	float minor_version;
+	BYTE  file_type;
 	U64   n_samples;
 	U32   n_contigs;
 	U16   controller;

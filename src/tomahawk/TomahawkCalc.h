@@ -4,7 +4,7 @@
 #include "TomahawkReader.h"
 #include "twk_reader_implementation.h"
 #include "genotype_meta_container_reference.h"
-#include "two/output_slave_writer.h"
+#include "../io/output_writer.h"
 #include "../index/index.h"
 
 
@@ -50,11 +50,13 @@ bool TomahawkCalc::Calculate(){
 	header.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
 	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
-	IO::OutputSlaveWriter<T> writer;
-	if(!writer.open(this->output_file, header.magic_)){
+	IO::OutputWriter writer;
+	if(!writer.open(this->output_file)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
+
+	writer.WriteHeaders(this->reader.getHeader());
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1
@@ -198,7 +200,7 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
-	writer = slaves[0]->getOutputManager();
+	writer = slaves[0]->getWriter();
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
@@ -209,12 +211,15 @@ bool TomahawkCalc::Calculate(){
 	delete [] slaves;
 
 	// Flush writer
-	writer.flushBlock();
+	writer.flush();
+	/*
 	if(!writer.finalise()){
 		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
 		return false;
 	}
+
 	writer.close();
+	*/
 
 	return true;
 }
