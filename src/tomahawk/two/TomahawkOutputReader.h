@@ -10,44 +10,55 @@
 #include "../../io/BasicBuffer.h"
 #include "../../io/compression/TGZFController.h"
 #include "../../support/MagicConstants.h"
-#include "../../algorithm/OpenHashTable.h"
+#include "../../algorithm/open_hashtable.h"
 #include "../../support/type_definitions.h"
 #include "../../third_party/intervalTree.h"
 #include "../../tomahawk/output_container.h"
 #include "../../tomahawk/output_container_reference.h"
 #include "../two/output_entry.h"
 #include "output_filter.h"
+#include "../../index/index.h"
+#include "../../index/footer.h"
+#include "../../index/tomahawk_header.h"
 
 namespace Tomahawk {
-namespace IO {
 
 class TomahawkOutputReader {
 private:
-	typedef OutputEntry                    entry_type;
+	typedef IO::OutputEntry                entry_type;
 	typedef OutputFilter                   filter_type;
 	typedef OutputContainer                output_container_type;
 	typedef OutputContainerReference       output_container_reference_type;
-	typedef IO::BasicBuffer                buffer_type;
 	typedef Totempole::HeaderContig        contig_type;
-	typedef TGZFHeader                     tgzf_header_type;
-	typedef TGZFController                 tgzf_controller_type;
-	typedef Hash::HashTable<std::string, U32> hash_table;
+	typedef IO::TGZFHeader                 tgzf_header_type;
 	typedef Algorithm::ContigInterval      interval_type;
-	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef TomahawkHeader                 header_type;
+	typedef Index                          index_type;
+	typedef IO::BasicBuffer                buffer_type;
+	typedef IO::TGZFController             tgzf_controller_type;
+	typedef Totempole::Footer              footer_type;
 
-public:
-	enum WRITER_TYPE {binary, natural};
+	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef Hash::HashTable<std::string, U32> hash_table;
 
 public:
 	TomahawkOutputReader();
 	~TomahawkOutputReader();
 
-	const entry_type* operator[](const U32 p) const{ return(reinterpret_cast<const entry_type*>(&this->data_buffer[sizeof(entry_type)*p])); }
+	// Accessors
+	inline footer_type& getFooter(void){ return(this->footer_); }
+	inline const footer_type& getFooter(void) const{ return(this->footer_); }
+	inline const index_type& getIndex(void) const{ return(*this->index_); }
+	inline index_type& getIndex(void){ return(*this->index_); }
+	inline const header_type& getHeader(void) const{ return(this->header_); }
+	inline header_type& getHeader(void){ return(this->header_); }
+	inline index_type* getIndexPointer(void){ return(this->index_); }
+
+	bool open(const std::string input);
+
 
 	bool addRegions(std::vector<std::string>& positions);
-	bool Open(const std::string input);
 	bool OpenExtend(const std::string input);
-	inline void addLiteral(const std::string& string){ this->literals += string; }
 
 	// Streaming functions
 	/**<
@@ -69,10 +80,10 @@ public:
 
 	// Access: no random access. All these functions
 	//         assumes that data is loaded linearly from disk
-	inline output_container_type getContainer(void){ return(output_container_type(this->data_buffer)); }
+	inline output_container_type getContainer(void){ return(output_container_type(this->data_)); }
 	output_container_type getContainerVariants(const U64 n_variants);
 	output_container_type getContainerBytes(const size_t l_data);
-	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_buffer)); }
+	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_)); }
 
 	// Access: requires complete (if n = 1) or partial (if n > 1) random access
 	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
@@ -86,7 +97,6 @@ public:
 	bool view(const std::vector<interval_type>& intervals);
 
 	// Other
-	bool view(const std::string& filename);
 	bool index(const std::string& filename);
 	bool summary(const std::string& input, const U32 bins);
 
@@ -96,9 +106,9 @@ public:
 
 	//
 	bool setWriterType(const int type);
-	void setWriteHeader(const bool write){ this->output_header = write; }
+	void setWriteHeader(const bool write){ this->showHeader_ = write; }
 
-	filter_type& getFilter(void){ return this->filter; }
+	inline filter_type& getFilter(void){ return this->filters_; }
 	bool OpenWriter(void);
 	bool OpenWriter(const std::string output_file);
 
@@ -121,28 +131,26 @@ private:
 	bool addRegionsUnindexed(std::vector<std::string>& positions);
 
 public:
-	U64 filesize;	// input file size
-	U64 iterator_position_block;
-	U64 iterator_position_variant;
-	U64 size;
-	bool hasIndex;
-	std::ifstream stream; // reader stream
-	//header_type header; // header
-	bool output_header;
-	buffer_type compressed_buffer; // internal buffer
-	buffer_type data_buffer; // internal buffer
-	tgzf_controller_type tgzf_controller; // TGZF controller
-	filter_type filter;	// filter parameters
-	WRITER_TYPE writer_output_type;
-	std::string literals; // header literals
-	//writer_type* writer; // writer interface
-	contig_type* contigs;
-	hash_table* contig_htable; // map input string to internal contigID
-	tree_type** interval_tree;
-	std::vector<interval_type>* interval_tree_entries;
+	U64            filesize_;  // filesize
+	U64            offset_end_of_data_;
+	bool           showHeader_; // flag to output header or not
+	std::ifstream  stream_;    // reader stream
+
+	header_type    header_;
+	footer_type    footer_;
+	index_type*    index_;
+
+	buffer_type          buffer_;          // input buffer
+	buffer_type          data_;            // inflate buffer
+	buffer_type          outputBuffer_;    // output buffer
+	tgzf_controller_type tgzf_controller_; // compression controller
+
+	filter_type filters_;	// filter parameters
+
+	//tree_type** interval_tree;
+	//std::vector<interval_type>* interval_tree_entries;
 };
 
-}
 } /* namespace Tomahawk */
 
 #endif /* TOMAHAWKOUTPUTREADER_H_ */

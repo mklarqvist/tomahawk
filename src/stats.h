@@ -107,7 +107,7 @@ int stats(int argc, char** argv){
 		return(1);
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		Tomahawk::IO::TomahawkOutputReader reader;
+		Tomahawk::TomahawkOutputReader reader;
 		//reader.setWriteHeader(outputHeader);
 		//Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
 		//filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data

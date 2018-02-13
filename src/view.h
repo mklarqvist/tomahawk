@@ -337,26 +337,27 @@ int view(int argc, char** argv){
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		Tomahawk::IO::TomahawkOutputReader reader;
+		std::cerr << Tomahawk::Helpers::timestamp("DEBUG") << "In TWO reader" << std::endl;
+		Tomahawk::TomahawkOutputReader reader;
 		reader.setWriteHeader(outputHeader);
 		Tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
-		/*
-		if(!reader.setWriterType(outputType))
+
+		//if(!reader.setWriterType(outputType))
+		//	return 1;
+
+		if(!reader.open(input))
 			return 1;
 
-		if(!reader.Open(input))
+		//if(!reader.addRegions(filter_regions)){
+		//	std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+		//	return 1;
+		//}
+
+		if(!reader.view())
 			return 1;
 
-		if(!reader.addRegions(filter_regions)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
-			return 1;
-		}
-
-		if(!reader.view(input))
-			return 1;
-	*/
 
 	} else {
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;

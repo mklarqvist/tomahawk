@@ -11,7 +11,7 @@
 #include "../interface/progressbar.h"
 #include "TomahawkCalcParameters.h"
 #include "../algorithm/load_balancer_block.h"
-#include "../algorithm/GenotypeBitPacker.h"
+#include "../algorithm/genotype_bitpacker.h"
 #include "../io/BasicWriters.h"
 #include "../math/fisher_math.h"
 #include "genotype_meta_container_reference.h"
@@ -68,8 +68,8 @@ struct __methodCompare{
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& m){
 		// P, PV, PVM, U, UV, UVM
-		os << "P\t" << m.phased[0][0] << '\t' << m.phased[0][1] << '\t' << m.phased[0][2] << '\t' << m.phased[0][3] << std::endl;
-		os << "PV\t" << m.phased[1][0] << '\t' << m.phased[1][1] << '\t' << m.phased[1][2] << '\t' << m.phased[1][3] << std::endl;
+		os << "P\t"   << m.phased[0][0] << '\t' << m.phased[0][1] << '\t' << m.phased[0][2] << '\t' << m.phased[0][3] << std::endl;
+		os << "PV\t"  << m.phased[1][0] << '\t' << m.phased[1][1] << '\t' << m.phased[1][2] << '\t' << m.phased[1][3] << std::endl;
 		os << "PVM\t" << m.phased[2][0] << '\t' << m.phased[2][1] << '\t' << m.phased[2][2] << '\t' << m.phased[2][3] << std::endl;
 		os << "U\t";
 		for(U32 i = 0; i < 8; ++i) os << m.unphased[0][i] << '\t'; os << m.unphased[0][8] << std::endl;;

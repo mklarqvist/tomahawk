@@ -3,9 +3,9 @@
 
 #include <cassert>
 
+#include "../algorithm/open_hashtable.h"
 #include "index_contig.h"
 #include "../io/BasicBuffer.h"
-#include "../algorithm/OpenHashTable.h"
 #include "../tomahawk/tomahawk_magic_header.h"
 #include "../io/compression/TGZFController.h"
 

@@ -127,8 +127,10 @@ public:
 		this->footer_->offset_end_of_data = this->stream->tellp();
 		this->index_->setSorted(false);
 
+		this->stream->flush();
 		*this->stream << *this->index_;
 		*this->stream << *this->footer_;
+		this->stream->flush();
 	}
 
 	void flush(void){
@@ -137,6 +139,9 @@ public:
 				std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 				exit(1);
 			}
+
+			if(this->buffer.size() > l_largest_uncompressed)
+				this->l_largest_uncompressed = this->buffer.size();
 
 			this->spin_lock->lock();
 			this->index_entry.byte_offset = (U64)this->stream->tellp();

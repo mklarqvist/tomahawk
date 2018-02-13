@@ -1,5 +1,5 @@
-#ifndef ALGORITHM_GENOTYPEBITPACKER_H_
-#define ALGORITHM_GENOTYPEBITPACKER_H_
+#ifndef ALGORITHM_GENOTYPE_BITPACKER_H_
+#define ALGORITHM_GENOTYPE_BITPACKER_H_
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -86,4 +86,4 @@ private:
 }
 }
 
-#endif /* ALGORITHM_GENOTYPEBITPACKER_H_ */
+#endif /* ALGORITHM_GENOTYPE_BITPACKER_H_ */

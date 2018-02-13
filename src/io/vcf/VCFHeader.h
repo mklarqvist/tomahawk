@@ -8,7 +8,7 @@
 #include "VCFHeaderContig.h"
 #include "VCFHeaderLine.h"
 #include "../reader.h"
-#include "../../algorithm/OpenHashTable.h"
+#include "../../algorithm/open_hashtable.h"
 #include "../BasicBuffer.h"
 #include "../compression/TGZFController.h"
 

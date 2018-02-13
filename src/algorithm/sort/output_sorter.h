@@ -17,7 +17,7 @@ namespace Algorithm{
  */
 class OutputSorter{
 	typedef IO::OutputEntry                   entry_type;
-	typedef IO::TomahawkOutputReader          two_reader_type;
+	typedef TomahawkOutputReader              two_reader_type;
 	//typedef IO::WriterFile                    basic_writer_type;
 	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
 	typedef OutputSorter                      self_type;

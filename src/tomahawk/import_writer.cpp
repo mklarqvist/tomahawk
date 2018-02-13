@@ -99,7 +99,7 @@ int ImportWriter::WriteHeaders(void){
 
 void ImportWriter::WriteFinal(index_type& index, footer_type& footer){
 	footer.l_largest_uncompressed = this->largest_uncompressed_block_;
-	footer.offset_end_of_data = this->stream.tellp();
+	footer.offset_end_of_data     = this->stream.tellp();
 	index.setSorted(true);
 
 	this->stream << index;

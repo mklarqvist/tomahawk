@@ -108,7 +108,7 @@ int concat(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling concat..." << std::endl;
 	}
 
-	Tomahawk::IO::TomahawkOutputReader reader;
+	Tomahawk::TomahawkOutputReader reader;
 	if(input.size() == 0){
 		/*
 		if(!reader.concat(files, output)){

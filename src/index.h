@@ -52,7 +52,7 @@ int index(int argc, char** argv){
 	if(files[1] == Tomahawk::Constants::OUTPUT_SUFFIX){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR","INDEX") << "Twk files are already indexed..." << std::endl;
 	} else if(files[1] == Tomahawk::Constants::OUTPUT_LD_SUFFIX) {
-		Tomahawk::IO::TomahawkOutputReader reader;
+		Tomahawk::TomahawkOutputReader reader;
 		/*
 		if(!reader.index(inputFile)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "INDEX") << "Failed to index file!" << std::endl;

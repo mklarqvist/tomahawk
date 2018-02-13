@@ -1,9 +1,9 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 
+#include "../algorithm/genotype_bitpacker.h"
 #include "genotype_bitvector.h"
 #include "genotype_container_runlength.h"
-#include "../algorithm/GenotypeBitPacker.h"
 #include "genotype_objects.h"
 
 namespace Tomahawk{
