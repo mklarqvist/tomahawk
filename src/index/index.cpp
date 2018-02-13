@@ -7,14 +7,18 @@ Index::~Index(){}
 
 // Reading an index from a byte stream
 Index::Index(const char* const data, const U32 l_data) :
-	meta_container_(data, *reinterpret_cast<const size_type* const>(data)*TWK_INDEX_META_ENTRY_SIZE+sizeof(size_type)),
-	container_(&data[this->meta_container_.size() * TWK_INDEX_META_ENTRY_SIZE + sizeof(size_type)], l_data - (this->meta_container_.size() * TWK_INDEX_META_ENTRY_SIZE + sizeof(size_type)))
+	controller_(data),
+	meta_container_(&data[sizeof(BYTE)], *reinterpret_cast<const size_type* const>(&data[sizeof(BYTE)])*TWK_INDEX_META_ENTRY_SIZE+sizeof(size_type)),
+	container_(&data[sizeof(BYTE) + this->meta_container_.size() * TWK_INDEX_META_ENTRY_SIZE + sizeof(size_type)], l_data - (this->meta_container_.size() * TWK_INDEX_META_ENTRY_SIZE + sizeof(size_type) + sizeof(BYTE)))
 {
 
 }
 
 bool Index::buildMetaIndex(const U32 n_contigs){
 	if(this->getContainer().size() == 0)
+		return false;
+
+	if(this->isSorted() == false)
 		return false;
 
 	meta_entry_type reference_entry;

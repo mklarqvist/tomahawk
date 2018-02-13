@@ -7,12 +7,12 @@
 #include "../io/compression/TGZFController.h"
 #include "../algorithm/spinlock.h"
 #include "../index/tomahawk_header.h"
-#include "../index/index_output_entry.h"
+#include "../index/index_entry.h"
 #include "../tomahawk/two/output_entry.h"
 #include "../tomahawk/two/output_entry_support.h"
 #include "../tomahawk/meta_entry.h"
 #include "../index/index_entry.h"
-#include "../index/index_output_container.h"
+#include "../index/index_container.h"
 
 namespace Tomahawk{
 namespace IO{
@@ -24,11 +24,11 @@ private:
 	typedef Algorithm::SpinLock             spin_lock_type;
 	typedef BasicBuffer                     buffer_type;
 	typedef TomahawkHeader                  twk_header_type;
-	typedef Totempole::IndexOutputEntry     index_entry_type;
+	typedef Totempole::IndexEntry           index_entry_type;
 	typedef OutputEntry                     entry_type;
 	typedef Support::OutputEntrySupport     entry_support_type;
 	typedef Totempole::IndexEntry           header_entry_type;
-	typedef Totempole::IndexOutputContainer index_container_type;
+	typedef Totempole::IndexContainer       index_container_type;
 
 public:
 	OutputWriter(void) :
@@ -86,6 +86,9 @@ public:
 		}
 	}
 
+	inline const U64& sizeEntries(void) const{ return(this->n_entries); }
+	inline const U32& sizeBlocks(void) const{ return(this->n_blocks); }
+
 	bool open(const std::string& output_file){
 		if(output_file.size() == 0)
 			return false;
@@ -119,10 +122,11 @@ public:
 			}
 
 			this->spin_lock->lock();
-			this->index_entry.byte_offset_from = (U64)this->stream->tellp();
+			this->index_entry.byte_offset = (U64)this->stream->tellp();
 			this->index_entry.uncompressed_size = this->buffer.size();
 			this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
-			this->index_entry.byte_offset_to = (U64)this->stream->tellp();
+			this->index_entry.byte_offset_end = (U64)this->stream->tellp();
+			this->index_entry.n_variants = this->buffer.size() / sizeof(entry_type);
 			//*this->stream << this->index_entry;
 			*this->index_container += this->index_entry;
 			//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
@@ -163,9 +167,17 @@ public:
 		this->buffer += header_b.contigID;
 		this->buffer += writePosB;
 		this->buffer << helper;
-		++this->n_entries;
-		++this->n_progress_count;
-		++this->index_entry.n_entries;
+		// Add reverse
+		this->buffer += helper.controller;
+		this->buffer += header_b.contigID;
+		this->buffer += writePosB;
+		this->buffer += header_a.contigID;
+		this->buffer += writePosA;
+		this->buffer << helper;
+
+		this->n_entries += 2;
+		this->n_progress_count += 2;
+		this->index_entry.n_variants += 2;
 
 		if(this->buffer.size() > this->l_flush_limit)
 			this->flush();

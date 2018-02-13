@@ -9,6 +9,7 @@ namespace Support{
 struct OutputEntrySupport{
 private:
 	typedef OutputEntrySupport self_type;
+	typedef IO::BasicBuffer    buffer_type;
 
 public:
 	OutputEntrySupport();
@@ -53,7 +54,7 @@ public:
 	void printUnphasedCounts(void) const;
 	void printPhasedCounts(void) const;
 
-	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& os, const OutputEntrySupport& entry){
+	friend IO::BasicBuffer& operator<<(buffer_type& os, const self_type& entry){
 		// Notice that CONTROLLER is written separately
 		os += entry.alleleCounts[0];
 		os += entry.alleleCounts[1];
@@ -69,7 +70,7 @@ public:
 		return os;
 	}
 
-	friend std::ostream& operator<<(std::ostream& os, const OutputEntrySupport& entry){
+	friend std::ostream& operator<<(std::ostream& os, const self_type& entry){
 		os << entry.alleleCounts[0] << '\t' << entry.alleleCounts[1] << '\t' << entry.alleleCounts[4] << '\t' << entry.alleleCounts[5] << '\t'
 		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher;
 		return os;

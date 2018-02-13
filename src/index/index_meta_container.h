@@ -13,7 +13,7 @@ namespace Tomahawk{
 namespace Totempole{
 
 /**<
- * STL-like container for Tomahawk index entries
+ * STL-like container for Tomahawk meta index entries
  */
 class IndexMetaContainer{
 private:

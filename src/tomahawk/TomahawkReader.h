@@ -56,7 +56,8 @@ public:
 	bool getBlocks(std::vector< std::pair<U32, U32> >& blocks);
 	bool getBlock(const U32 blockID);
 
-    inline footer_type& getFooter(void){ return(this->footer_); }
+	// Accessors
+	inline footer_type& getFooter(void){ return(this->footer_); }
     inline const footer_type& getFooter(void) const{ return(this->footer_); }
 	inline const index_type& getIndex(void) const{ return(*this->index_); }
 	inline index_type& getIndex(void){ return(*this->index_); }
@@ -67,6 +68,7 @@ public:
 	// Output functions
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
+
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }

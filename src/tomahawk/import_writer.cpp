@@ -100,6 +100,7 @@ int ImportWriter::WriteHeaders(void){
 void ImportWriter::WriteFinal(index_type& index, footer_type& footer){
 	footer.l_largest_uncompressed = this->largest_uncompressed_block_;
 	footer.offset_end_of_data = this->stream.tellp();
+	index.setSorted(true);
 
 	this->stream << index;
 	this->stream << footer;
@@ -214,7 +215,7 @@ bool ImportWriter::flush(void){
 		this->largest_uncompressed_block_ = this->buffer_meta_.size();
 
 	this->totempole_entry.uncompressed_size = this->buffer_meta_.size(); // Store uncompressed size
-	this->totempole_entry.byte_offset_end = this->stream.tellp(); // IO offset in Tomahawk output
+	this->totempole_entry.byte_offset_end   = this->stream.tellp(); // IO offset in Tomahawk output
 
 	++this->blocksWritten_; // update number of blocks written
 	this->variants_written_ += this->totempole_entry.size(); // update number of variants written

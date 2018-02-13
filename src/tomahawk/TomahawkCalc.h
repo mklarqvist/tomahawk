@@ -204,7 +204,8 @@ bool TomahawkCalc::Calculate(){
 
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes. " << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Output " << Helpers::ToPrettyString(writer.sizeEntries()) << " in " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks" << std::endl;
 	}
 
 	// Cleanup

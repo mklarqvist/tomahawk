@@ -42,8 +42,6 @@ compiled target.
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
-The function `stats` have partial support: currently limited to basics for `two` files.
-The function `index` is disabled at the moment.
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
 

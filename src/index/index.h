@@ -10,6 +10,39 @@
 namespace Tomahawk{
 
 /**<
+ * Index controller for bit flags
+ */
+struct IndexController{
+public:
+	typedef IndexController self_type;
+
+public:
+	IndexController() :
+		isSorted(false),
+		isPartialSorted(false),
+		unused(0)
+	{}
+
+	IndexController(const char* const data){ memcpy(this, data, sizeof(BYTE)); }
+
+private:
+	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& controller){
+		stream.write((const char*)&controller, sizeof(BYTE));
+		return stream;
+	}
+
+	friend std::ifstream& operator>>(std::ifstream& stream, self_type& controller){
+		stream.read((char*)&controller, sizeof(BYTE));
+		return stream;
+	}
+
+public:
+	BYTE isSorted:        1,
+         isPartialSorted: 1,
+	     unused:          6;
+};
+
+/**<
  * This container handles the index entries for `twk` blocks: their
  * start and end IO positions and what genomic regions they cover.
  * The value type of this container are containers of entries.
@@ -29,6 +62,7 @@ private:
     typedef std::ptrdiff_t                difference_type;
     typedef std::size_t                   size_type;
     typedef IO::BasicBuffer               buffer_type;
+    typedef IndexController               controller_type;
 
 public:
     Index();
@@ -46,26 +80,36 @@ public:
 	inline const container_type& getContainer(void) const{ return(this->container_); }
 	inline meta_container_type& getMetaContainer(void){ return(this->meta_container_); }
 	inline const meta_container_type& getMetaContainer(void) const{ return(this->meta_container_); }
+	inline controller_type& getController(void){ return(this->controller_); }
+	inline const controller_type& getController(void) const{ return(this->controller_); }
+
+	// Setters
+	inline void setSorted(const bool yes){ this->controller_.isSorted = yes; }
+
+	// Getters
+	inline const bool isSorted(void) const{ return(this->controller_.isSorted); }
 
 	// Overloaded
 	inline void operator<<(const_reference entry){ this->container_ += entry; }
 	inline void operator+=(const_reference entry){ this->container_ += entry; }
 
 	/**<
-	 *
-	 * @param n_contigs
-	 * @return
+	 * Constructs the index of index if the data is sorted
+	 * @param n_contigs Number of contigs in the file
+	 * @return          Returns TRUE upon success or FALSE otherwise
 	 */
 	bool buildMetaIndex(const U32 n_contigs);
 
 private:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
+		stream << index.getController();
 		stream << index.getMetaContainer();
 		stream << index.getContainer();
 		return(stream);
 	}
 
 private:
+	controller_type     controller_;
     meta_container_type meta_container_;
     container_type      container_;
 };
