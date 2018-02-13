@@ -18,6 +18,7 @@ RM := rm
 -include src/io/compression/subdir.mk
 -include src/io/bcf/subdir.mk
 -include src/io/subdir.mk
+-include src/index/subdir.mk
 -include src/algorithm/sort/subdir.mk
 -include src/algorithm/subdir.mk
 -include src/subdir.mk

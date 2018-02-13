@@ -25,6 +25,7 @@ CPP_DEPS :=
 SUBDIRS := \
 src/algorithm \
 src/algorithm/sort \
+src/index \
 src/io \
 src/io/bcf \
 src/io/compression \

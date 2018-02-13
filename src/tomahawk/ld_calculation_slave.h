@@ -577,6 +577,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 
 	this->helper.D  = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
 	this->helper.R2 = this->helper.D*this->helper.D / (p * (1 - p) * q * (1 - q));
+	this->helper.R  = this->helper.D / sqrt(p * (1 - p) * q * (1 - q));
 
 	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
 		return false;
@@ -1402,6 +1403,7 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 
 	this->helper.D  = this->helper[0]/this->helper.totalAlleleCounts * this->helper[5]/this->helper.totalAlleleCounts - this->helper[1]/this->helper.totalAlleleCounts * this->helper[4]/this->helper.totalAlleleCounts;
 	this->helper.R2 = this->helper.D*this->helper.D / (((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1)));
+	this->helper.R  = this->helper.D / sqrt((((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1))));
 
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
 		if(this->helper.D >= 0){

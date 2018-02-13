@@ -132,7 +132,7 @@ public:
 			this->resize();
 		}
 
-		//std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
+		std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
 		new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
 		++this->n_entries_;
 		return(*this);

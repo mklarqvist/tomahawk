@@ -12,21 +12,23 @@
 #include "../tomahawk/two/output_entry_support.h"
 #include "../tomahawk/meta_entry.h"
 #include "../index/index_entry.h"
+#include "../index/index_output_container.h"
 
 namespace Tomahawk{
 namespace IO{
 
 class OutputWriter{
 private:
-	typedef OutputWriter                self_type;
-	typedef TGZFController              compression_type;
-	typedef Algorithm::SpinLock         spin_lock_type;
-	typedef BasicBuffer                 buffer_type;
-	typedef TomahawkHeader              twk_header_type;
-	typedef Totempole::IndexOutputEntry index_entry_type;
-	typedef OutputEntry                 entry_type;
-	typedef Support::OutputEntrySupport entry_support_type;
-	typedef Totempole::IndexEntry       header_entry_type;
+	typedef OutputWriter                    self_type;
+	typedef TGZFController                  compression_type;
+	typedef Algorithm::SpinLock             spin_lock_type;
+	typedef BasicBuffer                     buffer_type;
+	typedef TomahawkHeader                  twk_header_type;
+	typedef Totempole::IndexOutputEntry     index_entry_type;
+	typedef OutputEntry                     entry_type;
+	typedef Support::OutputEntrySupport     entry_support_type;
+	typedef Totempole::IndexEntry           header_entry_type;
+	typedef Totempole::IndexOutputContainer index_container_type;
 
 public:
 	OutputWriter(void) :
@@ -35,9 +37,11 @@ public:
 		n_progress_count(0),
 		n_blocks(0),
 		l_flush_limit(2000000),
+		l_largest_uncompressed(0),
 		stream(nullptr),
 		buffer(this->l_flush_limit*2),
-		spin_lock(new spin_lock_type)
+		spin_lock(new spin_lock_type),
+		index_container(new index_container_type)
 	{
 
 	}
@@ -48,9 +52,11 @@ public:
 		n_progress_count(0),
 		n_blocks(0),
 		l_flush_limit(2000000),
+		l_largest_uncompressed(0),
 		stream(new std::ofstream(input_file, std::ios::binary | std::ios::out)),
 		buffer(this->l_flush_limit*2),
-		spin_lock(new spin_lock_type)
+		spin_lock(new spin_lock_type),
+		index_container(new index_container_type)
 	{
 
 	}
@@ -61,9 +67,11 @@ public:
 		n_progress_count(other.n_progress_count),
 		n_blocks(other.n_blocks),
 		l_flush_limit(other.l_flush_limit),
+		l_largest_uncompressed(0),
 		stream(other.stream),
 		buffer(other.buffer.capacity()),
-		spin_lock(other.spin_lock)
+		spin_lock(other.spin_lock),
+		index_container(other.index_container)
 	{
 
 	}
@@ -74,6 +82,7 @@ public:
 			this->stream->close();
 			delete this->stream;
 			delete this->spin_lock;
+			delete this->index_container;
 		}
 	}
 
@@ -115,6 +124,7 @@ public:
 			this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
 			this->index_entry.byte_offset_to = (U64)this->stream->tellp();
 			//*this->stream << this->index_entry;
+			*this->index_container += this->index_entry;
 			//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
 			++this->n_blocks;
 
@@ -129,12 +139,17 @@ public:
 	inline self_type& operator+=(const self_type& other){
 		this->n_entries += other.n_entries;
 		this->n_blocks  += other.n_blocks;
+		if(other.l_largest_uncompressed > this->l_largest_uncompressed)
+			this->l_largest_uncompressed = other.l_largest_uncompressed;
+
 		return(*this);
 	}
 
 	inline self_type& operator=(const self_type& other){
 		this->n_blocks  = other.n_blocks;
 		this->n_entries = other.n_entries;
+		if(other.l_largest_uncompressed > this->l_largest_uncompressed)
+			this->l_largest_uncompressed = other.l_largest_uncompressed;
 		return(*this);
 	}
 
@@ -190,19 +205,21 @@ private:
 	}
 
 private:
-	std::string       filename;
-	std::string       basePath;
-	std::string       baseName;
-	bool              owns_pointers;
-	U64               n_entries;        // number of entries written
-	U32               n_progress_count; // lines added since last flush
-	U32               n_blocks;         // number of index blocks writtenflush_limit
-	U32               l_flush_limit;
-	index_entry_type  index_entry;      // keep track of sort order
-	std::ofstream*    stream;
-	buffer_type       buffer;
-	compression_type  compressor;
-	spin_lock_type*   spin_lock;
+	std::string           filename;
+	std::string           basePath;
+	std::string           baseName;
+	bool                  owns_pointers;
+	U64                   n_entries;        // number of entries written
+	U32                   n_progress_count; // lines added since last flush
+	U32                   n_blocks;         // number of index blocks writtenflush_limit
+	U32                   l_flush_limit;
+	U32                   l_largest_uncompressed;
+	index_entry_type      index_entry;      // keep track of sort order
+	std::ofstream*        stream;
+	buffer_type           buffer;
+	compression_type      compressor;
+	spin_lock_type*       spin_lock;
+	index_container_type* index_container;
 };
 
 }

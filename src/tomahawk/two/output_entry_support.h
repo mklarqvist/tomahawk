@@ -61,6 +61,7 @@ public:
 		os += entry.alleleCounts[5];
 		os += entry.D;
 		os += entry.Dprime;
+		os += entry.R;
 		os += entry.R2;
 		os += entry.P;
 		os += entry.chiSqFisher;
@@ -70,7 +71,7 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& os, const OutputEntrySupport& entry){
 		os << entry.alleleCounts[0] << '\t' << entry.alleleCounts[1] << '\t' << entry.alleleCounts[4] << '\t' << entry.alleleCounts[5] << '\t'
-		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher;
+		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.chiSqFisher;
 		return os;
 	}
 
@@ -104,10 +105,8 @@ public:
 
 public:
 	U16    controller;        // FLAG byte
-	float  R2;                // R squared
-	float  D;                 // D
-	float  Dprime;            // D'
-	float  Dmax;              // Dmax
+	float  R, R2;             // Correlation coefficients
+	float  D, Dprime, Dmax;   // D values
 	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
 	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
 	double chiSqFisher;       // Chi-Squared critical value for 2x2 contingency table

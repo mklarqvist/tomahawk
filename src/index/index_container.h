@@ -1,6 +1,7 @@
 #ifndef INDEX_INDEX_CONTAINER_H_
 #define INDEX_INDEX_CONTAINER_H_
 
+#include <cassert>  // assert
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 

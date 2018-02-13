@@ -23,6 +23,21 @@ public:
 
 	}
 
+	IndexOutputEntry(const char* const data) :
+		byte_offset_from(*reinterpret_cast<const U64* const>(data)),
+		byte_offset_to(*reinterpret_cast<const U64* const>(&data[sizeof(U64)])),
+		contigID_from(*reinterpret_cast<const S32* const>(&data[sizeof(U64)*2])),
+		contigID_to(*reinterpret_cast<const S32* const>(&data[sizeof(U64)*2+sizeof(S32)])),
+		min_position_from(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)*2])),
+		max_position_from(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)*2+sizeof(U64)])),
+		min_position_to(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)*2+sizeof(U64)*2])),
+		max_position_to(*reinterpret_cast<const U64* const>(&data[sizeof(U64)*2+sizeof(S32)*2+sizeof(U64)*3])),
+		n_entries(*reinterpret_cast<const U32* const>(&data[sizeof(U64)*2+sizeof(S32)*2+sizeof(U64)*4])),
+		uncompressed_size(*reinterpret_cast<const U32* const>(&data[sizeof(U64)*2+sizeof(S32)*2+sizeof(U64)*4+sizeof(U32)]))
+	{
+
+	}
+
 	~IndexOutputEntry() = default;
 
 	inline const U32& size(void) const{ return(this->n_entries); }
