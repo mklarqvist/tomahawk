@@ -159,5 +159,8 @@ plotLDRegion(ld, 1e6, 4e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr
 ```
 ![screenshot](R/1kgp3_chr20_105_1_symmetric.jpeg)
 
+This figure demonstrates the Tomahawk calculates partitions to maximize data locality. Shown here is part 1 and 10 out of 45 for the 1000 Genomes data for chromosome 20  
+![screenshot](R/1kgp3_chr20_45_part1_10.jpeg)
+
 ### License
 [MIT](LICENSE)
