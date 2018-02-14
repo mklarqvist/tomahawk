@@ -65,6 +65,7 @@ void view_usage(void){
 	"  -M, --maxMP  FLOAT   largest model Chi-squared CV (default: inf)\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
+	"  -u                   output only the upper triangular values\n"
 	"  --min<cell>  FLOAT   smallest cell count (default: 0)\n"
 	"  --max<cell>  FLOAT   largest cell count (default: inf)\n";
 }

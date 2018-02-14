@@ -11,192 +11,76 @@ namespace Algorithm{
 // 3: Perform sort
 // 4: Perform merge if desired
 bool OutputSorter::sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit){
-	/*
-	if(!this->reader.Open(input)){
+	if(!this->reader.open(input)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 		return false;
 	}
 
-	std::cerr << this->reader.filesize << "->" << this->reader.filesize / 8 << std::endl;
-	const U64 n_variants_chunk = this->reader.filesize / this->n_threads;
-	for(U32 i = 0; i < 8; ++i){
-		// Load a chunk of data
-		OutputContainer o = this->reader.getContainerBytes(n_variants_chunk);
-		if(o.size() == 0)
-			continue;
+	if(this->reader.getIndex().getController().isSorted){
+		std::cerr << Helpers::timestamp("LOG","SORT") << "File is already sorted..." << std::endl;
+		return true;
+	}
 
-		std::sort(&o.front(), &o.back());
+	std::cerr << this->reader.getIndex().totalBytes() << "->" << this->reader.getIndex().totalBytes() / this->n_threads << std::endl;
+	const U64 n_variants_chunk = this->reader.getIndex().totalBytes() / this->n_threads;
 
-		const entry_type* prev = &o[0];
-		std::cout << o[0] << '\n';
-		for(size_t j = 1; j < o.size(); ++j){
-			//std::cout.write((char*)&o[j], sizeof(entry_type));
-			std::cout << o[j] << '\n';
-			if(*prev >= o[j]){
-				std::cerr << j-1 << ',' << j << std::endl;
-				std::cerr << *prev << std::endl;
-				std::cerr << o[j] << std::endl;
-				exit(1);
-			}
-			prev = &o[j];
-		}
-
-		if(this->isReverseEntries()){
-			// 1: Swap A <> B
-			for(size_t j = 1; j < o.size(); ++j)
-				o[j].swapDirection();
-
-			// 2: sort
-			std::sort(&o.front(), &o.back());
-
-			// 3: output
-			prev = &o[0];
-			std::cout << o[0] << '\n';
-			for(size_t j = 1; j < o.size(); ++j){
-				//std::cout.write((char*)&o[j], sizeof(entry_type));
-				std::cout << o[j] << '\n';
-				if(*prev >= o[j]){
-					std::cerr << j-1 << ',' << j << std::endl;
-					std::cerr << *prev << std::endl;
-					std::cerr << o[j] << std::endl;
-					exit(1);
-				}
-				prev = &o[j];
+	std::pair<U32, U32>* thread_distribution = new std::pair<U32, U32>[this->n_threads];
+	size_t i = 0;
+	for(U32 t = 0; t < this->n_threads; ++t){
+		U64 partition_size = 0;
+		const size_t from = i;
+		for(; i < this->reader.getIndex().size(); ++i){
+			partition_size += this->reader.getIndex().getContainer().at(i).sizeBytes();
+			if(partition_size >= n_variants_chunk && t + 1 != this->n_threads){
+				++i;
+				break;
 			}
 		}
-	}
+		thread_distribution[t].first = from;
+		thread_distribution[t].second = i;
 
-	*/
-
-	/*
-	//
-	std::vector<std::string> paths = Helpers::filePathBaseExtension(destinationPrefix);
-	this->basePath = paths[0];
-	if(this->basePath.size() > 0)
-		this->basePath += '/';
-
-	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() &&
-	   strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
-		this-> baseName = paths[2];
-	else this->baseName = paths[1];
-
-	// Writing
-	this->reader.setWriterType(0);
-	this->reader.addLiteral("\n##tomahawk_partialSortCommand=" + Helpers::program_string());
-	this->reader.OpenWriter(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX);
-
-	// Open writer
-	basic_writer_type toi_writer;
-	toi_writer.open(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX);
-	toi_header_type headIndex(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC, this->reader.header.samples, this->reader.header.n_contig);
-	headIndex.controller.sorted = 0;
-	headIndex.controller.expanded = this->reverse_entries ? 1 : 0;
-	headIndex.controller.partial_sort = 1;
-	toi_writer.getNativeStream() << headIndex;
-	// writer
-	basic_writer_type& stream = *reinterpret_cast<basic_writer_type*>(this->reader.writer->getStream());
-
-	if(memory_limit < 100e6){
-		memory_limit = 100e6;
-		std::cerr << Helpers::timestamp("SORT") << "Setting memory limit to 100 MB..." << std::endl;
-	}
-
-	if(this->reverse_entries){
-		std::cerr << Helpers::timestamp("SORT") << "Reversing entries..." << std::endl;
-	} else
-		std::cerr << Helpers::timestamp("SORT") << "Not reversing..." << std::endl;
-
-	// Perform indexed sorting if possible
-	if(this->reader.hasIndex){
-		return(this->__sortIndexed(toi_writer, input, memory_limit));
-	}
-
-	std::cerr << Helpers::timestamp("SORT") << "No index found..." << std::endl;
-
-	bool trigger_break = false;
-	U32 totempole_blocks_written = 0;
-	while(true){
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG","SORT") << "Reading..." << std::endl;
-
-		if(!this->reader.nextBlockUntil(memory_limit))
-			trigger_break = true;
-
-		if(this->reader.data_buffer.size() == 0){
-			trigger_break = true;
+		std::cerr << "t: " << from << "->" << i << " for " << partition_size << "/" << n_variants_chunk << std::endl;
+		if(i == this->reader.getIndex().size()){
+			std::cerr << "ran out of data" << std::endl;
 			break;
 		}
+	}
 
-		assert((this->reader.data_buffer.size() % sizeof(entry_type)) == 0);
+	IO::OutputWriter writer;
+	if(!writer.open(destinationPrefix)){
+		std::cerr << "faaield to open file: " << destinationPrefix << std::endl;
+		return false;
+	}
+	writer.WriteHeaders(this->reader.getHeader());
 
-		totempole_entry totempole;
-		if(this->reverse_entries)
-			totempole.n_entries = 2*(this->reader.data_buffer.size() / sizeof(entry_type));
-		else
-			totempole.n_entries = this->reader.data_buffer.size() / sizeof(entry_type);
+	OutputSortSlave** slaves = new OutputSortSlave*[this->n_threads];
+	std::thread** threads = new std::thread*[this->n_threads];
 
-		if(this->reverse_entries){
-			const entry_type* entry = nullptr;
-			while(this->reader.nextVariantLimited(entry)){
-				entry_type temp(entry);
-				temp.swapDirection();
-				this->reader.data_buffer.Add((char*)&temp, sizeof(entry_type));
-			}
+	for(U32 i = 0; i < this->n_threads; ++i){
+		slaves[i] = new OutputSortSlave(this->reader, writer, thread_distribution[i], 1);
+		if(!slaves[i]->open(input)){
+			std::cerr << "failed to open: " << input << std::endl;
+			return false;
 		}
-
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG","SORT") << "Sorting: " << Helpers::ToPrettyString(this->reader.data_buffer.size()/sizeof(entry_sort_type)) << " entries" << std::endl;
-
-		std::sort(reinterpret_cast<entry_sort_type*>(this->reader.data_buffer.data()),
-				  reinterpret_cast<entry_sort_type*>(&this->reader.data_buffer[this->reader.data_buffer.size()]));
-
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG","SORT") << "Indexing..." << std::endl;
-
-		totempole.byte_offset = stream.getNativeStream().tellp();
-		totempole.uncompressed_size = this->reader.data_buffer.size();
-
-		this->reader.writer->write(this->reader.data_buffer);
-		totempole.byte_offset_end = stream.getNativeStream().tellp();
-		toi_writer.getNativeStream() << totempole;
-
-		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG","SORT") << "Writing..." << std::endl;
-
-		++totempole_blocks_written;
-
-		if(trigger_break) break;
+		threads[i] = slaves[i]->start();
 	}
 
-	// Make sure TOI is flushed before re-opening and seeking
-	toi_writer.flush();
+	for(U32 i = 0; i < this->n_threads; ++i)
+		threads[i]->join();
 
-	// TOI
-	// Update blocks written
-	std::fstream re(basePath + baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX + '.' + Tomahawk::Constants::OUTPUT_LD_SORT_INDEX_SUFFIX, std::ios::in | std::ios::out | std::ios::binary);
-	if(!re.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to reopen index..." << std::endl;
-		return false;
-	}
+	for(U32 i = 0; i < this->n_threads; ++i)
+		writer += slaves[i]->getWriter();
 
-	re.seekg(Tomahawk::Constants::WRITE_HEADER_LD_SORT_MAGIC_LENGTH + sizeof(float) + sizeof(U64) + sizeof(U32));
-	if(!re.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to seek in index..." << std::endl;
-		return false;
-	}
+	writer.flush();
+	writer.WriteFinal();
 
-	re.write((char*)&totempole_blocks_written, sizeof(U32));
-	if(!re.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWO") << "Failed to update counts in index..." << std::endl;
-		return false;
-	}
-	re.close();
 
-	toi_writer.close();
+	for(U32 i = 0; i < this->n_threads; ++i)
+		delete slaves[i];
 
-	this->reader.writer->flush();
-	this->reader.writer->close();
-	*/
+	delete [] slaves;
+	delete [] threads;
+	delete [] thread_distribution;
 
 	return true;
 }

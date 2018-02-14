@@ -72,7 +72,7 @@ bool TomahawkCalc::Calculate(){
 	//std::cerr << "not implemented" << std::endl;
 	//exit(1);
 
-	GenotypeMetaContainerReference<T> references(2504, this->reader.DataOffsetSize()+1);
+	GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){

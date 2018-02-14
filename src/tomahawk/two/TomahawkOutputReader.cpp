@@ -104,7 +104,7 @@ bool TomahawkOutputReader::open(const std::string input){
 
 int TomahawkOutputReader::parseBlock(const bool clear){
 	// Stream died
-	if(!this->stream_.good()){
+	if(this->stream_.good() == false){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
 		return -1;
 	}
@@ -174,6 +174,83 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 	return 1;
 }
 
+int TomahawkOutputReader::parseBlock(std::ifstream& stream,
+                                       buffer_type& inflate_buffer,
+                                       buffer_type& data_buffer,
+                              tgzf_controller_type& compression_manager,
+                                        const bool  clear) const
+{
+	// Stream died
+	if(stream.good() == false){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
+		return -1;
+	}
+
+	// EOF
+	// tellg will always return a positive value here
+	// or it would've failed at good() check
+	if((U64)stream.tellg() == this->offset_end_of_data_)
+		return 0;
+
+	// Read TGZF header
+	inflate_buffer.resize(sizeof(tgzf_header_type));
+	stream.read(inflate_buffer.data(),  IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(inflate_buffer.data());
+	inflate_buffer.n_chars = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	if(!h->Validate()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
+		return -2;
+	}
+
+	inflate_buffer.resize(h->BSIZE); // make sure all data will fit
+
+	// Recast because if compressed_buffer is (actually) resized then the pointer address is incorrect
+	// resulting in segfault
+	h = reinterpret_cast<const tgzf_header_type*>(inflate_buffer.data());
+
+	stream.read(&inflate_buffer.buffer[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	if(!stream.good()){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
+		return -3;
+	}
+
+	inflate_buffer.n_chars = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&inflate_buffer[inflate_buffer.size() - sizeof(U32)]);
+
+	// Clear output compressed_buffer
+	if(clear) {
+		data_buffer.reset();
+		data_buffer.resize(uncompressed_size);
+	} else { // Otherwise resize to permit data
+		data_buffer.resize(data_buffer.size() + uncompressed_size);
+	}
+
+	if(!this->tgzf_controller_.Inflate(inflate_buffer, data_buffer)){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
+		return -4;
+	}
+
+	if(data_buffer.size() == 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
+		return 0;
+	}
+
+	// Reset compressed_buffer
+	inflate_buffer.reset();
+
+	// Reset iterator position and size
+	//this->iterator_position_block = 0;
+	//this->size = data_buffer.size() / sizeof(entry_type);
+
+	// Validity check
+	if(data_buffer.size() % sizeof(entry_type) != 0){
+		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
+		return -5;
+	}
+
+	return 1;
+}
+
 OutputContainer TomahawkOutputReader::getContainerVariants(const U64 n_variants){
 	size_t n_variants_loaded = 0;
 	this->data_.reset();
@@ -209,6 +286,16 @@ OutputContainer TomahawkOutputReader::getContainerBytes(const size_t l_data){
 	return(OutputContainer(this->data_));
 }
 
+OutputContainer TomahawkOutputReader::getContainerBlocks(const U32 n_blocks){
+	this->data_.reset();
+	for(U32 i = 0; i < n_blocks; ++i){
+		if(!this->parseBlock(false))
+			break;
+	}
+
+	return(OutputContainer(this->data_));
+}
+
 bool TomahawkOutputReader::seekBlock(const U32 blockID){
 	if(blockID > this->getIndex().getContainer().size()){
 		std::cerr << Helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
@@ -226,11 +313,33 @@ bool TomahawkOutputReader::seekBlock(const U32 blockID){
 		return false;
 	}
 
-	return(this->parseBlock());
+	return(true);
 }
+
+bool TomahawkOutputReader::seekBlock(std::ifstream& stream, const U32 blockID) const{
+	if(blockID > this->getIndex().getContainer().size()){
+		std::cerr << Helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
+		return false;
+	}
+
+	if(!stream.good()){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
+		return false;
+	}
+
+	stream.seekg(this->getIndex().getContainer()[blockID].byte_offset);
+	if(!stream.good()){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
+		return false;
+	}
+
+	return(true);
+}
+
 
 OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(const U32 blockID){
 	if(!this->seekBlock(blockID)){
+		this->parseBlock();
 		return(OutputContainerReference());
 	} else {
 		this->parseBlock();
@@ -240,6 +349,7 @@ OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(const 
 
 OutputContainer TomahawkOutputReader::getContainerBlock(const U32 blockID){
 	if(!this->seekBlock(blockID)){
+		this->parseBlock();
 		return(OutputContainer());
 	} else {
 		this->parseBlock();
@@ -249,6 +359,7 @@ OutputContainer TomahawkOutputReader::getContainerBlock(const U32 blockID){
 
 OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(std::vector<U32> blocks){
 	if(!this->seekBlock(blocks[0])){
+		this->parseBlock();
 		return(OutputContainerReference());
 	} else {
 		for(U32 i = 0; i < blocks.size(); ++i){
@@ -261,6 +372,7 @@ OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(std::v
 
 OutputContainer TomahawkOutputReader::getContainerBlock(std::vector<U32> blocks){
 	if(!this->seekBlock(blocks[0])){
+		this->parseBlock();
 		return(OutputContainer());
 	} else {
 		for(U32 i = 0; i < blocks.size(); ++i){
@@ -348,6 +460,7 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
+
 		interval(contigID, 0, this->getHeader().contigs_[contigID].n_bases);
 		interval.state = interval_type::INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
 	}
@@ -398,16 +511,16 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 bool TomahawkOutputReader::view(void){
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
-	//else if(this->filter.any_filter_user_set){
-	//	return(this->__viewFilter()); // Otherwise normal filter function
+	else if(this->filters_.any_filter_user_set)
+		return(this->__viewFilter()); // Otherwise normal filter function
 	 else
 		return(this->__viewOnly());
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
-	std::cerr << Helpers::timestamp("LOG") << "Sorted: " << (int)this->getIndex().getController().isSorted << " partial: " << (int)this->getIndex().getController().isPartialSorted << std::endl;
+	//std::cerr << Helpers::timestamp("LOG") << "Sorted: " << (int)this->getIndex().getController().isSorted << " partial: " << (int)this->getIndex().getController().isPartialSorted << std::endl;
 	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
-	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=FALSE";
+	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=NO";
 
 	//if(!this->OpenWriter())
 	//	return false;
@@ -422,10 +535,11 @@ bool TomahawkOutputReader::__viewOnly(void){
 		while(this->parseBlock()){
 			OutputContainerReference o = this->getContainerReference();
 			n_total += o.size();
-			for(U32 i = 0; i < o.size(); ++i)
-				std::cout << o[i] << '\n';
+			for(U32 i = 0; i < o.size(); ++i){
+				o[i].write(std::cout, this->getHeader().contigs_);
+			}
 		}
-		std::cerr << "total: " << n_total << std::endl;
+		//std::cerr << "total: " << n_total << std::endl;
 	//}
 	// Binary output without filtering simply writes it back out
 /*
@@ -441,20 +555,40 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "TWO") << "Unindexed query..." << std::endl;
+	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
+	if(this->filters_.any_filter_user_set)
+		this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=YES";
+
+	if(this->showHeader_ == true){
+		std::cout << this->getHeader().getLiterals() << '\n';
+	}
 
 	if(this->interval_tree != nullptr){
-		const entry_type*  entry = nullptr;
-
-
 		while(this->parseBlock()){
 			output_container_reference_type o(this->data_);
 			for(U32 i = 0; i < o.size(); ++i)
 				this->__checkRegionNoIndex(o[i]);
-		} // end while next variant
+		} // end while next block
 	}
 
+	return true;
+}
+
+bool TomahawkOutputReader::__viewFilter(void){
+	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
+	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO";
+
+	if(this->showHeader_ == true)
+		std::cout << this->getHeader().getLiterals() << '\n';
+
+	while(this->parseBlock()){
+		output_container_reference_type o(this->data_);
+		for(U32 i = 0; i < o.size(); ++i){
+			if(this->filters_.filter(o[i])){
+				o[i].write(std::cout, this->getHeader().contigs_);
+			}
+		}
+	} // end while next block
 	return true;
 }
 
@@ -466,11 +600,12 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 			for(U32 i = 0; i < rets.size(); ++i){
 				if(rets[i].value != nullptr){ // if linked
 					if((entry.BcontigID == rets[i].value->contigID) &&
-					   (entry.Bposition >= rets[i].value->start && entry.Bposition <= rets[i].value->stop)){
+					   (entry.Bposition >= rets[i].value->start &&
+					    entry.Bposition <= rets[i].value->stop)){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							std::cout << entry << '\n';
+							entry.write(std::cout, this->getHeader().contigs_);
 						}
 
 						return true;
@@ -479,7 +614,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						std::cout << entry << '\n';
+						entry.write(std::cout, this->getHeader().contigs_);
 					}
 
 					return true;
@@ -495,11 +630,12 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 			for(U32 i = 0; i < rets.size(); ++i){
 				if(rets[i].value != nullptr){ // if linked
 					if((entry.AcontigID == rets[i].value->contigID) &&
-					   (entry.Aposition >= rets[i].value->start && entry.Aposition <= rets[i].value->stop)){
+					   (entry.Aposition >= rets[i].value->start &&
+						entry.Aposition <= rets[i].value->stop)){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							std::cout << entry << '\n';
+							entry.write(std::cout, this->getHeader().contigs_);
 						}
 						return true;
 					} // end match
@@ -507,7 +643,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						std::cout << entry << '\n';
+						entry.write(std::cout, this->getHeader().contigs_);
 					}
 
 					return true;

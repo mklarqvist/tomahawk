@@ -40,7 +40,6 @@ public:
 		n_capacity(n_entries),
 		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
-		assert(n_entries > 0);
 		assert(l_data % sizeof(value_type) == 0);
 
 		U32 cumulative_position = 0;
@@ -56,7 +55,6 @@ public:
 		n_capacity(n_entries),
 		__entries(static_cast<pointer>(::operator new[](this->size()*sizeof(value_type))))
 	{
-		assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);
 
 		U32 cumulative_position = 0;

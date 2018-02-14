@@ -28,43 +28,13 @@ private:
     typedef IO::BasicBuffer       buffer_type;
 
 public:
-    IndexContainer(void) :
-		n_entries_(0),
-		n_capacity_(1000),
-		entries_(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
-	{
-
-	}
-
-    IndexContainer(const size_t n_capacity_) :
-    	n_entries_(0),
-		n_capacity_(n_capacity_),
-		entries_(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
-	{
-
-	}
+    IndexContainer(void);
+    IndexContainer(const size_t n_capacity_);
 
     // Functions for when interpreting from a byte stream
     // first value is the number of indices
-	IndexContainer(const char* const data_buffer, const U32 l_data) :
-		n_entries_(*reinterpret_cast<const size_type* const>(data_buffer)),
-		n_capacity_(this->n_entries_),
-		entries_(static_cast<pointer>(::operator new[](this->capacity()*sizeof(value_type))))
-	{
-		U32 cumulative_position = sizeof(size_type);
-		for(U32 i = 0; i < this->size(); ++i){
-			new( &this->entries_[i] ) value_type(&data_buffer[cumulative_position]);
-			cumulative_position += TWK_INDEX_ENTRY_SIZE;
-		}
-		assert(cumulative_position == l_data);
-	}
-
-	~IndexContainer(){
-		for(size_type i = 0; i < this->size(); ++i)
-			((this->entries_ + i)->~IndexEntry)();
-
-		::operator delete[](static_cast<void*>(this->entries_));
-	}
+	IndexContainer(const char* const data_buffer, const U32 l_data);
+	~IndexContainer();
 
 	class iterator{
 	private:
@@ -117,6 +87,9 @@ public:
 	inline const size_type& size(void) const{ return(this->n_entries_); }
 	inline const size_type& capacity(void) const{ return(this->n_capacity_); }
 
+	void resize(const size_t new_capacity);
+	inline void resize(void){ this->resize(this->capacity()*2); }
+
 	// Iterator
 	inline iterator begin(){ return iterator(&this->entries_[0]); }
 	inline iterator end()  { return iterator(&this->entries_[this->n_entries_]); }
@@ -126,44 +99,13 @@ public:
 	inline const_iterator cend()   const{ return const_iterator(&this->entries_[this->n_entries_]); }
 
 	// Overload basic operator
-	self_type& operator+=(const value_type& index_entry){
-		if(this->size() + 1 >= this->capacity()){
-			//std::cerr << "is full resizing" << std::endl;
-			this->resize();
-		}
+	self_type& operator+=(const value_type& index_entry);
 
-		//std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
-		new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
-		++this->n_entries_;
-		return(*this);
-	}
-
-	void resize(const size_t new_capacity){
-		//std::cerr << Helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
-		// if resizing to a smaller size
-		if(new_capacity < this->capacity()){
-			// Call destructor for values between shrunk size and previous numbers
-			for(size_type i = new_capacity; i < this->size(); ++i)
-				((this->entries_ + i)->~IndexEntry)();
-
-			this->n_entries_ = new_capacity;
-			return;
-		}
-
-		pointer temp = this->entries_; // Move current data pointer
-		this->entries_ = static_cast<pointer>(::operator new[](new_capacity*sizeof(value_type))); // Allocate new memory at old pointer
-		// Copy data over from temporary data pointer to new pointer
-		for(U32 i = 0; i < this->size(); ++i)
-			new( &this->entries_[i] ) value_type(temp[i]);
-
-		// Release memory from the temporary address
-		for(size_type i = 0; i < this->size(); ++i)
-			((temp + i)->~IndexEntry)();
-
-		::operator delete[](static_cast<void*>(temp));
-		this->n_capacity_ = new_capacity;
-	}
-	inline void resize(void){ this->resize(this->capacity()*2); }
+	// Overlap functions: find blocks a target interval overlaps
+	//                    returns pairs of pointers. If pointerA == pointerB then the data is empty
+	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID) const;
+	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID, const U64& position) const;
+	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const;
 
 private:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& container){

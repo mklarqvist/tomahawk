@@ -85,9 +85,18 @@ public:
 
 	// Setters
 	inline void setSorted(const bool yes){ this->controller_.isSorted = yes; }
+	inline void setPartialSorted(const bool yes){ this->controller_.isPartialSorted = yes; }
 
 	// Getters
 	inline const bool isSorted(void) const{ return(this->controller_.isSorted); }
+	inline const bool isPartialSorted(void) const{ return(this->controller_.isPartialSorted); }
+	inline const U64  totalBytes(void) const{
+		U64 total_bytes = 0;
+		for(size_t i = 0; i < this->getContainer().size(); ++i)
+			total_bytes += this->getContainer().at(i).sizeBytes();
+
+		return(total_bytes);
+	}
 
 	// Overloaded
 	inline void operator<<(const_reference entry){ this->container_ += entry; }

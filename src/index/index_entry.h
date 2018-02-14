@@ -1,6 +1,8 @@
 #ifndef TOTEMPOLEENTRY_H_
 #define TOTEMPOLEENTRY_H_
 
+#include <fstream>
+
 namespace Tomahawk{
 namespace Totempole{
 
@@ -49,6 +51,7 @@ public:
 	inline U32 size(void) const{ return(this->n_variants); }
 	inline bool isValid(void) const{ return(this->byte_offset != 0); }
 	inline void operator++(void){ ++this->n_variants; }
+	inline U64 sizeBytes(void) const{ return(this->byte_offset_end - this->byte_offset); }
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.byte_offset << '\t' << entry.byte_offset_end << '\t' << entry.contigID << '\t' << entry.min_position << '-' << entry.max_position << '\t' << entry.n_variants << '\t' << entry.uncompressed_size;
@@ -86,6 +89,18 @@ public:
 		this->max_position      = 0;
 		this->n_variants        = 0;
 		this->uncompressed_size = 0;
+	}
+
+	inline const bool overlaps(const S32& contigID) const{ return(this->contigID == contigID); }
+	inline const bool overlaps(const S32& contigID, const U64& position) const{
+		if(this->contigID != contigID) return false;
+		return(position >= this->min_position && position <= this->max_position);
+	}
+	inline const bool overlaps(const S32& contigID, const U64& from_position, const U64& to_position) const{
+		if(this->contigID != contigID) return false;
+		if(from_position < this->min_position) return false;
+		if(to_position > this->max_position) return false;
+		return true;
 	}
 
 public:

@@ -94,7 +94,6 @@ private:
 	footer_type footer_;
 	index_type* index_;
 
-
 	buffer_type          buffer_;       // input buffer
 	buffer_type          data_;         // inflate buffer
 	buffer_type          outputBuffer_; // output buffer

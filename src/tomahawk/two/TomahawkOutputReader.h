@@ -55,8 +55,6 @@ public:
 	inline index_type* getIndexPointer(void){ return(this->index_); }
 
 	bool open(const std::string input);
-
-
 	bool addRegions(std::vector<std::string>& positions);
 	//bool OpenExtend(const std::string input);
 
@@ -68,6 +66,7 @@ public:
 	 * @return         Returns TRUE upon success or FALSE otherwise
 	 */
 	bool seekBlock(const U32 position);
+	bool seekBlock(std::ifstream& stream, const U32 position) const;
 
 	/**<
 	 * Parses TWO data that has been loaded into memory after invoking
@@ -78,11 +77,25 @@ public:
 	 */
 	int parseBlock(const bool clear = true);
 
+	/**<
+	 * Used in parallel programming:
+	 * Takes an input file stream and the necessary buffers and inflates `two` data without
+	 * modifying the host container
+	 * @param stream              Input file stream
+	 * @param inflate_buffer      Support buffer for loading compressed data
+	 * @param data_buffer         Output buffer for inflated `two` entries
+	 * @param compression_manager Compression manager
+	 * @param clear               Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @return                    Returns TRUE upon success or FALSE otherwise
+	 */
+	int parseBlock(std::ifstream& stream, buffer_type& inflate_buffer, buffer_type& data_buffer, tgzf_controller_type& compression_manager, const bool clear = true) const;
+
 	// Access: no random access. All these functions
 	//         assumes that data is loaded linearly from disk
 	inline output_container_type getContainer(void){ return(output_container_type(this->data_)); }
 	output_container_type getContainerVariants(const U64 n_variants);
 	output_container_type getContainerBytes(const size_t l_data);
+	output_container_type getContainerBlocks(const U32 n_blocks);
 	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_)); }
 
 	// Access: requires complete (if n = 1) or partial (if n > 1) random access

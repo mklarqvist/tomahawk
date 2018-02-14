@@ -26,15 +26,13 @@ class OutputSorter{
 	typedef std::priority_queue<queue_entry>  queue_type; // prio queue
 
 public:
-	OutputSorter() : n_threads(std::thread::hardware_concurrency()), reverse_entries(true){}
+	OutputSorter() : n_threads(std::thread::hardware_concurrency()){}
 	~OutputSorter(){}
 
 	bool sort(const std::string& input, const std::string& destinationPrefix, U64 memory_limit);
 	bool sortMerge(const std::string& input, const std::string& destinationPrefix, const U32 block_size);
 
 	inline const size_t size(void) const{ return(this->n_threads); }
-	inline bool isReverseEntries(void) const{ return(this->reverse_entries); }
-	inline void setReverseEntries(const bool yes){ this->reverse_entries = yes; }
 
 private:
 	bool __sortUnindexed();
@@ -45,7 +43,6 @@ private:
 
 public:
 	size_t      n_threads;
-	bool        reverse_entries;
 	std::string baseName;
 	std::string basePath;
 };
