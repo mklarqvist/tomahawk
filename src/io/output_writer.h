@@ -45,6 +45,14 @@ public:
 	inline const U64& sizeEntries(void) const{ return(this->n_entries); }
 	inline const U32& sizeBlocks(void) const{ return(this->n_blocks); }
 
+	// Setters
+	inline void setSorted(const bool yes){ this->writing_sorted_ = yes; }
+	inline void setPartialSorted(const bool yes){ this->writing_sorted_partial_ = yes; }
+
+	// Getters
+	inline const bool isSorted(void) const{ return(this->writing_sorted_); }
+	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
+
 	bool open(const std::string& output_file);
 	int WriteHeaders(twk_header_type& twk_header);
 	void WriteFinal(void);
@@ -76,6 +84,9 @@ public:
 	inline void operator<<(const entry_type& entry){
 		this->buffer << entry;
 		++this->n_entries;
+
+		if(this->buffer.size() > this->l_flush_limit)
+			this->flush();
 	}
 
 	void operator<<(const container_type& container);
@@ -89,6 +100,8 @@ private:
 	std::string      basePath;
 	std::string      baseName;
 	bool             owns_pointers;
+	bool             writing_sorted_;
+	bool             writing_sorted_partial_;
 	U64              n_entries;        // number of entries written
 	U32              n_progress_count; // lines added since last flush
 	U32              n_blocks;         // number of index blocks writtenflush_limit

@@ -5,6 +5,8 @@ namespace IO{
 
 OutputWriter::OutputWriter(void) :
 	owns_pointers(true),
+	writing_sorted_(false),
+	writing_sorted_partial_(false),
 	n_entries(0),
 	n_progress_count(0),
 	n_blocks(0),
@@ -21,6 +23,8 @@ OutputWriter::OutputWriter(void) :
 
 OutputWriter::OutputWriter(std::string input_file) :
 	owns_pointers(true),
+	writing_sorted_(false),
+	writing_sorted_partial_(false),
 	n_entries(0),
 	n_progress_count(0),
 	n_blocks(0),
@@ -37,6 +41,8 @@ OutputWriter::OutputWriter(std::string input_file) :
 
 OutputWriter::OutputWriter(const self_type& other) :
 	owns_pointers(false),
+	writing_sorted_(other.writing_sorted_),
+	writing_sorted_partial_(other.writing_sorted_partial_),
 	n_entries(other.n_entries),
 	n_progress_count(other.n_progress_count),
 	n_blocks(other.n_blocks),
@@ -90,7 +96,8 @@ int OutputWriter::WriteHeaders(twk_header_type& twk_header){
 void OutputWriter::WriteFinal(void){
 	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
 	this->footer_->offset_end_of_data = this->stream->tellp();
-	this->index_->setSorted(false);
+	this->index_->setSorted(this->isSorted());
+	this->index_->setPartialSorted(this->isPartialSorted());
 
 	this->stream->flush();
 	*this->stream << *this->index_;

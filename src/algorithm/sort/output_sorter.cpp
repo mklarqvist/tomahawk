@@ -21,7 +21,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		return true;
 	}
 
-	std::cerr << this->reader.getIndex().totalBytes() << "->" << this->reader.getIndex().totalBytes() / this->n_threads << std::endl;
+	//std::cerr << this->reader.getIndex().totalBytes() << "->" << this->reader.getIndex().totalBytes() / this->n_threads << std::endl;
 	const U64 n_variants_chunk = this->reader.getIndex().totalBytes() / this->n_threads;
 
 	std::pair<U32, U32>* thread_distribution = new std::pair<U32, U32>[this->n_threads];
@@ -39,16 +39,19 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		thread_distribution[t].first = from;
 		thread_distribution[t].second = i;
 
-		std::cerr << "t: " << from << "->" << i << " for " << partition_size << "/" << n_variants_chunk << std::endl;
+		//std::cerr << "t: " << from << "->" << i << " for " << partition_size << "/" << n_variants_chunk << std::endl;
 		if(i == this->reader.getIndex().size()){
-			std::cerr << "ran out of data" << std::endl;
+			//std::cerr << "ran out of data" << std::endl;
 			break;
 		}
 	}
 
+	// Append executed command to literals
+	this->reader.getHeader().getLiterals() += "\n##tomahawk_sortCommand=" + Helpers::program_string();
+
 	IO::OutputWriter writer;
 	if(!writer.open(destinationPrefix)){
-		std::cerr << "faaield to open file: " << destinationPrefix << std::endl;
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
 	writer.WriteHeaders(this->reader.getHeader());
@@ -59,7 +62,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	for(U32 i = 0; i < this->n_threads; ++i){
 		slaves[i] = new OutputSortSlave(this->reader, writer, thread_distribution[i], 1);
 		if(!slaves[i]->open(input)){
-			std::cerr << "failed to open: " << input << std::endl;
+			std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << input << "..." << std::endl;
 			return false;
 		}
 		threads[i] = slaves[i]->start();
@@ -71,9 +74,13 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	for(U32 i = 0; i < this->n_threads; ++i)
 		writer += slaves[i]->getWriter();
 
+	writer.setSorted(false);
+	writer.setPartialSorted(true);
 	writer.flush();
 	writer.WriteFinal();
 
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 
 	for(U32 i = 0; i < this->n_threads; ++i)
 		delete slaves[i];
@@ -96,16 +103,17 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		return true;
 	}
 
-	if(this->reader.getIndex().getController().isPartialSorted){
+	if(this->reader.getIndex().getController().isPartialSorted == false){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "File is not partially sorted..." << std::endl;
 		return false;
 	}
 
+	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_mergeSortCommand=" + Helpers::program_string();
 
 	IO::OutputWriter writer;
 	if(!writer.open(destinationPrefix)){
-		std::cerr << "faaield to open file: " << destinationPrefix << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
 	writer.WriteHeaders(this->reader.getHeader());
@@ -167,8 +175,13 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		}
 	}
 
+	writer.setPartialSorted(false);
+	writer.setSorted(true);
 	writer.flush();
 	writer.WriteFinal();
+
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 
 	// Cleanup
 	for(U32 i = 0; i < n_toi_entries; ++i)
