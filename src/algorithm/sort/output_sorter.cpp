@@ -124,6 +124,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
+	writer.setFlushLimit(block_size);
 	writer.writeHeaders(this->reader.getHeader());
 
 	const U32 n_toi_entries = this->reader.getIndex().size();

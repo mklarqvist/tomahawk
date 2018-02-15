@@ -55,6 +55,7 @@ public:
 	// Setters
 	inline void setSorted(const bool yes){ this->writing_sorted_ = yes; }
 	inline void setPartialSorted(const bool yes){ this->writing_sorted_partial_ = yes; }
+	inline void setFlushLimit(const U32 limit){ this->l_flush_limit = limit; }
 
 	// Getters
 	inline const bool isSorted(void) const{ return(this->writing_sorted_); }

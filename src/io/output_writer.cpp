@@ -152,18 +152,18 @@ void OutputWriter::operator<<(buffer_type& buffer){
 		if(buffer.size() > l_largest_uncompressed)
 			this->l_largest_uncompressed = buffer.size();
 
+		// Lock
 		this->spin_lock->lock();
-		this->index_entry.byte_offset = (U64)this->stream->tellp();
+
+		this->index_entry.byte_offset       = (U64)this->stream->tellp();
 		this->index_entry.uncompressed_size = buffer.size();
-		//std::cerr << "internal writing: " << buffer.size() << " -> " << this->compressor.buffer.size() << std::endl;
 		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
-		this->index_entry.byte_offset_end = (U64)this->stream->tellp();
-		this->index_entry.n_variants = buffer.size() / sizeof(entry_type);
-		//*this->stream << this->index_entry;
-		this->index_->getContainer() += this->index_entry;
-		//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
+		this->index_entry.byte_offset_end   = (U64)this->stream->tellp();
+		this->index_entry.n_variants        = buffer.size() / sizeof(entry_type);
+		this->index_->getContainer()       += this->index_entry;
 		++this->n_blocks;
 
+		// Unlock
 		this->spin_lock->unlock();
 
 		buffer.reset();

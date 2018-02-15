@@ -33,7 +33,7 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 	this->outputBuffer_.deleteAll();
 	delete [] this->interval_tree_entries;
 	if(this->interval_tree != nullptr){
-		for(U32 i = 0; i < this->getHeader().magic_.getNumberContigs(); ++i){
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
 			delete this->interval_tree[i];
 		}
 		delete [] this->interval_tree;
@@ -388,18 +388,18 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 		return true;
 
 	if(this->interval_tree_entries == nullptr)
-		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().magic_.getNumberContigs()];
+		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
 
 	if(this->interval_tree == nullptr){
-		this->interval_tree = new tree_type*[this->getHeader().magic_.getNumberContigs()];
-		for(U32 i = 0; i < this->getHeader().magic_.getNumberContigs(); ++i)
+		this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
 			this->interval_tree[i] = nullptr;
 	}
 
 	if(!this->__addRegions(positions))
 		return false;
 
-	for(U32 i = 0; i < this->getHeader().magic_.getNumberContigs(); ++i){
+	for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
 		if(this->interval_tree_entries[i].size() != 0){
 			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
 		} else

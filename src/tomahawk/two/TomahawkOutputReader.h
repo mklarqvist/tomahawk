@@ -66,6 +66,15 @@ public:
 	 * @return         Returns TRUE upon success or FALSE otherwise
 	 */
 	bool seekBlock(const U32 position);
+
+	/**<
+	 * Used in parallel programming:
+	 * Takes an input file stream and seeks to a given position and load that
+	 * data into memory without modifying the host container
+	 * @param stream   Input file stream
+	 * @param position Target block position
+	 * @return         Returns TRUE upon success or FALSE otherwise
+	 */
 	bool seekBlock(std::ifstream& stream, const U32 position) const;
 
 	/**<

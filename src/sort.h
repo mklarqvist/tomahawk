@@ -40,6 +40,7 @@ void sort_usage(void){
 	"  -L FLOAT  memory limit in MB (default: 100)\n"
 	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
+	"  -b INT    block size in MB when merging (default: 10)\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
@@ -55,6 +56,7 @@ int sort(int argc, char** argv){
 		{"memory",		optional_argument, 0, 'L' },
 		{"threads",		optional_argument, 0, 't' },
 		{"merge",		no_argument, 0, 'M' },
+		{"block-size",		optional_argument, 0, 'b' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -62,12 +64,13 @@ int sort(int argc, char** argv){
 	// Parameter defaults
 	std::string input, output;
 	double memory_limit = 100e6;
+	int block_size = 10e6;
 	bool merge = false;
 	int threads = std::thread::hardware_concurrency();
 
 	int c = 0;
 	int long_index = 0;
-	while ((c = getopt_long(argc, argv, "i:o:L:t:dDMs", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:L:t:b:dDMs", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -88,8 +91,15 @@ int sort(int argc, char** argv){
 			break;
 		case 'L':
 			memory_limit = atof(optarg) * 1e6;
-			if(memory_limit < 0){
+			if(memory_limit <= 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
+				return(1);
+			}
+			break;
+		case 'b':
+			block_size = atoi(optarg) * 1e6;
+			if(block_size <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
@@ -133,7 +143,7 @@ int sort(int argc, char** argv){
 			return 1;
 		}
 	} else {
-		if(!reader.sortMerge(input, output, 10e6)){
+		if(!reader.sortMerge(input, output, block_size)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
 			return 1;
 		}

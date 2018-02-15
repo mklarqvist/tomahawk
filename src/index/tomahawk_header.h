@@ -45,6 +45,9 @@ public:
 	const bool getContig(const std::string& contig_name, const contig_type*& return_target) const;
 	const S32 getContigID(const std::string& contig_name) const;
 
+	inline magic_type& getMagic(void){ return(this->magic_); }
+	inline const magic_type& getMagic(void) const{ return(this->magic_); }
+
 	// Updater
 	inline void addLiteral(const std::string& string){ this->literals_ += string; }
 	inline const bool validate(void) const{ return(this->magic_.validate()); }

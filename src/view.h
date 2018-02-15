@@ -36,7 +36,7 @@ void view_usage(void){
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout)\n"
+	"  -o FILE  output file (- for stdout; default: -)\n"
 	"  -h/H     (twk/two) header only / no header [null]\n"
 	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
 	"  -N       output in tab-delimited text format (see -O) [null]\n"
