@@ -15,7 +15,7 @@ namespace IO{
 
 class GenericWriterInterace {
 protected:
-	typedef IO::BasicBuffer buffer_type;
+	typedef IO::BasicBuffer     buffer_type;
 	typedef Algorithm::SpinLock lock_type;
 
 public:
@@ -39,8 +39,8 @@ public:
 	virtual bool close(void) =0;
 	inline lock_type* getLock(void){ return(&this->lock); }
 
-	virtual inline const size_t writeNoLock(const char* data, const U32 length) =0;
-	virtual inline const size_t writeNoLock(const buffer_type& buffer) =0;
+	virtual const size_t writeNoLock(const char* data, const U32 length) =0;
+	virtual const size_t writeNoLock(const buffer_type& buffer) =0;
 
 protected:
 	lock_type lock;
@@ -76,8 +76,8 @@ public:
 	}
 
 	inline const size_t writeNoLock(const buffer_type& buffer){
-		std::cout.write(&buffer.data[0], buffer.pointer);
-		return(buffer.pointer);
+		std::cout.write(buffer.data(), buffer.size());
+		return(buffer.size());
 	}
 
 	void operator<<(void* entry){}
@@ -87,7 +87,7 @@ public:
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
 		this->lock.lock();
-		std::cout.write(&buffer.data[0], buffer.size());
+		std::cout.write(buffer.data(), buffer.size());
 		this->lock.unlock();
 	}
 };
@@ -108,12 +108,15 @@ public:
 	}
 
 	bool open(const std::string output){
+		std::cerr << "here in open: " << output << std::endl;
 		if(output.length() == 0){
 			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "No output name provided..." << std::endl;
 			return false;
 		}
 
+		std::cerr << "after test" << std::endl;
 		this->stream.open(output, std::ios::binary | std::ios::out);
+		std::cerr << "after first open" << std::endl;
 		if(!this->stream.good()){
 			std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open output file: " << output << "..." << std::endl;
 			return false;
@@ -122,6 +125,8 @@ public:
 		if(!SILENT)
 			std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening output file: " << output << "..." << std::endl;
 
+		std::cerr << "returnign open" << std::endl;
+		std::cerr << this->stream.good() << std::endl;
 		return true;
 	}
 
@@ -130,16 +135,22 @@ public:
 	inline void flush(void){ this->stream.flush(); }
 	inline bool close(void){ this->stream.close(); return true; }
 
+	template <class Y>
+	void operator<<(const Y& value){
+		this->stream << value;
+	}
+
 	void operator<<(const buffer_type& buffer){
 		// Mutex lock; write; unlock
 		// Note that this threads enter here at random
 		// Extremely unlikely there is every any contention
 		this->lock.lock();
-		this->stream.write(&buffer.data[0], buffer.size());
+		this->stream.write(buffer.data(), buffer.size());
 		this->lock.unlock();
 	}
 
 	void operator<<(void* entry){}
+
 	const size_t write(const char* data, const U64& length){
 		this->lock.lock();
 		this->stream.write(&data[0], length);
@@ -153,12 +164,12 @@ public:
 	}
 
 	inline const size_t writeNoLock(const buffer_type& buffer){
-		this->stream.write(&buffer.data[0], buffer.pointer);
-		return(buffer.pointer);
+		this->stream.write(buffer.data(), buffer.size());
+		return(buffer.size());
 	}
 
 private:
-	std::string outFile;
+	std::string   outFile;
 	std::ofstream stream;
 };
 

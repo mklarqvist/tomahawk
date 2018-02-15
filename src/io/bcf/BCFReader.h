@@ -8,18 +8,19 @@
 #include "../BasicBuffer.h"
 #include "../compression/BGZFController.h"
 #include "BCFEntry.h"
+#include "../vcf/VCFHeader.h"
 
 namespace Tomahawk {
 namespace BCF {
 
 class BCFReader{
-	typedef BCFReader self_type;
-	typedef IO::BasicBuffer buffer_type;
-	typedef IO::BGZFController bgzf_controller_type;
-	typedef IO::BGZFHeader bgzf_type;
-	typedef VCF::VCFHeader header_type;
+	typedef BCFReader            self_type;
+	typedef IO::BasicBuffer      buffer_type;
+	typedef IO::BGZFController   bgzf_controller_type;
+	typedef IO::BGZFHeader       bgzf_type;
+	typedef VCF::VCFHeader       header_type;
 	typedef VCF::VCFHeaderContig contig_type;
-	typedef BCFEntry entry_type;
+	typedef BCFEntry             entry_type;
 
 public:
 	BCFReader();
@@ -33,13 +34,13 @@ public:
 	bool open(const std::string input);
 
 public:
-	std::ifstream stream;
-	U64 filesize;
-	U32 current_pointer;
-	buffer_type buffer;
-	buffer_type header_buffer;
+	std::ifstream        stream;
+	U64                  filesize;
+	U32                  current_pointer;
+	buffer_type          buffer;
+	buffer_type          header_buffer;
 	bgzf_controller_type bgzf_controller;
-	header_type header;
+	header_type          header;
 };
 
 }

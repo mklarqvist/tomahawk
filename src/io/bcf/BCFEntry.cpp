@@ -10,7 +10,7 @@ namespace Tomahawk {
 namespace BCF {
 
 BCFEntry::BCFEntry(void):
-	pointer(0),
+	l_data(0),
 	limit(262144),
 	l_ID(0),
 	p_genotypes(0),
@@ -30,7 +30,7 @@ BCFEntry::~BCFEntry(void){ delete [] this->data; }
 void BCFEntry::resize(const U32 size){
 	char* temp = this->data;
 	this->data = new char[size];
-	memcpy(this->data, temp, this->pointer);
+	memcpy(this->data, temp, this->l_data);
 	std::swap(temp, this->data);
 	delete [] temp;
 	this->body = reinterpret_cast<body_type*>(this->data);
@@ -40,11 +40,11 @@ void BCFEntry::resize(const U32 size){
 }
 
 void BCFEntry::add(const char* const data, const U32 length){
-	if(this->pointer + length > this-> capacity())
-		this->resize(this->pointer + length + 65536);
+	if(this->l_data + length > this-> capacity())
+		this->resize(this->l_data + length + 65536);
 
-	memcpy(&this->data[this->pointer], data, length);
-	this->pointer += length;
+	memcpy(&this->data[this->l_data], data, length);
+	this->l_data += length;
 }
 
 void BCFEntry::__parseID(U32& internal_pos){
@@ -126,25 +126,14 @@ bool BCFEntry::parse(void){
 
 	// Format key
 	const base_type& fmt_type = *reinterpret_cast<const base_type* const>(&this->data[internal_pos++]);
-	//std::cerr << "fmt_key:" << (int)fmt_key_value << '\t' <<  "fmt_type: " << (int)fmt_type.high << '\t' << (int)fmt_type.low << std::endl;
-	//std::cerr << (int)fmt_type_value2 << '\t' << (int)fmt_type_value1 << std::endl;
-	//assert(fmt_type.high == 2);
 
 	if(fmt_type.high != 2){
 		this->isGood = false;
 		return false;
 	}
 
-	this->isGood = true;
-
-	/*
-	for(U32 i = 0; i < 44; ++i){
-		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&this->data[internal_pos++]);
-		std::cerr << i << ':' << " " << (int)fmt_type_value1 << ',' << (int)fmt_type_value2 << '\t' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1)) << ',' << (int)(BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2)) << std::endl;
-	}
-	*/
-	this->genotypes = &this->data[internal_pos];
+	this->isGood      = true;
+	this->genotypes   = &this->data[internal_pos];
 	this->p_genotypes = internal_pos;
 
 	return true;

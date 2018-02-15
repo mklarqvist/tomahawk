@@ -29,13 +29,13 @@ public:
 	void Clear();
 	bool Inflate(buffer_type& input, buffer_type& output, const header_type& header) const;
 	bool Inflate(buffer_type& input, buffer_type& output) const;
-	bool InflateBlock(std::ifstream& stream, buffer_type& input);
+	bool InflateBlock(std::istream& stream, buffer_type& input);
 
 	bool Deflate(const buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream.write(entry.buffer.data, entry.buffer.pointer);
+		stream.write(entry.buffer.data(), entry.buffer.size());
 		return stream;
 	}
 

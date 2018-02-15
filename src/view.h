@@ -22,11 +22,10 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
+#include "tomahawk/two/output_filter.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "totempole/TotempoleReader.h"
 #include "tomahawk/TomahawkReader.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputFilterController.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 void view_usage(void){
 	programMessage();
@@ -37,7 +36,7 @@ void view_usage(void){
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout)\n"
+	"  -o FILE  output file (- for stdout; default: -)\n"
 	"  -h/H     (twk/two) header only / no header [null]\n"
 	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
 	"  -N       output in tab-delimited text format (see -O) [null]\n"
@@ -66,6 +65,7 @@ void view_usage(void){
 	"  -M, --maxMP  FLOAT   largest model Chi-squared CV (default: inf)\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
+	"  -u                   output only the upper triangular values\n"
 	"  --min<cell>  FLOAT   smallest cell count (default: 0)\n"
 	"  --max<cell>  FLOAT   largest cell count (default: inf)\n";
 }
@@ -77,32 +77,32 @@ int view(int argc, char** argv){
 	}
 
 	static struct option long_options[] = {
-		{"input",		required_argument, 0, 'i' },
-		{"output",		optional_argument, 0, 'o' },
-		{"minP",		optional_argument, 0, 'p' },
-		{"maxP",		optional_argument, 0, 'P' },
-		{"minR2",		optional_argument, 0, 'r' },
-		{"maxR2",		optional_argument, 0, 'R' },
-		{"minDP",	optional_argument, 0, 'd' },
-		{"maxDP",	optional_argument, 0, 'D' },
-		{"minChi",	optional_argument, 0, 'x' },
-		{"maxChi",	optional_argument, 0, 'X' },
-		{"minAlelles",	optional_argument, 0, 'a' },
-		{"maxAlleles",	optional_argument, 0, 'A' },
-		{"minMP",	optional_argument, 0, 'm' },
-		{"maxMP",	optional_argument, 0, 'M' },
-		{"flagInclude",	optional_argument, 0, 'f' },
-		{"flagExclude",	optional_argument, 0, 'F' },
-		{"headerOnly",	no_argument, 0, 'H' },
-		{"noHeader",	no_argument, 0, 'h' },
-		{"dropGenotypes",	optional_argument, 0, 'G' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",       required_argument, 0, 'i' },
+		{"output",      optional_argument, 0, 'o' },
+		{"minP",        optional_argument, 0, 'p' },
+		{"maxP",        optional_argument, 0, 'P' },
+		{"minR2",       optional_argument, 0, 'r' },
+		{"maxR2",       optional_argument, 0, 'R' },
+		{"minDP",       optional_argument, 0, 'd' },
+		{"maxDP",       optional_argument, 0, 'D' },
+		{"minChi",      optional_argument, 0, 'x' },
+		{"maxChi",      optional_argument, 0, 'X' },
+		{"minAlelles",  optional_argument, 0, 'a' },
+		{"maxAlleles",  optional_argument, 0, 'A' },
+		{"minMP",       optional_argument, 0, 'm' },
+		{"maxMP",       optional_argument, 0, 'M' },
+		{"flagInclude", optional_argument, 0, 'f' },
+		{"flagExclude", optional_argument, 0, 'F' },
+		{"headerOnly",  no_argument, 0, 'H' },
+		{"noHeader",    no_argument, 0, 'h' },
+		{"dropGenotypes",optional_argument, 0, 'G' },
+		{"silent",      no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
 	std::string input, output;
-	Tomahawk::TomahawkOutputFilterController two_filter;
+	Tomahawk::OutputFilter two_filter;
 	bool outputHeader = true;
 	int outputType = 1;
 	bool dropGenotypes = false;
@@ -329,8 +329,8 @@ int view(int argc, char** argv){
 		Tomahawk::TomahawkReader tomahawk;
 		tomahawk.setDropGenotypes(dropGenotypes);
 		tomahawk.setShowHeader(outputHeader);
-		if(!tomahawk.Open(input)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+		if(!tomahawk.open(input)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to open!" << std::endl;
 			return 1;
 		}
 
@@ -338,24 +338,26 @@ int view(int argc, char** argv){
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		Tomahawk::IO::TomahawkOutputReader reader;
+		Tomahawk::TomahawkOutputReader reader;
 		reader.setWriteHeader(outputHeader);
-		Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
-		filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
+		Tomahawk::OutputFilter& filter = reader.getFilter();
+		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
-		if(!reader.setWriterType(outputType))
+
+		//if(!reader.setWriterType(outputType))
+		//	return 1;
+
+		if(!reader.open(input))
 			return 1;
 
-		if(!reader.Open(input))
-			return 1;
-
-		if(!reader.AddRegions(filter_regions)){
+		if(!reader.addRegions(filter_regions)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
 		}
 
-		if(!reader.view(input))
+		if(!reader.view())
 			return 1;
+
 
 	} else {
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;

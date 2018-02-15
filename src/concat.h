@@ -22,8 +22,8 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <vector>
 
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
 
 void concat_usage(void){
 	programMessage();
@@ -108,17 +108,21 @@ int concat(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling concat..." << std::endl;
 	}
 
-	Tomahawk::IO::TomahawkOutputReader reader;
+	Tomahawk::TomahawkOutputReader reader;
 	if(input.size() == 0){
+		/*
 		if(!reader.concat(files, output)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
 			return 1;
 		}
+		*/
 	} else {
+		/*
 		if(!reader.concat(input, output)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
 			return 1;
 		}
+		*/
 	}
 
 	return 0;

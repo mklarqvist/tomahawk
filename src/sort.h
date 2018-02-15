@@ -20,11 +20,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
+#include "algorithm/sort/output_sorter.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
 #include "tomahawk/TomahawkReader.h"
-#include "totempole/TotempoleReader.h"
-#include "tomahawk/TomahawkOutput/TomahawkOutputReader.h"
-#include "algorithm/sort/TomahawkOutputSort.h"
 
 void sort_usage(void){
 	programMessage();
@@ -32,8 +31,7 @@ void sort_usage(void){
 	"About:  Sort TWO files: provides two basic subroutines. If the file is too big to\n"
 	"        be sorted in available memory, use the -L option to split the file into\n"
 	"        sorted chunks no larger than -L MB in size. Then rerun sort with the -M option\n"
-	"        to perform a k-way merge sort using the partially block-sorted data. Use -d to\n"
-	"        expand A->B to A->B and B->A for accelerated queries.\n"
+	"        to perform a k-way merge sort using the partially block-sorted data.\n"
 	"        Note that combining -L and -t incur O(L*t) memory!\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
@@ -42,8 +40,7 @@ void sort_usage(void){
 	"  -L FLOAT  memory limit in MB (default: 100)\n"
 	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
-	"  -D        expand data (requires O(2n) memory). Is required for indexing [null]\n"
-	"  -d        do NOT expand data (see -D, default)[null]\n"
+	"  -b INT    block size in MB when merging (default: 10)\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
@@ -58,9 +55,8 @@ int sort(int argc, char** argv){
 		{"output",		required_argument, 0, 'o' },
 		{"memory",		optional_argument, 0, 'L' },
 		{"threads",		optional_argument, 0, 't' },
-		{"expand",		no_argument, 0, 'D' },
-		{"no-expand",	no_argument, 0, 'd' },
 		{"merge",		no_argument, 0, 'M' },
+		{"block-size",		optional_argument, 0, 'b' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -68,13 +64,13 @@ int sort(int argc, char** argv){
 	// Parameter defaults
 	std::string input, output;
 	double memory_limit = 100e6;
+	int block_size = 10e6;
 	bool merge = false;
-	bool expand = false;
 	int threads = std::thread::hardware_concurrency();
 
 	int c = 0;
 	int long_index = 0;
-	while ((c = getopt_long(argc, argv, "i:o:L:t:dDMs", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:L:t:b:dDMs", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -95,8 +91,15 @@ int sort(int argc, char** argv){
 			break;
 		case 'L':
 			memory_limit = atof(optarg) * 1e6;
-			if(memory_limit < 0){
+			if(memory_limit <= 0){
 				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
+				return(1);
+			}
+			break;
+		case 'b':
+			block_size = atoi(optarg) * 1e6;
+			if(block_size <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
@@ -110,13 +113,6 @@ int sort(int argc, char** argv){
 
 		case 'M':
 			merge = true;
-			break;
-
-		case 'D':
-			expand = true;
-			break;
-		case 'd':
-			expand = false;
 			break;
 		}
 	}
@@ -138,9 +134,8 @@ int sort(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
 	}
 
-	Tomahawk::Algorithm::Output::TomahawkOutputSorter reader;
+	Tomahawk::Algorithm::OutputSorter reader;
 	reader.n_threads = threads;
-	reader.reverse_entries = expand;
 
 	if(!merge){
 		if(!reader.sort(input, output, memory_limit)){
@@ -148,7 +143,7 @@ int sort(int argc, char** argv){
 			return 1;
 		}
 	} else {
-		if(!reader.sortMerge(input, output, 10e6)){
+		if(!reader.sortMerge(input, output, block_size)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
 			return 1;
 		}

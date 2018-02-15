@@ -8,8 +8,7 @@ RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include src/totempole/subdir.mk
--include src/tomahawk/TomahawkOutput/subdir.mk
+-include src/tomahawk/two/subdir.mk
 -include src/tomahawk/subdir.mk
 -include src/third_party/zlib/subdir.mk
 -include src/third_party/xxhash/subdir.mk
@@ -19,7 +18,9 @@ RM := rm
 -include src/io/compression/subdir.mk
 -include src/io/bcf/subdir.mk
 -include src/io/subdir.mk
+-include src/index/subdir.mk
 -include src/algorithm/sort/subdir.mk
+-include src/algorithm/subdir.mk
 -include src/subdir.mk
 -include subdir.mk
 -include objects.mk
@@ -48,13 +49,6 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ifneq ($BRANCH, master)
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
-else
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
-endif
-
 
 # All Target
 all: tomahawk
@@ -77,7 +71,6 @@ post-build:
 	-mkdir -p ../bin; mv tomahawk ../bin/;
 	-@echo ' '
 
-.PHONY: all clean dependents
-.SECONDARY: post-build
+.PHONY: all clean dependents post-build
 
 -include ../makefile.targets

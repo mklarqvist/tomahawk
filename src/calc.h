@@ -231,6 +231,9 @@ int calc(int argc, char** argv){
 		return 1;
 	}
 
+	//Tomahawk::Totempole::TotempoleReader totempole_reader;
+	//Tomahawk::TomahawkReader<U16> tomahawk_reader;
+
 	//std::vector<U32> rets = totempole.findOverlaps(Tomahawk::Interval(0, 2221297, 10108169));
 	//std::cerr << "Found overlaps: " << rets.size() << std::endl;
 	//for(U32 i = 0; i < rets.size(); ++i)

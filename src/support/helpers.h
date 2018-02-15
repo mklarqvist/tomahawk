@@ -10,7 +10,7 @@
 #include <iostream>
 #include <cstring>
 
-#include "TypeDefinitions.h"
+#include "type_definitions.h"
 
 namespace Tomahawk{
 namespace Helpers{
@@ -83,6 +83,8 @@ inline std::string secondsToTimestring(const double& value){
 	return(retVal);
 }
 
+S32 char2int(const char& input);
+bool HexToBytes(const std::string& hex, uint8_t* target);
 
 }
 }

@@ -4,18 +4,18 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/io/BasicBuffer.cpp \
 ../src/io/BasicWriters.cpp \
+../src/io/output_writer.cpp \
 ../src/io/reader.cpp 
 
 OBJS += \
-./src/io/BasicBuffer.o \
 ./src/io/BasicWriters.o \
+./src/io/output_writer.o \
 ./src/io/reader.o 
 
 CPP_DEPS += \
-./src/io/BasicBuffer.d \
 ./src/io/BasicWriters.d \
+./src/io/output_writer.d \
 ./src/io/reader.d 
 
 

@@ -1,21 +1,23 @@
 #ifndef TOMAHAWK_TOMAHAWKCALC_H_
 #define TOMAHAWK_TOMAHAWKCALC_H_
 
-#include "../totempole/TotempoleReader.h"
 #include "TomahawkReader.h"
-#include "TomahawkOutput/TomahawkOutputManager.h"
+#include "twk_reader_implementation.h"
+#include "genotype_meta_container_reference.h"
+#include "../io/output_writer.h"
+#include "../index/index.h"
 
 namespace Tomahawk {
 
 class TomahawkCalc{
-	typedef TomahawkCalc self_type;
-	typedef TomahawkCalcParameters parameter_type;
-	typedef std::pair<U32,U32> pair_type;
-	typedef std::vector<pair_type> pair_vector;
-	typedef Balancer balancer_type;
-	typedef Totempole::TotempoleReader totempole_reader;
-	typedef Interface::ProgressBar progress_type;
-	typedef TomahawkReader reader_type;
+	typedef TomahawkCalc               self_type;
+	typedef TomahawkCalcParameters     parameter_type;
+	typedef std::pair<U32,U32>         pair_type;
+	typedef std::vector<pair_type>     pair_vector;
+	typedef LoadBalancerLD             balancer_type;
+	typedef TomahawkHeader             header_type;
+	typedef Interface::ProgressBar     progress_type;
+	typedef TomahawkReader             reader_type;
 
 public:
 	TomahawkCalc();
@@ -31,59 +33,75 @@ private:
 	template <class T> bool Calculate();
 
 private:
-	std::string input_file;
-	std::string output_file;
-
-	bool parameters_validated;
-	progress_type progress;
-	balancer_type balancer;
+	std::string    input_file;
+	std::string    output_file;
+	bool           parameters_validated;
+	progress_type  progress;
+	balancer_type  balancer;
 	parameter_type parameters;
-	reader_type reader;
+	reader_type    reader;
 };
 
 template <class T>
 bool TomahawkCalc::Calculate(){
 	// Retrieve reference to Totempole reader
-	totempole_reader& totempole = this->reader.getTotempole();
-	totempole.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
-	totempole.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
+	header_type& header = this->reader.getHeader();
+	header.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
+	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
-	IO::TomahawkOutputManager<T> writer;
-	if(!writer.Open(this->output_file, totempole)){
+	IO::OutputWriter writer;
+	if(!writer.open(this->output_file)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
 
-	// Construct Tomahawk manager
-	TomahawkBlockManager<const T> controller(totempole);
-	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i)
-		controller.Add(this->reader.getOffsetPair(i).data, this->reader.getOffsetPair(i).entry);
+	writer.writeHeaders(this->reader.getHeader());
 
 	if(!SILENT){
-#if SIMD_AVAILABLE == 1
+	#if SIMD_AVAILABLE == 1
 		std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-#else
+	#else
 		std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-#endif
+	#endif
 		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
 	}
 
-	// Build 1-bit representation from RLE data
-	if(!controller.BuildVectorized()){
-		std::cerr << Helpers::timestamp("ERROR", "SIMD") << "Failed building bit-representation..." << std::endl;
-		return false;
+	// Construct Tomahawk manager
+	//TomahawkReaderImpl<T> impl(totempole.header.samples, this->reader.DataOffsetSize()+1);
+
+	//std::cerr << "not implemented" << std::endl;
+	//exit(1);
+
+	GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
+
+	U64 n_variants = 0;
+	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
+		// Hard copy of data into STL-like containers
+		/*
+		impl.addDataBlock(this->reader.getOffsetPair(i).data,
+                          this->reader.getOffsetPair(i).l_buffer,
+                          this->reader.getOffsetPair(i).entry);
+		*/
+
+		// Reference interpretation of char buffer in psuedo-iterator containers
+		// directly from unaligned memory
+		references.addDataBlock(this->reader.getOffsetPair(i).data,
+                                this->reader.getOffsetPair(i).l_buffer,
+                                this->reader.getOffsetPair(i).entry);
+
+		n_variants += references[i].getTotempole().size();
 	}
 
 	if(!SILENT)
 		std::cerr << "Done..." << std::endl;
 
 	// Number of variants in memory
-	const U64 variants = controller.getVariants();
+	const U64 variants = references.countVariants();
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
-	// Todo: validate
+	// Todo: validate & decouple
 	U64 totalComparisons = 0;
 	for(U32 i = 0; i < this->balancer.thread_distribution.size(); ++i){
 		for(U32 j = 0; j < this->balancer.thread_distribution[i].size(); ++j){
@@ -93,11 +111,13 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = from; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = controller[from].size();
+							//const U32 size = impl[from].size();
+							const U32 size = this->reader.getOffsetPair(from).entry.size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += controller[from].size() * controller[col].size();
+							//totalComparisons += impl[from].size() * impl[col].size();
+							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -107,11 +127,13 @@ bool TomahawkCalc::Calculate(){
 					for(U32 col = this->balancer.thread_distribution[i][j].fromColumn; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
 						//std::cerr << '\t' << from << ":" << col << '\t';
 						if(from == col){
-							const U32 size = controller[from].size();
+							//const U32 size = impl[from].size();
+							const U32 size = this->reader.getOffsetPair(from).entry.size();
 							totalComparisons += (size*size - size)/2;
 							//std::cerr << (size*size - size)/2 << std::endl;
 						} else {
-							totalComparisons += controller[from].size() * controller[col].size();
+							//totalComparisons += impl[from].size() * impl[col].size();
+							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
 							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
 						}
 					}
@@ -122,14 +144,14 @@ bool TomahawkCalc::Calculate(){
 
 	// Update progress bar with data
 	this->progress.SetComparisons(totalComparisons);
-	this->progress.SetSamples(totempole.getSamples());
+	this->progress.SetSamples(header.magic_.getNumberSamples());
 	this->progress.SetDetailed(this->parameters.detailed_progress);
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
-	TomahawkCalculateSlave<T>** slaves = new TomahawkCalculateSlave<T>*[this->parameters.n_threads];
+	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
 	std::vector<std::thread*> thread_pool;
 
 	// Setup workers
@@ -139,7 +161,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new TomahawkCalculateSlave<T>(controller, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		slaves[i] = new LDSlave<T>(references, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT)
 			std::cerr << '.';
 	}
@@ -177,23 +199,28 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
-	writer = slaves[0]->getOutputManager().getTotempoleBlocks();
+	writer = slaves[0]->getWriter();
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*totempole.getSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*totempole.getSamples()) << " pairwise genotypes. Output " << Helpers::ToPrettyString(this->progress.GetOutputCounter()) << "..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 	}
 
 	// Cleanup
 	delete [] slaves;
 
 	// Flush writer
-	writer.flushBlock();
+	writer.flush();
+	writer.writeFinal();
+	/*
 	if(!writer.finalise()){
 		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
 		return false;
 	}
+
 	writer.close();
+	*/
 
 	return true;
 }

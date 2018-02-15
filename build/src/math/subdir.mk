@@ -4,13 +4,13 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/math/FisherMath.cpp 
+../src/math/fisher_math.cpp 
 
 OBJS += \
-./src/math/FisherMath.o 
+./src/math/fisher_math.o 
 
 CPP_DEPS += \
-./src/math/FisherMath.d 
+./src/math/fisher_math.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

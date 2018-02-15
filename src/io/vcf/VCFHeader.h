@@ -8,8 +8,9 @@
 #include "VCFHeaderContig.h"
 #include "VCFHeaderLine.h"
 #include "../reader.h"
-#include "../../algorithm/OpenHashTable.h"
-#include "../../totempole/TotempoleReader.h"
+#include "../../algorithm/open_hashtable.h"
+#include "../BasicBuffer.h"
+#include "../compression/TGZFController.h"
 
 namespace Tomahawk {
 namespace VCF{
@@ -18,7 +19,6 @@ class VCFHeader {
 	typedef VCFHeader self_type;
 	typedef Tomahawk::Hash::HashTable<std::string, S32> hash_table;
 	typedef VCFHeaderContig contig_type;
-	typedef Totempole::TotempoleReader totempole_type;
 	typedef IO::TGZFController tgzf_type;
 	typedef IO::BasicBuffer buffer_type;
 
@@ -27,19 +27,6 @@ class VCFHeader {
 public:
 	VCFHeader();
 	~VCFHeader();
-	void operator=(const totempole_type& other){
-		this->samples = other.getHeader().samples;
-		this->version = other.getHeader().version;
-		this->contigsHashTable = other.getContigHTablePointer();
-		this->sampleHashTable = other.getSampleHTablePointer();
-
-		this->contigs = std::vector<contig_type>(other.n_contigs);
-		for(U32 i = 0; i < other.n_contigs; ++i){
-			this->contigs[i].name = other.contigs[i].name;
-			this->contigs[i].length = other.contigs[i].bases;
-			this->contigs[i].tomahawkBlocks = other.contigs[i].blocksEnd-other.contigs[i].blocksStart;
-		}
-	}
 
 	void unsetBorrowedPointers(void){
 		this->contigsHashTable = nullptr;
@@ -76,7 +63,7 @@ public:
 			temp += this->literal_lines[i];
 		}
 		tgzf_controller.Deflate(temp);
-		stream.write(&temp.data[0], temp.size());
+		stream.write(temp.data(), temp.size());
 		tgzf_controller.Clear();
 		temp.deleteAll();
 

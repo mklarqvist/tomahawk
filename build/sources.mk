@@ -23,7 +23,9 @@ CPP_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
+src/algorithm \
 src/algorithm/sort \
+src/index \
 src/io \
 src/io/bcf \
 src/io/compression \
@@ -34,6 +36,5 @@ src/support \
 src/third_party/xxhash \
 src/third_party/zlib \
 src/tomahawk \
-src/tomahawk/TomahawkOutput \
-src/totempole \
+src/tomahawk/two \
 

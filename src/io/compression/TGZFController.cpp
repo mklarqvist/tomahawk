@@ -38,7 +38,7 @@ bool TGZFController::Inflate(buffer_type& input, buffer_type& output, const head
 }
 
 bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const header_type& header) const{
-	const U32& uncompressedLength = *reinterpret_cast<const U32*>(&input.data[input.size() - sizeof(U32)]);
+	const U32& uncompressedLength = *reinterpret_cast<const U32*>(&input[input.size() - sizeof(U32)]);
 	if(output.size() + uncompressedLength >= output.capacity())
 		output.resize((output.size() + uncompressedLength) + 65536);
 
@@ -53,9 +53,9 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	z_stream zs;
 	zs.zalloc    = NULL;
 	zs.zfree     = NULL;
-	zs.next_in   = (Bytef*)&input.data[Constants::TGZF_BLOCK_HEADER_LENGTH];
+	zs.next_in   = (Bytef*)&input[Constants::TGZF_BLOCK_HEADER_LENGTH];
 	zs.avail_in  = (header.BSIZE + 1) - 16;
-	zs.next_out  = (Bytef*)&output.data[output.pointer];
+	zs.next_out  = (Bytef*)&output[output.size()];
 	zs.avail_out = (U32)avail_out;
 
 	int status = inflateInit2(&zs, Constants::GZIP_WINDOW_BITS);
@@ -84,7 +84,7 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 	if(zs.total_out == 0)
 		std::cerr << Helpers::timestamp("LOG", "TGZF") << "Detected empty TGZF block" << std::endl;
 
-	output.pointer += zs.total_out;
+	output.n_chars += zs.total_out;
 
 	return(true);
 }
@@ -92,7 +92,7 @@ bool TGZFController::__Inflate(buffer_type& input, buffer_type& output, const he
 bool TGZFController::Deflate(const buffer_type& buffer){
 	this->buffer.resize(buffer);
 
-	memset(this->buffer.data, 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
+	memset(this->buffer.data(), 0, Constants::TGZF_BLOCK_HEADER_LENGTH);
 
 	this->buffer[0]  = Constants::GZIP_ID1;
 	this->buffer[1]  = Constants::GZIP_ID2;
@@ -113,8 +113,8 @@ bool TGZFController::Deflate(const buffer_type& buffer){
     z_stream zs;
     zs.zalloc    = NULL;
     zs.zfree     = NULL;
-    zs.next_in   = (Bytef*)buffer.data;
-    zs.avail_in  = buffer.pointer;
+    zs.next_in   = (Bytef*)buffer.data();
+    zs.avail_in  = buffer.size();
     zs.next_out  = (Bytef*)&this->buffer[Constants::TGZF_BLOCK_HEADER_LENGTH];
     zs.avail_out = this->buffer.width -
                    Constants::TGZF_BLOCK_HEADER_LENGTH -
@@ -169,18 +169,18 @@ bool TGZFController::Deflate(const buffer_type& buffer){
 	//std::cerr << Helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
 
 
-	memset(&buffer.data[compressedLength - Constants::TGZF_BLOCK_FOOTER_LENGTH], 0, Constants::TGZF_BLOCK_FOOTER_LENGTH);
+	memset(&buffer.buffer[compressedLength - Constants::TGZF_BLOCK_FOOTER_LENGTH], 0, Constants::TGZF_BLOCK_FOOTER_LENGTH);
 
 	// store the CRC32 checksum
 	U32 crc = crc32(0, NULL, 0);
-	crc = crc32(crc, (Bytef*)buffer.data, buffer.pointer);
+	crc = crc32(crc, (Bytef*)buffer.data(), buffer.size());
 	U32* c = reinterpret_cast<U32*>(&this->buffer[compressedLength - Constants::TGZF_BLOCK_FOOTER_LENGTH]);
 	*c = crc;
-	U32 convert = buffer.pointer; // avoid potential problems when casting from U64 to U32 by interpretation
+	U32 convert = buffer.size(); // avoid potential problems when casting from U64 to U32 by interpretation
 	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer[compressedLength - sizeof(U32)]);
 	*uncompressed = convert; // Store uncompressed length
 
-	this->buffer.pointer = compressedLength;
+	this->buffer.n_chars = compressedLength;
 	//std::cerr << "Writing: " << convert << '/' << *uncompressed << '\t' << compressedLength << '\t' << *test << '\t' << buffer.size() << '\t' << "At pos: " << (compressedLength - sizeof(U32)) << '\t' << buffer.pointer << '\t' << *c << '\t' << convert << std::endl;
 
 	return true;
@@ -191,11 +191,11 @@ bool TGZFController::Deflate(buffer_type& meta, buffer_type& rle){
 	return(this->Deflate(meta));
 }
 
-bool TGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
+bool TGZFController::InflateBlock(std::istream& stream, buffer_type& input){
 	input.resize(sizeof(header_type));
-	stream.read(&input.data[0], IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
-	const header_type* h = reinterpret_cast<const header_type*>(&input.data[0]);
-	input.pointer = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	stream.read(input.data(), IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	const header_type* h = reinterpret_cast<const header_type*>(input.data());
+	input.n_chars = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Failed to validate!" << std::endl;
 		std::cerr << *h << std::endl;
@@ -206,16 +206,16 @@ bool TGZFController::InflateBlock(std::ifstream& stream, buffer_type& input){
 
 	// Recast because if buffer is resized then the pointer address is incorrect
 	// resulting in segfault
-	h = reinterpret_cast<const header_type*>(&input.data[0]);
+	h = reinterpret_cast<const header_type*>(input.data());
 
-	stream.read(&input.data[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	stream.read(&input[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!stream.good()){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TGZF") << "Truncated file..." << std::endl;
 		return false;
 	}
 
-	input.pointer = h->BSIZE;
-	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.pointer -  sizeof(U32)]);
+	input.n_chars = h->BSIZE;
+	const U32 uncompressed_size = *reinterpret_cast<const U32*>(&input[input.size() - sizeof(U32)]);
 	this->buffer.resize(uncompressed_size);
 	this->buffer.reset();
 

@@ -1,7 +1,7 @@
 #ifndef GZFCONSTANTS_H_
 #define GZFCONSTANTS_H_
 
-#include "../../support/TypeDefinitions.h"
+#include "../../support/type_definitions.h"
 
 namespace Tomahawk{
 namespace IO{
@@ -22,11 +22,11 @@ const BYTE BGZF_ID1   = 66;
 const BYTE BGZF_ID2   = 67;
 const BYTE BGZF_LEN   = 2;
 
-const SBYTE		GZIP_WINDOW_BITS			= -15;
-const SBYTE		Z_DEFAULT_MEM_LEVEL			= 8;
-const BYTE  	TGZF_BLOCK_HEADER_LENGTH  	= 20;
-const BYTE		TGZF_BLOCK_FOOTER_LENGTH  	= 8;
-const BYTE  	BGZF_BLOCK_HEADER_LENGTH  	= 18;
+const SBYTE GZIP_WINDOW_BITS			= -15;
+const SBYTE	Z_DEFAULT_MEM_LEVEL			= 8;
+const BYTE  TGZF_BLOCK_HEADER_LENGTH  	= 20;
+const BYTE	TGZF_BLOCK_FOOTER_LENGTH  	= 8;
+const BYTE  BGZF_BLOCK_HEADER_LENGTH  	= 18;
 
 }
 }

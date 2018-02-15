@@ -3,9 +3,31 @@
 
 namespace Tomahawk{
 
-reader::reader() : filesize_(0), block_size_(65536), capacity_(this->block_size_*2), end_(0), buffer_(new type[this->capacity_]){}
-reader::reader(std::string input) : filename_(input), filesize_(0), block_size_(65536), capacity_(this->block_size_*2), end_(0), buffer_(new type[this->capacity_]){}
-reader::reader(std::string input, const size_t block_size) : filename_(input), filesize_(0), block_size_(block_size), capacity_(this->block_size_*2), end_(0), buffer_(new type[this->capacity_]){}
+reader::reader() :
+		filesize_(0),
+		block_size_(65536),
+		capacity_(this->block_size_*2),
+		end_(0),
+		buffer_(new type[this->capacity_])
+{}
+
+reader::reader(std::string input) :
+		filename_(input),
+		filesize_(0),
+		block_size_(65536),
+		capacity_(this->block_size_*2),
+		end_(0),
+		buffer_(new type[this->capacity_])
+{}
+
+reader::reader(std::string input, const size_t block_size) :
+		filename_(input),
+		filesize_(0),
+		block_size_(block_size),
+		capacity_(this->block_size_*2),
+		end_(0),
+		buffer_(new type[this->capacity_])
+{}
 
 bool reader::open(std::string filename){
 	// If filename is empty

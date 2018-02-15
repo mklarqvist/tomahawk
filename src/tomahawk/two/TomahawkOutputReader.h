@@ -1,0 +1,180 @@
+#ifndef TOMAHAWKOUTPUTREADER_H_
+#define TOMAHAWKOUTPUTREADER_H_
+
+#include <vector>
+#include <fstream>
+#include <string>
+#include <stddef.h>
+#include <regex>
+
+#include "../../io/BasicBuffer.h"
+#include "../../io/compression/TGZFController.h"
+#include "../../support/MagicConstants.h"
+#include "../../algorithm/open_hashtable.h"
+#include "../../support/type_definitions.h"
+#include "../../third_party/intervalTree.h"
+#include "../../tomahawk/output_container.h"
+#include "../../tomahawk/output_container_reference.h"
+#include "../two/output_entry.h"
+#include "output_filter.h"
+#include "../../index/index.h"
+#include "../../index/footer.h"
+#include "../../index/tomahawk_header.h"
+
+namespace Tomahawk {
+
+class TomahawkOutputReader {
+private:
+	typedef IO::OutputEntry                entry_type;
+	typedef OutputFilter                   filter_type;
+	typedef OutputContainer                output_container_type;
+	typedef OutputContainerReference       output_container_reference_type;
+	typedef Totempole::HeaderContig        contig_type;
+	typedef IO::TGZFHeader                 tgzf_header_type;
+	typedef Algorithm::ContigInterval      interval_type;
+	typedef TomahawkHeader                 header_type;
+	typedef Index                          index_type;
+	typedef IO::BasicBuffer                buffer_type;
+	typedef IO::TGZFController             tgzf_controller_type;
+	typedef Totempole::Footer              footer_type;
+
+	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef Hash::HashTable<std::string, U32> hash_table;
+
+public:
+	TomahawkOutputReader();
+	~TomahawkOutputReader();
+
+	// Accessors
+	inline footer_type& getFooter(void){ return(this->footer_); }
+	inline const footer_type& getFooter(void) const{ return(this->footer_); }
+	inline const index_type& getIndex(void) const{ return(*this->index_); }
+	inline index_type& getIndex(void){ return(*this->index_); }
+	inline const header_type& getHeader(void) const{ return(this->header_); }
+	inline header_type& getHeader(void){ return(this->header_); }
+	inline index_type* getIndexPointer(void){ return(this->index_); }
+
+	bool open(const std::string input);
+	bool addRegions(std::vector<std::string>& positions);
+	//bool OpenExtend(const std::string input);
+
+	// Streaming functions
+	/**<
+	 * Seek to block at a given position and load that
+	 * data into memory
+	 * @param position Target block position
+	 * @return         Returns TRUE upon success or FALSE otherwise
+	 */
+	bool seekBlock(const U32 position);
+
+	/**<
+	 * Used in parallel programming:
+	 * Takes an input file stream and seeks to a given position and load that
+	 * data into memory without modifying the host container
+	 * @param stream   Input file stream
+	 * @param position Target block position
+	 * @return         Returns TRUE upon success or FALSE otherwise
+	 */
+	bool seekBlock(std::ifstream& stream, const U32 position) const;
+
+	/**<
+	 * Parses TWO data that has been loaded into memory after invoking
+	 * either getBlock functions. This function also increments the internal
+	 * position of the file handler.
+	 * @param clear Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @return      Returns TRUE upon success or FALSE otherwis
+	 */
+	int parseBlock(const bool clear = true);
+
+	/**<
+	 * Used in parallel programming:
+	 * Takes an input file stream and the necessary buffers and inflates `two` data without
+	 * modifying the host container
+	 * @param stream              Input file stream
+	 * @param inflate_buffer      Support buffer for loading compressed data
+	 * @param data_buffer         Output buffer for inflated `two` entries
+	 * @param compression_manager Compression manager
+	 * @param clear               Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @return                    Returns TRUE upon success or FALSE otherwise
+	 */
+	int parseBlock(std::ifstream& stream, buffer_type& inflate_buffer, buffer_type& data_buffer, tgzf_controller_type& compression_manager, const bool clear = true) const;
+
+	// Access: no random access. All these functions
+	//         assumes that data is loaded linearly from disk
+	inline output_container_type getContainer(void){ return(output_container_type(this->data_)); }
+	output_container_type getContainerVariants(const U64 n_variants);
+	output_container_type getContainerBytes(const size_t l_data);
+	output_container_type getContainerBlocks(const U32 n_blocks);
+	inline output_container_reference_type getContainerReference(void){ return(output_container_reference_type(this->data_)); }
+
+	// Access: requires complete (if n = 1) or partial (if n > 1) random access
+	output_container_reference_type getContainerReferenceBlock(const U32 blockID);
+	output_container_reference_type getContainerReferenceBlock(std::vector<U32> blocks);
+	output_container_type getContainerBlock(const U32 blockID);
+	output_container_type getContainerBlock(std::vector<U32> blocks);
+
+	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
+
+	// Basic operations
+	bool view(void);
+	bool view(const interval_type& interval);
+	bool view(const std::vector<interval_type>& intervals);
+
+	// Other
+	bool index(const std::string& filename);
+	bool summary(const std::string& input, const U32 bins);
+
+	// Concatenate
+	bool concat(const std::string& file_list, const std::string& output);
+	bool concat(const std::vector<std::string>& files, const std::string& output);
+
+	//
+	bool setWriterType(const int type);
+	void setWriteHeader(const bool write){ this->showHeader_ = write; }
+
+	inline filter_type& getFilter(void){ return this->filters_; }
+	bool OpenWriter(void);
+	bool OpenWriter(const std::string output_file);
+
+private:
+	bool __Open(const std::string input);
+	bool ParseHeader(void);
+	bool ParseHeaderExtend(void);
+
+	bool __viewOnly(void);
+	bool __viewFilter(void);
+	bool __viewRegion(void);
+	bool __viewRegionIndexed(void);
+	bool __checkRegionIndex(const entry_type& entry);
+	bool __checkRegionNoIndex(const entry_type& entry);
+	bool __concat(const std::vector<std::string>& files, const std::string& output);
+
+	bool __addRegions(std::vector<std::string>& positions);
+	bool __ParseRegion(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
+	bool __ParseRegionIndexedBlocks(void);
+
+public:
+	U64            filesize_;  // filesize
+	U64            offset_end_of_data_;
+	bool           showHeader_; // flag to output header or not
+	std::ifstream  stream_;    // reader stream
+
+	header_type    header_;
+	footer_type    footer_;
+	index_type*    index_;
+
+	buffer_type          buffer_;          // input buffer
+	buffer_type          data_;            // inflate buffer
+	buffer_type          outputBuffer_;    // output buffer
+	tgzf_controller_type tgzf_controller_; // compression controller
+
+	filter_type filters_;	// filter parameters
+
+	tree_type** interval_tree;
+	std::vector<interval_type>* interval_tree_entries;
+};
+
+} /* namespace Tomahawk */
+
+#endif /* TOMAHAWKOUTPUTREADER_H_ */
