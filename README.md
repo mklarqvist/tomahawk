@@ -4,13 +4,12 @@
 
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
-Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the run-length. This encoding scheme is superior to dynamic-width encoding appro  aches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is fixed across a file and is determined contextually contingent on the number of samples. Tomahawk has three primary internal functions: 
+Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the run-length. This encoding scheme is superior to dynamic-width encoding appro  aches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is fixed across a file and is determined contextually contingent on the number of samples. Tomahawk has two primary internal functions: 
 
 1) iterate over sites and RLE entries; 
-2) partition compressed genotypic vectors into groups;
-3) computing the inner product of compressed genotypic vectors;
+2) computing the inner product of compressed genotypic vectors;
 
-We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines primarily two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
+We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk primarily combines two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
 
 The current format specifications (v.0) for `TWK`,`TWO`, and `TGZF`
 are available [TWKv0](spec/TWKv0.pdf)
@@ -119,17 +118,18 @@ colors[length(colors)]<- substr(colors[length(colors)],1,7)
 
 # Define support functions
 plotLDRegion<-function(dataSource, from, to, ...){
-  # B is A but sorted for plotting reasons (Z-stack)
+  # Assumes all the data is from the same chromosome
   b<-dataSource[dataSource$V3>=from & dataSource$V3 <= to & dataSource$V5 >= from & dataSource$V5 <= to,]
-  b<-b[order(b$V13,decreasing = F),]
+  b<-b[order(b$V13,decreasing = F),] # sort for Z-stack
   plot(b$V3,b$V5,pch=20,cex=.2,col=colors[cut(b$V13,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
 }
 
 plotLDRegionTriangular<-function(dataSource, from, to, ...){
-  # B is A but sorted for plotting reasons (Z-stack)
+  # Assumes all the data is from the same chromosome
   b<-dataSource[dataSource$V3>=from & dataSource$V5<=to & dataSource$V3>=from & dataSource$V5<=to,]
-  b<-b[order(b$V13,decreasing = F),]
-  plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V13,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
+  b<-b[b$V3<b$V5,] # upper triangular only
+  b<-b[order(b$V12,decreasing = F),] # sort for Z-stack
+  plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
 }
 ```
 
@@ -150,13 +150,19 @@ plotLDRegionTriangular(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main=
 ```
 ![screenshot](R/1kgp3_chr20_105_1_triangular.jpeg)  
 
+Plotting large regions can be achieved by truncating the Y-axis:
+```R
+plotLDRegionTriangular(ld, min(ld$V3), max(ld$V5), xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 6e6-12e6", las=2,ylim=c(0,0.5e6))
+```
+![screenshot](R/1kgp3_chr20_large_region.jpeg)
+
 If your data has been sorted and expanded (symmetric) for rapid queries each data point is represented twice ([A,B], and [B,A]):
 ```R
 # Load some symmetric LD data from Tomahawk
 ld<-read.delim("1kgp3_chr2_105_1_symmetric.ld",h=F)
 plotLDRegion(ld, 1e6, 4e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 1e6-4e6", las=2)
 ```
-![screenshot](R/1kgp3_chr20_105_1_symmetric.jpeg)
+![screenshot](R/1kgp3_chr20_105_1_symmetric.jpeg)  
 
 This figure demonstrates how Tomahawk partitions the workload in order to maximize data locality. Shown here is part 1 and 10 out of 45 for the 1000 Genomes data for chromosome 20. This data locality can have profound impact on runtime: in many cases it is faster to run many smaller partitions of the data instead of several larger ones.   
 ![screenshot](R/1kgp3_chr20_45_part1_10.jpeg)

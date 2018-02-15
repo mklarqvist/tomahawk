@@ -71,7 +71,6 @@ post-build:
 	-mkdir -p ../bin; mv tomahawk ../bin/;
 	-@echo ' '
 
-.PHONY: all clean dependents
-.SECONDARY: post-build
+.PHONY: all clean dependents post-build
 
 -include ../makefile.targets

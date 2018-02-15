@@ -8,12 +8,13 @@ plotLDRegion<-function(dataSource, from, to, ...){
   # B is A but sorted for plotting reasons (Z-stack)
   b<-dataSource[dataSource$V3>=from & dataSource$V3 <= to & dataSource$V5 >= from & dataSource$V5 <= to,]
   b<-b[order(b$V12,decreasing = F),]
-  plot(b$V3,b$V5,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+  plot(b$V3,b$V5,pch=20,cex=.1,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
 }
 
 plotLDRegionTriangular<-function(dataSource, from, to, ...){
   # B is A but sorted for plotting reasons (Z-stack)
   b<-dataSource[dataSource$V3>=from & dataSource$V5<=to & dataSource$V3>=from & dataSource$V5<=to,]
+  b<-b[b$V3<b$V5,] # upper triangular only
   b<-b[order(b$V12,decreasing = F),]
   plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
 }
