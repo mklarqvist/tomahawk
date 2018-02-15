@@ -112,9 +112,9 @@ bool TGZFEntryIterator<T>::nextEntry(const T*& entry){
 		}
 
 		this->output_buffer.n_chars = ret_size;
-		this->n_entries = ret_size / sizeof(T);
-		this->pointer = 0;
-		this->entries = reinterpret_cast<const T*>(this->output_buffer.data());
+		this->n_entries             = ret_size / sizeof(T);
+		this->pointer               = 0;
+		this->entries               = reinterpret_cast<const T*>(this->output_buffer.data());
 	}
 
 	entry = &this->entries[this->pointer++];

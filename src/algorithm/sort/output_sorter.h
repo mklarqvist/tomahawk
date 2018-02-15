@@ -35,10 +35,6 @@ public:
 	inline const size_t size(void) const{ return(this->n_threads); }
 
 private:
-	bool __sortUnindexed();
-	//bool __sortIndexed(basic_writer_type& toi_writer, const std::string& input, U64 memory_limit);
-
-private:
 	two_reader_type reader;
 
 public:
