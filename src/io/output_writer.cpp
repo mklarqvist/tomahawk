@@ -84,7 +84,7 @@ bool OutputWriter::open(const std::string& output_file){
 	return true;
 }
 
-int OutputWriter::WriteHeaders(twk_header_type& twk_header){
+int OutputWriter::writeHeaders(twk_header_type& twk_header){
 	const std::string command = "##tomahawk_calcCommand=" + Helpers::program_string();
 	twk_header.getLiterals() += command;
 	// Set file type to TWO
@@ -93,7 +93,7 @@ int OutputWriter::WriteHeaders(twk_header_type& twk_header){
 	return(twk_header.write(*this->stream));
 }
 
-void OutputWriter::WriteFinal(void){
+void OutputWriter::writeFinal(void){
 	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
 	this->footer_->offset_end_of_data = this->stream->tellp();
 	this->index_->setSorted(this->isSorted());
@@ -138,6 +138,7 @@ void OutputWriter::operator<<(const container_type& container){
 	for(size_type i = 0; i < container.size(); ++i)
 		this->buffer << container[i];
 
+	this->n_entries += buffer.size() / sizeof(entry_type);
 	*this << this->buffer;
 }
 
@@ -154,7 +155,7 @@ void OutputWriter::operator<<(buffer_type& buffer){
 		this->spin_lock->lock();
 		this->index_entry.byte_offset = (U64)this->stream->tellp();
 		this->index_entry.uncompressed_size = buffer.size();
-		std::cerr << "internal writing: " << buffer.size() << " -> " << this->compressor.buffer.size() << std::endl;
+		//std::cerr << "internal writing: " << buffer.size() << " -> " << this->compressor.buffer.size() << std::endl;
 		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
 		this->index_entry.byte_offset_end = (U64)this->stream->tellp();
 		this->index_entry.n_variants = buffer.size() / sizeof(entry_type);

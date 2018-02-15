@@ -55,7 +55,7 @@ bool TomahawkCalc::Calculate(){
 		return false;
 	}
 
-	writer.WriteHeaders(this->reader.getHeader());
+	writer.writeHeaders(this->reader.getHeader());
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1
@@ -212,7 +212,7 @@ bool TomahawkCalc::Calculate(){
 
 	// Flush writer
 	writer.flush();
-	writer.WriteFinal();
+	writer.writeFinal();
 	/*
 	if(!writer.finalise()){
 		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;

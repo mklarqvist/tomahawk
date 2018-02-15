@@ -28,7 +28,6 @@ DEALINGS IN THE SOFTWARE.
 #include "import.h"
 #include "view.h"
 #include "sort.h"
-#include "index.h"
 #include "concat.h"
 #include "stats.h"
 
@@ -60,11 +59,6 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "sort", 4) == 0){
 		return(sort(argc, argv));
-
-	} else if(strncmp(&argv[1][0], "index", 5) == 0){
-		//return(index(argc, argv));
-		std::cerr << "Not implemented" << std::endl;
-		return(1);
 
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));

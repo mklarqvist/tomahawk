@@ -19,9 +19,10 @@ private:
 	typedef TomahawkOutputReader  reader_type;
 	typedef IO::TGZFController    tgzf_controller_type;
 	typedef IO::BasicBuffer       buffer_type;
+	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
 
 public:
-	OutputSortSlave(reader_type& reader, writer_type& writer, const std::pair<U32, U32>& workload, const U32 memory_limit) :
+	OutputSortSlave(reader_type& reader, writer_type& writer, const std::pair<U64, U64>& workload, const U32 memory_limit) :
 		workload_(workload),
 		n_memory_limit_(memory_limit),
 		reader_(reader),
@@ -52,45 +53,57 @@ public:
 
 private:
 	bool sort(void){
-		if(!this->reader_.seekBlock(this->stream_, this->workload_.first)){
+		if(!this->stream_.seekg(this->workload_.first)){
 			std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to seek to block!" << std::endl;
 			exit(1); // exit instead of return because of detached threads
 		}
 
-		const U32 n_blocks = this->workload_.second - this->workload_.first;
-		for(U32 i = 0; i < n_blocks; ++i){
-			if(!this->reader_.parseBlock(this->stream_, this->inflate_buffer_, this->data_, this->compression_manager_, false)){
-				std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to get block!" << std::endl;
-				exit(1); // exit instead of return because of detached threads
-			}
+		// iterator
+		const U64 n_entries_limit = this->n_memory_limit_ / sizeof(entry_type);
+		tgzf_iterator it(this->stream_, 65536, this->workload_.first, this->workload_.second);
+		bool finished_ = false;
+
+		if(!this->stream_.good()){
+			std::cerr << Helpers::timestamp("ERROR","SORT") << "Stream is bad!" << std::endl;
+			exit(1); // exit instead of return because of detached threads
 		}
 
-		// Load a chunk of data
-		OutputContainer o(this->data_.data(), this->data_.size());
-		if(o.size() == 0)
-			return true;
+		while(true){
+			OutputContainer container(this->n_memory_limit_ / sizeof(entry_type) + 1024);
 
-		std::sort(&o.front(), &o.back());
-
-		const entry_type* prev = &o[0];
-		for(size_t j = 1; j < o.size(); ++j){
-			if(*prev >= o[j]){
-				std::cerr << j-1 << ',' << j << std::endl;
-				std::cerr << *prev << std::endl;
-				std::cerr << o[j] << std::endl;
-				exit(1);
+			const entry_type* e = nullptr;
+			for(U32 i = 0; i < n_entries_limit; ++i){
+				if(!it.nextEntry(e)){
+					finished_ = true;
+					break;
+				}
+				container += *e;
 			}
-			prev = &o[j];
-		}
 
-		this->writer_ << o;
+			std::sort(&container.front(), &container.back());
+
+			const entry_type* prev = &container[0];
+			for(size_t j = 1; j < container.size(); ++j){
+				if(*prev >= container[j]){
+					std::cerr << j-1 << ',' << j << std::endl;
+					std::cerr << *prev << std::endl;
+					std::cerr << container[j] << std::endl;
+					exit(1);
+				}
+				prev = &container[j];
+			}
+
+			this->writer_ << container;
+			if(finished_)
+				break;
+		}
 
 		return true;
 	}
 
 private:
 	std::ifstream        stream_;
-	std::pair<U32, U32>  workload_;
+	std::pair<U64, U64>  workload_;
 	const U32            n_memory_limit_;
 	const reader_type&   reader_;
 	writer_type          writer_;

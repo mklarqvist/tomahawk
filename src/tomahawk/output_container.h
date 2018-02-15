@@ -65,7 +65,7 @@ public:
 		assert(cumulative_position == data_buffer.size());
 	}
 
-    ~OutputContainer(){
+    ~OutputContainer(void){
     	for(size_type i = 0; i < this->size(); ++i)
 			((this->__entries + i)->~OutputEntry)();
 
@@ -121,7 +121,7 @@ public:
 	// Capacity
 	inline const bool empty(void) const{ return(this->n_entries == 0); }
 	inline const size_type& size(void) const{ return(this->n_entries); }
-	inline const size_type& capacity(void) const{ return(this->capacity()); }
+	inline const size_type& capacity(void) const{ return(this->n_capacity); }
 
 	// Iterator
 	inline iterator begin(){ return iterator(&this->__entries[0]); }
@@ -132,6 +132,17 @@ public:
 	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
 
 	// Add
+	bool operator+=(const_reference entry){
+		if(this->size() + 1 > this->capacity()){
+			std::cerr << "could not fit!" << std::endl;
+			return false;
+		}
+
+		new( &this->__entries[this->size()] ) value_type( entry ); // invoke copy ctor
+		++this->n_entries;
+		return true;
+	}
+
 	inline bool addData(const buffer_type& buffer){ return(this->addData(buffer.data(), buffer.size())); }
 	bool addData(const char* const data, const U64 l_data){
 		assert(l_data % sizeof(value_type) == 0);

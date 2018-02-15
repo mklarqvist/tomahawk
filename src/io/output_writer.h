@@ -19,6 +19,13 @@
 namespace Tomahawk{
 namespace IO{
 
+/**<
+ * Writer class for `two` entries. This class supports parallel writing
+ * with the use of a lock-free spin-lock (requires C++11 because of the use
+ * of atomic values). In parallel computing, each slave constructs their own
+ * OutputWriter by invoking the copy-ctor and borrowing pointers from the
+ * main instance.
+ */
 class OutputWriter{
 private:
 	typedef OutputWriter                    self_type;
@@ -54,9 +61,12 @@ public:
 	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
 
 	bool open(const std::string& output_file);
-	int WriteHeaders(twk_header_type& twk_header);
-	void WriteFinal(void);
+	int writeHeaders(twk_header_type& twk_header);
+	void writeFinal(void);
 	void flush(void);
+
+	inline void ResetProgress(void){ this->n_progress_count = 0; }
+	inline const U32& getProgressCounts(void) const{ return this->n_progress_count; }
 
 	inline self_type& operator+=(const self_type& other){
 		this->n_entries += other.n_entries;
@@ -75,21 +85,41 @@ public:
 		return(*this);
 	}
 
+	/**<
+	 * Primary function writing `two` entries to disk after being computed by a
+	 * slave.
+	 * @param meta_a   Meta information for the from container
+	 * @param meta_b   Meta information for the to container
+	 * @param header_a Tomahawk index entry for the from container
+	 * @param header_b Tomahawk index entry for the to container
+	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
+	 */
 	template <class T>
 	void Add(const MetaEntry<T>& meta_a, const MetaEntry<T>& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
 
-	inline void ResetProgress(void){ this->n_progress_count = 0; }
-	inline const U32& getProgressCounts(void) const{ return this->n_progress_count; }
-
+	/**<
+	 * Overloaded operator for adding a single `two` entry
+	 * @param entry Input `two` entry
+	 */
 	inline void operator<<(const entry_type& entry){
 		this->buffer << entry;
 		++this->n_entries;
 
+		// Check if the buffer has to be flushed after adding this entry
 		if(this->buffer.size() > this->l_flush_limit)
 			this->flush();
 	}
 
+	/**<
+	 * Overloaded operator for adding an entire container of `two` entries
+	 * @param container Target container of entries
+	 */
 	void operator<<(const container_type& container);
+
+	/**<
+	 * Overloaded operator for adding an entire buffer of `two` entries
+	 * @param buffer Target buffer of entries
+	 */
 	void operator<<(buffer_type& buffer);
 
 private:
