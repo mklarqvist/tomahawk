@@ -123,6 +123,8 @@ public:
 	 */
 	void operator<<(buffer_type& buffer);
 
+	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
+
 private:
 	void CheckOutputNames(const std::string& input);
 

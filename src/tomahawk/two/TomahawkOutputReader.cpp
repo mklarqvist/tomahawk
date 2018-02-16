@@ -9,6 +9,7 @@
 #include "../../io/compression/GZFHeader.h"
 #include "../../support/helpers.h"
 #include "../two/TomahawkOutputStats.h"
+#include "../../io/output_writer.h"
 
 namespace Tomahawk {
 
@@ -653,6 +654,98 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 	} // end iTree b
 
 	return false;
+}
+
+bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const std::string& output){
+	if(files.size() == 0){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files..." << std::endl;
+		return false;
+	}
+
+	// open first one
+	if(!SILENT)
+		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
+
+	if(!this->open(files[0])){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
+		return false;
+	}
+
+	this->getHeader().getLiterals() += "\n##tomahawk_concatCommand=" + Helpers::program_string();
+	this->getHeader().getLiterals() += "\n##tomahawk_concatFiles=";
+	for(U32 i = 0; i < files.size(); ++i)
+		this->getHeader().getLiterals() += files[i] + ',';
+
+	IO::OutputWriter writer;
+	if(!writer.open(output)){
+		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
+		return false;
+	}
+	writer.writeHeaders(this->getHeader());
+
+	while(this->parseBlock())
+		writer << this->data_;
+
+	for(U32 i = 1; i < files.size(); ++i){
+		if(!SILENT)
+			std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
+
+		this->stream_.close();
+		self_type second_reader;
+		if(!second_reader.open(files[i])){
+			std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
+			return false;
+		}
+
+		if(!(second_reader.getHeader() == this->getHeader())){
+			std::cerr << "header mismatch" << std::endl;
+		}
+
+		while(second_reader.parseBlock())
+			writer << this->data_;
+	}
+
+	writer.setSorted(false);
+	writer.setPartialSorted(false);
+	writer.flush();
+	writer.writeFinal();
+
+	return true;
+}
+
+
+bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const std::string& output){
+	if(files.size() == 0){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files given..." << std::endl;
+		return false;
+	}
+
+	return(this->__concat(files, output));
+}
+
+bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
+	if(file_list.size() == 0){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input file list given..." << std::endl;
+		return false;
+	}
+
+	std::ifstream file_list_read(file_list);
+	if(!file_list_read.good()){
+		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
+		return false;
+	}
+
+	std::vector<std::string> files;
+	std::string line;
+	while(getline(file_list_read, line)){
+		if(line.size() == 0){
+			std::cerr << Helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
+			break;
+		}
+		files.push_back(line);
+	}
+
+	return(this->__concat(files, output));
 }
 
 /*

@@ -25,6 +25,7 @@ namespace Tomahawk {
 
 class TomahawkOutputReader {
 private:
+	typedef TomahawkOutputReader           self_type;
 	typedef IO::OutputEntry                entry_type;
 	typedef OutputFilter                   filter_type;
 	typedef OutputContainer                output_container_type;

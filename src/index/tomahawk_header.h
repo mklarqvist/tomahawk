@@ -52,6 +52,22 @@ public:
 	inline void addLiteral(const std::string& string){ this->literals_ += string; }
 	inline const bool validate(void) const{ return(this->magic_.validate()); }
 
+	//
+	inline const bool operator==(const self_type& other) const{
+		if(!(this->magic_ == other.magic_)) return false;
+
+		for(U32 i = 0; i < this->magic_.n_contigs; ++i){
+			if(!(this->contigs_[i] == other.contigs_[i]))
+				return false;
+		}
+
+		for(U32 i = 0; i < this->magic_.n_samples; ++i){
+			if(this->sample_names_[i] != other.sample_names_[i])
+				return false;
+		}
+		return true;
+	}
+
 private:
 	bool BuildHashTables(void);
 	const U32 DetermineUncompressedSize(void) const;
