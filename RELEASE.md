@@ -1,3 +1,10 @@
+# Release 0.3.1
+
+## Bug Fixes and Other Changes
+* Bug fixes
+   * Sort merge (`tomahawk sort -M`) now produces the correct output
+   * `view` ABI command now correctly triggers `-h`/`-H` flag
+
 # Release 0.3.0
 
 ## Breaking Changes

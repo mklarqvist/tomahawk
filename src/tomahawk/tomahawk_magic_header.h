@@ -53,6 +53,14 @@ public:
 		return(this->validateMagic() && this->n_samples > 0 && this->n_contigs > 0 && (this->major_version > 0 || this->minor_version > 0) && this->l_header > 0 && this->l_header_uncompressed > 0);
 	}
 
+	inline const bool operator==(const self_type& other) const{
+		if(strncmp(&this->magic_string[0], &other.magic_string[0], Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH) != 0) return false;
+		if(this->file_type != other.file_type) return false;
+		if(this->n_samples != other.n_samples) return false;
+		if(this->n_contigs != other.n_contigs) return false;
+		return true;
+	}
+
 private:
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& header){
 		stream.write(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);

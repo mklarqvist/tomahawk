@@ -90,6 +90,7 @@ int concat(int argc, char** argv){
 
 	if(input.size() == 0 && files.length() == 0){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << input.size() << '\t' << files.size() << std::endl;
 		return(1);
 	}
 
@@ -110,19 +111,17 @@ int concat(int argc, char** argv){
 
 	Tomahawk::TomahawkOutputReader reader;
 	if(input.size() == 0){
-		/*
 		if(!reader.concat(files, output)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
 			return 1;
 		}
-		*/
+
 	} else {
-		/*
 		if(!reader.concat(input, output)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "CONCAT") << "Failed to concat files!" << std::endl;
 			return 1;
 		}
-		*/
+
 	}
 
 	return 0;

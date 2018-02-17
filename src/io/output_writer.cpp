@@ -172,6 +172,32 @@ void OutputWriter::operator<<(buffer_type& buffer){
 	}
 }
 
+void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
+	if(buffer.size() == 0) return;
+
+	assert(uncompressed_size % sizeof(entry_type) == 0);
+
+	if(uncompressed_size > l_largest_uncompressed)
+		this->l_largest_uncompressed = uncompressed_size;
+
+	// Lock
+	this->spin_lock->lock();
+
+	this->index_entry.byte_offset       = (U64)this->stream->tellp();
+	this->index_entry.uncompressed_size = uncompressed_size;
+	this->stream->write(buffer.data(), buffer.size());
+	this->index_entry.byte_offset_end   = (U64)this->stream->tellp();
+	this->index_entry.n_variants        = uncompressed_size / sizeof(entry_type);
+	this->index_->getContainer()       += this->index_entry;
+	++this->n_blocks;
+
+	// Unlock
+	this->spin_lock->unlock();
+
+	buffer.reset();
+	this->index_entry.reset();
+}
+
 void OutputWriter::CheckOutputNames(const std::string& input){
 	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];

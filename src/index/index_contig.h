@@ -49,6 +49,13 @@ public:
 		return(sizeof(U32) + sizeof(U32) + this->n_char);
 	}
 
+	inline const bool operator==(const self_type& other) const{
+		if(this->n_bases != other.n_bases) return false;
+		if(this->n_char != other.n_char) return false;
+		if(this->name != other.name) return false;
+		return true;
+	}
+
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.n_bases << '\t' << entry.n_char << '\t' << entry.name;
 		return stream;
