@@ -60,6 +60,7 @@ public:
 	// Getters
 	inline const bool isSorted(void) const{ return(this->writing_sorted_); }
 	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
+	inline index_type& getIndex(void) const{ return(*this->index_); }
 
 	bool open(const std::string& output_file);
 	int writeHeaders(twk_header_type& twk_header);

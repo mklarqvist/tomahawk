@@ -127,17 +127,20 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	writer.setFlushLimit(block_size);
 	writer.writeHeaders(this->reader.getHeader());
 
-	const U32 n_toi_entries = this->reader.getIndex().size();
-	std::ifstream* streams = new std::ifstream[n_toi_entries];
-	tgzf_iterator** iterators = new tgzf_iterator*[n_toi_entries];
+	const U32 n_blocks        = this->reader.getIndex().size();
+	std::ifstream* streams    = new std::ifstream[n_blocks];
+	tgzf_iterator** iterators = new tgzf_iterator*[n_blocks];
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
+		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_blocks << " file handles...";
 
-	for(U32 i = 0; i < n_toi_entries; ++i){
+	for(U32 i = 0; i < n_blocks; ++i){
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.getIndex().getContainer()[i].byte_offset);
-		iterators[i] = new tgzf_iterator(streams[i], 65536, this->reader.getIndex().getContainer()[i].byte_offset, this->reader.getIndex().getContainer()[i].byte_offset_end);
+		iterators[i] = new tgzf_iterator(streams[i],
+                                         65536,
+                                         this->reader.getIndex().getContainer()[i].byte_offset,
+                                         this->reader.getIndex().getContainer()[i].byte_offset_end);
 	}
 
 	if(!SILENT)
@@ -152,12 +155,12 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 
 	// draw one from each
 	const entry_type* e = nullptr;
-	for(U32 i = 0; i < n_toi_entries; ++i){
+	for(U32 i = 0; i < n_blocks; ++i){
 		if(!iterators[i]->nextEntry(e)){
 			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to get an entry..." << std::endl;
 			return false;
 		}
-		outQueue.push( queue_entry(e, i, entry_type::sortAscending) );
+		outQueue.push( queue_entry(e, i, entry_type::sortDescending) );
 	}
 
 	if(outQueue.empty()){
@@ -174,10 +177,9 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		// remove this record from the queue
 		outQueue.pop();
 
-
 		while(iterators[id]->nextEntry(e)){
 			if(!(*e < outQueue.top().data)){
-				outQueue.push( queue_entry(e, id, entry_type::sortAscending) );
+				outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
 				break;
 			}
 			writer << *e;
@@ -193,7 +195,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 
 	// Cleanup
-	for(U32 i = 0; i < n_toi_entries; ++i)
+	for(U32 i = 0; i < n_blocks; ++i)
 		delete iterators[i];
 
 	delete [] iterators;

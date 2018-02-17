@@ -114,6 +114,8 @@ public:
 	output_container_type getContainerBlock(const U32 blockID);
 	output_container_type getContainerBlock(std::vector<U32> blocks);
 
+	inline void setShowHeader(const bool yes){ this->showHeader_ = yes; }
+	inline const bool getShowHeader(void) const{ return(this->showHeader_); }
 	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
 
 	// Basic operations
@@ -121,32 +123,20 @@ public:
 	bool view(const interval_type& interval);
 	bool view(const std::vector<interval_type>& intervals);
 
-	// Other
-	bool index(const std::string& filename);
-	bool summary(const std::string& input, const U32 bins);
-
 	// Concatenate
 	bool concat(const std::string& file_list, const std::string& output);
 	bool concat(const std::vector<std::string>& files, const std::string& output);
 
-	//
-	bool setWriterType(const int type);
-	void setWriteHeader(const bool write){ this->showHeader_ = write; }
-
 	inline filter_type& getFilter(void){ return this->filters_; }
-	bool OpenWriter(void);
-	bool OpenWriter(const std::string output_file);
 
 private:
-	bool __Open(const std::string input);
 	bool ParseHeader(void);
 	bool ParseHeaderExtend(void);
 
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
-	bool __viewRegionIndexed(void);
-	bool __checkRegionIndex(const entry_type& entry);
+
 	bool __checkRegionNoIndex(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
