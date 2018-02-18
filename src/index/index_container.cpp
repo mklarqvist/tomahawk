@@ -79,7 +79,7 @@ void IndexContainer::resize(const size_t new_capacity){
 	this->n_capacity_ = new_capacity;
 }
 
-std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(const S32& contigID) const{
+std::pair<U32, U32> IndexContainer::findOverlap(const S32& contigID) const{
 	// Find first hit
 	size_t i = 0;
 	for(; i < this->size(); ++i){
@@ -88,7 +88,7 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 	}
 
 	if(i == this->size())
-		return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(this->size()), &this->at(this->size())));
+		return(std::pair<U32, U32>(0, 0));
 
 	const size_t from = i;
 	for(; i < this->size(); ++i){
@@ -96,10 +96,10 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 			break;
 	}
 
-	return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(from), &this->at(i)));
+	return(std::pair<U32,U32>(from, i));
 }
 
-std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(const S32& contigID, const U64& position) const{
+std::pair<U32, U32> IndexContainer::findOverlap(const S32& contigID, const U64& position) const{
 	// Find first hit
 	size_t i = 0;
 	for(; i < this->size(); ++i){
@@ -108,7 +108,7 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 	}
 
 	if(i == this->size())
-		return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(this->size()), &this->at(this->size())));
+		return(std::pair<U32, U32>(0, 0));
 
 	const size_t from = i;
 	for(; i < this->size(); ++i){
@@ -116,10 +116,10 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 			break;
 	}
 
-	return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(from), &this->at(i)));
+	return(std::pair<U32,U32>(from, i));
 }
 
-std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const{
+std::pair<U32, U32> IndexContainer::findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const{
 	// Find first hit
 	size_t i = 0;
 	for(; i < this->size(); ++i){
@@ -128,7 +128,7 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 	}
 
 	if(i == this->size())
-		return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(this->size()), &this->at(this->size())));
+		return(std::pair<U32, U32>(0, 0));
 
 	const size_t from = i;
 	for(; i < this->size(); ++i){
@@ -136,7 +136,7 @@ std::pair<const IndexEntry*, const IndexEntry*> IndexContainer::findOverlap(cons
 			break;
 	}
 
-	return(std::pair<const IndexEntry*, const IndexEntry*>(&this->at(from), &this->at(i)));
+	return(std::pair<U32,U32>(from, i));
 }
 
 }

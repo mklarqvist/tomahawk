@@ -10,6 +10,7 @@
 #include "../../support/helpers.h"
 #include "../two/TomahawkOutputStats.h"
 #include "../../io/output_writer.h"
+#include "../../index/index_entry.h"
 
 namespace Tomahawk {
 
@@ -547,12 +548,42 @@ bool TomahawkOutputReader::__viewRegion(void){
 		std::cout << this->getHeader().getLiterals() << '\n';
 	}
 
-	if(this->interval_tree != nullptr){
-		while(this->parseBlock()){
-			output_container_reference_type o(this->data_);
-			for(U32 i = 0; i < o.size(); ++i)
-				this->__checkRegionNoIndex(o[i]);
-		} // end while next block
+	// File is sorted
+	if(this->getIndex().isSorted()){
+		if(this->interval_tree == nullptr)
+			return false;
+
+		for(U32 i = 0; i < this->interval_tree_entries->size(); ++i){
+			// Find this overlap
+			std::pair<U32, U32> ret = this->getIndex().getContainer().findOverlap(this->interval_tree_entries->at(i).contigID, this->interval_tree_entries->at(i).start, this->interval_tree_entries->at(i).stop);
+			const U32 n_blocks_hits = ret.second - ret.first;
+			if(n_blocks_hits == 0)
+				return false;
+
+			for(U32 j = 0; j < n_blocks_hits; ++j){
+				if(!this->seekBlock(ret.first + j)){
+					std::cerr << "failed to seek block" << std::endl;
+					return false;
+				}
+
+				if(!this->parseBlock())
+					return false;
+
+				output_container_reference_type o(this->data_);
+				for(U32 i = 0; i < o.size(); ++i)
+					this->__checkRegionNoIndex(o[i]);
+			}
+		}
+	}
+	// File is not sorted
+	else {
+		if(this->interval_tree != nullptr){
+			while(this->parseBlock()){
+				output_container_reference_type o(this->data_);
+				for(U32 i = 0; i < o.size(); ++i)
+					this->__checkRegionNoIndex(o[i]);
+			} // end while next block
+		}
 	}
 
 	return true;

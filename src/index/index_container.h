@@ -103,9 +103,9 @@ public:
 
 	// Overlap functions: find blocks a target interval overlaps
 	//                    returns pairs of pointers. If pointerA == pointerB then the data is empty
-	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID) const;
-	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID, const U64& position) const;
-	std::pair<const_pointer, const_pointer> findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const;
+	std::pair<U32, U32> findOverlap(const S32& contigID) const;
+	std::pair<U32, U32> findOverlap(const S32& contigID, const U64& position) const;
+	std::pair<U32, U32> findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const;
 
 private:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& container){

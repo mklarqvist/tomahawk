@@ -59,6 +59,8 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
+	writer.getIndex().setSorted(false);
+	writer.getIndex().setPartialSorted(true);
 	writer.writeHeaders(this->reader.getHeader());
 
 	if(!SILENT)
@@ -125,6 +127,8 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		return false;
 	}
 	writer.setFlushLimit(block_size);
+	writer.getIndex().setSorted(true);
+	writer.getIndex().setPartialSorted(false);
 	writer.writeHeaders(this->reader.getHeader());
 
 	const U32 n_blocks        = this->reader.getIndex().size();
@@ -168,11 +172,15 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		return false;
 	}
 
+	// Set first previous entry and current index bounds
+	writer.getPreviousEntry() = outQueue.top().data;
+	writer.getCurrentIndexEntry() = outQueue.top().data;
+
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
-		writer << outQueue.top().data;
+		writer.addSorted(outQueue.top().data);
 
 		// remove this record from the queue
 		outQueue.pop();
@@ -182,13 +190,14 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 				outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
 				break;
 			}
-			writer << *e;
+			writer.addSorted(*e);
 		}
 	}
 
 	writer.setPartialSorted(false);
 	writer.setSorted(true);
 	writer.flush();
+	writer.getIndex().buildMetaIndex(this->reader.getHeader().getMagic().getNumberContigs());
 	writer.writeFinal();
 
 	if(!SILENT)

@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.3-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.3.2-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
@@ -43,10 +43,10 @@ Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and 
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
 
-All primary Tomahawk commands operate on the binary Tomahawk `twk` and Totempole `twi` file
+All primary Tomahawk commands operate on the binary Tomahawk `twk` and Tomahawk output `two` file
 format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
 commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
-disequilibrium data is written out in `two` and `toi` format.
+disequilibrium data is written out in `two` format.
 
 ### Importing to Tomahawk
 By design Tomahawk only operates on bi-allelic SNVs and as such filters out
@@ -54,8 +54,8 @@ indels and complex variants. Tomahawk does not support mixed phasing of genotype
 in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found in a line,
 all genotypes in that line are converted to unphased. Importing a variant document (`vcf`/`bcf`)
 to Tomahawk requires the `import` command.
-The following command line imports a `vcf` file and outputs `outPrefix.twk` and
-`outPrefix.twk.twi` and filters out variants with >20% missingness and deviate
+The following command line imports a `vcf` file and outputs `outPrefix.twk` and filters out 
+variants with >20% missingness and deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
@@ -91,7 +91,7 @@ Converting a `twk` file to `vcf`
 tomahawk view -i file.twk -o file.vcf
 ```
 
-### Sort `TWO` file
+### Sorting `two` files
 Partially sort `two` file in 500 MB chunks
 ```bash
 tomahawk sort -i file.two -o partial.two -L 500

@@ -22,11 +22,11 @@ bool Index::buildMetaIndex(const U32 n_contigs){
 		return false;
 
 	meta_entry_type reference_entry;
-	reference_entry.index_begin = 0;
-	reference_entry.index_end   = 1;
-	reference_entry.min_position = this->getContainer()[0].min_position;
-	reference_entry.max_position = this->getContainer()[0].max_position;
-	reference_entry.n_variants = this->getContainer()[0].n_variants;
+	reference_entry.index_begin       = 0;
+	reference_entry.index_end         = 1;
+	reference_entry.min_position      = this->getContainer()[0].min_position;
+	reference_entry.max_position      = this->getContainer()[0].max_position;
+	reference_entry.n_variants        = this->getContainer()[0].n_variants;
 	reference_entry.uncompressed_size = this->getContainer()[0].uncompressed_size;
 	U32 reference_contig = this->getContainer()[0].contigID;
 
@@ -39,17 +39,17 @@ bool Index::buildMetaIndex(const U32 n_contigs){
 
 			temp_entries[reference_contig] = reference_entry;
 			reference_contig = this->getContainer()[i].contigID;
-			reference_entry.index_begin = i;
-			reference_entry.index_end = i + 1;
-			reference_entry.min_position = this->getContainer()[i].min_position;
-			reference_entry.max_position = this->getContainer()[i].max_position;
-			reference_entry.n_variants = this->getContainer()[i].n_variants;
+			reference_entry.index_begin       = i;
+			reference_entry.index_end         = i + 1;
+			reference_entry.min_position      = this->getContainer()[i].min_position;
+			reference_entry.max_position      = this->getContainer()[i].max_position;
+			reference_entry.n_variants        = this->getContainer()[i].n_variants;
 			reference_entry.uncompressed_size = this->getContainer()[i].uncompressed_size;
 
 		} else {
 			++reference_entry.index_end;
-			reference_entry.max_position = this->getContainer()[i].max_position;
-			reference_entry.n_variants += this->getContainer()[i].n_variants;
+			reference_entry.max_position       = this->getContainer()[i].max_position;
+			reference_entry.n_variants        += this->getContainer()[i].n_variants;
 			reference_entry.uncompressed_size += this->getContainer()[i].uncompressed_size;
 		}
 	}

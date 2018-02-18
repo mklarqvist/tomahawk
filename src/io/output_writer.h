@@ -61,6 +61,8 @@ public:
 	inline const bool isSorted(void) const{ return(this->writing_sorted_); }
 	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
 	inline index_type& getIndex(void) const{ return(*this->index_); }
+	inline entry_type& getPreviousEntry(void){ return(this->previous_entry); }
+	inline index_entry_type& getCurrentIndexEntry(void){ return(this->index_entry); }
 
 	bool open(const std::string& output_file);
 	int writeHeaders(twk_header_type& twk_header);
@@ -113,6 +115,30 @@ public:
 	}
 
 	/**<
+	 *
+	 * @param entry
+	 */
+	inline void addSorted(const entry_type& entry){
+		if(this->previous_entry.AcontigID != entry.AcontigID
+			|| this->previous_entry.BcontigID != entry.BcontigID){
+			std::cerr << "switch in contig" << std::endl;
+			this->flush();
+			this->index_entry = entry;
+		}
+
+		// Check if the buffer has to be flushed after adding this entry
+		if(this->buffer.size() > this->l_flush_limit){
+			this->flush();
+			this->index_entry = entry;
+		}
+
+		this->buffer << entry;
+		++this->n_entries;
+		this->previous_entry = entry;
+		this->index_entry.max_position = entry.Aposition;
+	}
+
+	/**<
 	 * Overloaded operator for adding an entire container of `two` entries
 	 * @param container Target container of entries
 	 */
@@ -141,6 +167,7 @@ private:
 	U32              n_blocks;         // number of index blocks writtenflush_limit
 	U32              l_flush_limit;
 	U32              l_largest_uncompressed;
+	entry_type       previous_entry;
 	index_entry_type index_entry;      // keep track of sort order
 	std::ofstream*   stream;
 	buffer_type      buffer;
