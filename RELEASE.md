@@ -1,7 +1,16 @@
+# Release 0.3.3
+
+## Major Features And Improvements
+* None
+
+## Bug Fixes and Other Changes
+* Bug fixes
+   * Viewing sorted two files fixed for edge cases
+
 # Release 0.3.2
 
 ## Breaking Changes
-* Sorted files needs to be resorted. Using old sorted files does not break functionality
+* Using old sorted files does not break functionality but have to be resorted
 
 ## Major Features And Improvements
 * Sorting `two` files not correctly produces two indices used for fast queries
@@ -12,6 +21,9 @@
    * Sort merge (`tomahawk sort -M`) now produces the correct index
 
 # Release 0.3.1
+
+## Major Features And Improvements
+* None
 
 ## Bug Fixes and Other Changes
 * Bug fixes

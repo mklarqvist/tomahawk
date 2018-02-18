@@ -553,25 +553,32 @@ bool TomahawkOutputReader::__viewRegion(void){
 		if(this->interval_tree == nullptr)
 			return false;
 
-		for(U32 i = 0; i < this->interval_tree_entries->size(); ++i){
-			// Find this overlap
-			std::pair<U32, U32> ret = this->getIndex().getContainer().findOverlap(this->interval_tree_entries->at(i).contigID, this->interval_tree_entries->at(i).start, this->interval_tree_entries->at(i).stop);
-			const U32 n_blocks_hits = ret.second - ret.first;
-			if(n_blocks_hits == 0)
-				return false;
+		std::cerr << "meta: " << this->getIndex().getMetaContainer().size() << std::endl;
+		for(U32 i = 0; i < this->getIndex().getMetaContainer().size(); ++i){
+			std::cerr << this->interval_tree_entries[i].size() << std::endl;
+			for(U32 j = 0; j < this->interval_tree_entries[i].size(); ++j){
+				std::cerr << "here: " << this->interval_tree_entries[i].at(j) << std::endl;
 
-			for(U32 j = 0; j < n_blocks_hits; ++j){
-				if(!this->seekBlock(ret.first + j)){
-					std::cerr << "failed to seek block" << std::endl;
+				// Find this overlap
+				std::pair<U32, U32> ret = this->getIndex().getContainer().findOverlap(this->interval_tree_entries[i].at(j).contigID, this->interval_tree_entries[i].at(j).start, this->interval_tree_entries[i].at(j).stop);
+				std::cerr << "ret: " << ret.first << "->" << ret.second << std::endl;
+				const U32 n_blocks_hits = ret.second - ret.first;
+				if(n_blocks_hits == 0)
 					return false;
+
+				for(U32 k = 0; k < n_blocks_hits; ++k){
+					if(!this->seekBlock(ret.first + k)){
+						std::cerr << "failed to seek block" << std::endl;
+						return false;
+					}
+
+					if(!this->parseBlock())
+						return false;
+
+					output_container_reference_type o(this->data_);
+					for(U32 l = 0; l < o.size(); ++l)
+						this->__checkRegionNoIndex(o[l]);
 				}
-
-				if(!this->parseBlock())
-					return false;
-
-				output_container_reference_type o(this->data_);
-				for(U32 i = 0; i < o.size(); ++i)
-					this->__checkRegionNoIndex(o[i]);
 			}
 		}
 	}
