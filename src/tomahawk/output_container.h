@@ -117,6 +117,10 @@ public:
 	inline const_reference front(void) const{ return(this->__entries[0]); }
 	inline reference back(void){ return(this->__entries[this->n_entries - 1]); }
 	inline const_reference back(void) const{ return(this->__entries[this->n_entries - 1]); }
+	inline const_pointer pfront(void) const{ return(&this->__entries[0]); }
+	inline const_pointer pback(void) const{ return(&this->__entries[this->n_entries]); }
+	inline pointer pfront(void){ return(&this->__entries[0]); }
+	inline pointer pback(void){ return(&this->__entries[this->n_entries]); }
 
 	// Capacity
 	inline const bool empty(void) const{ return(this->n_entries == 0); }
@@ -125,11 +129,11 @@ public:
 
 	// Iterator
 	inline iterator begin(){ return iterator(&this->__entries[0]); }
-	inline iterator end()  { return iterator(&this->__entries[this->n_entries - 1]); }
+	inline iterator end()  { return iterator(&this->__entries[this->n_entries]); }
 	inline const_iterator begin()  const{ return const_iterator(&this->__entries[0]); }
-	inline const_iterator end()    const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
+	inline const_iterator end()    const{ return const_iterator(&this->__entries[this->n_entries]); }
 	inline const_iterator cbegin() const{ return const_iterator(&this->__entries[0]); }
-	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries - 1]); }
+	inline const_iterator cend()   const{ return const_iterator(&this->__entries[this->n_entries]); }
 
 	// Add
 	bool operator+=(const_reference entry){
