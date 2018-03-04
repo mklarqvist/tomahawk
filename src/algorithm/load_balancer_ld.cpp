@@ -156,8 +156,6 @@ bool LoadBalancerLD::getSelectedLoadThreads(const U32 threads){
 	}
 
 	// assertion
-
-
 	//std::cerr << "DEBUG" << std::endl;
 	//for(U32 i = 0; i < this->thread_distribution.size(); ++i)
 	//	std::cerr << i << '\t' << this->thread_distribution[i].size() << std::endl;

@@ -178,7 +178,7 @@ int calc(int argc, char** argv){
 		break;
 
 	  case 'w':
-		  windowBases = atoi(optarg);
+		windowBases = atoi(optarg);
 		if(windowBases <= 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
@@ -186,7 +186,7 @@ int calc(int argc, char** argv){
 		break;
 
 	  case 'W':
-		  windowPosition = atoi(optarg);
+		windowPosition = atoi(optarg);
 		if(windowPosition <= 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
@@ -230,28 +230,6 @@ int calc(int argc, char** argv){
 		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;
 	}
-
-	//Tomahawk::Totempole::TotempoleReader totempole_reader;
-	//Tomahawk::TomahawkReader<U16> tomahawk_reader;
-
-	//std::vector<U32> rets = totempole.findOverlaps(Tomahawk::Interval(0, 2221297, 10108169));
-	//std::cerr << "Found overlaps: " << rets.size() << std::endl;
-	//for(U32 i = 0; i < rets.size(); ++i)
-	//	std::cerr << rets[i] << std::endl;
-
-	/*
-	std::vector<U32> blocks;
-	for(U32 i = 10; i < 12; ++i)
-		blocks.push_back(i);
-
-	std::vector< std::pair<U32, U32> > blocks2;
-	blocks2.push_back(std::pair<U32,U32>(0, 10));
-	*/
-
-	//blocks.push_back(19);
-	//blocks.push_back(20);
-	//blocks.push_back(21);
-	//tomahawk.getBlocks(blocks);
 
 	return(tomahawk.Calculate());
 }

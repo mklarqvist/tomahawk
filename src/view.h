@@ -22,9 +22,9 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
+#include "utility.h"
 #include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
-#include "utility.h"
 #include "tomahawk/TomahawkReader.h"
 
 void view_usage(void){
@@ -285,7 +285,6 @@ int view(int argc, char** argv){
 		case 'O':
 			outputType = atoi(optarg);
 			break;
-
 		case 'G':
 			dropGenotypes = true;
 			break;

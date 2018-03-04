@@ -697,7 +697,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	for(U32 i = 0; i < files.size(); ++i)
 		this->getHeader().getLiterals() += files[i] + ',';
 
-	IO::OutputWriter writer;
+	IO::OutputWriterFile writer;
 	if(!writer.open(output)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
 		return false;

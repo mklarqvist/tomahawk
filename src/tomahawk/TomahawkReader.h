@@ -16,21 +16,21 @@
 #include "twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
 #include "TomahawkCalcParameters.h"
-#include "../index/index.h"
 #include "genotype_container_reference.h"
+#include "../index/index.h"
 #include "../index/tomahawk_header.h"
 
 namespace Tomahawk {
 
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
-	typedef TomahawkCalcParameters     parameter_type;
-	typedef Totempole::IndexEntry      totempole_entry;
-	typedef TomahawkHeader             header_type;
-	typedef Index                      index_type;
-	typedef IO::BasicBuffer            buffer_type;
-	typedef IO::TGZFController         tgzf_controller_type;
-	typedef Totempole::Footer          footer_type;
+	typedef TomahawkCalcParameters  parameter_type;
+	typedef Totempole::IndexEntry   totempole_entry;
+	typedef TomahawkHeader          header_type;
+	typedef Index                   index_type;
+	typedef IO::BasicBuffer         buffer_type;
+	typedef IO::TGZFController      tgzf_controller_type;
+	typedef Totempole::Footer       footer_type;
 
 public:
 	// Used to keep track of char pointer offsets in buffer

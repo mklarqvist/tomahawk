@@ -48,11 +48,6 @@ public:
 	inline void operator++(void){ ++this->n_variants; }
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.index_begin << "-" << entry.index_end << '\t' << entry.min_position << '-' << entry.max_position << '\t' << entry.n_variants << '\t' << entry.uncompressed_size;
-		return stream;
-	}
-
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.index_begin),       sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&entry.index_end),         sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&entry.min_position),      sizeof(U64));

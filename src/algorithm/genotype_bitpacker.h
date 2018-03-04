@@ -4,8 +4,13 @@
 namespace Tomahawk{
 namespace Algorithm{
 
-#define PACKER_BITS_BYTE	(sizeof(BYTE)*8)
+#define PACKER_BITS_BYTE (sizeof(BYTE)*8)
 
+/**<
+ * This class packs run-length encoded genotypes
+ * into a 2-bit encoding system used in vectorized
+ * functions throughout Tomahawk
+ */
 class GenotypeBitPacker{
 public:
 	GenotypeBitPacker(BYTE* destination, const BYTE stepsize) :
@@ -16,16 +21,16 @@ public:
 		destination_pointer(0),
 		destination(destination)
 	{}
+
 	~GenotypeBitPacker(){}
 
-	template <class T>
-	void add(const BYTE& value, const T& repeat_times){
+	void add(const BYTE& value, const U32 repeat_times){
 		if(this->currentOffset == 0){
 			this->currentOffset = this->steps;
 			++this->destination_pointer;
 		}
 
-		T remainder = repeat_times;
+		U32 remainder = repeat_times;
 		if(this->currentOffset != this->steps){
 			// If the number of repeats exceeds what is available
 			// keep adding until hitting the end
@@ -50,7 +55,7 @@ public:
 		}
 
 		// Number of complete additions
-		const T remainder_times_balanced = remainder/this->steps;
+		const U32 remainder_times_balanced = remainder/this->steps;
 		if(remainder_times_balanced > 0){
 			BYTE copy_me = 0;
 			for(S32 i = this->steps; i > 0; --i)
@@ -78,8 +83,8 @@ private:
 	const BYTE stepSize;		// step size (in bits)
 	const BYTE steps;			// number of steps in byte
 	const BYTE mask;			// insert mask
-	int currentOffset;
-	U32 destination_pointer;
+	S32   currentOffset;
+	U32   destination_pointer;
 	BYTE* destination;
 };
 

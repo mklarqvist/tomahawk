@@ -32,7 +32,6 @@ public:
 public:
 	U32 selected_chunk;
 	U32 desired_chunks;
-
 	std::vector<value_type> blocks;
 	std::vector< std::pair<U32, U32> > data_to_load;
 	std::vector< std::vector<value_type> > thread_distribution;

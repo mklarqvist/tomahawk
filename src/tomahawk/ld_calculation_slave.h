@@ -259,7 +259,7 @@ class LDSlave{
 	typedef const MetaEntry<T>                   meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::IndexEntry                totempole_entry_type;
-	typedef IO::OutputWriter                     output_writer_type;
+	typedef IO::OutputWriterFile                 output_writer_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
@@ -287,7 +287,11 @@ public:
 	LDSlave& operator=(LDSlave&& other) noexcept;
 	LDSlave& operator+=(const LDSlave& other);
 
-	std::thread* Start(void){
+	/**<
+	 * Start calculations for the internal thread
+	 * @return Returns a pointer to the internal thread
+	 */
+	inline std::thread* Start(void){
 		this->thread = std::thread(&self_type::Calculate, this);
 		return(&this->thread);
 	}
@@ -298,10 +302,27 @@ public:
 	inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
 	inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
 	inline output_writer_type& getWriter(void){ return(this->output_writer); }
+	inline const output_writer_type& getWriter(void) const{ return(this->output_writer); }
 
 private:
+	/**<
+	 * Main entry-point for calculating pairwise LD. This is invoked by the `Start()` function
+	 * @return
+	 */
 	bool Calculate();
+
+	/**<
+	 * Calculate pairwise LD when the data are in the same `twk` block
+	 * @param order
+	 * @return
+	 */
 	bool DiagonalWorkOrder(const order_type& order);
+
+	/**<
+	 * Calculate pairwise LD when the data are in different `twk` blocks
+	 * @param order
+	 * @return
+	 */
 	bool SquareWorkOrder(const order_type& order);
 
 	// Comparator functions

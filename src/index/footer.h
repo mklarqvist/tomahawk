@@ -62,7 +62,7 @@ public:
 	}
 
 public:
-	U64  offset_end_of_data;      // number of blocks in Tomahawk
+	U64  offset_end_of_data;      // byte offset to end of Tomahawk data
 	U32  l_largest_uncompressed;  // largest block-size in bytes
     BYTE EOF_marker[Constants::eof_length];
 };
