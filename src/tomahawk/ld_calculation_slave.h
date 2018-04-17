@@ -1522,7 +1522,7 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 	}
 
 	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+		if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 3000){
 			if(this->CalculateLDPhased(block1, block2)){
 				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
@@ -1534,7 +1534,7 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 			}
 		}
 	} else {
-		if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+		if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 30){
 			if(this->CalculateLDUnphased(block1, block2)){
 				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';

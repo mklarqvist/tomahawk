@@ -35,13 +35,14 @@ void view_usage(void){
 	"        are.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (- for stdout; default: -)\n"
-	"  -h/H     (twk/two) header only / no header [null]\n"
-	"  -O char  output type: b for TWO format, n for tab-delimited format (default: b)\n"
-	"  -N       output in tab-delimited text format (see -O) [null]\n"
-	"  -B       output in binary TWO/TWK format (see -O, default)[null]\n"
-	"  -s       Hide all program messages [null]\n\n"
+	"  -i FILE   input Tomahawk (required)\n"
+	"  -o FILE   output file (- for stdout; default: -)\n"
+	"  -h/H      (twk/two) header only / no header [null]\n"
+	"  -O char   output type: b for TWO format, n for tab-delimited format (default: b)\n"
+	"  -N        output in tab-delimited text format (see -O) [null]\n"
+	"  -B        output in binary TWO/TWK format (see -O, default)[null]\n"
+	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
+	"  -s        Hide all program messages [null]\n\n"
 
 	// Twk parameters
 	"Twk parameters\n"
@@ -96,6 +97,7 @@ int view(int argc, char** argv){
 		{"headerOnly",  no_argument, 0, 'H' },
 		{"noHeader",    no_argument, 0, 'h' },
 		{"dropGenotypes",optional_argument, 0, 'G' },
+		{"interval",       optional_argument, 0, 'I' },
 		{"silent",      no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -106,11 +108,12 @@ int view(int argc, char** argv){
 	bool outputHeader = true;
 	int outputType = 1;
 	bool dropGenotypes = false;
+	std::vector<std::string> filter_regions;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:HhGsBN", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsBN", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -129,6 +132,9 @@ int view(int argc, char** argv){
 			break;
 		case 'o':
 			output = std::string(optarg);
+			break;
+		case 'I':
+			filter_regions.push_back(std::string(optarg));
 			break;
 		case 'r':
 			two_filter.minR2 = atof(optarg);
@@ -311,12 +317,11 @@ int view(int argc, char** argv){
 	// Todo: action
 	// Parse remainder parameters
 	// Assume these parameters are contig or position values for filtering
-	std::vector<std::string> filter_regions;
+
+	/*
 	for(U32 i = 2+hits; i < argc; ++i){
 		std::string param(&argv[i][0]);
-
-		//std::cerr << param << std::endl;
-
+		// std::cerr << param << std::endl;
 		if(!Tomahawk::Helpers::parsePositionalStringTWO(param)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Illegal parse of input string: " << param << std::endl;
 			return 1;
@@ -324,6 +329,8 @@ int view(int argc, char** argv){
 
 		filter_regions.push_back(param);
 	}
+	//exit(1);
+	*/
 
 	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
 		Tomahawk::TomahawkReader tomahawk;
@@ -334,7 +341,11 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
-		//this->SelectWriterOutputType(Tomahawk::IO::GenericWriterInterace::type::cout);
+		if(!tomahawk.addRegions(filter_regions)){
+			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+			return 1;
+		}
+
 		tomahawk.outputBlocks();
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
@@ -342,10 +353,6 @@ int view(int argc, char** argv){
 		reader.setWriteHeader(outputHeader);
 		Tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
-
-
-		//if(!reader.setWriterType(outputType))
-		//	return 1;
 
 		if(!reader.open(input))
 			return 1;

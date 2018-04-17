@@ -69,7 +69,8 @@ bool BCFReader::nextVariant(BCFEntry& entry){
 			break;
 		}
 	}
-	entry.parse();
+	entry.parse(this->header.samples);
+	entry.assessGenotypes(this->header.samples);
 
 	return true;
 }

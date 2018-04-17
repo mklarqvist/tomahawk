@@ -303,7 +303,7 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 	meta += (U32)line.body->POS + 1;
 	meta += line.ref_alt;
 
-	U32 internal_pos = line.p_genotypes;
+	U32 internal_pos = line.formatID[0].l_offset;
 	U64 sumLength = 0;
 	T length = 1;
 	T __dump = 0;

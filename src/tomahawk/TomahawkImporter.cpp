@@ -88,7 +88,8 @@ bool TomahawkImporter::BuildBCF(void){
 	// Get a line
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
-		if(!entry.good()){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+			std::cerr << "first: " << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << ",miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -116,7 +117,8 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Parse lines
 	while(reader.nextVariant(entry)){
-		if(!entry.good()){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+			if(entry.gt_support.hasEOV) std::cerr << "EOV: " << entry.gt_support.hasGenotypes << "," << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << " miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -293,8 +295,6 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 
 	// Assess missingness
-	const double missing = line.getMissingness(this->vcf_header_->samples);
-	//const float missing = 0;
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
 			//if(!SILENT)
@@ -310,13 +310,6 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
-		if(missing > this->filters.missingness){
-			//if(!SILENT)
-			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
-			this->sort_order_helper.previous_included = false;
-			goto next;
-		}
-
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(line.body->CHROM); // update block count for this contigID

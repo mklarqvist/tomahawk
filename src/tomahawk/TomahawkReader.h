@@ -5,6 +5,7 @@
 #include <fstream>
 #include <algorithm>
 #include <bitset>
+#include <regex>
 
 #include "../algorithm/load_balancer_ld.h"
 #include "../interface/progressbar.h"
@@ -19,6 +20,7 @@
 #include "../index/index.h"
 #include "genotype_container_reference.h"
 #include "../index/tomahawk_header.h"
+#include "../third_party/intervalTree.h"
 
 namespace Tomahawk {
 
@@ -31,6 +33,9 @@ class TomahawkReader {
 	typedef IO::BasicBuffer            buffer_type;
 	typedef IO::TGZFController         tgzf_controller_type;
 	typedef Totempole::Footer          footer_type;
+	typedef Algorithm::ContigInterval  interval_type;
+	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
+
 
 public:
 	// Used to keep track of char pointer offsets in buffer
@@ -69,6 +74,75 @@ public:
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
 
+	bool addRegions(const std::vector<std::string>& intervals){
+		if(intervals.size() == 0)
+			return true;
+
+		if(this->interval_tree_entries == nullptr)
+			this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
+
+		if(this->interval_tree == nullptr){
+			this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
+			for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
+				this->interval_tree[i] = nullptr;
+		}
+
+		// Parse intervals
+		for(U32 i = 0; i < intervals.size(); ++i){
+			interval_type interval;
+			// has colon (:)
+			if(intervals[i].find(':') != std::string::npos){
+				interval.state = Algorithm::ContigInterval::INTERVAL_FULL;
+				std::vector<std::string> first = Helpers::split(intervals[i], ':');
+				interval.contigID = 0; // Todo
+				std::vector<std::string> sections = Helpers::split(first[1],'-');
+				if(sections.size() == 2){ // Is contig + position->position
+					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+						interval.start = atof(sections[0].data());
+					} else {
+						std::cerr << "illegal number: " << sections[0] << std::endl;
+						return false;
+					}
+
+					if(std::regex_match(sections[1], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+						interval.stop = atof(sections[1].data());
+					} else {
+						std::cerr << "illegal number: " << sections[1] << std::endl;
+						return false;
+					}
+				} else if(sections.size() == 1){ // Is contig + position
+					interval.state = Algorithm::ContigInterval::INTERVAL_POSITION;
+					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+						interval.start = atof(sections[0].data());
+					} else {
+						std::cerr << "illegal number: " << sections[0] << std::endl;
+						return false;
+					}
+
+				} else {
+					std::cerr << "malformed" << std::endl;
+					return false;
+				}
+			} else { // Is contig  only
+				interval.state = Algorithm::ContigInterval::INTERVAL_CONTIG_ONLY;
+				interval.contigID = 0; // Todo
+			}
+			// Store interval
+			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+		}
+
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
+			delete this->interval_tree[i];
+
+			if(this->interval_tree_entries[i].size() != 0){
+				this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
+			} else
+				this->interval_tree[i] = nullptr;
+		}
+
+		return true;
+	}
+
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
@@ -80,7 +154,9 @@ public:
 private:
 	void DetermineBitWidth(void);
 	template <class T> bool outputBlock(const U32 blockID);
+	template <class T> bool outputBlockFilter(const U32 blockID);
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
+	template <class T> bool WriteBlockFilter(const char* data, const U32 blockID);
 
 private:
 	U64            filesize_;  // filesize
@@ -102,47 +178,101 @@ private:
 	std::vector<DataOffsetPair> blockDataOffsets_;
 
 	IO::GenericWriterInterace* writer;
+
+	tree_type** interval_tree;
+	std::vector<interval_type>* interval_tree_entries;
 };
 
 template <class T>
 bool TomahawkReader::outputBlock(const U32 blockID){
-	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Stream bad " << blockID << std::endl;
+	if(!this->getBlock(blockID)){
+		std::cerr << "failed to get block" << std::endl;
 		return false;
 	}
+	this->WriteBlock<T>(this->data_.data(), blockID);
 
-	this->stream_.seekg(this->index_->getContainer()[blockID].byte_offset);
-	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed search..." << std::endl;
+	return true;
+}
+
+template <class T>
+bool TomahawkReader::outputBlockFilter(const U32 blockID){
+	if(!this->getBlock(blockID)){
+		std::cerr << "failed to get block" << std::endl;
 		return false;
 	}
+	this->WriteBlockFilter<T>(this->data_.data(), blockID);
 
-	// Determine byte-width of data
-	U32 readLength = this->index_->getContainer()[blockID].byte_offset_end - this->index_->getContainer()[blockID].byte_offset;
+	return true;
+}
 
-	if(readLength > this->buffer_.capacity()){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Impossible: " << readLength << '/' << this->buffer_.capacity() << std::endl;
-		exit(1);
-	}
+template <class T>
+bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID){
+	Base::GenotypeContainerReference<T> o(data,
+                                          this->index_->getContainer()[blockID].uncompressed_size,
+                                          this->index_->getContainer()[blockID],
+                                          this->header_.magic_.getNumberSamples(),
+                                          false);
 
-	// Read from start to start + byte-width
-	if(!this->stream_.read(this->buffer_.data(), readLength)){
-		std::cerr << Helpers::timestamp("ERROR", "TWK") << "Failed read: " << this->stream_.good() << '\t' << this->stream_.fail() << '/' << this->stream_.eof() << std::endl;
-		std::cerr << this->stream_.gcount() << '/' << readLength << std::endl;
+	if(this->interval_tree == nullptr)
 		return false;
-	}
-	// Set buffer byte-width to data loaded
-	this->buffer_.n_chars = readLength;
 
-	// Keep track of position because inflate function moves pointer
-	char* data_position = &this->data_[this->data_.size()];
+	// For each variant in Tomahawk block
+	for(U32 j = 0; j < o.size(); ++j){
+		if(this->interval_tree[this->index_->getContainer()[blockID].contigID] == nullptr)
+			continue;
 
-	// Inflate TGZF block
-	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
-		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to inflate DATA..." << std::endl;
-		return false;
+		std::vector<interval_type> ret = this->interval_tree[this->index_->getContainer()[blockID].contigID]->findOverlapping(o.currentMeta().position, o.currentMeta().position);
+		if(ret.size() == 0)
+			continue;
+
+		const char separator = o.currentMeta().getPhaseVCFCharacter();
+
+		this->outputBuffer_ += this->header_.contigs_[this->index_->getContainer()[blockID].contigID].name;
+		this->outputBuffer_ += '\t';
+		this->outputBuffer_ += std::to_string(o.currentMeta().position);
+		this->outputBuffer_ += "\t.\t";
+		this->outputBuffer_ += o.currentMeta().getRefAllele();
+		this->outputBuffer_ += '\t';
+		this->outputBuffer_ += o.currentMeta().getAltAllele();
+		this->outputBuffer_ += "\t.\t.\t";
+		this->outputBuffer_ += "HWE_P=";
+		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
+		this->outputBuffer_ += ";MAF=";
+		this->outputBuffer_ += std::to_string(o.currentMeta().MAF);
+		if(this->dropGenotypes == false){
+			this->outputBuffer_ += "\tGT\t";
+			for(U32 i = 0; i < o.currentMeta().runs; ++i){
+				if(i != 0) this->outputBuffer_ += '\t';
+				const char& left  = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleA];
+				const char& right = Constants::TOMAHAWK_ALLELE_LOOKUP_REVERSE[o[i].alleleB];
+				this->outputBuffer_ += left;
+				this->outputBuffer_ += separator;
+				this->outputBuffer_ += right;
+				for(U32 r = 1; r < o[i].runs; ++r){
+					this->outputBuffer_ += '\t';
+					this->outputBuffer_ += left;
+					this->outputBuffer_ += separator;
+					this->outputBuffer_ += right;
+				}
+			}
+		}
+		this->outputBuffer_ += '\n';
+		++o;
+
+		if(this->outputBuffer_.size() > 65536){
+			//this->writer->write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+			std::cout.write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+			this->outputBuffer_.reset();
+		}
 	}
-	this->WriteBlock<T>(data_position, blockID);
+
+	// Flush last
+	//this->writer->write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+	std::cout.write(this->outputBuffer_.data(), this->outputBuffer_.n_chars);
+
+	// Reset buffers
+	this->outputBuffer_.reset(); // reset
+	this->data_.reset(); // reset
 
 	return true;
 }

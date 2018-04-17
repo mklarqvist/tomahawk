@@ -17,15 +17,15 @@ namespace Totempole{
  */
 class IndexContainer{
 private:
-	typedef IndexContainer        self_type;
-	typedef IndexEntry            value_type;
-    typedef value_type&           reference;
-    typedef const value_type&     const_reference;
-    typedef value_type*           pointer;
-    typedef const value_type*     const_pointer;
-    typedef std::ptrdiff_t        difference_type;
-    typedef std::size_t           size_type;
-    typedef IO::BasicBuffer       buffer_type;
+	typedef IndexContainer    self_type;
+	typedef IndexEntry        value_type;
+    typedef value_type&       reference;
+    typedef const value_type& const_reference;
+    typedef value_type*       pointer;
+    typedef const value_type* const_pointer;
+    typedef std::ptrdiff_t    difference_type;
+    typedef std::size_t       size_type;
+    typedef IO::BasicBuffer   buffer_type;
 
 public:
     IndexContainer(void);
