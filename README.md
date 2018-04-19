@@ -119,17 +119,17 @@ colors[length(colors)]<- substr(colors[length(colors)],1,7)
 # Define support functions
 plotLDRegion<-function(dataSource, from, to, ...){
   # Assumes all the data is from the same chromosome
-  b<-dataSource[dataSource$V3>=from & dataSource$V3 <= to & dataSource$V5 >= from & dataSource$V5 <= to,]
-  b<-b[order(b$V13,decreasing = F),] # sort for Z-stack
-  plot(b$V3,b$V5,pch=20,cex=.2,col=colors[cut(b$V13,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+  b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to,]
+  b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
+  plot(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
 }
 
 plotLDRegionTriangular<-function(dataSource, from, to, ...){
   # Assumes all the data is from the same chromosome
-  b<-dataSource[dataSource$V3>=from & dataSource$V5<=to & dataSource$V3>=from & dataSource$V5<=to,]
-  b<-b[b$V3<b$V5,] # upper triangular only
-  b<-b[order(b$V12,decreasing = F),] # sort for Z-stack
-  plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
+  b<-dataSource[dataSource$POS_A>=from & dataSource$POS_A<=to & dataSource$POS_B>=from & dataSource$POS_B<=to,]
+  b<-b[b$POS_A<b$POS_B,] # upper triangular only
+  b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
+  plot(b$POS_A + ((b$POS_B-b$POS_A)/2),b$POS_B-b$POS_A,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
 }
 ```
 

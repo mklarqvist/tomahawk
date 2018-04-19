@@ -268,7 +268,7 @@ class LDSlave{
 	typedef TomahawkCalcParameters               parameter_type;
 
 	// Work orders
-	typedef Tomahawk::LoadBalancerBlock          order_type;
+	typedef Tomahawk::LoadBalancerThread         order_type;
 	typedef std::vector<order_type>              work_order;
 
 	// Function pointers
@@ -1447,41 +1447,42 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 // Execute diagonal working order
 template <class T>
 bool LDSlave<T>::DiagonalWorkOrder(const order_type& order){
-	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		block_type block1(this->manager[i]);
 
-		for(U32 j = i; j < order.toColumn; ++j){
+	//for(U32 i = order.fromRow; i < order.toRow; ++i){
+		block_type block1(this->manager[order.row]);
+
+		for(U32 j = order.fromColumn; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "DIAG") << i << '/' << j << '\t' << order << std::endl;
-			if(i == j)
+			if(order.row == j)
 				this->CompareBlocks(block1);
 			else {
 				block_type block2(this->manager[j]);
 				this->CompareBlocks(block1, block2);
 			}
 		}
-	}
+	//}
+
 	return true;
 }
 
 // Execute square working order
 template <class T>
 bool LDSlave<T>::SquareWorkOrder(const order_type& order){
-	if(order.staggered)
-		return(this->DiagonalWorkOrder(order));
 
-	for(U32 i = order.fromRow; i < order.toRow; ++i){
-		block_type block1(this->manager[i]);
+	//for(U32 i = order.fromRow; i < order.toRow; ++i){
+		block_type block1(this->manager[order.row]);
 
 		for(U32 j = order.fromColumn; j < order.toColumn; ++j){
 			//std::cerr << Helpers::timestamp("DEBUG", "SQUARE") << i << '/' << j << '\t' << order << std::endl;
-			if(i == j)
+			if(order.row == j)
 				this->CompareBlocks(block1);
 			else {
 				block_type block2(this->manager[j]);
 				this->CompareBlocks(block1, block2);
 			}
 		}
-	}
+	//}
+
 	return true;
 }
 

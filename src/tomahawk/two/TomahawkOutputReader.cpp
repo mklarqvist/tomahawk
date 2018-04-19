@@ -493,7 +493,6 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 
 			interval(contigID, posA, posB);
 			interval.state = interval_type::INTERVAL_TYPE::INTERVAL_FULL;
-
 		} else {
 			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 			return false;
@@ -528,6 +527,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
 	}
 
 	// Natural output required parsing
@@ -562,6 +562,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
 	}
 
 	if(this->interval_tree != nullptr){
@@ -579,8 +580,10 @@ bool TomahawkOutputReader::__viewFilter(void){
 	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
 	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO";
 
-	if(this->showHeader_ == true)
+	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
+	}
 
 	while(this->parseBlock()){
 		output_container_reference_type o(this->data_);

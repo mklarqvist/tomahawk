@@ -7,7 +7,6 @@
 #include <bitset>
 #include <regex>
 
-#include "../algorithm/load_balancer_ld.h"
 #include "../interface/progressbar.h"
 #include "../support/MagicConstants.h"
 #include "../io/compression/TGZFController.h"
@@ -92,40 +91,60 @@ public:
 			interval_type interval;
 			// has colon (:)
 			if(intervals[i].find(':') != std::string::npos){
-				interval.state = Algorithm::ContigInterval::INTERVAL_FULL;
 				std::vector<std::string> first = Helpers::split(intervals[i], ':');
-				interval.contigID = 0; // Todo
+				if(first.size() != 2){
+					std::cerr << Helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << "..." << std::endl;
+					return false;
+				}
+
+				const S32 contigID = this->header_.getContigID(first[0]);
+				if(contigID == -1){
+					std::cerr << Helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
+					return false;
+				}
+
+				interval.state = Algorithm::ContigInterval::INTERVAL_FULL;
+				interval.contigID = contigID;
 				std::vector<std::string> sections = Helpers::split(first[1],'-');
 				if(sections.size() == 2){ // Is contig + position->position
 					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data());
+						interval.start = atof(sections[0].data()) - 1;
 					} else {
-						std::cerr << "illegal number: " << sections[0] << std::endl;
+						std::cerr << Helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
 						return false;
 					}
 
 					if(std::regex_match(sections[1], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
 						interval.stop = atof(sections[1].data());
 					} else {
-						std::cerr << "illegal number: " << sections[1] << std::endl;
+						std::cerr << Helpers::timestamp("ERROR") << "Illegal number: " << sections[1] << " in interval string " << intervals[i] << std::endl;
 						return false;
 					}
+
 				} else if(sections.size() == 1){ // Is contig + position
 					interval.state = Algorithm::ContigInterval::INTERVAL_POSITION;
 					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data());
+						interval.start = atof(sections[0].data()) - 1;
+						interval.stop  = atof(sections[0].data());
 					} else {
-						std::cerr << "illegal number: " << sections[0] << std::endl;
+						std::cerr << Helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
 						return false;
 					}
 
 				} else {
-					std::cerr << "malformed" << std::endl;
+					std::cerr << Helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << std::endl;
 					return false;
 				}
 			} else { // Is contig  only
 				interval.state = Algorithm::ContigInterval::INTERVAL_CONTIG_ONLY;
-				interval.contigID = 0; // Todo
+				const S32 contigID = this->header_.getContigID(intervals[i]);
+				if(contigID == -1){
+					std::cerr << Helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
+					return false;
+				}
+				interval.contigID = contigID; // Todo
+				interval.start = 0;
+				interval.stop = this->header_.contigs_[contigID].n_bases + 1;
 			}
 			// Store interval
 			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
@@ -218,12 +237,16 @@ bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID)
 
 	// For each variant in Tomahawk block
 	for(U32 j = 0; j < o.size(); ++j){
-		if(this->interval_tree[this->index_->getContainer()[blockID].contigID] == nullptr)
+		if(this->interval_tree[this->index_->getContainer()[blockID].contigID] == nullptr){
+			++o;
 			continue;
+		}
 
 		std::vector<interval_type> ret = this->interval_tree[this->index_->getContainer()[blockID].contigID]->findOverlapping(o.currentMeta().position, o.currentMeta().position);
-		if(ret.size() == 0)
+		if(ret.size() == 0){
+			++o;
 			continue;
+		}
 
 		const char separator = o.currentMeta().getPhaseVCFCharacter();
 

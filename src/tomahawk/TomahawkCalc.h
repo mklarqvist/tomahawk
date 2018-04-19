@@ -6,6 +6,7 @@
 #include "genotype_meta_container_reference.h"
 #include "../io/output_writer.h"
 #include "../index/index.h"
+#include "../algorithm/load_balancer_ld.h"
 
 namespace Tomahawk {
 
@@ -101,8 +102,10 @@ bool TomahawkCalc::Calculate(){
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
+	//U64 totalComparisons = 0;
 	// Todo: validate & decouple
-	U64 totalComparisons = 0;
+	/*
+
 	for(U32 i = 0; i < this->balancer.thread_distribution.size(); ++i){
 		for(U32 j = 0; j < this->balancer.thread_distribution[i].size(); ++j){
 			//std::cerr << this->balancer.thread_distribution[i][j] << ':' << std::endl;
@@ -141,14 +144,15 @@ bool TomahawkCalc::Calculate(){
 			}
 		}
 	}
+	*/
 
 	// Update progress bar with data
-	this->progress.SetComparisons(totalComparisons);
+	this->progress.SetComparisons(this->balancer.n_comparisons_chunk);
 	this->progress.SetSamples(header.magic_.getNumberSamples());
 	this->progress.SetDetailed(this->parameters.detailed_progress);
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(totalComparisons) << " variant comparisons..."<< std::endl;
+		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
 	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
@@ -213,6 +217,7 @@ bool TomahawkCalc::Calculate(){
 	// Flush writer
 	writer.flush();
 	writer.writeFinal();
+
 	/*
 	if(!writer.finalise()){
 		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;

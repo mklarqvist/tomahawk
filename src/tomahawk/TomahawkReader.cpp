@@ -303,11 +303,16 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << "##INFO=<ID=HWE_P,Number=1,Type=Float,Description=\"Hardy-Weinberg P-value (Fisher's exact test)\">" << std::endl;
 		std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
 		std::cout << "##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
-		std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
+		if(this->dropGenotypes){
+			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
+		} else {
+			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 
-		std::cout << this->header_.getSample(0);
-		for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
-			std::cout << '\t' << this->header_.getSample(i);
+			std::cout << this->header_.getSample(0);
+			for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
+				std::cout << '\t' << this->header_.getSample(i);
+		}
+
 		std::cout.put('\n');
 	}
 
