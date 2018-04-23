@@ -4,12 +4,14 @@
 
 ![screenshot](tomahawk.png)
 ## Fast calculation of LD in large-scale cohorts
-Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the run-length. This encoding scheme is superior to dynamic-width encoding appro  aches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is fixed across a file and is determined contextually contingent on the number of samples. Tomahawk has two primary internal functions: 
+Tomahawk is a machine-optimized library for computing linkage-disequilibrium from population-sized datasets. Tomahawks permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals.
+
+Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects with the five highest bits encoding for phasing, allele A, allele B, and the remainder as the run-length. This encoding scheme is superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The word size (`uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t`) of RLE entries is fixed across a file and is determined contextually contingent on the number of samples. More generally, Tomahawk has two primary functions: 
 
 1) iterate over sites and RLE entries; 
 2) computing the inner product of compressed genotypic vectors;
 
-We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk primarily combines two efficient algorithms exploiting different concepts: 1) low genetic diversity and 2) the large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to bit-vectors and use SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel.
+We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines two efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel and have been successfully completed runs using thousands of cores on hundreds of machines using the Sanger Institute compute farm.
 
 The current format specifications (v.0) for `TWK`,`TWO`, and `TGZF`
 are available [TWKv0](spec/TWKv0.pdf)
@@ -23,7 +25,7 @@ Wellcome Trust Sanger Institute
 ### Installation instructions
 For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
 directory. If you see compilation errors, you most likely do not have `SSE4.2`.
-At the present time, we do not support non-x86 CPUs or old CPU architecture.
+At the present time, we do not support non-x86-64 CPUs or old CPU architecture.
 ```bash
 git clone --recursive https://github.com/mklarqvist/tomahawk
 cd tomahawk

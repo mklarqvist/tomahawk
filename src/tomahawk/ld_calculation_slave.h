@@ -1325,7 +1325,7 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 			add = currentLengthB;
 			++pointerB;
 			currentLengthB = b[pointerB].runs;
-		} else if(currentLengthA < currentLengthB) { // If processed run length A < processed run length B
+		} else if(currentLengthA < currentLengthB){ // If processed run length A < processed run length B
 			currentLengthB -= currentLengthA;
 			add = currentLengthA;
 			++pointerA;
@@ -1597,7 +1597,7 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.004792332){
+	if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 500){
 		if(this->CalculateLDPhased(block1, block2)){
 			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
