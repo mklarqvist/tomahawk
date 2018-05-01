@@ -16,13 +16,15 @@ The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available 
 - [Getting started](#getting-started)
     - [Installation instructions](#installation-instructions)
     - [Brief usage instructions](#brief-usage-instructions)
-    - [Importing to Tomahawk](#importing-to-tomahawk)
-    - [Calculating all-vs-all linkage disequilibrium](#calculating-all-vs-all-linkage-disequilibrium)
-    - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
-- [Specify colour scheme](#specify-colour-scheme)
-- [Define support functions](#define-support-functions)
-- [Load some LD data from Tomahawk](#load-some-ld-data-from-tomahawk)
-- [Load some symmetric LD data from Tomahawk](#load-some-symmetric-ld-data-from-tomahawk)
+- [Importing to Tomahawk](#importing-to-tomahawk)
+- [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
+- [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
+- [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
+- [Sort a `TWO` file](#sort-a-two-file)
+- [Plotting in R](#plotting-in-R)
+- [Author](#author)
+- [Acknowledgements](#Acknowledgements)
+- [License](#license)
 
 ## Getting started
 ### Installation instructions
@@ -65,7 +67,7 @@ from Hardy-Weinberg equilibrium with a probability < 0.001
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
 ```
 
-### Calculating all-vs-all linkage disequilibrium
+## Calculating linkage disequilibrium
 In this example we force computations to use phased math (`-p`) and show a live progressbar
 (`-d`). Generated data is filtered for minimum genotype frequency (`-a`), squared Pearson correlation
 coefficient (`-r`) and by test statistics P-value (`-p`). Total computation is partitioned into 990 psuedo-balanced blocks (`-c`)
@@ -75,7 +77,7 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 ```
 This command will output the file `output_prefix.two`
 
-### Converting between file formats and filtering
+## Converting between file formats and filtering
 Viewing `LD` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
 FLAG bits `4` set
@@ -98,7 +100,7 @@ Converting a `twk` file to `vcf`
 tomahawk view -i file.twk -o file.vcf
 ```
 
-### Sort `TWO` file
+## Sort a `TWO` file
 Partially sort `two` file in 500 MB chunks
 ```bash
 tomahawk sort -i file.two -o partial.two -L 500
@@ -109,7 +111,7 @@ Perform k-way merge of partially sorted blocks
 tomahawk sort -i partial.two -o sorted.two -M
 ```
 
-## Plotting
+## Plotting in `R`
 Plotting `two` data converted into `ld` format using the supplied `R` scripts (in the `R` directory).
 First transform a `two` file into human-readable `ld` format:
 ```bash
@@ -184,5 +186,5 @@ Wellcome Trust Sanger Institute
 [Chris Wallace](https://github.com/chr1swallace) MRC Biostatistics Unit, University of Cambridge  
 [Professor Richard Durbin](https://github.com/richarddurbin), Wellcome Trust Sanger Institute, and Department of Genetics, University of Cambridge  
 
-## License
+### License
 [MIT](LICENSE)
