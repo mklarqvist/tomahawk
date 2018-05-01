@@ -8,7 +8,7 @@ Tomahawk is a machine-optimized library for computing linkage-disequilibrium fro
 
 Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The primitive type of RLE entries is fixed across a file and is determined contextually depending on the total number of samples. 
 
-We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines two efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel and have been successfully completed runs using thousands of cores on hundreds of machines using the Sanger Institute compute farm.
+We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines two efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel and have been successfully tested on datasets with up to 10 million individuals using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
 The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available [TWKv0](spec/TWKv0.pdf)
 
@@ -20,6 +20,7 @@ The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available 
 - [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
 - [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
 - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
+- [Subsetting output](#subsetting-output)
 - [Sort a `TWO` file](#sort-a-two-file)
 - [Plotting in R](#plotting-in-R)
 - [Author](#author)
@@ -43,7 +44,8 @@ with native architecture-specific instructions
 and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
-compiled target. Because of this, no pre-compiled binaries are available for download.
+compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially large loss of compute speed.  
+Because Tomahawk is compiled using native CPU-instructions by default, no pre-compiled binaries are available for download.
 
 ### Brief usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
@@ -78,13 +80,34 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 This command will output the file `output_prefix.two`
 
 ## Converting between file formats and filtering
-Viewing `LD` data from the binary `two` file format and filtering out lines with a
+Printing the contents of a `twk` as `vcf` involves the `view` command
+ ```bash
+tomahawk view -i file.twk -o file.vcf
+```
+
+Viewing `ld` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
 FLAG bits `4` set
 ```bash
 tomahawk view -i file.two -P 1e-4 -a 5 -f 4
  ```
 
+ The `two` FLAG values are bit-packed booleans in a single integer field and describe a variety of states a pair of markers can be in.
+
+| Description                          | Bit number | Bit value |
+|--------------------------------------|------------|-----------|
+| Markers are phased                   | 1          | 1         |
+| Has missing values                   | 2          | 2         |
+| Incomplete                           | 3          | 4         |
+| Multiple valid roots                 | 4          | 8         |
+| Markers on the same contig           | 5          | 16        |
+| Markers far apart on the same contig | 6          | 32        |
+| Marker A failed HWE test             | 7          | 64        |
+| Marker B failed HWE test             | 8          | 128       |
+| Marker A have low MAF                | 9          | 256       |
+| Marker B have low MAF                | 10         | 512       |
+
+## Subsetting output
 It is possible to filter `two` output data by: 
 1) either start or end contig e.g. `chr1`, 
 2) position in that contig e.g. `chr1:10e6-20e6`; 
@@ -94,11 +117,6 @@ It is possible to filter `two` output data by:
 ```bash
 tomahawk view -i file.two -I chr1:10e3-10e6,chr2:0-10e6
  ```
-
-Converting a `twk` file to `vcf`
- ```bash
-tomahawk view -i file.twk -o file.vcf
-```
 
 ## Sort a `TWO` file
 Partially sort `two` file in 500 MB chunks
