@@ -6,7 +6,7 @@
 # Fast calculation of LD in large-scale cohorts
 Tomahawk is a machine-optimized library for computing linkage-disequilibrium from population-sized datasets. Tomahawk permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals.
 
-Tomahawk efficiently compress genotypic data by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. We represent genotypic vectors as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The primitive type of RLE entries is fixed across a file and is determined contextually depending on the total number of samples. 
+Genotypic data is efficiently compressed by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. Genotypic vectors are represented as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The primitive type of RLE entries is fixed across a file and is determined contextually depending on the total number of samples. 
 
 We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines two efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel and have been successfully tested on datasets with up to 10 million individuals using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
@@ -15,13 +15,13 @@ The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available 
 ## Table of contents
 - [Getting started](#getting-started)
     - [Installation instructions](#installation-instructions)
-    - [Brief usage instructions](#brief-usage-instructions)
-- [Importing to Tomahawk](#importing-to-tomahawk)
-- [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
-- [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
-- [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
-- [Subsetting output](#subsetting-output)
-- [Sort a `TWO` file](#sort-a-two-file)
+- [Usage instructions](#usage-instructions)
+  - [Importing to Tomahawk](#importing-to-tomahawk)
+  - [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
+  - [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
+  - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
+  - [Subsetting output](#subsetting-output)
+  - [Sort a `TWO` file](#sort-a-two-file)
 - [Plotting in R](#plotting-in-R)
 - [Author](#author)
 - [Acknowledgements](#Acknowledgements)
@@ -47,7 +47,7 @@ computer farms/clouds with a hardware architecture that is different from the
 compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially large loss of compute speed.  
 Because Tomahawk is compiled using native CPU-instructions by default, no pre-compiled binaries are available for download.
 
-### Brief usage instructions
+## Usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
@@ -56,7 +56,7 @@ All primary Tomahawk commands operate on the binary Tomahawk `twk` and Tomahawk 
 commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
 disequilibrium data is written out in `two` format.
 
-## Importing to Tomahawk
+### Importing to Tomahawk
 By design Tomahawk only operates on diploid and bi-allelic SNVs and as such filters out indels and complex variants. Tomahawk does not support mixed phasing of genotypes
 in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found for a record,
 all genotypes for that site are converted to unphased genotypes. This is a conscious design choice as this will internally invoke the correct algorithm to use for mixed-phase cases.  
@@ -69,7 +69,7 @@ from Hardy-Weinberg equilibrium with a probability < 0.001
 tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
 ```
 
-## Calculating linkage disequilibrium
+### Calculating linkage disequilibrium
 In this example we force computations to use phased math (`-p`) and show a live progressbar
 (`-d`). Generated data is filtered for minimum genotype frequency (`-a`), squared Pearson correlation
 coefficient (`-r`) and by test statistics P-value (`-p`). Total computation is partitioned into 990 psuedo-balanced blocks (`-c`)
@@ -79,11 +79,35 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 ```
 This command will output the file `output_prefix.two`
 
-## Converting between file formats and filtering
+### Converting between file formats and filtering
 Printing the contents of a `twk` as `vcf` involves the `view` command
  ```bash
 tomahawk view -i file.twk -o file.vcf
 ```
+
+### LD field description
+Tomahawk output `two` data in human-readable `ld` format when invoking `view`. The columns are described below:
+
+| Column    | Description |
+|----------|-------------|
+| `FLAG`     | Set of boolean flags            |
+| `CHROM_A`  | Chromosome for marker A            |
+| `POS_A`    | Position for marker A            |
+| `CHROM_B`  | Chromosome for marker B            |
+| `POS_B`    | Position for marker B            |
+| `HOM_HOM`  | Count of (0,0) haplotypes            |
+| `HOM_HET`  | Count of (0,1) haplotypes            |
+| `HET_HOM`  | Count of (1,0) haplotypes            |
+| `HET_HET`  | Count of (1,1) haplotypes            |
+| `D`        | Disequilibrium coefficient            |
+| `DPrime`   | Normalized disequilibrium coefficient            |
+| `R`        | Pearson correlation coefficient            |
+| `R2`       | Squared pearson correlation coefficient            |
+| `P`        | Fisher's exact test P-value            |
+| `ChiModel` | Chi-squared value of model            |
+| `ChiTable` | Chi-squared value of table            |
+
+
 
 Viewing `ld` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
@@ -98,16 +122,16 @@ tomahawk view -i file.two -P 1e-4 -a 5 -f 4
 |--------------------------------------|------------|-----------|
 | Markers are phased                   | 1          | 1         |
 | Has missing values                   | 2          | 2         |
-| Incomplete                           | 3          | 4         |
+| Incomplete (at least 1 cell with < 1 count)                           | 3          | 4         |
 | Multiple valid roots                 | 4          | 8         |
 | Markers on the same contig           | 5          | 16        |
-| Markers far apart on the same contig | 6          | 32        |
-| Marker A failed HWE test             | 7          | 64        |
-| Marker B failed HWE test             | 8          | 128       |
-| Marker A have low MAF                | 9          | 256       |
-| Marker B have low MAF                | 10         | 512       |
+| Markers far apart on the same contig (> 500kb) | 6          | 32        |
+| Marker A failed HWE test (P < 1e-6)  | 7          | 64        |
+| Marker B failed HWE test (P < 1e-6)  | 8          | 128       |
+| Marker A have MAF < 0.01             | 9          | 256       |
+| Marker B have MAF < 0.01             | 10         | 512       |
 
-## Subsetting output
+### Subsetting output
 It is possible to filter `two` output data by: 
 1) either start or end contig e.g. `chr1`, 
 2) position in that contig e.g. `chr1:10e6-20e6`; 
@@ -118,7 +142,7 @@ It is possible to filter `two` output data by:
 tomahawk view -i file.two -I chr1:10e3-10e6,chr2:0-10e6
  ```
 
-## Sort a `TWO` file
+### Sort a `TWO` file
 Partially sort `two` file in 500 MB chunks
 ```bash
 tomahawk sort -i file.two -o partial.two -L 500

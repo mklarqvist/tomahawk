@@ -1,91 +1,51 @@
-#ifndef FISHERTEST_H_
-#define FISHERTEST_H_
-
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <cerrno>
-#include "../support/type_definitions.h"
-
-namespace Tomahawk {
-namespace Algorithm {
-
-#define KF_GAMMA_EPS      1e-14
-#define KF_TINY           1e-290
-#define FISHER_TINY       1e-279
-#define STIRLING_CONSTANT 0.5 * log(2 * M_PI)
-
-class FisherMath{
-
-public:
-	FisherMath(const U32 number);
-	~FisherMath();
-	void Build(void);
-	double kf_lgamma(double z) const;
-	double _kf_gammap(double s, double z) const;
-	double _kf_gammaq(double s, double z) const;
-
-	inline double kf_gammap(double s, double z) const{return z <= 1. || z < s? _kf_gammap(s, z) : 1. - _kf_gammaq(s, z);}
-	inline double kf_gammaq(double s, double z) const{return z <= 1. || z < s? 1. - _kf_gammap(s, z) : _kf_gammaq(s, z);}
+#ifndef MATH_FISHER_MATH_H_
+#define MATH_FISHER_MATH_H_
 
 
-	__attribute__((always_inline))
-	inline double StirlingsApproximation(const double v) const{
-		return(STIRLING_CONSTANT + (v - 0.5) * log(v) - v + 1/(12*v) + 1/(360 * v * v * v));
-	}
+/* Log gamma function
+ * \log{\Gamma(z)}
+ * AS245, 2nd algorithm, http://lib.stat.cmu.edu/apstat/245
+ */
+double kf_lgamma(double z);
 
-	__attribute__((always_inline))
-	inline double logN(const S32& value) const{
-		return(StirlingsApproximation((double)value+1));
-	}
+/* complementary error function
+ * \frac{2}{\sqrt{\pi}} \int_x^{\infty} e^{-t^2} dt
+ * AS66, 2nd algorithm, http://lib.stat.cmu.edu/apstat/66
+ */
+double kf_erfc(double x);
 
-	__attribute__((always_inline))
-	inline double fisherTest(const S32& a, const S32& b, const S32& c, const S32 d) const{
-		// Rewrite Fisher's 2x2 test in log form
-		// return e^x
-		return(exp(logN(a+b) + logN(c+d) + logN(a+c) + logN(b+d) - logN(a) - logN(b) - logN(c) - logN(d) - logN(a + b + c + d)));
-	}
+/* The following computes regularized incomplete gamma functions.
+ * Formulas are taken from Wiki, with additional input from Numerical
+ * Recipes in C (for modified Lentz's algorithm) and AS245
+ * (http://lib.stat.cmu.edu/apstat/245).
+ *
+ * A good online calculator is available at:
+ *
+ *   http://www.danielsoper.com/statcalc/calc23.aspx
+ *
+ * It calculates upper incomplete gamma function, which equals
+ * kf_gammaq(s,z)*tgamma(s).
+ */
+
+double kf_gammap(double s, double z);
+double kf_gammaq(double s, double z);
+
+/* Regularized incomplete beta function. The method is taken from
+ * Numerical Recipe in C, 2nd edition, section 6.4. The following web
+ * page calculates the incomplete beta function, which equals
+ * kf_betai(a,b,x) * gamma(a) * gamma(b) / gamma(a+b):
+ *
+ *   http://www.danielsoper.com/statcalc/calc36.aspx
+ */
+double kf_betai(double a, double b, double x);
+
+/*
+ *    n11  n12  | n1_
+ *    n21  n22  | n2_
+ *   -----------+----
+ *    n_1  n_2  | n
+ */
+double kt_fisher_exact(int n11, int n12, int n21, int n22, double *_left, double *_right, double *two);
 
 
-	double fisherTestLess(S32 a, S32 b, S32 c, S32 d) const;
-	double fisherTestGreater(S32 a, S32 b, S32 c, S32 d) const;
-	double chisqr(const S32& Dof, const double& Cv) const;
-
-	template <class T>
-	double chiSquaredTest(T& a, T& b, T& c, T& d) const;
-
-private:
-	U32 number;
-	std::vector<double> logN_values;
-};
-
-
-
-
-template <class T>
-double FisherMath::chiSquaredTest(T& a, T& b, T& c, T& d) const{
-	const T rowSums[2] = {a+b, c+d};
-	const T colSums[2] = {a+c, b+d};
-	const double total = a + b + c + d;
-	double adjustValue = 0;
-	if(a > 0.5 && b > 0.5 && c > 0.5 && d > 0.5)
-		adjustValue = 0.5;
-
-	const double chisq = ((pow(a - (double)rowSums[0]*colSums[0]/total,2)-adjustValue)/(rowSums[0]*colSums[0]/total) +
-						  (pow(b - (double)rowSums[0]*colSums[1]/total,2)-adjustValue)/(rowSums[0]*colSums[1]/total) +
-						  (pow(c - (double)rowSums[1]*colSums[0]/total,2)-adjustValue)/(rowSums[1]*colSums[0]/total) +
-						  (pow(d - (double)rowSums[1]*colSums[1]/total,2)-adjustValue)/(rowSums[1]*colSums[1]/total) );
-
-	if(chisq < 0){
-		return ((pow(a - (double)rowSums[0]*colSums[0]/total,2))/(rowSums[0]*colSums[0]/total) +
-				(pow(b - (double)rowSums[0]*colSums[1]/total,2))/(rowSums[0]*colSums[1]/total) +
-				(pow(c - (double)rowSums[1]*colSums[0]/total,2))/(rowSums[1]*colSums[0]/total) +
-				(pow(d - (double)rowSums[1]*colSums[1]/total,2))/(rowSums[1]*colSums[1]/total) );
-	}
-	return chisq;
-}
-
-}
-} /* namespace Tomahawk */
-
-#endif /* FISHERTEST_H_ */
+#endif /* MATH_FISHER_MATH_H_ */

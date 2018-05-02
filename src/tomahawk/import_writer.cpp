@@ -115,6 +115,8 @@ void ImportWriter::setHeader(VCF::VCFHeader& header){
 bool ImportWriter::add(const VCF::VCFLine& line){
 	const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
+
+	// Run-length encode
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
@@ -138,7 +140,7 @@ bool ImportWriter::add(const VCF::VCFLine& line){
 		return false;
 	}
 
-	if(base_meta.MAF < this->filter.MAF){
+	if(base_meta.AF < this->filter.MAF){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
@@ -158,6 +160,7 @@ bool ImportWriter::add(const BCF::BCFEntry& line){
 	const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
 
+	// Run-length encode
 	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
@@ -182,7 +185,7 @@ bool ImportWriter::add(const BCF::BCFEntry& line){
 
 
 
-	if(base_meta.MAF < this->filter.MAF){
+	if(base_meta.AF < this->filter.MAF){
 		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;

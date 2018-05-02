@@ -21,8 +21,7 @@ struct TomahawkImportRLEHelper{
 		HWE_P(0),
 		missingValues(0),
 		phased(false),
-		expectedSamples(expectedSamples),
-		fisherTable(1)
+		expectedSamples(expectedSamples)
 	{
 		memset(&this->countsGenotypes[0], 0, sizeof(U64)*16);
 		memset(&this->countsAlleles[0],   0, sizeof(U64)*3);
@@ -42,11 +41,8 @@ struct TomahawkImportRLEHelper{
 	}
 	inline const bool& hasMissing(void) const{ return(this->missingValues); }
 
-	double calculateMAF(void){
-		if(this->countsAlleles[0] > this->countsAlleles[1])
-			return(this->countsAlleles[1]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
-		else
-			return(this->countsAlleles[0]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
+	inline const double calculateAF(void) const{
+		return(this->countsAlleles[0]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
 	}
 
 	void calculateMGF(void){
@@ -183,13 +179,12 @@ struct TomahawkImportRLEHelper{
 
 	U64   countsGenotypes[16];
 	U64   countsAlleles[3];
-	float MAF;
-	float MGF;
-	float HWE_P;
+	double MAF;
+	double MGF;
+	double HWE_P;
 	bool  missingValues;
 	bool  phased;
 	const U64  expectedSamples;
-	FisherMath fisherTable;
 };
 
 class GenotypeEncoder {
@@ -364,10 +359,8 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 	position <<= 2;
 	position |= this->helper.phased << 1;
 	position |= this->helper.missingValues << 0;
-	meta += this->helper.MGF;
+	meta += this->helper.calculateAF();
 	meta += this->helper.HWE_P;
-	//std::cerr << this->helper.MGF << std::endl;
-	//n_runs = runs.pointer - runs_pointer_begin; // temp
 	meta += n_runs;
 
 	this->helper.reset();

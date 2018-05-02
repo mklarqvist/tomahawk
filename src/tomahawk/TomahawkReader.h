@@ -261,7 +261,7 @@ bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID)
 		this->outputBuffer_ += "HWE_P=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
 		this->outputBuffer_ += ";MAF=";
-		this->outputBuffer_ += std::to_string(o.currentMeta().MAF);
+		this->outputBuffer_ += std::to_string(o.currentMeta().AF);
 		if(this->dropGenotypes == false){
 			this->outputBuffer_ += "\tGT\t";
 			for(U32 i = 0; i < o.currentMeta().runs; ++i){
@@ -323,7 +323,7 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 		this->outputBuffer_ += "HWE_P=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
 		this->outputBuffer_ += ";MAF=";
-		this->outputBuffer_ += std::to_string(o.currentMeta().MAF);
+		this->outputBuffer_ += std::to_string(o.currentMeta().AF);
 		if(this->dropGenotypes == false){
 			this->outputBuffer_ += "\tGT\t";
 			for(U32 i = 0; i < o.currentMeta().runs; ++i){

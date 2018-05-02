@@ -151,8 +151,8 @@ private:
 
 template <class T>
 void OutputWriter::Add(const MetaEntry<T>& meta_a, const MetaEntry<T>& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
-	const U32 writePosA = meta_a.position << 2 | meta_a.phased << 1 | meta_a.missing;
-	const U32 writePosB = meta_b.position << 2 | meta_b.phased << 1 | meta_b.missing;
+	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
+	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
 	this->buffer += helper.controller;
 	this->buffer += header_a.contigID;
 	this->buffer += writePosA;

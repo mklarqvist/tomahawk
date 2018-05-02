@@ -314,8 +314,10 @@ private:
 	// Phased functions
 	bool CalculateLDPhased(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedMath(void);
+	bool CalculateLDPhasedMathTest(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorized(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorizedNoMissing(const block_type& block1, const block_type& block2);
+	bool CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& block1, const block_type& block2);
 
 	// Unphased functions
 	bool CalculateLDUnphased(const block_type& block1, const block_type& block2);
@@ -324,7 +326,7 @@ private:
 	bool CalculateLDUnphasedMath(void);
 
 	// General functions
-	double EstimateChiSq(const double& target, const double& p, const double& q) const;
+	inline double EstimateChiSq(const double& target, const double& p, const double& q) const;
 	bool ChooseF11Calculate(const double& target, const double& p, const double& q);
 	void setFLAGs(const block_type& block1, const block_type& block2);
 
@@ -346,7 +348,7 @@ private:
 
 	helper_type helper;
 	simd_helper_type helper_simd;
-	Algorithm::FisherMath fisherController;
+	//Algorithm::FisherMath fisherController;
 	const manager_type& manager;
 
 	// thread
@@ -388,7 +390,7 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	insufficent_alleles(0),
 	//false_positive(0),
 	//false_negative(0),
-	fisherController(1024),
+	//fisherController(1024),
 	manager(manager),
 	output_writer(writer),
 	progress(progress),
@@ -440,25 +442,16 @@ void LDSlave<T>::setFLAGs(const block_type& block1, const block_type& block2){
 		this->helper.setLongRange();
 
 	// Set FLAGs
-	if(mA.MAF < LOW_MAF_THRESHOLD)
-		this->helper.setLowMAFA();
-
-	if(mB.MAF < LOW_MAF_THRESHOLD)
-		this->helper.setLowMAFB();
-
-	if(mA.HWE_P < LOW_HWE_THRESHOLD)
-		this->helper.setFailedHWEA();
-
-	if(mB.HWE_P < LOW_HWE_THRESHOLD)
-		this->helper.setFailedHWEB();
-
-	if(mA.missing || mB.missing)
-		this->helper.setHasMissingValues();
+	if(mA.AF < LOW_MAF_THRESHOLD)       this->helper.setLowMAFA();
+	if(mB.AF < LOW_MAF_THRESHOLD)       this->helper.setLowMAFB();
+	if(mA.HWE_P < LOW_HWE_THRESHOLD)     this->helper.setFailedHWEA();
+	if(mB.HWE_P < LOW_HWE_THRESHOLD)     this->helper.setFailedHWEB();
+	if(mA.has_missing || mB.has_missing) this->helper.setHasMissingValues();
 }
 
 template <class T>
 bool LDSlave<T>::CalculateLDUnphased(const block_type& block1, const block_type& block2){
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0)
+	if(block1.currentMeta().AF == 0 || block2.currentMeta().AF == 0)
 		return false;
 
 	this->helper.resetUnphased();
@@ -536,7 +529,7 @@ bool LDSlave<T>::CalculateLDUnphased(const block_type& block1, const block_type&
 }
 
 template <class T>
-double LDSlave<T>::EstimateChiSq(const double& target, const double& p, const double& q) const{
+inline double LDSlave<T>::EstimateChiSq(const double& target, const double& p, const double& q) const{
 	const double f12 = p - target;
 	const double f21 = q - target;
 	const double f22 = 1 - (target + f12 + f21);
@@ -577,7 +570,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 
 	this->helper.D  = this->helper.haplotypeCounts[0] * this->helper.haplotypeCounts[3] - this->helper.haplotypeCounts[1] * this->helper.haplotypeCounts[2];
 	this->helper.R2 = this->helper.D*this->helper.D / (p * (1 - p) * q * (1 - q));
-	this->helper.R  = this->helper.D / sqrt(p * (1 - p) * q * (1 - q));
+	this->helper.R  = sqrt(this->helper.R2);
 
 	if(this->helper.countAlternatives() < this->parameters.minimum_alleles)
 		return false;
@@ -594,10 +587,11 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 		}
 		this->helper.Dprime = this->helper.D / this->helper.Dmax;
 
-		if(this->helper.D < 0)
-			this->helper.P = this->fisherController.fisherTestLess(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
-		else
-			this->helper.P = this->fisherController.fisherTestGreater(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]));
+		double left,right,both;
+		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),
+		                round(this->helper[4]),round(this->helper[5]),
+		                &left,&right,&both);
+		this->helper.P = both;
 
 		if(this->helper[0] < 1 || this->helper[1] < 1 || this->helper[4] < 1 || this->helper[5] < 1)
 			this->helper.setIncomplete();
@@ -606,7 +600,8 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 		if(this->helper.P > this->parameters.P_threshold)
 			return false;
 
-		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		//this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		this->helper.chiSqFisher = 0;
 
 		return true;
 	}
@@ -926,7 +921,7 @@ bool LDSlave<T>::CalculateLDUnphasedVectorizedNoMissing(const block_type& block1
 template <class T>
 bool LDSlave<T>::CalculateLDUnphasedVectorized(const block_type& block1, const block_type& block2){
 	#if SLAVE_DEBUG_MODE < 6
-	if(block1.currentMeta().missing == 0 && block2.currentMeta().missing == 0)
+	if(block1.currentMeta().has_missing == 0 && block2.currentMeta().has_missing == 0)
 		return(this->CalculateLDUnphasedVectorizedNoMissing(block1, block2));
 	#endif
 
@@ -1068,8 +1063,10 @@ bool LDSlave<T>::CalculateLDUnphasedVectorized(const block_type& block1, const b
 template <class T>
 bool LDSlave<T>::CalculateLDPhasedVectorized(const block_type& block1, const block_type& block2){
 	#if SLAVE_DEBUG_MODE < 6
-	if(block1.currentMeta().missing == 0 && block2.currentMeta().missing == 0)
-		return(this->CalculateLDPhasedVectorizedNoMissing(block1, block2));
+	if(block1.currentMeta().has_missing == 0 && block2.currentMeta().has_missing == 0){
+		//return(this->CalculateLDPhasedVectorizedNoMissing(block1, block2));
+		return(this->CalculateLDPhasedVectorizedNoMissingNoTable(block1,block2));
+	}
 	#endif
 
 	this->helper.resetPhased();
@@ -1291,8 +1288,67 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissing(const block_type& block1, 
 }
 
 template <class T>
+bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& block1, const block_type& block2){
+	this->helper.resetPhased();
+	this->helper_simd.counters[0] = 0;
+	//this->helper_simd.counters[1] = 0;
+	//this->helper_simd.counters[2] = 0;
+	//this->helper_simd.counters[3] = 0;
+
+	const simd_pair& datA    = block1.currentBitvector();
+	const simd_pair& datB    = block2.currentBitvector();
+	const BYTE* const arrayA = datA.data;
+	const BYTE* const arrayB = datB.data;
+
+#if SIMD_AVAILABLE == 1
+	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
+	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
+
+	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
+	const U32 tailBonus     = datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero;
+
+	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
+	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
+	VECTOR_TYPE __intermediate;
+
+#define ITER_SHORT {											\
+	__intermediate  = PHASED_REFREF(vectorA[i], vectorB[i]);	\
+	POPCOUNT(this->helper_simd.counters[0], __intermediate);	\
+	i += 1;														\
+}
+	U32 i = frontSmallest;
+	for( ; i < frontBonus; ) 					  	ITER_SHORT
+	for( ; i < this->vectorCycles - tailBonus; )  	ITER_SHORT
+	for( ; i < this->vectorCycles - tailSmallest; ) ITER_SHORT
+
+#undef ITER_SHORT
+	U32 k = this->byteAlignedEnd;
+#else
+	U32 k = 0;
+#endif
+
+	for(; k+8 < this->byte_width; k += 8){
+		for(U32 l = 0; l < 8; ++l)
+			this->helper_simd.scalarB[l] = (~arrayA[k+l]) & (~arrayB[k+l]);
+		this->helper_simd.counters[0] += POPCOUNT_ITER(*reinterpret_cast<const U64* const>(this->helper_simd.scalarB));
+	}
+
+	for(; k < this->byte_width; ++k){
+		this->helper_simd.counters[0] += POPCOUNT_ITER(((~arrayA[k]) & (~arrayB[k]) & 255));
+	}
+	this->helper[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + this->helper_simd.counters[0] - this->phased_unbalanced_adjustment;
+
+	//assert(this->helper[0] < this->samples);
+	if(this->helper[0] > 2*this->samples)
+		std::cerr << this->helper[0] << ": " << (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 << " + " << this->helper_simd.counters[0] << " - " << this->phased_unbalanced_adjustment << std::endl;
+
+	this->setFLAGs(block1, block2);
+	return(this->CalculateLDPhasedMathTest(block1, block2));
+}
+
+template <class T>
 bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& block2){
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0)
+	if(block1.currentMeta().AF == 0 || block2.currentMeta().AF == 0)
 		return false;
 
 	this->helper.resetPhased();
@@ -1314,6 +1370,14 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 	U32 pointerA = 0;
 	U32 pointerB = 0;
 	U32 add;
+
+	// Is it cheaper to first expand shorter vector to longer vector
+	// and THEN calculate?
+	// idea:
+	// vector of pointer to A
+	// if(a > b) add pointer
+	// then use and b
+	// if(a[i] > current)
 
 #if SLAVE_DEBUG_MODE == 3
 	U64 iterations = 0;
@@ -1357,6 +1421,7 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 
 	#if SLAVE_DEBUG_MODE == 3
 		++iterations;
+		std::cout << a.getMeta().runs << '\t' << b.getMeta().runs << '\t' << iterations << std::endl;
 	#endif
 	}
 
@@ -1366,13 +1431,9 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 	std::cout << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << '\t' << ticks_per_iter.count() << '\n';
 #endif
 
-#if SLAVE_DEBUG_MODE == 3
-	std::cout << a.getMeta().runs << '\t' << b.getMeta().runs << '\t' << iterations << std::endl;
-#endif
-
 	this->setFLAGs(block1, block2);
 
-	return(this->CalculateLDPhasedMath());
+	return(this->CalculateLDPhasedMathTest(block1, block2));
 }
 
 template <class T>
@@ -1396,14 +1457,17 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 
 
 	// Haplotype frequencies
-	this->helper.haplotypeCounts[0] = (this->helper[0] + this->helper[1]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[1] = (this->helper[4] + this->helper[5]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[2] = (this->helper[0] + this->helper[4]) / this->helper.totalAlleleCounts;
-	this->helper.haplotypeCounts[3] = (this->helper[1] + this->helper[5]) / this->helper.totalAlleleCounts;
+	this->helper.haplotypeCounts[0] = (this->helper[0] + this->helper[1]) / this->helper.totalAlleleCounts; // pA
+	this->helper.haplotypeCounts[1] = (this->helper[4] + this->helper[5]) / this->helper.totalAlleleCounts; // qA
+	this->helper.haplotypeCounts[2] = (this->helper[0] + this->helper[4]) / this->helper.totalAlleleCounts; // pB
+	this->helper.haplotypeCounts[3] = (this->helper[1] + this->helper[5]) / this->helper.totalAlleleCounts; // qB
+
+	const double divisor = this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[2]*this->helper.haplotypeCounts[3];
+	if(divisor == 0) return false;
 
 	this->helper.D  = this->helper[0]/this->helper.totalAlleleCounts * this->helper[5]/this->helper.totalAlleleCounts - this->helper[1]/this->helper.totalAlleleCounts * this->helper[4]/this->helper.totalAlleleCounts;
-	this->helper.R2 = this->helper.D*this->helper.D / (((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1)));
-	this->helper.R  = this->helper.D / sqrt((((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1))));
+	this->helper.R2 = this->helper.D*this->helper.D / divisor;
+	this->helper.R  = sqrt(this->helper.R2);
 
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
 		if(this->helper.D >= 0){
@@ -1418,10 +1482,9 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 		this->helper.Dprime = this->helper.D / this->helper.Dmax;
 
 		// Calculate P: Fisher's exact test
-		if(this->helper.D < 0)
-			this->helper.P = this->fisherController.fisherTestLess(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
-		else
-			this->helper.P = this->fisherController.fisherTestGreater(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		double left,right,both;
+		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]),&left,&right,&both);
+		this->helper.P = both;
 
 		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
 			this->helper.setIncomplete();
@@ -1437,7 +1500,75 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		this->helper.chiSqModel = 0;
-		this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		//this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		this->helper.chiSqFisher = 0;
+
+		return true;
+	}
+	return false;
+}
+
+template <class T>
+bool LDSlave<T>::CalculateLDPhasedMathTest(const block_type& block1, const block_type& block2){
+	// Trigger phased flag
+	this->helper.setPhased();
+	++this->possible;
+
+	// D = (hom_ref*hom_alt) - (het_1 * het_2)
+	const double pAB = this->helper[0]/(2*this->samples);
+	const double test_D = pAB - block1.currentMeta().AF*block2.currentMeta().AF;
+	const double test_R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
+
+
+	//this->helper.D  = this->helper[0]/this->helper.totalAlleleCounts * this->helper[5]/this->helper.totalAlleleCounts - this->helper[1]/this->helper.totalAlleleCounts * this->helper[4]/this->helper.totalAlleleCounts;
+	//this->helper.R2 = this->helper.D*this->helper.D / (((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1)));
+	this->helper.D = test_D;
+	this->helper.R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
+	this->helper.R  = sqrt(this->helper.R2);
+
+
+	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
+
+		if(abs(this->helper.R2 - test_R2) > 0.01){
+		std::cerr << this->helper.D << "\t" << test_D << "\t" <<
+					 this->helper.R2 << "\t" << test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) ) << std::endl;
+		}
+
+		/*
+		if(this->helper.D >= 0){
+			this->helper.Dmax = this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[3] < this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[2]
+					? this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[3]
+					: this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[2];
+		} else {
+			this->helper.Dmax = this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[2] < this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[3]
+					? -this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[2]
+					: -this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[3];
+		}
+		this->helper.Dprime = this->helper.D / this->helper.Dmax;
+
+
+		// Calculate P: Fisher's exact test
+		double left,right,both;
+		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]),&left,&right,&both);
+		this->helper.P = both;
+
+		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
+			this->helper.setIncomplete();
+
+		// Fisher's exact test P value filter
+		if(this->helper.P > this->parameters.P_threshold){
+			//std::cerr << this->helper.P << '\t' << this->helper.D << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << std::endl;
+			//if(this->helper.P > 1)
+			//	exit(1);
+
+			return false;
+		}
+
+		// Calculate Chi-Sq CV from 2x2 contingency table
+		this->helper.chiSqModel = 0;
+		//this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
+		this->helper.chiSqFisher = 0;
+		*/
 
 		return true;
 	}
@@ -1517,13 +1648,15 @@ template <class T>
 void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_type& block2){
 #if SLAVE_DEBUG_MODE == 1 // 1 = No debug mode
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF == 0 || block2.currentMeta().MAF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
+	if(block1.currentMeta().AF == 0 || block2.currentMeta().AF == 0 || block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1){
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().phased == 1 && block2.currentMeta().phased == 1){
-		if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 3000){
+	if(block1.currentMeta().runs + block2.currentMeta().runs < 5) return;
+
+	if(block1.currentMeta().all_phased == 1 && block2.currentMeta().all_phased == 1){
+		if(block1.currentMeta().runs + block2.currentMeta().runs <= 20){
 			if(this->CalculateLDPhased(block1, block2)){
 				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
@@ -1535,7 +1668,7 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 			}
 		}
 	} else {
-		if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 30){
+		if(block1.currentMeta().runs + block2.currentMeta().runs <= 20){
 			if(this->CalculateLDUnphased(block1, block2)){
 				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 				//std::cerr << this->helper.R2 << '\n';
@@ -1584,20 +1717,32 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 		std::cerr << m << std::endl;
 		//exit(1);
 	}
+#elif SLAVE_DEBUG_MODE == 8
+	this->CalculateLDPhasedVectorizedNoMissingNoTable(block1, block2);
+	const double r1 = helper.R2;
+	const double c1 = helper[0];
+
+	this->CalculateLDPhasedVectorizedNoMissing(block1, block2);
+	const double r2 = helper.R2;
+	const double c2 = helper[0];
+
+	if(abs(r1-r2) > 0.05){
+		std::cerr << r1 << "\t" << r2 << "\t" << block1.currentMeta().AF << "\t" << block2.currentMeta().AF << '\t' << this->helper[0] << "," << this->helper[1] << "," << this->helper[4] << "," << this->helper[5] << std::endl;
+	}
 #endif
 }
 
 template <class T>
 void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, const block_type& block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF  == 0 || block2.currentMeta().MAF  == 0 ||
+	if(block1.currentMeta().AF  == 0 || block2.currentMeta().AF  == 0 ||
        block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1)
 	{
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if((block1.currentMeta().MAF + block2.currentMeta().MAF) * 2*this->samples <= 500){
+	if(block1.currentMeta().runs + block2.currentMeta().runs <= 30){
 		if(this->CalculateLDPhased(block1, block2)){
 			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
@@ -1614,14 +1759,14 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 template <class T>
 void LDSlave<T>::CompareBlocksFunctionForcedUnphased(const block_type& block1, const block_type& block2){
 	// Ignore when one or both is invariant
-	if(block1.currentMeta().MAF  == 0 || block2.currentMeta().MAF  == 0 ||
+	if(block1.currentMeta().AF  == 0 || block2.currentMeta().AF  == 0 ||
        block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1)
 	{
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
 
-	if(block1.currentMeta().MAF+block2.currentMeta().MAF <= 0.009784345){
+	if(block1.currentMeta().runs + block2.currentMeta().runs <= 200){
 		if(this->CalculateLDUnphased(block1, block2)){
 			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
