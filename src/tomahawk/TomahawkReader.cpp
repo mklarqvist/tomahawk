@@ -22,8 +22,10 @@ TomahawkReader::~TomahawkReader(){
 	this->outputBuffer_.deleteAll();
 	delete this->writer;
 	delete this->index_;
-	for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
-		delete this->interval_tree[i];
+
+	// Todo: fix
+	//for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
+	//	delete this->interval_tree[i];
 	delete [] this->interval_tree;
 	delete [] this->interval_tree_entries;
 }
@@ -82,6 +84,11 @@ bool TomahawkReader::open(const std::string input){
 
 	if(this->header_.validate() == false){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
+		return false;
+	}
+
+	if(this->header_.magic_.major_version == 0 && this->header_.magic_.minor_version < 0.4){
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Legacy file not supported..." << std::endl;
 		return false;
 	}
 

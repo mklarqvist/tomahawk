@@ -36,7 +36,8 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 		}
 		//std::cerr << "total variants chunk: " << this->n_comparisons_chunk << std::endl;
 		//std::cerr << "parition size: " << this->n_comparisons_chunk / threads << std::endl;
-		const U64 n_variants_partition = this->n_comparisons_chunk / threads;
+		U64 n_variants_partition = this->n_comparisons_chunk / threads;
+		if(threads == 1) n_variants_partition = std::numeric_limits<U64>::max();
 		//std::cerr << "n_threads: " << threads << std::endl;
 
 		U32 n_variants_counter = 0;
@@ -71,6 +72,7 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 				this->thread_distribution[currentThread].push_back(LoadBalancerThread(i - selected.fromRow, current.first - selected.fromRow, current.second - selected.fromRow));
 				//parts.push_back(current);
 				if(n_variants_counter >= n_variants_partition){
+					//std::cerr << "break here" << std::endl;
 					n_variants_counter = 0;
 					++currentThread;
 				}
@@ -99,7 +101,8 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 		}
 		//std::cerr << "total variants chunk: " << this->n_comparisons_chunk << std::endl;
 		//std::cerr << "parition size: " << this->n_comparisons_chunk / threads << std::endl;
-		const U64 n_variants_partition = this->n_comparisons_chunk / threads;
+		U64 n_variants_partition = this->n_comparisons_chunk / threads;
+		if(threads == 1) n_variants_partition = std::numeric_limits<U64>::max();
 
 
 		U32 n_variants_counter = 0;
@@ -149,8 +152,8 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 
 	}
 
-	for(U32 i = 0; i < this->data_to_load.size(); ++i)
-		std::cerr << i << '\t' << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
+	//for(U32 i = 0; i < this->data_to_load.size(); ++i)
+	//	std::cerr << i << '\t' << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
 
 	return true;
 }
@@ -190,7 +193,7 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		}
 
 		if(cutSize == 1){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->desired_chunks << " chunks" << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
 			return(false);
 		}
 

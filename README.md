@@ -41,11 +41,11 @@ make
 ```
 By default, Tomahawk compiles using aggressive optimization flags and
 with native architecture-specific instructions
-(`-march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops`)
+(`-march=native -mtune=native -ftree-vectorize -frename-registers -funroll-loops`)
 and internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
-compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially large loss of compute speed.  
+compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially substantial loss in compute speed.  
 Because Tomahawk is compiled using native CPU-instructions by default, no pre-compiled binaries are available for download.
 
 ## Usage instructions
@@ -101,14 +101,14 @@ Tomahawk output `two` data in human-readable `ld` format when invoking `view`. T
 | `HET_HOM`  | Count of (1,0) haplotypes            |
 | `HET_HET`  | Count of (1,1) haplotypes            |
 | [`D`](https://en.wikipedia.org/wiki/Linkage_disequilibrium)        | Coefficient of linkage disequilibrium            |
-| `DPrime`   | Normalized coefficient of linkage disequilibrium            |
+| `DPrime`   | Normalized coefficient of linkage disequilibrium (scaled to [-1,1])            |
 | [`R`](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient)        | Pearson correlation coefficient            |
 | `R2`       | Squared pearson correlation coefficient            |
 | [`P`](https://en.wikipedia.org/wiki/Fisher's_exact_test)        | Fisher's exact test P-value of the 2x2 haplotype contigency table            |
-| `ChiModel` | Chi-squared value of 3x3 unphased model selection table            |
-| `ChiTable` | Chi-squared value of table            |
+| `ChiSqModel` | Chi-squared critical value of the 3x3 unphased table of the selected cubic root (&alpha;, &beta;, or &delta;)            |
+| `ChiSqTable` | Chi-squared critical value of table (useful comparator when `P` = 0)            |
 
-The 2x2 contingency table, or matrix, for the Fisher's exact test (`P` ) for haplotypes look like this:
+The 2x2 contingency table, or matrix, for the Fisher's exact test (`P`) for haplotypes look like this:
 
 |                | Marker A - ref | Marker A - alt |
 |----------------|---------------|-------------------|
@@ -132,9 +132,9 @@ The `two` `FLAG` values are bit-packed booleans in a single integer field and de
 
 Viewing `ld` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
-FLAG bits `4` set
+both markers on the same contig (bit `16`)
 ```bash
-tomahawk view -i file.two -P 1e-4 -a 5 -f 4
+tomahawk view -i file.two -P 1e-4 -a 5 -f 16
  ```
 
 ### Subsetting output
@@ -226,7 +226,8 @@ This figure demonstrates how Tomahawk partitions the workload in order to maximi
 
 It is possible to completely remove all labels, axis, and titles:
 ```R
-plotLDRegion(ld,min(ld$POS_A),max(ld$POS_B),xaxs="i", yaxs="i",xaxt='n',yaxt='n',ann=FALSE,bty="n")
+par(mar=c(0,0,0,0)) # set all margins to 0
+plotLDRegion(ld,min(ld$POS_A),max(ld$POS_B), xaxs="i", yaxs="i", xaxt='n', yaxt='n',ann=FALSE, bty="n")
 ```
 ![screenshot](R/hrc_chr12_chunk1_noborder.jpeg)
 

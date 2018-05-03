@@ -142,7 +142,7 @@ public:
 					std::cerr << Helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
 					return false;
 				}
-				interval.contigID = contigID; // Todo
+				interval.contigID = contigID;
 				interval.start = 0;
 				interval.stop = this->header_.contigs_[contigID].n_bases + 1;
 			}
@@ -260,7 +260,7 @@ bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID)
 		this->outputBuffer_ += "\t.\t.\t";
 		this->outputBuffer_ += "HWE_P=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
-		this->outputBuffer_ += ";MAF=";
+		this->outputBuffer_ += ";AF=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().AF);
 		if(this->dropGenotypes == false){
 			this->outputBuffer_ += "\tGT\t";
@@ -322,7 +322,7 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 		this->outputBuffer_ += "\t.\t.\t";
 		this->outputBuffer_ += "HWE_P=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().HWE_P);
-		this->outputBuffer_ += ";MAF=";
+		this->outputBuffer_ += ";AF=";
 		this->outputBuffer_ += std::to_string(o.currentMeta().AF);
 		if(this->dropGenotypes == false){
 			this->outputBuffer_ += "\tGT\t";

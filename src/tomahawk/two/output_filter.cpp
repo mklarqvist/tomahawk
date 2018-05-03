@@ -14,7 +14,7 @@ OutputFilter::OutputFilter() :
 	maxP2(std::numeric_limits<double>::max()),
 	maxQ1(std::numeric_limits<double>::max()),
 	maxQ2(std::numeric_limits<double>::max()),
-	minMHF(0),
+	minMHF(-1),
 	maxMHF(std::numeric_limits<double>::max()),
 	minD(-100), maxD(100),
 	minDprime(-100), maxDprime(100),
@@ -103,12 +103,12 @@ bool OutputFilter::filterJointHF(const entry_type& target) const{
 
 bool OutputFilter::setFilterTable(const double& a, const double& b, const double& c, const double& d){
 	if(a < 0 || b < 0 || c < 0 || d < 0){
-		std::cerr << "cannot have negative filter values" << std::endl;
+		std::cerr << "Cannot have negative filter values" << std::endl;
 		return false;
 	}
 
 	if(a == 0 && b == 0 && c == 0 && d == 0){
-		std::cerr << "cannot filter with all cells set to 0" << std::endl;
+		std::cerr << "Cannot filter with all cells set to 0" << std::endl;
 		return false;
 	}
 
@@ -122,11 +122,11 @@ bool OutputFilter::setFilterTable(const double& a, const double& b, const double
 
 bool OutputFilter::setFilterTable(const double& all){
 	if(all < 0){
-		std::cerr << "cannot have negative filter values" << std::endl;
+		std::cerr << "Cannot have negative filter values" << std::endl;
 		return false;
 	}
 	if(all == 0){
-		std::cerr << "cannot filter with all cells set to 0" << std::endl;
+		std::cerr << "Cannot filter with all cells set to 0" << std::endl;
 		return false;
 	}
 	this->minP1 = all;

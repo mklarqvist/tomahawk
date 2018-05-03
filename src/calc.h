@@ -41,7 +41,7 @@ void calc_usage(void){
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
 	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
-	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1e-4)\n"
+	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -d       Show real-time progress update in cerr [null]\n"
@@ -224,6 +224,7 @@ int calc(int argc, char** argv){
 		programMessage();
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling calc..." << std::endl;
 	}
+
 
 	// Parse Tomahawk
 	if(!tomahawk.Open(input, output)){

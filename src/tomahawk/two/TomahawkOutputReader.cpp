@@ -61,7 +61,7 @@ bool TomahawkOutputReader::open(const std::string input){
 	}
 
 	if(this->footer_.validate() == false){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate footer..." << std::endl;
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate footer! The file is truncated or corrupted..." << std::endl;
 		return false;
 	}
 
@@ -95,6 +95,11 @@ bool TomahawkOutputReader::open(const std::string input){
 
 	if(this->header_.validate() == false){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
+		return false;
+	}
+
+	if(this->header_.magic_.major_version == 0 && this->header_.magic_.minor_version < 0.4){
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Legacy file not supported..." << std::endl;
 		return false;
 	}
 
@@ -527,7 +532,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	// Natural output required parsing
@@ -562,7 +567,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	if(this->interval_tree != nullptr){
@@ -582,7 +587,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiModel\tChiTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	while(this->parseBlock()){

@@ -50,6 +50,7 @@ bool TomahawkCalc::Calculate(){
 	header.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
 	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
+
 	IO::OutputWriter writer;
 	if(!writer.open(this->output_file)){
 		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
@@ -57,6 +58,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	writer.writeHeaders(this->reader.getHeader());
+
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1

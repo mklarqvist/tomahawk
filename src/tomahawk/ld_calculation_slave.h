@@ -342,9 +342,9 @@ private:
 
 	// Phased functions
 	bool CalculateLDPhased(const block_type& block1, const block_type& block2);
-	bool CalculateLDPhasedTest(const block_type& block1, const block_type& block2);
+	bool CalculateLDPhasedSimple(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedMath(void);
-	bool CalculateLDPhasedMathTest(const block_type& block1, const block_type& block2);
+	bool CalculateLDPhasedMathSimple(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorized(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorizedNoMissing(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& block1, const block_type& block2);
@@ -1370,11 +1370,11 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& b
 	this->helper[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + this->helper_simd.counters[0] - this->phased_unbalanced_adjustment;
 
 	this->setFLAGs(block1, block2);
-	return(this->CalculateLDPhasedMathTest(block1, block2));
+	return(this->CalculateLDPhasedMathSimple(block1, block2));
 }
 
 template <class T>
-bool LDSlave<T>::CalculateLDPhasedTest(const block_type& block1, const block_type& block2){
+bool LDSlave<T>::CalculateLDPhasedSimple(const block_type& block1, const block_type& block2){
 	this->helper.resetPhased();
 
 	const run_type* const b = block2.current();
@@ -1393,7 +1393,7 @@ bool LDSlave<T>::CalculateLDPhasedTest(const block_type& block1, const block_typ
 
 	this->helper[0] = 2*this->samples - (this->bitvector_l+list_cb);
 
-	return(this->CalculateLDPhasedMathTest(block1, block2));
+	return(this->CalculateLDPhasedMathSimple(block1, block2));
 }
 
 template <class T>
@@ -1476,7 +1476,6 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 	this->setFLAGs(block1, block2);
 
 	return(this->CalculateLDPhasedMath());
-	//return(this->CalculateLDPhasedMathTest(block1, block2));
 }
 
 template <class T>
@@ -1554,18 +1553,14 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 }
 
 template <class T>
-bool LDSlave<T>::CalculateLDPhasedMathTest(const block_type& block1, const block_type& block2){
+bool LDSlave<T>::CalculateLDPhasedMathSimple(const block_type& block1, const block_type& block2){
 	// Trigger phased flag
 	this->helper.setPhased();
 	++this->possible;
 
-	// D = (hom_ref*hom_alt) - (het_1 * het_2)
-	const double pAB = this->helper[0]/(2*this->samples);
-	const double test_D = pAB - block1.currentMeta().AF*block2.currentMeta().AF;
-	const double test_R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
-
-	this->helper.D = test_D;
-	this->helper.R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
+	// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
+	this->helper.D = this->helper[0]/(2*this->samples) - block1.currentMeta().AF*block2.currentMeta().AF;
+	this->helper.R2 = this->helper.D*this->helper.D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
 	this->helper.R  = sqrt(this->helper.R2);
 
 	// If haplotype count for (0,0) >
@@ -1575,6 +1570,11 @@ bool LDSlave<T>::CalculateLDPhasedMathTest(const block_type& block1, const block
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
 		return true;
 	}
+
+	// Dmax = min(p1q2, p2q1)
+	this->helper.Dprime = this->helper.D / std::min( block1.currentMeta().AF*(1-block2.currentMeta().AF ),
+	                                                (1-block1.currentMeta().AF)*block2.currentMeta().AF );
+
 	return false;
 }
 
@@ -1748,7 +1748,7 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 	if(block1.currentMeta().runs + block2.currentMeta().runs < 5) return;
 
 	if(std::max(block1.currentMeta().runs,block2.currentMeta().runs) <= 100){
-		if(this->CalculateLDPhasedTest(block1, block2)){
+		if(this->CalculateLDPhasedSimple(block1, block2)){
 			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
@@ -1758,7 +1758,6 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
-
 }
 
 template <class T>
