@@ -20,6 +20,7 @@ The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available 
   - [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
   - [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
   - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
+  - [`LD` format description](#ld-format-description)
   - [Subsetting output](#subsetting-output)
   - [Sort a `TWO` file](#sort-a-two-file)
 - [Plotting in R](#plotting-in-R)
@@ -85,12 +86,12 @@ Printing the contents of a `twk` as `vcf` involves the `view` command
 tomahawk view -i file.twk -o file.vcf
 ```
 
-### LD field description
+### `LD` format description
 Tomahawk output `two` data in human-readable `ld` format when invoking `view`. The columns are described below:
 
 | Column    | Description |
 |----------|-------------|
-| `FLAG`     | Set of boolean flags            |
+| `FLAG`     | Bit-packed boolean flags (see below) |
 | `CHROM_A`  | Chromosome for marker A            |
 | `POS_A`    | Position for marker A            |
 | `CHROM_B`  | Chromosome for marker B            |
@@ -99,24 +100,22 @@ Tomahawk output `two` data in human-readable `ld` format when invoking `view`. T
 | `HOM_HET`  | Count of (0,1) haplotypes            |
 | `HET_HOM`  | Count of (1,0) haplotypes            |
 | `HET_HET`  | Count of (1,1) haplotypes            |
-| `D`        | Disequilibrium coefficient            |
-| `DPrime`   | Normalized disequilibrium coefficient            |
-| `R`        | Pearson correlation coefficient            |
+| [`D`](https://en.wikipedia.org/wiki/Linkage_disequilibrium)        | Coefficient of linkage disequilibrium            |
+| `DPrime`   | Normalized coefficient of linkage disequilibrium            |
+| [`R`](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient)        | Pearson correlation coefficient            |
 | `R2`       | Squared pearson correlation coefficient            |
-| `P`        | Fisher's exact test P-value            |
-| `ChiModel` | Chi-squared value of model            |
+| [`P`](https://en.wikipedia.org/wiki/Fisher's_exact_test)        | Fisher's exact test P-value of the 2x2 haplotype contigency table            |
+| `ChiModel` | Chi-squared value of 3x3 unphased model selection table            |
 | `ChiTable` | Chi-squared value of table            |
 
+The 2x2 contingency table, or matrix, for the Fisher's exact test (`P` ) for haplotypes look like this:
 
+|                | Marker A - ref | Marker A - alt |
+|----------------|---------------|-------------------|
+| **Marker B - ref** | A             | B                 |
+| **Marker B - alt** | C             | D                 |
 
-Viewing `ld` data from the binary `two` file format and filtering out lines with a
-Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
-FLAG bits `4` set
-```bash
-tomahawk view -i file.two -P 1e-4 -a 5 -f 4
- ```
-
- The `two` FLAG values are bit-packed booleans in a single integer field and describe a variety of states a pair of markers can be in.
+The `two` `FLAG` values are bit-packed booleans in a single integer field and describe a variety of states a pair of markers can be in.
 
 | Description                          | Bit number | Bit value |
 |--------------------------------------|------------|-----------|
@@ -130,6 +129,13 @@ tomahawk view -i file.two -P 1e-4 -a 5 -f 4
 | Marker B failed HWE test (P < 1e-6)  | 8          | 128       |
 | Marker A have MAF < 0.01             | 9          | 256       |
 | Marker B have MAF < 0.01             | 10         | 512       |
+
+Viewing `ld` data from the binary `two` file format and filtering out lines with a
+Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
+FLAG bits `4` set
+```bash
+tomahawk view -i file.two -P 1e-4 -a 5 -f 4
+ ```
 
 ### Subsetting output
 It is possible to filter `two` output data by: 

@@ -19,6 +19,35 @@
 #include "two/output_entry_support.h"
 #include "../io/output_writer.h"
 
+struct BitVectorLookup{
+public:
+	BitVectorLookup(const U64 n_entries) :
+		n_entries(n_entries),
+		n_bytes(ceil((double)n_entries/8)),
+		entries(new BYTE[n_bytes])
+	{
+		memset(this->entries, 0, this->n_bytes);
+	}
+	~BitVectorLookup(){ delete [] this->entries; }
+
+	inline void reset(void){ memset(this->entries, 0, this->n_bytes); }
+	inline const bool operator[](const U32& position) const{ return(this->entries[position/8] & (1 << (position % 8))); }
+	inline const bool get(const U32& position) const{
+		//std::cerr << "get: " << position << "," << position/8 << "," << position%8 << "\t" << std::bitset<8>(1 << (position % 8)) << " " << std::bitset<8>(this->entries[position/8] & (1 << (position % 8))) << std::endl;
+		return(this->entries[position/8] & (1 << (position % 8)));
+	}
+	inline void set(const U32& position){ this->entries[position/8] |= (1 << (position % 8)); }
+	inline void set(const U32& position, const bool val){
+		//std::cerr << "set: " << position << "," << val << "\t" << position/8 << "," << position%8 << "\t" << std::bitset<8>(val << (position % 8)) << std::endl;
+		this->entries[position/8] |= (val << (position % 8));
+	}
+
+public:
+	U64 n_entries;
+	U32 n_bytes;
+	BYTE* entries;
+};
+
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
 // Method 3: Count comparisons for A1
@@ -313,6 +342,7 @@ private:
 
 	// Phased functions
 	bool CalculateLDPhased(const block_type& block1, const block_type& block2);
+	bool CalculateLDPhasedTest(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedMath(void);
 	bool CalculateLDPhasedMathTest(const block_type& block1, const block_type& block2);
 	bool CalculateLDPhasedVectorized(const block_type& block1, const block_type& block2);
@@ -372,6 +402,8 @@ private:
 	const U32 vectorCycles; // Number of SIMD cycles (genotypes/2/vector width)
 	const U32 phased_unbalanced_adjustment; // Modulus remainder
 	const U32 unphased_unbalanced_adjustment; // Modulus remainder
+	BitVectorLookup bitvector;
+	U32 bitvector_l;
 };
 
 template <class T>
@@ -400,7 +432,9 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	byteAlignedEnd(this->byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4)),
 	vectorCycles(this->byteAlignedEnd*4/GENOTYPE_TRIP_COUNT),
 	phased_unbalanced_adjustment((this->samples*2)%8),
-	unphased_unbalanced_adjustment(this->samples%4)
+	unphased_unbalanced_adjustment(this->samples%4),
+	bitvector(samples*2),
+	bitvector_l(0)
 {
 	// Decide block comparator function
 	if(this->parameters.force == parameter_type::force_method::none)
@@ -1291,9 +1325,6 @@ template <class T>
 bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& block1, const block_type& block2){
 	this->helper.resetPhased();
 	this->helper_simd.counters[0] = 0;
-	//this->helper_simd.counters[1] = 0;
-	//this->helper_simd.counters[2] = 0;
-	//this->helper_simd.counters[3] = 0;
 
 	const simd_pair& datA    = block1.currentBitvector();
 	const simd_pair& datB    = block2.currentBitvector();
@@ -1303,7 +1334,6 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& b
 #if SIMD_AVAILABLE == 1
 	const U32 frontSmallest = datA.frontZero < datB.frontZero ? datA.frontZero : datB.frontZero;
 	const U32 tailSmallest  = datA.tailZero  < datB.tailZero  ? datA.tailZero  : datB.tailZero;
-
 	const U32 frontBonus    = datA.frontZero != frontSmallest ? datA.frontZero : datB.frontZero;
 	const U32 tailBonus     = datA.tailZero  != tailSmallest  ? datA.tailZero  : datB.tailZero;
 
@@ -1316,10 +1346,11 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& b
 	POPCOUNT(this->helper_simd.counters[0], __intermediate);	\
 	i += 1;														\
 }
+
 	U32 i = frontSmallest;
 	for( ; i < frontBonus; ) 					  	ITER_SHORT
 	for( ; i < this->vectorCycles - tailBonus; )  	ITER_SHORT
-	for( ; i < this->vectorCycles - tailSmallest; ) ITER_SHORT
+	for( ; i  < this->vectorCycles - tailSmallest; )ITER_SHORT
 
 #undef ITER_SHORT
 	U32 k = this->byteAlignedEnd;
@@ -1338,11 +1369,30 @@ bool LDSlave<T>::CalculateLDPhasedVectorizedNoMissingNoTable(const block_type& b
 	}
 	this->helper[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + this->helper_simd.counters[0] - this->phased_unbalanced_adjustment;
 
-	//assert(this->helper[0] < this->samples);
-	if(this->helper[0] > 2*this->samples)
-		std::cerr << this->helper[0] << ": " << (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 << " + " << this->helper_simd.counters[0] << " - " << this->phased_unbalanced_adjustment << std::endl;
-
 	this->setFLAGs(block1, block2);
+	return(this->CalculateLDPhasedMathTest(block1, block2));
+}
+
+template <class T>
+bool LDSlave<T>::CalculateLDPhasedTest(const block_type& block1, const block_type& block2){
+	this->helper.resetPhased();
+
+	const run_type* const b = block2.current();
+
+	U32 cumsumB = 0;
+	U32 list_cb = 0;
+	for(U32 i = 0; i < block2.currentMeta().runs; ++i){
+		if((b[i].alleleA & 3) != 0 || (b[i].alleleB & 3) != 0){
+			for(U32 j = 0; j < 2*b[i].runs; j+=2){
+				list_cb += (b[i].alleleA & 3) != 0 && this->bitvector.get(cumsumB+j) == false;
+				list_cb += (b[i].alleleB & 3) != 0 && this->bitvector.get(cumsumB+j+1) == false;
+			}
+		}
+		cumsumB += 2*b[i].runs;
+	}
+
+	this->helper[0] = 2*this->samples - (this->bitvector_l+list_cb);
+
 	return(this->CalculateLDPhasedMathTest(block1, block2));
 }
 
@@ -1370,14 +1420,6 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 	U32 pointerA = 0;
 	U32 pointerB = 0;
 	U32 add;
-
-	// Is it cheaper to first expand shorter vector to longer vector
-	// and THEN calculate?
-	// idea:
-	// vector of pointer to A
-	// if(a > b) add pointer
-	// then use and b
-	// if(a[i] > current)
 
 #if SLAVE_DEBUG_MODE == 3
 	U64 iterations = 0;
@@ -1433,7 +1475,8 @@ bool LDSlave<T>::CalculateLDPhased(const block_type& block1, const block_type& b
 
 	this->setFLAGs(block1, block2);
 
-	return(this->CalculateLDPhasedMathTest(block1, block2));
+	return(this->CalculateLDPhasedMath());
+	//return(this->CalculateLDPhasedMathTest(block1, block2));
 }
 
 template <class T>
@@ -1483,7 +1526,9 @@ bool LDSlave<T>::CalculateLDPhasedMath(void){
 
 		// Calculate P: Fisher's exact test
 		double left,right,both;
-		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]),&left,&right,&both);
+		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),
+		                round(this->helper[4]),round(this->helper[5]),
+						&left, &right, &both);
 		this->helper.P = both;
 
 		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
@@ -1519,57 +1564,15 @@ bool LDSlave<T>::CalculateLDPhasedMathTest(const block_type& block1, const block
 	const double test_D = pAB - block1.currentMeta().AF*block2.currentMeta().AF;
 	const double test_R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
 
-
-	//this->helper.D  = this->helper[0]/this->helper.totalAlleleCounts * this->helper[5]/this->helper.totalAlleleCounts - this->helper[1]/this->helper.totalAlleleCounts * this->helper[4]/this->helper.totalAlleleCounts;
-	//this->helper.R2 = this->helper.D*this->helper.D / (((this->helper.haplotypeCounts[0] > 0 ? this->helper.haplotypeCounts[0] : 1)  * (this->helper.haplotypeCounts[1] > 0 ? this->helper.haplotypeCounts[1] : 1) * (this->helper.haplotypeCounts[2] > 0 ? this->helper.haplotypeCounts[2] : 1) * (this->helper.haplotypeCounts[3] > 0 ? this->helper.haplotypeCounts[3] : 1)));
 	this->helper.D = test_D;
 	this->helper.R2 = test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) );
 	this->helper.R  = sqrt(this->helper.R2);
 
+	// If haplotype count for (0,0) >
+	if(this->helper[0] >= 2*this->samples - this->parameters.minimum_alleles)
+		return false;
 
 	if(this->helper.R2 >= this->parameters.R2_min && this->helper.R2 <= this->parameters.R2_max){
-
-		if(abs(this->helper.R2 - test_R2) > 0.01){
-		std::cerr << this->helper.D << "\t" << test_D << "\t" <<
-					 this->helper.R2 << "\t" << test_D*test_D / ( block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF) ) << std::endl;
-		}
-
-		/*
-		if(this->helper.D >= 0){
-			this->helper.Dmax = this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[3] < this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[2]
-					? this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[3]
-					: this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[2];
-		} else {
-			this->helper.Dmax = this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[2] < this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[3]
-					? -this->helper.haplotypeCounts[0]*this->helper.haplotypeCounts[2]
-					: -this->helper.haplotypeCounts[1]*this->helper.haplotypeCounts[3];
-		}
-		this->helper.Dprime = this->helper.D / this->helper.Dmax;
-
-
-		// Calculate P: Fisher's exact test
-		double left,right,both;
-		kt_fisher_exact(round(this->helper[0]),round(this->helper[1]),round(this->helper[4]),round(this->helper[5]),&left,&right,&both);
-		this->helper.P = both;
-
-		if(this->helper[0] == 0 || this->helper[1] == 0 || this->helper[4] == 0 || this->helper[5] == 0)
-			this->helper.setIncomplete();
-
-		// Fisher's exact test P value filter
-		if(this->helper.P > this->parameters.P_threshold){
-			//std::cerr << this->helper.P << '\t' << this->helper.D << '\t' << this->helper[0] << '\t' << this->helper[1] << '\t' << this->helper[4] << '\t' << this->helper[5] << std::endl;
-			//if(this->helper.P > 1)
-			//	exit(1);
-
-			return false;
-		}
-
-		// Calculate Chi-Sq CV from 2x2 contingency table
-		this->helper.chiSqModel = 0;
-		//this->helper.chiSqFisher = this->fisherController.chiSquaredTest(this->helper[0],this->helper[1],this->helper[4],this->helper[5]);
-		this->helper.chiSqFisher = 0;
-		*/
-
 		return true;
 	}
 	return false;
@@ -1742,8 +1745,10 @@ void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, con
 		return;
 	}
 
-	if(block1.currentMeta().runs + block2.currentMeta().runs <= 30){
-		if(this->CalculateLDPhased(block1, block2)){
+	if(block1.currentMeta().runs + block2.currentMeta().runs < 5) return;
+
+	if(std::max(block1.currentMeta().runs,block2.currentMeta().runs) <= 100){
+		if(this->CalculateLDPhasedTest(block1, block2)){
 			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
@@ -1782,13 +1787,32 @@ void LDSlave<T>::CompareBlocksFunctionForcedUnphased(const block_type& block1, c
 // Within-block comparisons
 template <class T>
 bool LDSlave<T>::CompareBlocks(block_type& block1){
-	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << *block1.support << '\t' << (block1.size()*block1.size()-block1.size())/2 << std::endl;
+	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << (block1.size()*block1.size()-block1.size())/2 << std::endl;
 	block1.resetIterator(); // make sure it is reset
 	block_type block2(block1);
 
 	for(U32 i = 0; i < block1.size(); ++i){
  		block2 = block1;
 		++block2; // block2 starts at relative +1
+
+		// temp
+		const run_type* const a = block1.current();
+		U32 cumsum = 0;
+		//U32 list_c = 0;
+		this->bitvector.reset();
+		this->bitvector_l = 0;
+		for(U32 i = 0; i < block1.currentMeta().runs; ++i){
+			if((a[i].alleleA & 3) != 0 || (a[i].alleleB & 3) != 0){
+				for(U32 j = 0; j < 2*a[i].runs; j+=2){
+					this->bitvector_l += (a[i].alleleA & 3) != 0;
+					this->bitvector_l += (a[i].alleleB & 3) != 0;
+					this->bitvector.set(cumsum+j,   (a[i].alleleA & 3) != 0);
+					this->bitvector.set(cumsum+j+1, (a[i].alleleB & 3) != 0);
+				}
+			}
+			cumsum += 2*a[i].runs;
+		}
+
 		for(U32 j = i + 1; j < block1.size(); ++j){
 			(this->*phase_function_across)(block1, block2);
 			++block2;
@@ -1805,13 +1829,32 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
 // Across block comparisons
 template <class T>
 bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
+	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-SQUARE") << block1.size()*block2.size() << std::endl;
+
 	// Reset
-	// Make sure pointers are the beginning
 	block1.resetIterator();
 	block2.resetIterator();
 
 	// Cycle over block 1 and block 2
 	for(U32 i = 0; i < block1.size(); ++i){
+		// temp
+		const run_type* const a = block1.current();
+		U32 cumsum = 0;
+		//U32 list_c = 0;
+		this->bitvector.reset();
+		this->bitvector_l = 0;
+		for(U32 i = 0; i < block1.currentMeta().runs; ++i){
+			if((a[i].alleleA & 3) != 0 || (a[i].alleleB & 3) != 0){
+				for(U32 j = 0; j < 2*a[i].runs; j+=2){
+					this->bitvector_l += (a[i].alleleA & 3) != 0;
+					this->bitvector_l += (a[i].alleleB & 3) != 0;
+					this->bitvector.set(cumsum+j,   (a[i].alleleA & 3) != 0);
+					this->bitvector.set(cumsum+j+1, (a[i].alleleB & 3) != 0);
+				}
+			}
+			cumsum += 2*a[i].runs;
+		}
+
 		for(U32 j = 0; j < block2.size(); ++j){
 			(this->*phase_function_across)(block1, block2);
 			++block2;
