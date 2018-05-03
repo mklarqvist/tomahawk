@@ -18,35 +18,7 @@
 #include "ld_calculation_simd_helper.h"
 #include "two/output_entry_support.h"
 #include "../io/output_writer.h"
-
-struct BitVectorLookup{
-public:
-	BitVectorLookup(const U64 n_entries) :
-		n_entries(n_entries),
-		n_bytes(ceil((double)n_entries/8)),
-		entries(new BYTE[n_bytes])
-	{
-		memset(this->entries, 0, this->n_bytes);
-	}
-	~BitVectorLookup(){ delete [] this->entries; }
-
-	inline void reset(void){ memset(this->entries, 0, this->n_bytes); }
-	inline const bool operator[](const U32& position) const{ return(this->entries[position/8] & (1 << (position % 8))); }
-	inline const bool get(const U32& position) const{
-		//std::cerr << "get: " << position << "," << position/8 << "," << position%8 << "\t" << std::bitset<8>(1 << (position % 8)) << " " << std::bitset<8>(this->entries[position/8] & (1 << (position % 8))) << std::endl;
-		return(this->entries[position/8] & (1 << (position % 8)));
-	}
-	inline void set(const U32& position){ this->entries[position/8] |= (1 << (position % 8)); }
-	inline void set(const U32& position, const bool val){
-		//std::cerr << "set: " << position << "," << val << "\t" << position/8 << "," << position%8 << "\t" << std::bitset<8>(val << (position % 8)) << std::endl;
-		this->entries[position/8] |= (val << (position % 8));
-	}
-
-public:
-	U64 n_entries;
-	U32 n_bytes;
-	BYTE* entries;
-};
+#include "haplotype_bitvector.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -402,8 +374,6 @@ private:
 	const U32 vectorCycles; // Number of SIMD cycles (genotypes/2/vector width)
 	const U32 phased_unbalanced_adjustment; // Modulus remainder
 	const U32 unphased_unbalanced_adjustment; // Modulus remainder
-	BitVectorLookup bitvector;
-	U32 bitvector_l;
 };
 
 template <class T>
@@ -432,9 +402,7 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	byteAlignedEnd(this->byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4)),
 	vectorCycles(this->byteAlignedEnd*4/GENOTYPE_TRIP_COUNT),
 	phased_unbalanced_adjustment((this->samples*2)%8),
-	unphased_unbalanced_adjustment(this->samples%4),
-	bitvector(samples*2),
-	bitvector_l(0)
+	unphased_unbalanced_adjustment(this->samples%4)
 {
 	// Decide block comparator function
 	if(this->parameters.force == parameter_type::force_method::none)
@@ -1377,21 +1345,44 @@ template <class T>
 bool LDSlave<T>::CalculateLDPhasedSimple(const block_type& block1, const block_type& block2){
 	this->helper.resetPhased();
 
+	const Base::HaplotypeBitVector& bitvectorA = block1.currentHaplotypeBitvector();
+	const Base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
+
+	const U32 n_cycles = std::min(bitvectorA.l_list, bitvectorB.l_list);
+	const U32 n_total = bitvectorA.l_list + bitvectorB.l_list;
+	U32 n_same = 0;
+
+	// compare A to B
+	if(bitvectorA.l_list >= bitvectorB.l_list){
+		for(U32 i = 0; i < n_cycles; ++i){
+			n_same += !bitvectorA.get(bitvectorB.indices[i]);
+			//std::cerr << bitvectorA.indices[i] << "," << bitvectorB.indices[i] << std::endl;
+		}
+	} else {
+		for(U32 i = 0; i < n_cycles; ++i){
+			n_same += !bitvectorB.get(bitvectorA.indices[i]);
+		}
+	}
+
+	/*
+
 	const run_type* const b = block2.current();
 
 	U32 cumsumB = 0;
 	U32 list_cb = 0;
-	for(U32 i = 0; i < block2.currentMeta().runs; ++i){
+	const U32 n_cycles = std::min(block1.currentMeta().runs, block2.currentMeta().runs);
+	for(U32 i = 0; i < n_cycles; ++i){
 		if((b[i].alleleA & 3) != 0 || (b[i].alleleB & 3) != 0){
 			for(U32 j = 0; j < 2*b[i].runs; j+=2){
-				list_cb += (b[i].alleleA & 3) != 0 && this->bitvector.get(cumsumB+j) == false;
-				list_cb += (b[i].alleleB & 3) != 0 && this->bitvector.get(cumsumB+j+1) == false;
+				list_cb += (b[i].alleleA & 3) != 0 && bitvector->get(cumsumB+j) == false;
+				list_cb += (b[i].alleleB & 3) != 0 && bitvector->get(cumsumB+j+1) == false;
 			}
 		}
 		cumsumB += 2*b[i].runs;
 	}
+	*/
 
-	this->helper[0] = 2*this->samples - (this->bitvector_l+list_cb);
+	this->helper[0] = 2*this->samples - (n_total - n_same);
 
 	return(this->CalculateLDPhasedMathSimple(block1, block2));
 }
@@ -1738,23 +1729,25 @@ void LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 template <class T>
 void LDSlave<T>::CompareBlocksFunctionForcedPhased(const block_type& block1, const block_type& block2){
 	// Ignore when one or both is invariant
+	/*
 	if(block1.currentMeta().AF  == 0 || block2.currentMeta().AF  == 0 ||
        block1.currentMeta().runs == 1 || block2.currentMeta().runs == 1)
 	{
 		//std::cerr << "invariant" << std::endl;
 		return;
 	}
+	*/
 
-	if(block1.currentMeta().runs + block2.currentMeta().runs < 5) return;
+	//if(block1.currentMeta().runs + block2.currentMeta().runs < 5) return;
 
-	if(std::max(block1.currentMeta().runs,block2.currentMeta().runs) <= 100){
+	if(std::min(block1.currentHaplotypeBitvector().l_list,block1.currentHaplotypeBitvector().l_list) <= this->samples/10){
 		if(this->CalculateLDPhasedSimple(block1, block2)){
-			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	} else {
 		if(this->CalculateLDPhasedVectorized(block1, block2)){
-			this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
+			//this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), this->helper);
 			//std::cerr << this->helper.R2 << '\n';
 		}
 	}
@@ -1794,24 +1787,6 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
  		block2 = block1;
 		++block2; // block2 starts at relative +1
 
-		// temp
-		const run_type* const a = block1.current();
-		U32 cumsum = 0;
-		//U32 list_c = 0;
-		this->bitvector.reset();
-		this->bitvector_l = 0;
-		for(U32 i = 0; i < block1.currentMeta().runs; ++i){
-			if((a[i].alleleA & 3) != 0 || (a[i].alleleB & 3) != 0){
-				for(U32 j = 0; j < 2*a[i].runs; j+=2){
-					this->bitvector_l += (a[i].alleleA & 3) != 0;
-					this->bitvector_l += (a[i].alleleB & 3) != 0;
-					this->bitvector.set(cumsum+j,   (a[i].alleleA & 3) != 0);
-					this->bitvector.set(cumsum+j+1, (a[i].alleleB & 3) != 0);
-				}
-			}
-			cumsum += 2*a[i].runs;
-		}
-
 		for(U32 j = i + 1; j < block1.size(); ++j){
 			(this->*phase_function_across)(block1, block2);
 			++block2;
@@ -1836,24 +1811,6 @@ bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
 
 	// Cycle over block 1 and block 2
 	for(U32 i = 0; i < block1.size(); ++i){
-		// temp
-		const run_type* const a = block1.current();
-		U32 cumsum = 0;
-		//U32 list_c = 0;
-		this->bitvector.reset();
-		this->bitvector_l = 0;
-		for(U32 i = 0; i < block1.currentMeta().runs; ++i){
-			if((a[i].alleleA & 3) != 0 || (a[i].alleleB & 3) != 0){
-				for(U32 j = 0; j < 2*a[i].runs; j+=2){
-					this->bitvector_l += (a[i].alleleA & 3) != 0;
-					this->bitvector_l += (a[i].alleleB & 3) != 0;
-					this->bitvector.set(cumsum+j,   (a[i].alleleA & 3) != 0);
-					this->bitvector.set(cumsum+j+1, (a[i].alleleB & 3) != 0);
-				}
-			}
-			cumsum += 2*a[i].runs;
-		}
-
 		for(U32 j = 0; j < block2.size(); ++j){
 			(this->*phase_function_across)(block1, block2);
 			++block2;
