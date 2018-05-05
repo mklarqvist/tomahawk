@@ -194,6 +194,8 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 	// Cycle over variants in container
 	for(U32 i = 0; i < genotype_container.size(); ++i){
 		new( &this->__entries[i] ) value_type( byte_width );
+
+
 		Algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
 		Algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
 

@@ -11,6 +11,37 @@
 namespace Tomahawk{
 namespace Base{
 
+template <class T>
+struct GenotypeRefEntry{
+public:
+	typedef GenotypeRefEntry<T>            self_type;
+	typedef Support::GenotypeDiploidRun<T> genotype_type;
+	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
+	typedef MetaEntry<T>                   meta_type;
+	typedef Base::HaplotypeBitVector       haplotype_bitvector_type;
+
+public:
+	GenotypeRefEntry(const meta_type& meta_entry, const T* const genotypes) :
+		meta_entry(meta_entry),
+		genotypes(reinterpret_cast<genotype_type*>(genotypes)),
+		genotype_bitvector(nullptr),
+		haplotype_bitvector(nullptr)
+	{
+
+	}
+
+	~GenotypeRefEntry(){
+		delete this->genotype_bitvector;
+		delete this->haplotype_bitvector;
+	}
+
+public:
+	const meta_type& meta_entry;
+	const genotype_type* const genotypes;
+	genotype_bitvector_type* genotype_bitvector;
+	haplotype_bitvector_type* haplotype_bitvector;
+};
+
 /**<
  * Special genotype container for both run-length encoded
  * and bit-encoded genotypes using unaligned memory directly
