@@ -1276,30 +1276,27 @@ bool LDSlave<T>::CalculateLDPhasedSimpleSample(helper_type& helper, const block_
 	const Base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
 
 	const U32 n_cycles = 1000;
-	const U32 n_total = bitvectorA.l_list + bitvectorB.l_list;
 	U32 n_same = 0;
 
 	// compare A to B
 	if(bitvectorA.l_list >= bitvectorB.l_list){
 		for(U32 i = 0; i < n_cycles; ++i){
-			n_same += bitvectorA.get(bitvectorB.indices[std::rand() % bitvectorB.l_list]);
+			n_same += bitvectorA.get(bitvectorB.indices[i]);
 		}
 	} else {
 		for(U32 i = 0; i < n_cycles; ++i){
-			n_same += bitvectorB.get(bitvectorA.indices[std::rand() % bitvectorA.l_list]);
+			n_same += bitvectorB.get(bitvectorA.indices[i]);
 		}
 	}
 
-	helper[0] = 2*this->samples - (n_total - n_same);
+	helper[0] = 2*this->samples - (n_cycles - n_same);
+	helper.setSampled(true);
 
 	return(this->CalculateLDPhasedMathSimple(helper, block1, block2));
 }
 
 template <class T>
 bool LDSlave<T>::CalculateLDPhased(helper_type& helper, const block_type& block1, const block_type& block2) const{
-	if(block1.currentMeta().AF == 0 || block2.currentMeta().AF == 0)
-		return false;
-
 	helper.resetPhased();
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
@@ -1631,7 +1628,7 @@ bool LDSlave<T>::CompareBlocksFunctionForcedPhased(helper_type& helper, const bl
 
 template <class T>
 bool LDSlave<T>::CompareBlocksFunctionForcedPhasedSimple(helper_type& helper, const block_type& block1, const block_type& block2) const{
-	if(std::min(block1.currentHaplotypeBitvector(). l_list,block2.currentHaplotypeBitvector().l_list) <= 500){ // this is equal to emeraLD
+	if(std::min(block1.currentHaplotypeBitvector(). l_list,block2.currentHaplotypeBitvector().l_list) <= 1000){ // this is equal to emeraLD
 		return(this->CalculateLDPhasedSimple(helper, block1, block2));
 	} else {
 		//return(false);

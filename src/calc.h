@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
 void calc_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Calculate LD\n"
+	"About:  Calculate linkage disequilibrium\n"
 	"        Force phased -p or unphased -u for faster calculations if\n"
 	"        the entire file is guaranteed to have that phasing.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"

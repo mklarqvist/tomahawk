@@ -23,7 +23,7 @@ The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available 
   - [`LD` format description](#ld-format-description)
   - [Subsetting output](#subsetting-output)
   - [Sort a `TWO` file](#sort-a-two-file)
-- [Plotting in R](#plotting-in-R)
+- [Plotting in R](#plotting-in-r)
 - [Author](#author)
 - [Acknowledgements](#Acknowledgements)
 - [License](#license)
@@ -130,13 +130,12 @@ The `two` `FLAG` values are bit-packed booleans in a single integer field and de
 | Markers are phased (or no phase uncertainty)                   | 1          | 1         |
 | Markers on the same contig           | 2          | 2        |
 | Markers far apart on the same contig (> 500kb) | 3          | 4        |
-| Association is incomplete (at least one haplotype count is 0)                 | 4          | 8         |
-| Multiple valid roots                 | 5          | 8         |
-| Computed in fast mode                 | 6          | 16         |
-| Was sampled in fast mode                 | 7          | 32         |
-| Marker A has missing values                   | 8          | 64         |
-| Marker B has missing values                   | 9          | 128         |
-| Incomplete (at least 1 cell with < 1 count)                           | 10          | 256         |
+| Incomplete association (at least one haplotype count with < 1 count)                           | 10          | 512         |
+| Multiple valid roots                 | 5          | 16         |
+| Computed in fast mode                 | 6          | 32         |
+| Was sampled in fast mode                 | 7          | 64         |
+| Marker A has missing values                   | 8          | 128         |
+| Marker B has missing values                   | 9          | 256         |
 | Marker A have MAF < 0.01             | 10          | 512       |
 | Marker B have MAF < 0.01             | 11         | 1024       |
 | Marker A failed HWE test (P < 1e-6)  | 12          | 2048        |
@@ -180,17 +179,28 @@ tomahawk view -hi 1kgp3_chr2_105_1.two > 1kgp3_chr2_105_1.ld
 
 Either `source` the [R/example_region.R](R/example_region.R) file or copy-paste this code into `R`:
 ```R
-# Specify colour scheme
+# Specify a blue->red colour gradient for the range [0,1] in 10 steps
 colors<-paste0(colorRampPalette(c("blue","red"))(10),seq(0,100,length.out = 11))
-colors[1]<-paste0(colors[1],"0")
-colors[length(colors)]<- substr(colors[length(colors)],1,7)
+colors[1]<-paste0(colors[1],"0") # Add opacity
+colors[length(colors)]<- substr(colors[length(colors)],1,7) # Add opacity
 
 # Define support functions
-plotLDRegion<-function(dataSource, from, to, ...){
+plotLDRegion<-function(dataSource, from, to, upper = FALSE, lower = FALSE, add = FALSE, ...){
   # Assumes all the data is from the same chromosome
-  b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to,]
+  if(upper == TRUE){
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to & dataSource$POS_A < dataSource$POS_B,]
+  } else if(lower == TRUE){
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to & dataSource$POS_B < dataSource$POS_A,]
+  } else {
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to,]
+  }
   b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
-  plot(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+  if(add == TRUE){
+    points(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)], ...)
+  } else {
+    plot(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+    abline(0,1,lwd=2,col="grey")
+  }
 }
 
 plotLDRegionTriangular<-function(dataSource, from, to, ...){
@@ -202,36 +212,31 @@ plotLDRegionTriangular<-function(dataSource, from, to, ...){
 }
 ```
 
-Load the `ld` data we generated:
+Load some `ld` data:
 ```R
 # Load some LD data from Tomahawk
-ld<-read.delim("1kgp3_chr2_105_1.ld",h=F)
+ld<-read.delim("hrc_chunk1.ld",h=T,comment.char='#')
 ```
-and then plot it using either of the two support functions. First plotting the data as is (upper-triangular)
+and then plot using either of the two support functions. First plotting the data as is (all data), upper-triangular (A < B), and lower triangular (B < A)
 ```R
-plotLDRegion(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 2e6-5e6", las=2)
+par(mfrow=c(1,3))
+plotLDRegion(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chr12")
+plotLDRegion(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chr12",upper = TRUE, add = FALSE)
+plotLDRegion(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chr12",lower = TRUE, add = FALSE)
 ```
-![screenshot](R/1kgp3_chr20_105_1.jpeg)
+![screenshot](R/hrc_chunk1_plotfunction.jpeg)
 
 or plotting the upper-triangular rotated 45 degrees
 ```R
-plotLDRegionTriangular(ld, 2e6, 5e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 2e6-5e6", las=2)
+plotLDRegionTriangular(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chunk1")
 ```
-![screenshot](R/1kgp3_chr20_105_1_triangular.jpeg)  
+![screenshot](R/hrc_chunk1_triangular.jpeg)  
 
-Plotting large regions can be achieved by truncating the Y-axis:
+Zoom in to the triangular structure by truncating the Y-axis:
 ```R
-plotLDRegionTriangular(ld, min(ld$V3), max(ld$V5), xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 6e6-12e6", las=2,ylim=c(0,0.5e6))
+plotLDRegionTriangular(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chunk1",ylim=c(0,500e3))
 ```
-![screenshot](R/1kgp3_chr20_large_region.jpeg)
-
-If your data has been sorted and expanded (symmetric) for rapid queries each data point is represented twice ([A,B], and [B,A]):
-```R
-# Load some symmetric LD data from Tomahawk
-ld<-read.delim("1kgp3_chr2_105_1_symmetric.ld",h=F)
-plotLDRegion(ld, 1e6, 4e6, xlab="Coordinates",ylab="Coordinates",main="1KGP3 chr20 1e6-4e6", las=2)
-```
-![screenshot](R/1kgp3_chr20_105_1_symmetric.jpeg)  
+![screenshot](R/hrc_chunk1_triangular_zoom.jpeg)
 
 This figure demonstrates how Tomahawk partitions the workload in order to maximize data locality. Shown here is part 1 and 10 out of 45 for the 1000 Genomes data for chromosome 20. This data locality can have profound impact on runtime: in many cases it is faster to run many smaller partitions of the data instead of several larger ones.   
 ![screenshot](R/1kgp3_chr20_45_part1_10.jpeg)
