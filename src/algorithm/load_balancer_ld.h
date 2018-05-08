@@ -29,6 +29,7 @@ public:
 	bool setSelected(const S32 selected);
 	bool setDesired(const S32 desired);
 	bool Build(const reader_type& reader, const U32 threads);
+	bool BuildWindow(const reader_type& reader, const U32 threads);
 	inline std::vector< std::pair<U32, U32> >& getLoad(void){ return(this->data_to_load); }
 
 public:

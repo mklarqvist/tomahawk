@@ -180,9 +180,9 @@ bool ImportWriter::add(const BCF::BCFEntry& bcf_entry){
 	}
 
 	if(this->totempole_entry.min_position == 0)
-		this->totempole_entry.min_position = bcf_entry.body->POS + 1;
+		this->totempole_entry.min_position = meta.position;
 
-	this->totempole_entry.max_position = bcf_entry.body->POS + 1;
+	this->totempole_entry.max_position = meta.position;
 	++this->totempole_entry;
 	this->buffer_meta_ << meta;
 

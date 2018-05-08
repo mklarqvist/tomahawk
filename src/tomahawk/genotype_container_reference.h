@@ -133,7 +133,6 @@ public:
 			for(U32 i = 0; i < this->size(); ++i){
 				new( &this->haplotype_bitvectors[i] ) haplotype_bitvector_type( n_samples*2 );
 
-
 				tempListIdx = 0;
 				U32 cumsum = 0;
 				for(U32 j = 0; j < meta_entries[i].runs; ++j, cumulative_position++){

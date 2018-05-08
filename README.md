@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.3-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.4-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
@@ -8,7 +8,7 @@ Tomahawk is a machine-optimized library for computing linkage-disequilibrium fro
 
 Genotypic data is efficiently compressed by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. Genotypic vectors are represented as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The primitive type of RLE entries is fixed across a file and is determined contextually depending on the total number of samples. 
 
-We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines two efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The other transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. This second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. Both algorithms are embarrassingly parallel and have been successfully tested on datasets with up to 10 million individuals using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
+We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines three efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The second transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. The third algorithm computes summary statistics only. The second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. All algorithms are embarrassingly parallel and have been successfully tested on datasets with up to 10 million individuals using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
 The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available [TWKv0](spec/TWKv0.pdf)
 
@@ -39,10 +39,10 @@ cd tomahawk
 cd build
 make
 ```
-By default, Tomahawk compiles using aggressive optimization flags and
-with native architecture-specific instructions
+By default, Tomahawk is compiled with aggressive optimization flags and
+native architecture-specific instructions
 (`-march=native -mtune=native -ftree-vectorize -frename-registers -funroll-loops`)
-and internally compiles for the most recent SIMD-instruction set available.
+that internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
 compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially substantial loss in compute speed.  
@@ -80,6 +80,11 @@ tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 2
 ```
 This command will output the file `output_prefix.two`
 
+If you are working with a species with well-know LD structure (such as humans) you can reduce the computational cost by limiting the search-space to a fixed-sized sliding window (`-w`)
+```bash
+tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -w 1e6 -t 28
+```
+
 ### Converting between file formats and filtering
 Printing the contents of a `twk` as `vcf` involves the `view` command
  ```bash
@@ -87,7 +92,7 @@ tomahawk view -i file.twk -o file.vcf
 ```
 
 ### `LD` format description
-Tomahawk output `two` data in human-readable `ld` format when invoking `view`. The columns are described below:
+Tomahawk can output binary `two` data in the human-readable `ld` format by invoking the `view` command. The primary output columns are described below:
 
 | Column    | Description |
 |----------|-------------|
@@ -130,7 +135,7 @@ The `two` `FLAG` values are bit-packed booleans in a single integer field and de
 | Markers are phased (or no phase uncertainty)                   | 1          | 1         |
 | Markers on the same contig           | 2          | 2        |
 | Markers far apart on the same contig (> 500kb) | 3          | 4        |
-| Incomplete association (at least one haplotype count with < 1 count)                           | 10          | 512         |
+| Incomplete association (at least one haplotype count with < 1 count)                           | 4          | 8         |
 | Multiple valid roots                 | 5          | 16         |
 | Computed in fast mode                 | 6          | 32         |
 | Was sampled in fast mode                 | 7          | 64         |
@@ -194,6 +199,7 @@ plotLDRegion<-function(dataSource, from, to, upper = FALSE, lower = FALSE, add =
   } else {
     b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to,]
   }
+  b$R2[b$R2>1]<-1 # In cases of rounding error
   b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
   if(add == TRUE){
     points(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)], ...)
@@ -238,6 +244,9 @@ plotLDRegionTriangular(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chun
 ```
 ![screenshot](R/hrc_chunk1_triangular_zoom.jpeg)
 
+Plotting data computed using a sliding window will look like a diagonal stripe (1 Mb in this figure):
+![screenshot](R/1kgp3_chr20_1mb_window.jpeg)
+
 This figure demonstrates how Tomahawk partitions the workload in order to maximize data locality. Shown here is part 1 and 10 out of 45 for the 1000 Genomes data for chromosome 20. This data locality can have profound impact on runtime: in many cases it is faster to run many smaller partitions of the data instead of several larger ones.   
 ![screenshot](R/1kgp3_chr20_45_part1_10.jpeg)
 
@@ -247,6 +256,7 @@ par(mar=c(0,0,0,0)) # set all margins to 0
 plotLDRegion(ld,min(ld$POS_A),max(ld$POS_B), xaxs="i", yaxs="i", xaxt='n', yaxt='n',ann=FALSE, bty="n")
 ```
 ![screenshot](R/hrc_chr12_chunk1_noborder.jpeg)
+![screenshot](R/hrc_chr12_chunk571_noborder.jpeg)
 
 ### Author
 Marcus D. R. Klarqvist (<mk819@cam.ac.uk>)  

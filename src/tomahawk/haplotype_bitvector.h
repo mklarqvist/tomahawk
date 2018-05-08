@@ -6,6 +6,15 @@ namespace Base{
 
 struct HaplotypeBitVector{
 public:
+	HaplotypeBitVector() :
+		n_bytes(0),
+		l_list(0),
+		indices(nullptr),
+		entries(nullptr)
+	{
+
+	}
+
 	HaplotypeBitVector(const U64 n_entries) :
 		n_bytes(ceil((double)n_entries/64)),
 		l_list(0),

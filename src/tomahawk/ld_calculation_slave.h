@@ -192,11 +192,11 @@ public:
 		return(&this->thread);
 	}
 
-	inline const U64& getImpossible(void) const{ return this->impossible; }
-	inline const U64& getPossible(void) const{ return this->possible; }
-	inline const U64& getNoHets(void) const{ return this->no_uncertainty; }
-	inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
-	inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
+	//inline const U64& getImpossible(void) const{ return this->impossible; }
+	//inline const U64& getPossible(void) const{ return this->possible; }
+	//inline const U64& getNoHets(void) const{ return this->no_uncertainty; }
+	//inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
+	//inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
 	inline output_writer_type& getWriter(void){ return(this->output_writer); }
 
 private:
@@ -242,10 +242,10 @@ private:
 
 	// Counters
 	const U64 samples;
-	U64 impossible;
-	U64 possible;
-	U64 no_uncertainty;
-	U64 insufficent_alleles;
+	//U64 impossible;
+	//U64 possible;
+	//U64 no_uncertainty;
+	//U64 insufficent_alleles;
 	//U64 false_positive;
 	//U64 false_negative;
 
@@ -287,10 +287,10 @@ LDSlave<T>::LDSlave(const manager_type& manager,
 	block_comparisons(0),
 	variant_comparisons(0),
 	samples(manager.numberSamples()),
-	impossible(0),
-	possible(0),
-	no_uncertainty(0),
-	insufficent_alleles(0),
+	//impossible(0),
+	//possible(0),
+	//no_uncertainty(0),
+	//insufficent_alleles(0),
 	//false_positive(0),
 	//false_negative(0),
 	//fisherController(1024),
@@ -323,10 +323,10 @@ template <class T>
 LDSlave<T>& LDSlave<T>::operator+=(const LDSlave<T>& other){
 	this->block_comparisons   += other.block_comparisons;
 	this->variant_comparisons += other.variant_comparisons;
-	this->impossible          += other.impossible;
-	this->possible            += other.possible;
-	this->no_uncertainty      += other.no_uncertainty;
-	this->insufficent_alleles += other.insufficent_alleles;
+	//this->impossible          += other.impossible;
+	//this->possible            += other.possible;
+	//this->no_uncertainty      += other.no_uncertainty;
+	//this->insufficent_alleles += other.insufficent_alleles;
 	//this->false_positive    += other.false_positive;
 	//this->false_negative    += other.false_negative;
 	this->output_writer       += other.output_writer;

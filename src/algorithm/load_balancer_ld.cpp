@@ -200,7 +200,7 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		}
 
 		// temp
-		std::cerr << Helpers::timestamp("DEBUG") << "Cutsize is: " << cutSize << " and total blocks: " << reader.getIndex().getContainer().size() << std::endl;
+		//std::cerr << Helpers::timestamp("DEBUG") << "Cutsize is: " << cutSize << " and total blocks: " << reader.getIndex().getContainer().size() << std::endl;
 		const U32 rowLength = reader.getIndex().getContainer().size() / cutSize;
 		U32 total = 0; // Sanity
 		for(U32 i = 0; i < cutSize; ++i){
@@ -226,12 +226,110 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
 	}
 
-	// Divide data into threads
+	// Data to loadt
 	this->getSelectedLoad();
 
 	// Get thread load
 	if(!this->getSelectedLoadThreads(reader, threads))
 		return false;
+
+	return true;
+}
+
+bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads){
+	if(this->selected_chunk > this->desired_chunks){
+		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
+		return false;
+	}
+
+	// temp
+	this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
+	//
+
+
+	for(U32 i = 0; i < reader.getIndex().size(); ++i){
+		const Totempole::IndexEntry& index_entry = reader.getIndex().getContainer().at(i);
+		std::cerr << index_entry.contigID << "\t" << index_entry.min_position << "-" << index_entry.max_position << std::endl;
+	}
+
+	const U32 n_blocks = reader.getIndex().getContainer().size();
+	U64 n_max_possible_comparisons = 0;
+	for(U32 i = 0; i < n_blocks; ++i){
+		const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
+		n_max_possible_comparisons += (index_entry_i.n_variants*index_entry_i.n_variants + index_entry_i.n_variants) / 2 - index_entry_i.n_variants;
+
+		for(U32 j = i + 1; j < n_blocks; ++j){
+			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+			if(index_entry_j.min_position - index_entry_i.max_position < 1e6){
+				n_max_possible_comparisons += index_entry_j.n_variants * index_entry_i.n_variants;
+
+				//std::cerr << "keep: " << i << "/" << j << " " << index_entry_j.min_position << "->" << index_entry_i.max_position << std::endl;
+			} else {
+				std::cerr << "drop: " << i << "/" << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
+				break;
+			}
+		}
+	}
+
+	const U64 n_variants_thread = n_max_possible_comparisons / threads;
+	std::cerr << "Max total: " << n_max_possible_comparisons << "per thread " << n_variants_thread << std::endl;
+	this->n_comparisons_chunk = n_max_possible_comparisons;
+
+	this->thread_distribution.resize(threads);
+	U64 n_total_current_thread = 0;
+	U32 current_thread_id = 0;
+
+	for(U32 i = 0; i < n_blocks; ++i){
+		const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
+		n_total_current_thread += (index_entry_i.n_variants*index_entry_i.n_variants + index_entry_i.n_variants) / 2 - index_entry_i.n_variants;
+
+		U32 last_index = i;
+		if(n_total_current_thread >= n_variants_thread){
+			this->thread_distribution[current_thread_id].push_back(LoadBalancerThread(i, last_index, last_index + 1));
+			n_total_current_thread = 0;
+			++current_thread_id;
+			last_index = i + 1;
+		}
+
+		bool breaking = false;
+
+		for(U32 j = i + 1; j < n_blocks; ++j){
+			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+			if(index_entry_j.min_position - index_entry_i.max_position < 1e6){
+				n_total_current_thread += index_entry_j.n_variants * index_entry_i.n_variants;
+			} else {
+				breaking = true;
+			}
+
+			if(breaking || n_total_current_thread >= n_variants_thread){
+				if(n_total_current_thread >= n_variants_thread){
+					n_total_current_thread = 0;
+					++current_thread_id;
+				}
+				std::cerr << "Add: " << current_thread_id << ": " << i << "," << last_index << "->" << j + 1 << "/" << n_blocks << std::endl;
+				this->thread_distribution[current_thread_id].push_back(LoadBalancerThread(i, last_index, j + !breaking));
+				break;
+			}
+		}
+
+		// Push back
+		if(n_total_current_thread >= n_variants_thread && breaking == false){
+			this->thread_distribution[current_thread_id].push_back(LoadBalancerThread(i, last_index, n_blocks));
+			n_total_current_thread = 0;
+			++current_thread_id;
+		}
+	}
+	std::cerr << current_thread_id << std::endl;
+	std::cerr << "total blocks: " << reader.getIndex().getContainer().size() << std::endl;
+
+	//exit(1);
+
+	// Divide data into threads
+	this->getSelectedLoad();
+
+	// Get thread load
+	//if(!this->getSelectedLoadThreads(reader, threads))
+	//	return false;
 
 	return true;
 }

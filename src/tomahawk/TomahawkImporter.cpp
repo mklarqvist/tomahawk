@@ -282,13 +282,13 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	}
 
 	// Assert position is in range
-	if(line.body->POS+1 > this->vcf_header_->getContig(line.body->CHROM).length){
+	if(line.body->POS + 1 > this->vcf_header_->getContig(line.body->CHROM).length){
 		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << (*this->vcf_header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > reported max size of contig (" << (*this->vcf_header_)[line.body->CHROM].length << ")..." << std::endl;
 		return false;
 	}
 
 	// Assert file is ordered
-	if(line.body->POS < this->sort_order_helper.previous_position){
+	if(line.body->POS + 1 < this->sort_order_helper.previous_position){
 		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "File is not sorted by coordinates (" << (*this->vcf_header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > " << (*this->vcf_header_)[line.body->CHROM].name << ':' << this->sort_order_helper.previous_position << ")..." << std::endl;
 		return false;
 	}
@@ -318,7 +318,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			// Update container with this totempole entry
 			this->index += this->writer_.totempole_entry;
 
-			this->writer_.TotempoleSwitch(line.body->CHROM, this->sort_order_helper.previous_position);
+			this->writer_.TotempoleSwitch(line.body->CHROM, 0);
 		}
 		if(this->writer_.add(line))
 			this->sort_order_helper.previous_included = true;
@@ -328,8 +328,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		this->sort_order_helper.previous_included = false;
 
 	next:
-	this->sort_order_helper.previous_position = line.body->POS;
-	this->sort_order_helper.prevcontigID = line.body->CHROM;
+	this->sort_order_helper.previous_position = line.body->POS + 1;
+	this->sort_order_helper.prevcontigID      = line.body->CHROM;
 
 	return true;
 }

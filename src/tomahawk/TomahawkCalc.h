@@ -103,50 +103,6 @@ bool TomahawkCalc::Calculate(){
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
-	//U64 totalComparisons = 0;
-	// Todo: validate & decouple
-	/*
-
-	for(U32 i = 0; i < this->balancer.thread_distribution.size(); ++i){
-		for(U32 j = 0; j < this->balancer.thread_distribution[i].size(); ++j){
-			//std::cerr << this->balancer.thread_distribution[i][j] << ':' << std::endl;
-			if(this->balancer.thread_distribution[i][j].staggered){
-				for(U32 from = this->balancer.thread_distribution[i][j].fromRow; from < this->balancer.thread_distribution[i][j].toRow; ++from){
-					for(U32 col = from; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
-						//std::cerr << '\t' << from << ":" << col << '\t';
-						if(from == col){
-							//const U32 size = impl[from].size();
-							const U32 size = this->reader.getOffsetPair(from).entry.size();
-							totalComparisons += (size*size - size)/2;
-							//std::cerr << (size*size - size)/2 << std::endl;
-						} else {
-							//totalComparisons += impl[from].size() * impl[col].size();
-							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
-							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
-						}
-					}
-				}
-			} else {
-				for(U32 from = this->balancer.thread_distribution[i][j].fromRow; from < this->balancer.thread_distribution[i][j].toRow; ++from){
-					for(U32 col = this->balancer.thread_distribution[i][j].fromColumn; col < this->balancer.thread_distribution[i][j].toColumn; ++col){
-						//std::cerr << '\t' << from << ":" << col << '\t';
-						if(from == col){
-							//const U32 size = impl[from].size();
-							const U32 size = this->reader.getOffsetPair(from).entry.size();
-							totalComparisons += (size*size - size)/2;
-							//std::cerr << (size*size - size)/2 << std::endl;
-						} else {
-							//totalComparisons += impl[from].size() * impl[col].size();
-							totalComparisons += this->reader.getOffsetPair(from).entry.size() * this->reader.getOffsetPair(col).entry.size();
-							//std::cerr << controller[from].size() * controller[col].size() << std::endl;
-						}
-					}
-				}
-			}
-		}
-	}
-	*/
-
 	// Update progress bar with data
 	this->progress.SetComparisons(this->balancer.n_comparisons_chunk);
 	this->progress.SetSamples(header.magic_.getNumberSamples());
@@ -203,11 +159,13 @@ bool TomahawkCalc::Calculate(){
 	this->progress.Stop();
 
 	// Print slave statistics
+	/*
 	if(!SILENT){
 		std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
 		for(U32 i = 0; i < this->parameters.n_threads; ++i)
 			std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
 	}
+	*/
 
 	// Reduce into first slave
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
@@ -216,8 +174,8 @@ bool TomahawkCalc::Calculate(){
 	writer = slaves[0]->getWriter();
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)slaves[0]->getComparisons()*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(slaves[0]->getComparisons()) << " pairwise SNPs and " << Helpers::ToPrettyString(slaves[0]->getComparisons()*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " pairwise SNPs and " << Helpers::ToPrettyString(this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
 		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 	}
 
