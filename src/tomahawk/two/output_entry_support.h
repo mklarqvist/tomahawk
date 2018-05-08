@@ -76,16 +76,19 @@ public:
 		return os;
 	}
 
-	inline void setPhased(void)          { this->controller |= 1;   }
-	inline void setHasMissingValues(void){ this->controller |= 2;   }
-	inline void setIncomplete(void)      { this->controller |= 4;   }
-	inline void setMultipleRoots(void)   { this->controller |= 8;   }
-	inline void setSameContig(void)      { this->controller |= 16;  }
-	inline void setLongRange(void)       { this->controller |= 32;  }
-	inline void setFailedHWEA(void)      { this->controller |= 64;  }
-	inline void setFailedHWEB(void)      { this->controller |= 128; }
-	inline void setLowMAFA(void)         { this->controller |= 256; }
-	inline void setLowMAFB(void)         { this->controller |= 512; }
+	inline void setUsedPhased(void)       { this->controller |= 1;    }
+	inline void setHasMissingValuesA(void){ this->controller |= 2;    }
+	inline void setHasMissingValuesB(void){ this->controller |= 4;    }
+	inline void setIncomplete(void)       { this->controller |= 8;    }
+	inline void setMultipleRoots(void)    { this->controller |= 16;   }
+	inline void setSameContig(void)       { this->controller |= 32;   }
+	inline void setLongRange(void)        { this->controller |= 64;   }
+	inline void setFailedHWEA(void)       { this->controller |= 128;  }
+	inline void setFailedHWEB(void)       { this->controller |= 256;  }
+	inline void setLowAFA(void)           { this->controller |= 512;  }
+	inline void setLowAFB(void)           { this->controller |= 1024; }
+	inline void setFastMode(void)         { this->controller |= 2048; }
+	inline void setSampled(void)          { this->controller |= 4096; }
 
 	inline const float countAlternatives(void) const{
 		// Find largest

@@ -195,6 +195,8 @@ public:
 
 	inline const meta_type& getMeta(const U32& position) const{ return(this->meta_entries[position]); }
 	inline const meta_type& currentMeta(void) const{ return(this->meta_entries[this->iterator_position_meta]); }
+	inline const meta_type& lastMeta(void) const{ return(this->meta_entries[this->n_entries - 1]); }
+	inline const meta_type& firstMeta(void) const{ return(this->meta_entries[0]); }
 	inline const_pointer current(void) const{ return(&this->genotype_entries[this->iterator_position_runs]); }
 	inline const genotype_bitvector_type& currentBitvector(void) const{ return(this->bit_vectors->at(this->iterator_position_meta)); }
 	inline const haplotype_bitvector_type& currentHaplotypeBitvector(void) const{ return(this->haplotype_bitvectors[this->iterator_position_meta]); }

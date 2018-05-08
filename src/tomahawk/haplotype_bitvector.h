@@ -7,7 +7,6 @@ namespace Base{
 struct HaplotypeBitVector{
 public:
 	HaplotypeBitVector(const U64 n_entries) :
-		n_entries(n_entries),
 		n_bytes(ceil((double)n_entries/64)),
 		l_list(0),
 		indices(nullptr),
@@ -24,7 +23,6 @@ public:
 	inline void set(const U32& position, const bool val){ this->entries[position/64] |= (val << (position % 64)); }
 
 public:
-	U64 n_entries;
 	U32 n_bytes;
 	U32 l_list; // number of odd items
 	U32* indices;
