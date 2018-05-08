@@ -76,19 +76,19 @@ public:
 		return os;
 	}
 
-	inline void setSameContig(const bool yes = true)       { this->controller |= yes << 0;  }
-	inline void setLongRange(const bool yes = true)        { this->controller |= yes << 1;  }
-	inline void setIncomplete(const bool yes = true)       { this->controller |= yes << 2;  }
-	inline void setMultipleRoots(const bool yes = true)    { this->controller |= yes << 3;  }
-	inline void setSampled(const bool yes = true)          { this->controller |= yes << 4;  }
-	inline void setUsedPhasedMath(const bool yes = true)   { this->controller |= yes << 5;  }
-	inline void setFastMode(const bool yes = true)         { this->controller |= yes << 6;  }
-	inline void setHasMissingValuesA(const bool yes = true){ this->controller |= yes << 7;  }
-	inline void setHasMissingValuesB(const bool yes = true){ this->controller |= yes << 8;  }
-	inline void setLowAFA(const bool yes = true)           { this->controller |= yes << 9;  }
-	inline void setLowAFB(const bool yes = true)           { this->controller |= yes << 10; }
-	inline void setFailedHWEA(const bool yes = true)       { this->controller |= yes << 11; }
-	inline void setFailedHWEB(const bool yes = true)       { this->controller |= yes << 12; }
+	inline void setUsedPhasedMath(const bool yes = true)   { this->controller |= yes << 0;  } // 1
+	inline void setSameContig(const bool yes = true)       { this->controller |= yes << 1;  } // 2
+	inline void setLongRange(const bool yes = true)        { this->controller |= yes << 2;  } // 4
+	inline void setIncomplete(const bool yes = true)       { this->controller |= yes << 3;  } // 8
+	inline void setMultipleRoots(const bool yes = true)    { this->controller |= yes << 4;  } // 16
+	inline void setFastMode(const bool yes = true)         { this->controller |= yes << 5;  } // 32
+	inline void setSampled(const bool yes = true)          { this->controller |= yes << 6;  } // 64
+	inline void setHasMissingValuesA(const bool yes = true){ this->controller |= yes << 7;  } // 128
+	inline void setHasMissingValuesB(const bool yes = true){ this->controller |= yes << 8;  } // 256
+	inline void setLowAFA(const bool yes = true)           { this->controller |= yes << 9;  } // 512
+	inline void setLowAFB(const bool yes = true)           { this->controller |= yes << 10; } // 1024
+	inline void setFailedHWEA(const bool yes = true)       { this->controller |= yes << 11; } // 2048
+	inline void setFailedHWEB(const bool yes = true)       { this->controller |= yes << 12; } // 4096
 
 	inline const float getTotalAltHaplotypeCount(void) const{
 		// Find largest

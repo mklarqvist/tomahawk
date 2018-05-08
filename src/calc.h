@@ -40,7 +40,7 @@ void calc_usage(void){
 	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
-	"  -f       use fast-mode [null]\n"
+	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
 	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
 	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
@@ -61,25 +61,25 @@ int calc(int argc, char** argv){
 
 	int option_index = 0;
 	static struct option long_options[] = {
-		{"input",		required_argument, 0,  'i' },
-		{"threads",		optional_argument,       0,  't' },
-		{"output",		required_argument, 0,  'o' },
-		{"parts",		optional_argument, 0,  'c' },
-		{"partStart",	optional_argument, 0,  'C' },
-		{"minP",		optional_argument, 0,  'P' },
-		{"phased",		no_argument, 0,  'p' },
-		{"unphased",	no_argument, 0,  'u' },
-		{"fast-mode",	no_argument, 0,  'f' },
-		{"minR2",		optional_argument, 0,  'r' },
-		{"maxR2",		optional_argument, 0,  'R' },
-		{"minMHF",	optional_argument, 0,  'a' },
-		{"maxMHF",	optional_argument, 0,  'A' },
-		{"detailedProgress",		no_argument, 0,  'd' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",             required_argument, 0, 'i' },
+		{"threads",           optional_argument, 0, 't' },
+		{"output",            required_argument, 0, 'o' },
+		{"parts",             optional_argument, 0, 'c' },
+		{"partStart",         optional_argument, 0, 'C' },
+		{"minP",              optional_argument, 0, 'P' },
+		{"phased",            no_argument,       0, 'p' },
+		{"unphased",          no_argument,       0, 'u' },
+		{"fast-mode",         no_argument,       0, 'f' },
+		{"minR2",             optional_argument, 0, 'r' },
+		{"maxR2",             optional_argument, 0, 'R' },
+		{"minMHF",            optional_argument, 0, 'a' },
+		{"maxMHF",            optional_argument, 0, 'A' },
+		{"detailedProgress",  no_argument,       0, 'd' },
+		{"silent",            no_argument,       0, 's' },
 		// Not implemented
-		{"windowBases",	optional_argument, 0,  'w' },
-		{"windowPosition",optional_argument, 0,  'W' },
-		{"longHelp",	optional_argument, 0, '?' },
+		{"windowBases",       optional_argument, 0, 'w' },
+		{"windowPosition",    optional_argument, 0, 'W' },
+		{"longHelp",          optional_argument, 0, '?' },
 		{0,0,0,0}
 	};
 

@@ -340,7 +340,7 @@ inline void LDSlave<T>::setFLAGs(helper_type& helper, const block_type& block1, 
 	const meta_type& mB = block2.currentMeta();
 
 	helper.setSameContig(block1.getTotempole().contigID == block2.getTotempole().contigID);
-	helper.setLongRange((mB.position >> 2) - (mA.position >> 2) > LONG_RANGE_THRESHOLD);
+	helper.setLongRange(mB.position - mA.position > LONG_RANGE_THRESHOLD);
 	helper.setLowAFA(mA.AF < LOW_MAF_THRESHOLD);
 	helper.setLowAFB(mB.AF < LOW_MAF_THRESHOLD);
 	helper.setFailedHWEA(mA.HWE_P < LOW_HWE_THRESHOLD);

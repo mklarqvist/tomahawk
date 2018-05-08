@@ -221,7 +221,6 @@ void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const h
 
 	// Todo: toggleable
 	// Add reverse
-	/*
 	this->buffer += helper.controller;
 	this->buffer += header_b.contigID;
 	this->buffer += writePosB;
@@ -229,17 +228,9 @@ void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const h
 	this->buffer += writePosA;
 	this->buffer << helper;
 
-
 	this->n_entries += 2;
 	this->n_progress_count += 2;
 	this->index_entry.n_variants += 2;
-
-	*/
-
-	this->n_entries += 1;
-	this->n_progress_count += 1;
-	this->index_entry.n_variants += 1;
-
 
 	if(this->buffer.size() > this->l_flush_limit)
 		this->flush();

@@ -115,26 +115,38 @@ The 2x2 contingency table, or matrix, for the Fisher's exact test (`P`) for hapl
 | **Marker B - ref** | A             | B                 |
 | **Marker B - alt** | C             | D                 |
 
+The 3x3 contigency table, or matrix, for the Chi-squared test for the unphased model looks like this:
+
+|     | 0/0 | 0/1 | 1/1 |
+|-----|-----|-----|-----|
+| **0/0** | A   | B   | C   |
+| **0/1** | D   | E   | F   |
+| **1/1** | G   | H   | J   |
+
 The `two` `FLAG` values are bit-packed booleans in a single integer field and describe a variety of states a pair of markers can be in.
 
-| Description                          | Bit number | Bit value |
+| Description                          | Bit number | Decimal value |
 |--------------------------------------|------------|-----------|
-| Markers are phased                   | 1          | 1         |
-| Has missing values                   | 2          | 2         |
-| Incomplete (at least 1 cell with < 1 count)                           | 3          | 4         |
-| Multiple valid roots                 | 4          | 8         |
-| Markers on the same contig           | 5          | 16        |
-| Markers far apart on the same contig (> 500kb) | 6          | 32        |
-| Marker A failed HWE test (P < 1e-6)  | 7          | 64        |
-| Marker B failed HWE test (P < 1e-6)  | 8          | 128       |
-| Marker A have MAF < 0.01             | 9          | 256       |
-| Marker B have MAF < 0.01             | 10         | 512       |
+| Markers are phased (or no phase uncertainty)                   | 1          | 1         |
+| Markers on the same contig           | 2          | 2        |
+| Markers far apart on the same contig (> 500kb) | 3          | 4        |
+| Association is incomplete (at least one haplotype count is 0)                 | 4          | 8         |
+| Multiple valid roots                 | 5          | 8         |
+| Computed in fast mode                 | 6          | 16         |
+| Was sampled in fast mode                 | 7          | 32         |
+| Marker A has missing values                   | 8          | 64         |
+| Marker B has missing values                   | 9          | 128         |
+| Incomplete (at least 1 cell with < 1 count)                           | 10          | 256         |
+| Marker A have MAF < 0.01             | 10          | 512       |
+| Marker B have MAF < 0.01             | 11         | 1024       |
+| Marker A failed HWE test (P < 1e-6)  | 12          | 2048        |
+| Marker B failed HWE test (P < 1e-6)  | 13          | 4096       |
 
 Viewing `ld` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
-both markers on the same contig (bit `16`)
+both markers on the same contig (bit `2`)
 ```bash
-tomahawk view -i file.two -P 1e-4 -a 5 -f 16
+tomahawk view -i file.two -P 1e-4 -a 5 -f 2
  ```
 
 ### Subsetting output
