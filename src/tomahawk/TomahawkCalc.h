@@ -30,7 +30,6 @@ public:
 	inline parameter_type& getParameters(void){ return(this->parameters); }
 
 private:
-	bool CalculateWrapper();
 	template <class T> bool Calculate();
 
 private:
@@ -159,6 +158,15 @@ bool TomahawkCalc::Calculate(){
 	// Setup slaves
 	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
 	std::vector<std::thread*> thread_pool;
+
+	if(!SILENT){
+		if(this->parameters.fast_mode){
+			std::cerr << Helpers::timestamp("LOG") << "Running in fast mode! No matrices will be built..." << std::endl;
+		} else {
+			std::cerr << Helpers::timestamp("LOG") << "Running in complete mode! 2x2/3x3/4x4 matrices will be built..." << std::endl;
+		}
+
+	}
 
 	// Setup workers
 	if(!SILENT){

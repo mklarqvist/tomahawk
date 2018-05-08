@@ -209,5 +209,41 @@ void OutputWriter::CheckOutputNames(const std::string& input){
 	else this->baseName = paths[1];
 }
 
+void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
+	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
+	this->buffer += helper.controller;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer << helper;
+
+	// Todo: toggleable
+	// Add reverse
+	/*
+	this->buffer += helper.controller;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer << helper;
+
+
+	this->n_entries += 2;
+	this->n_progress_count += 2;
+	this->index_entry.n_variants += 2;
+
+	*/
+
+	this->n_entries += 1;
+	this->n_progress_count += 1;
+	this->index_entry.n_variants += 1;
+
+
+	if(this->buffer.size() > this->l_flush_limit)
+		this->flush();
+}
+
 }
 }

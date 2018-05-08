@@ -76,21 +76,21 @@ public:
 		return os;
 	}
 
-	inline void setUsedPhased(void)       { this->controller |= 1;    }
-	inline void setHasMissingValuesA(void){ this->controller |= 2;    }
-	inline void setHasMissingValuesB(void){ this->controller |= 4;    }
-	inline void setIncomplete(void)       { this->controller |= 8;    }
-	inline void setMultipleRoots(void)    { this->controller |= 16;   }
-	inline void setSameContig(void)       { this->controller |= 32;   }
-	inline void setLongRange(void)        { this->controller |= 64;   }
-	inline void setFailedHWEA(void)       { this->controller |= 128;  }
-	inline void setFailedHWEB(void)       { this->controller |= 256;  }
-	inline void setLowAFA(void)           { this->controller |= 512;  }
-	inline void setLowAFB(void)           { this->controller |= 1024; }
-	inline void setFastMode(void)         { this->controller |= 2048; }
-	inline void setSampled(void)          { this->controller |= 4096; }
+	inline void setSameContig(const bool yes = true)       { this->controller |= yes << 0;  }
+	inline void setLongRange(const bool yes = true)        { this->controller |= yes << 1;  }
+	inline void setIncomplete(const bool yes = true)       { this->controller |= yes << 2;  }
+	inline void setMultipleRoots(const bool yes = true)    { this->controller |= yes << 3;  }
+	inline void setSampled(const bool yes = true)          { this->controller |= yes << 4;  }
+	inline void setUsedPhasedMath(const bool yes = true)   { this->controller |= yes << 5;  }
+	inline void setFastMode(const bool yes = true)         { this->controller |= yes << 6;  }
+	inline void setHasMissingValuesA(const bool yes = true){ this->controller |= yes << 7;  }
+	inline void setHasMissingValuesB(const bool yes = true){ this->controller |= yes << 8;  }
+	inline void setLowAFA(const bool yes = true)           { this->controller |= yes << 9;  }
+	inline void setLowAFB(const bool yes = true)           { this->controller |= yes << 10; }
+	inline void setFailedHWEA(const bool yes = true)       { this->controller |= yes << 11; }
+	inline void setFailedHWEB(const bool yes = true)       { this->controller |= yes << 12; }
 
-	inline const float countAlternatives(void) const{
+	inline const float getTotalAltHaplotypeCount(void) const{
 		// Find largest
 		const float* max = &this->alleleCounts[0];
 		if(this->alleleCounts[1] > *max) max = &this->alleleCounts[1];
@@ -114,7 +114,7 @@ public:
 	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
 	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
 	double chiSqFisher;       // Chi-Squared critical value for 2x2 contingency table
-	float  totalAlleleCounts; // Total number of alleles
+	float  totalHaplotypeCounts; // Total number of alleles
 
 	// Counters
 	float  alleleCounts[171];

@@ -9,7 +9,7 @@ namespace Tomahawk{
 #define CALC_DEFAULT_MINR2      0.1
 #define CALC_DEFAULT_MAXR2      1.0
 #define CALC_DEFAULT_MINP       1
-#define CALC_DEFAULT_MINALLELES 5
+#define CALC_DEFAULT_MINALLELES 1
 #define CALC_DEFAULT_MAXALLELES std::numeric_limits<int64_t>::max()
 
 struct TomahawkCalcParameters{
@@ -20,6 +20,7 @@ public:
 
 public:
 	TomahawkCalcParameters() :
+		fast_mode(false),
 		n_threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 		n_chunks(1),
 		chunk_selected(0),
@@ -35,6 +36,7 @@ public:
 	}
 
 	TomahawkCalcParameters(const self_type& other):
+		fast_mode(other.fast_mode),
 		n_threads(other.n_threads),
 		n_chunks(other.n_chunks),
 		chunk_selected(other.chunk_selected),
@@ -109,7 +111,7 @@ public:
 	}
 
 	std::string getInterpretedString(void) const{
-		return(std::string("minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
+		return(std::string("fast_mode=" + (this->fast_mode ? std::string("TRUE") : std::string("FALSE") ) + " minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
 				" minP=" + std::to_string(this->P_threshold) +
 				" minMHF=" + std::to_string(this->minimum_alleles) + " maxMHF=" + std::to_string(this->maximum_alleles) +
 				" partStart=" + std::to_string(this->chunk_selected) + " parts="  + std::to_string(this->n_chunks) +
@@ -126,6 +128,7 @@ public:
 	}
 
 public:
+	bool    fast_mode;
 	S32     n_threads;
 	S32     n_chunks;
 	S32     chunk_selected;

@@ -40,7 +40,8 @@ void calc_usage(void){
 	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
-	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
+	"  -f       use fast-mode [null]\n"
+	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
 	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
@@ -68,6 +69,7 @@ int calc(int argc, char** argv){
 		{"minP",		optional_argument, 0,  'P' },
 		{"phased",		no_argument, 0,  'p' },
 		{"unphased",	no_argument, 0,  'u' },
+		{"fast-mode",	no_argument, 0,  'f' },
 		{"minR2",		optional_argument, 0,  'r' },
 		{"maxR2",		optional_argument, 0,  'R' },
 		{"minMHF",	optional_argument, 0,  'a' },
@@ -88,7 +90,7 @@ int calc(int argc, char** argv){
 
 	S32 windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -149,6 +151,10 @@ int calc(int argc, char** argv){
 
 	  case 'u':
 		  parameters.force = Tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
+		  break;
+
+	  case 'f':
+		  parameters.fast_mode = true;
 		  break;
 
 	  case 'P':

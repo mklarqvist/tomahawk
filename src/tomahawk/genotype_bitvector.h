@@ -54,7 +54,7 @@ public:
 	}
 
 	template <class RLE_TYPE>
-	bool build(const MetaEntry<RLE_TYPE>& meta_entry, const RLE_TYPE* const genotypes, const U32& n_samples){
+	bool build(const MetaEntry& meta_entry, const RLE_TYPE* const genotypes, const U32& n_samples){
 		const U32 byte_width = ceil((double)n_samples/4);
 
 		// INVERSE mask is cheaper in terms of instructions used

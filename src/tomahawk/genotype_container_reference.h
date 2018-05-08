@@ -17,7 +17,7 @@ public:
 	typedef GenotypeRefEntry<T>            self_type;
 	typedef Support::GenotypeDiploidRun<T> genotype_type;
 	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
-	typedef MetaEntry<T>                   meta_type;
+	typedef MetaEntry                      meta_type;
 	typedef Base::HaplotypeBitVector       haplotype_bitvector_type;
 
 public:
@@ -74,14 +74,15 @@ protected:
 	typedef const value_type*              const_pointer;
 	typedef std::ptrdiff_t                 difference_type;
 	typedef std::size_t                    size_type;
-	typedef MetaEntry<T>                   meta_type;
+	typedef MetaEntry                      meta_type;
 
 public:
 	GenotypeContainerReference() :
 		n_entries(0),
 		iterator_position_meta(0),
 		iterator_position_runs(0),
-		owns_bitvectors(true),
+		build_bitvectors(false),
+		owns_data(true),
 		meta_entries(nullptr),
 		genotype_entries(nullptr),
 		index_entry(nullptr),
@@ -98,13 +99,27 @@ public:
 		n_entries(index_entry.n_variants),
 		iterator_position_meta(0),
 		iterator_position_runs(0),
-		owns_bitvectors(true),
-		meta_entries(reinterpret_cast<const meta_type* const>(data)),
-		genotype_entries(reinterpret_cast<const_pointer>(&data[this->n_entries * (TOMAHAWK_ENTRY_META_SIZE + sizeof(T))])),
+		build_bitvectors(build_bitvectors),
+		owns_data(true),
+		meta_entries(static_cast<meta_type*>(::operator new[](this->size()*sizeof(meta_type)))),
+		genotype_entries(reinterpret_cast<const_pointer>(&data[this->size()*TOMAHAWK_ENTRY_META_SIZE])),
 		index_entry(&index_entry),
 		bit_vectors(nullptr),
 		haplotype_bitvectors(nullptr)
 	{
+		if(l_data == 0) return;
+
+		// Interpret meta entries
+		size_t cumulative_position = 0;
+		size_t genotype_cost = 0;
+
+		for(size_t i = 0; i < this->size(); ++i){
+			new( &this->meta_entries[i] ) meta_type( &data[cumulative_position] );
+			cumulative_position += TOMAHAWK_ENTRY_META_SIZE;
+			genotype_cost += meta_entries[i].runs*sizeof(T);
+		}
+		assert(cumulative_position + genotype_cost == l_data);
+
 		if(build_bitvectors){
 			this->bit_vectors = new container_bitvector_type();
 			this->bit_vectors->Build(this->genotype_entries, this->meta_entries, this->size(), n_samples);
@@ -112,7 +127,7 @@ public:
 			this->haplotype_bitvectors = static_cast<haplotype_bitvector_type*>(::operator new[](this->size()*sizeof(haplotype_bitvector_type)));
 
 
-			U32* tempList = new U32[n_samples*2]; // temp
+			U32* tempList = new U32[n_samples*2]; // temporary vector
 			U32 tempListIdx = 0;
 			U32 cumulative_position = 0;
 			for(U32 i = 0; i < this->size(); ++i){
@@ -153,7 +168,8 @@ public:
 		n_entries(other.n_entries),
 		iterator_position_meta(other.iterator_position_meta),
 		iterator_position_runs(other.iterator_position_runs),
-		owns_bitvectors(false),
+		build_bitvectors(other.build_bitvectors),
+		owns_data(false),
 		meta_entries(other.meta_entries),
 		genotype_entries(other.genotype_entries),
 		index_entry(other.index_entry),
@@ -164,13 +180,20 @@ public:
 	}
 
 	~GenotypeContainerReference(){
-		if(this->owns_bitvectors){
-			delete this->bit_vectors;
+		if(this->owns_data){
+			if(this->build_bitvectors){
+				delete this->bit_vectors;
 
-			for(std::size_t i = 0; i < this->size(); ++i)
-				(this->haplotype_bitvectors + i)->~HaplotypeBitVector();
+				for(std::size_t i = 0; i < this->size(); ++i)
+					(this->haplotype_bitvectors + i)->~HaplotypeBitVector();
 
-			::operator delete[](static_cast<void*>(this->haplotype_bitvectors));
+				::operator delete[](static_cast<void*>(this->haplotype_bitvectors));
+			}
+
+			for(size_type i = 0; i < this->size(); ++i)
+				((this->meta_entries + i)->~MetaEntry)();
+
+			::operator delete[](static_cast<void*>(this->meta_entries));
 		}
 	}
 
@@ -212,8 +235,9 @@ protected:
 	size_type                 n_entries;
 	size_type                 iterator_position_meta;
 	size_type                 iterator_position_runs;
-	bool                      owns_bitvectors;
-	const meta_type*          meta_entries;
+	bool                      build_bitvectors;
+	bool                      owns_data;
+	meta_type*                meta_entries;
 	const_pointer             genotype_entries;
 	const header_entry_type*  index_entry;
 	container_bitvector_type* bit_vectors;

@@ -22,7 +22,7 @@ private:
     typedef const value_type*          const_pointer;
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
-    typedef Totempole::IndexEntry  support_type;
+    typedef Totempole::IndexEntry      support_type;
 
 public:
 	GenotypeContainerBitvector() : n_entries(0), n_capacity(0), __entries(nullptr){}
@@ -158,7 +158,7 @@ public:
 	bool Build(const GenotypeContainerRunlength<T>& genotype_container, const U64& n_samples);
 
 	template <class T>
-	bool Build(const Support::GenotypeDiploidRun<T>* const genotype_runs, const MetaEntry<T>* const meta_entries, const size_t& n_entries, const U64& n_samples);
+	bool Build(const Support::GenotypeDiploidRun<T>* const genotype_runs, const MetaEntry* const meta_entries, const size_t& n_entries, const U64& n_samples);
 
 public:
 	size_type n_entries;
@@ -238,7 +238,7 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 
 template <class T>
 bool GenotypeContainerBitvector::Build(const Support::GenotypeDiploidRun<T>* const genotype_runs,
-                                          const MetaEntry<T>* const meta_entries,
+                                          const MetaEntry* const meta_entries,
                                                         const size_t& n_entries,
                                                            const U64& n_samples)
 {
