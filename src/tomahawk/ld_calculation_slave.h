@@ -159,7 +159,7 @@ class LDSlave{
 	typedef const MetaEntry                      meta_type;
 	typedef const Support::GenotypeDiploidRun<T> run_type;
 	typedef Totempole::IndexEntry                totempole_entry_type;
-	typedef IO::OutputWriterFile                 output_writer_type;
+	typedef IO::OutputWriter                     output_writer_type;
 	typedef Support::OutputEntrySupport          helper_type;
 	typedef Base::GenotypeBitvector<>            simd_pair;
 	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
