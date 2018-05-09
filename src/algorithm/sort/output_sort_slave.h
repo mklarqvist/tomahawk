@@ -79,14 +79,12 @@ private:
 				}
 				container += *e;
 			}
-			std::cerr << container.size() << std::endl;
-
 			std::sort(&container.front(), &container.back() + 1);
 
 			const entry_type* prev = &container[0];
 			for(size_t j = 1; j < container.size(); ++j){
 				if(*prev >= container[j]){
-					std::cerr << "ERROR" << std::endl;
+					std::cerr << Helpers::timestamp("ERROR","SORT");
 					std::cerr << j-1 << ',' << j << std::endl;
 					std::cerr << *prev << std::endl;
 					std::cerr << container[j] << std::endl;

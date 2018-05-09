@@ -3,27 +3,27 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
+
 # Fast calculation of LD in large-scale cohorts
-Tomahawk is a machine-optimized library for computing linkage-disequilibrium from population-sized datasets. Tomahawk permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals.
+Tomahawk is a machine-optimized library for computing [linkage-disequilibrium](https://en.wikipedia.org/wiki/Linkage_disequilibrium) from population-sized datasets. Tomahawk permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals. All algorithms are embarrassingly parallel and have been successfully tested on datasets with up to _10 million individuals_ using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
-Genotypic data is efficiently compressed by exploiting intrinsic genetic properties and we describe algorithms to directly query, manipulate, and explore this jointly compressed representation in-place. Genotypic vectors are represented as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed but inferior in terms of compressibility. The primitive type of RLE entries is fixed across a file and is determined contextually depending on the total number of samples. 
+Tomahawk is unique in that it constructs complete haplotype/genotype contigency matrices for each comparison, perform statistical tests on the output data, and provide a framework for querying the resulting data. If your use-case has no need for this additional data then you can invoke fast-mode to skip the construction step for extreme performance.
 
-We describe efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. In order to achieve speed, Tomahawk combines three efficient algorithms that exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. The first algorithm directly compares RLE entries from two vectors. The second transforms RLE entries to uncompressed bit-vectors and use machine-optimized SIMD-instructions to directly compare two such bit-vectors. The third algorithm computes summary statistics only. The second algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. All algorithms are embarrassingly parallel and have been successfully tested on datasets with up to 10 million individuals using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
-
-The current format specifications (v.0) for `TWK`,`TWO`, and `LD` are available [TWKv0](spec/TWKv0.pdf)
+The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are available [TWKv0](spec/TWKv0.pdf)
 
 ## Table of contents
 - [Getting started](#getting-started)
     - [Installation instructions](#installation-instructions)
 - [Usage instructions](#usage-instructions)
   - [Importing to Tomahawk](#importing-to-tomahawk)
-  - [Importing sequence variant data (`vcf`/`bcf`)](#importing-sequence-variant-data-vcfbcf)
+  - [Importing sequence variant data (`bcf`)](#importing-sequence-variant-data-bcf)
   - [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
   - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
   - [`LD` format description](#ld-format-description)
   - [Subsetting output](#subsetting-output)
   - [Sort a `TWO` file](#sort-a-two-file)
-- [Plotting in R](#plotting-in-r)
+- [Plotting in `R`](#plotting-in-r)
+- [Algorithmic overview](#Algorithmic-overview)
 - [Author](#author)
 - [Acknowledgements](#Acknowledgements)
 - [License](#license)
@@ -53,21 +53,24 @@ Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and 
 Executing `tomahawk` gives a list of commands with brief descriptions and `tomahawk <command>`
 gives detailed details for that command.
 
-All primary Tomahawk commands operate on the binary Tomahawk `twk` and Tomahawk output `two` file format. Interconversions between `twk` and `vcf`/`bcf` is supported through the
-commands `import` for `vcf`/`bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
-disequilibrium data is written out in `two` format.
+All primary Tomahawk commands operate on the binary Tomahawk `twk` and Tomahawk output `two` file format. Interconversions between `twk` and `vcf`/`bcf` is supported through the commands `import` for `bcf`->`twk` and `view` for `twk`->`vcf`. Linkage
+disequilibrium data is written out in binary `two` format or human-readable `ld` format.
 
 ### Importing to Tomahawk
 By design Tomahawk only operates on diploid and bi-allelic SNVs and as such filters out indels and complex variants. Tomahawk does not support mixed phasing of genotypes
 in the same variant (e.g. `0|0`, `0/1`). If mixed phasing is found for a record,
 all genotypes for that site are converted to unphased genotypes. This is a conscious design choice as this will internally invoke the correct algorithm to use for mixed-phase cases.  
 
-### Importing sequence variant data (`vcf`/`bcf`)
+### Importing sequence variant data (`bcf`)
 Importing standard files to Tomahawk involes using the `import` command.
-The following command imports a `vcf` file and outputs `outPrefix.twk` while filtering out variants with >20% missingness and sites that deviate
+The following command imports a `bcf` file and outputs `outPrefix.twk` while filtering out variants with >20% missingness and sites that deviate
 from Hardy-Weinberg equilibrium with a probability < 0.001
 ```bash
-tomahawk import -i file.vcf -o outPrefix -m 0.2 -H 1e-3
+tomahawk import -i file.bcf -o outPrefix -m 0.2 -H 1e-3
+```
+Tomahawk does not support non-binary `vcf` files. Convert your files to `bcf` with
+```bash
+bcftools view file.vcf -O b -o file.bcf
 ```
 
 ### Calculating linkage disequilibrium
@@ -247,7 +250,7 @@ plotLDRegionTriangular(ld[ld$R2>0.2,],min(ld$POS_A),max(ld$POS_B),main="HRC chun
 Plotting data computed using a sliding window will look like a diagonal stripe (1 Mb in this figure):
 ![screenshot](R/1kgp3_chr20_1mb_window.jpeg)
 
-This figure demonstrates how Tomahawk partitions the workload in order to maximize data locality. Shown here is part 1 and 10 out of 45 for the 1000 Genomes data for chromosome 20. This data locality can have profound impact on runtime: in many cases it is faster to run many smaller partitions of the data instead of several larger ones.   
+This figure demonstrates how Tomahawk partitions the workload in order to maximize data locality. Shown here is part 1 and 10 out of 45 for the [1000 Genomes](http://www.internationalgenome.org/data/) data for chromosome 20. This data locality can have profound impact on runtime: in many cases it is faster to run many smaller partitions of the data instead of several larger ones.   
 ![screenshot](R/1kgp3_chr20_45_part1_10.jpeg)
 
 It is possible to completely remove all labels, axis, and titles:
@@ -258,14 +261,22 @@ plotLDRegion(ld,min(ld$POS_A),max(ld$POS_B), xaxs="i", yaxs="i", xaxt='n', yaxt=
 ![screenshot](R/hrc_chr12_chunk1_noborder.jpeg)
 ![screenshot](R/hrc_chr12_chunk571_noborder.jpeg)
 
+## Algorithmic overview
+Vectors of genotypes are represented as fixed-width run-length encoded (RLE) objects. This encoding scheme is generally superior to dynamic-width encoding approaches in terms of iteration speed (as no data processing is required) but inferior in terms of compressibility (as bits are wasted). The word-width of the RLE entries is fixed across a file and is determined contextually given the total number of samples. 
+
+We describe three efficient algorithms to calculate genome-wide linkage disequilibrium for all pairwise alleles/genotypes in large-scale cohorts. The algorithms exploit different concepts: 1) low genetic diversity and 2) large memory registers on modern processors. 
+1) The first algorithm directly compares fixed-width compressed RLE entries from two vectors in worst-case O(|RLE_A| + |RLE_B| + 1)-time.
+2) The second transforms compressed RLE entries to uncompressed k-bit-vectors and use machine-optimized SIMD-instructions to horizontally compare two such bit-vectors in worst-case O(N/W)-time. This algorithm also exploits the relatively low genetic diversity within species using implicit heuristics. 
+3) The third algorithm computes summary statistics only by maintaining a positional index of non-reference alleles for each genotypic vector in guaranteed O(min(|NON_REF_A|,|NON_REF_B))-time. 
+
 ### Author
 Marcus D. R. Klarqvist (<mk819@cam.ac.uk>)  
 Department of Genetics, University of Cambridge  
 Wellcome Trust Sanger Institute
 
 ### Acknowledgements 
-[Professor John A Todd](https://www.ndm.ox.ac.uk/principal-investigators/researcher/john-todd) Nuffield Department of Medicine, University of Oxford  
-[Chris Wallace](https://github.com/chr1swallace) MRC Biostatistics Unit, University of Cambridge  
+[Professor John A Todd](https://www.ndm.ox.ac.uk/principal-investigators/researcher/john-todd), Nuffield Department of Medicine, University of Oxford  
+[Chris Wallace](https://github.com/chr1swallace), MRC Biostatistics Unit, University of Cambridge  
 [Professor Richard Durbin](https://github.com/richarddurbin), Wellcome Trust Sanger Institute, and Department of Genetics, University of Cambridge  
 
 ### License

@@ -127,6 +127,9 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	writer.setFlushLimit(block_size);
 	writer.writeHeaders(this->reader.getHeader());
 
+	// New index
+	Index index_updated;
+
 	const U32 n_toi_entries = this->reader.getIndex().size();
 	std::ifstream* streams = new std::ifstream[n_toi_entries];
 	tgzf_iterator** iterators = new tgzf_iterator*[n_toi_entries];
@@ -173,7 +176,6 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 
 		// remove this record from the queue
 		outQueue.pop();
-
 
 		while(iterators[id]->nextEntry(e)){
 			if(!(*e < outQueue.top().data)){

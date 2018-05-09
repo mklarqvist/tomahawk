@@ -41,10 +41,13 @@ bool TomahawkImporter::Build(){
 	temp.close();
 
 	if(tempData[0] == '#' && tempData[1] == '#'){
+		/*
 		if(!this->BuildVCF()){
 			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
 			return false;
 		}
+		*/
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Import file has to be binary VCF (BCF)!" << std::endl;
 	} else if((BYTE)tempData[0] == IO::Constants::GZIP_ID1 && (BYTE)tempData[1] == IO::Constants::GZIP_ID2){
 		if(!this->BuildBCF()){
 			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
@@ -108,6 +111,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.prevcontigID       = contigID;
 	this->writer_.totempole_entry.contigID     = contigID;
 	this->writer_.totempole_entry.min_position = entry.body->POS;
+	this->writer_.totempole_entry.max_position = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;

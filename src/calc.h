@@ -30,14 +30,15 @@ void calc_usage(void){
 	std::cerr <<
 	"About:  Calculate linkage disequilibrium\n"
 	"        Force phased -p or unphased -u for faster calculations if\n"
-	"        the entire file is guaranteed to have that phasing.\n"
+	"        the all variant sites are guaranteed to have the given phasing.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file (required)\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n"
-	"  -c INT   number of parts to split problem into (default: 1)\n"
-	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"
+	"  -c INT   number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
+	"  -C INT   chosen part to compute (0 < -C < -c)\n"
+	"  -w INT   sliding window width in bases (approximative)\n"
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
 	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
@@ -78,7 +79,7 @@ int calc(int argc, char** argv){
 		{"silent",            no_argument,       0, 's' },
 		// Not implemented
 		{"windowBases",       optional_argument, 0, 'w' },
-		{"windowPosition",    optional_argument, 0, 'W' },
+		{"windowSites",       optional_argument, 0, 'W' },
 		{"longHelp",          optional_argument, 0, '?' },
 		{0,0,0,0}
 	};

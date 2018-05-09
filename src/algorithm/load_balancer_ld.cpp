@@ -2,7 +2,7 @@
 
 namespace Tomahawk{
 
-LoadBalancerLD::LoadBalancerLD() : selected_chunk(0), desired_chunks(1){}
+LoadBalancerLD::LoadBalancerLD() : selected_chunk(0), n_desired_chunks(1){}
 LoadBalancerLD::~LoadBalancerLD(){}
 
 bool LoadBalancerLD::getSelectedLoad(){
@@ -176,26 +176,26 @@ bool LoadBalancerLD::setDesired(const S32 desired){
 		return false;
 	}
 
-	this->desired_chunks = desired;
+	this->n_desired_chunks = desired;
 	return true;
 }
 
 bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
-	if(this->selected_chunk > this->desired_chunks){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
+	if(this->selected_chunk > this->n_desired_chunks){
+		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
 		return false;
 	}
 
 	// If selecting > 1 chunk
-	if(this->desired_chunks != 1){
+	if(this->n_desired_chunks != 1){
 		U32 cutSize = 1;
 		for(U32 i = 1; i < reader.getIndex().getContainer().size(); ++i){
-			if((i*i - i) / 2 + i == this->desired_chunks) // N choose 2 + N (upper triangular + diagonal)
+			if((i*i - i) / 2 + i == this->n_desired_chunks) // N choose 2 + N (upper triangular + diagonal)
 				cutSize = i;
 		}
 
 		if(cutSize == 1){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
+			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->n_desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
 			return(false);
 		}
 
@@ -216,7 +216,7 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 			}
 		}
 
-		if(total != this->desired_chunks){
+		if(total != this->n_desired_chunks){
 			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
 			return(false);
 		}
@@ -236,15 +236,54 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 	return true;
 }
 
-bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads){
-	if(this->selected_chunk > this->desired_chunks){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->desired_chunks << ")..." << std::endl;
+bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, const U64 n_window_bases){
+	if(this->selected_chunk > this->n_desired_chunks){
+		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
+		return false;
+	}
+
+	if(n_window_bases < 1000){
+		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Probably not useful to set window size < 1000 bp" << std::endl;
 		return false;
 	}
 
 	// temp
-	this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
-	//
+	// If selecting > 1 chunk
+	if(this->n_desired_chunks != 1){
+		const U32 n_blocks_loaded = reader.getIndex().getContainer().size() / this->n_desired_chunks;
+		const U32 from_block = n_blocks_loaded * this->selected_chunk;
+		U32 to_block = n_blocks_loaded * (this->selected_chunk+1);
+		if(this->selected_chunk + 1 == this->n_desired_chunks) to_block = reader.getIndex().getContainer().size();
+
+		// for i = 0:n_blocks_loaded
+		// for j if not break
+		std::cerr << "Range is: " << from_block << "->" << to_block << "/" << reader.getIndex().getContainer().size() << std::endl;
+		this->blocks.push_back(value_type(from_block, to_block, from_block, to_block));
+
+		// Todo: extend command
+		// Search for extension end
+		U32 extension = 0;
+		if(this->selected_chunk + 1 != this->n_desired_chunks){
+
+			const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(to_block - 1);
+			for(U32 j = to_block; j < reader.getIndex().getContainer().size(); ++j){
+				const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+				if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
+					std::cerr << "extend: " << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
+					++extension;
+				} else
+					break;
+			}
+
+		}
+
+	} else {
+		// All blocks
+		this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
+	}
+
+	std::cerr << this->n_desired_chunks << std::endl;
+	exit(1);
 
 
 	for(U32 i = 0; i < reader.getIndex().size(); ++i){
@@ -260,7 +299,12 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads){
 
 		for(U32 j = i + 1; j < n_blocks; ++j){
 			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
-			if(index_entry_j.min_position - index_entry_i.max_position < 1e6){
+
+			// Check if they share the same contig
+			if(index_entry_i.contigID != index_entry_j.contigID)
+				break;
+
+			if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
 				n_max_possible_comparisons += index_entry_j.n_variants * index_entry_i.n_variants;
 
 				//std::cerr << "keep: " << i << "/" << j << " " << index_entry_j.min_position << "->" << index_entry_i.max_position << std::endl;
@@ -295,11 +339,13 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads){
 
 		for(U32 j = i + 1; j < n_blocks; ++j){
 			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
-			if(index_entry_j.min_position - index_entry_i.max_position < 1e6){
+			// Check if they share the same contig
+			if(index_entry_i.contigID != index_entry_j.contigID)
+				break;
+
+			if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
 				n_total_current_thread += index_entry_j.n_variants * index_entry_i.n_variants;
-			} else {
-				breaking = true;
-			}
+			} else breaking = true;
 
 			if(breaking || n_total_current_thread >= n_variants_thread){
 				if(n_total_current_thread >= n_variants_thread){

@@ -102,12 +102,31 @@ public:
 	 * @param entry Input `two` entry
 	 */
 	inline void operator<<(const entry_type& entry){
-		this->buffer << entry;
-		++this->n_entries;
+		if(this->index_entry.n_variants == 0){
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		if(this->index_entry.contigID != entry.AcontigID){
+			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
 
 		// Check if the buffer has to be flushed after adding this entry
-		if(this->buffer.size() > this->l_flush_limit)
+		if(this->buffer.size() > this->l_flush_limit){
 			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		this->buffer << entry;
+		++this->n_entries;
+		++this->index_entry;
+		this->index_entry.max_position = entry.Aposition;
 	}
 
 	/**<
