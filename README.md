@@ -11,6 +11,8 @@ Tomahawk is unique in that it constructs complete haplotype/genotype contigency 
 
 The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are available [TWKv0](spec/TWKv0.pdf)
 
+![screenshot](R/tomahawk_hrc_chr12_filter_animation.gif)
+
 ## Table of contents
 - [Getting started](#getting-started)
     - [Installation instructions](#installation-instructions)
