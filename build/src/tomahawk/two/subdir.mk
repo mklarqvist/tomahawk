@@ -23,5 +23,5 @@ CPP_DEPS += \
 
 
 # Each subdirectory must supply rules for building sources it contributes
-src/tomahawk/two/%.o: ../src/tomahawk/two/%.cpp
+src/tomahawk/two/%.o: ../src/tomahawk/two/%.cpp	
 	g++ -std=c++0x -O3 -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -g -w -c -fmessage-length=0  -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"

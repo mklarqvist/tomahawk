@@ -16,4 +16,3 @@ CPP_DEPS += \
 # Each subdirectory must supply rules for building sources it contributes
 src/io/vcf/%.o: ../src/io/vcf/%.cpp
 	g++ -std=c++0x -O3 -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -g -w -c -fmessage-length=0  -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
-

@@ -49,12 +49,12 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
-+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-+ifneq ($BRANCH, master)
-+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
-+else
-+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
-+endif 
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+ifneq ($BRANCH, master)
+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
+else
+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
+endif 
 
 # All Target
 all: tomahawk
