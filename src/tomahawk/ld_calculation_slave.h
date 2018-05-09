@@ -967,8 +967,8 @@ template <class T>
 bool LDSlave<T>::CalculateLDPhasedVectorized(helper_type& helper, const block_type& block1, const block_type& block2) const{
 	#if SLAVE_DEBUG_MODE < 6
 	if(block1.currentMeta().has_missing == 0 && block2.currentMeta().has_missing == 0){
-		//return(this->CalculateLDPhasedVectorizedNoMissing(block1, block2));
-		return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
+		return(this->CalculateLDPhasedVectorizedNoMissing(helper, block1, block2));
+		//return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
 	}
 	#endif
 
@@ -1631,12 +1631,15 @@ bool LDSlave<T>::CompareBlocksFunctionForcedPhased(helper_type& helper, const bl
 
 template <class T>
 bool LDSlave<T>::CompareBlocksFunctionForcedPhasedSimple(helper_type& helper, const block_type& block1, const block_type& block2) const{
-	if(std::min(block1.currentHaplotypeBitvector(). l_list,block2.currentHaplotypeBitvector().l_list) <= 1000){ // this is equal to emeraLD
-		return(this->CalculateLDPhasedSimple(helper, block1, block2));
+	if(std::min(block1.currentHaplotypeBitvector(). l_list,block2.currentHaplotypeBitvector().l_list) <= 1000){
+		if(block1.currentMeta().has_missing == false && block2.currentMeta().has_missing == false)
+			return(this->CalculateLDPhasedSimple(helper, block1, block2));
+		return(this->CalculateLDPhased(helper, block1, block2));
 	} else {
 		//return(false);
+		if(block1.currentMeta().has_missing == false && block2.currentMeta().has_missing == false)
+			return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
 		return(this->CalculateLDPhasedVectorized(helper, block1, block2));
-		//return(this->CalculateLDPhasedSimpleSample(helper, block1, block2));
 	}
 }
 
