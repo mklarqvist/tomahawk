@@ -160,7 +160,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to get an entry..." << std::endl;
 			return false;
 		}
-		outQueue.push( queue_entry(e, i, entry_type::sortAscending) );
+		outQueue.push( queue_entry(e, i, entry_type::sortDescending) );
 	}
 
 	if(outQueue.empty()){
@@ -177,13 +177,17 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		// remove this record from the queue
 		outQueue.pop();
 
+		//iterators[id]->nextEntry(e);
+		//outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
+
 		while(iterators[id]->nextEntry(e)){
 			if(!(*e < outQueue.top().data)){
-				outQueue.push( queue_entry(e, id, entry_type::sortAscending) );
+				outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
 				break;
 			}
 			writer << *e;
 		}
+
 	}
 
 	writer.setPartialSorted(false);
