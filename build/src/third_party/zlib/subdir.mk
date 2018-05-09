@@ -57,10 +57,4 @@ C_DEPS += \
 
 # Each subdirectory must supply rules for building sources it contributes
 src/third_party/zlib/%.o: ../src/third_party/zlib/%.c
-	@echo 'Building file: $<'
-	@echo 'Invoking: Cross GCC Compiler'
-	gcc -std=c99 -O3 -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -g -Wall -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
-	@echo 'Finished building: $<'
-	@echo ' '
-
-
+	gcc -std=c99 -O3 -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -g -w -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
