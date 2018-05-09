@@ -170,16 +170,16 @@ int calc(int argc, char** argv){
 		  }
 		  break;
 	  case 'a':
-		parameters.minimum_alleles = atoi(optarg);
-		if(parameters.minimum_alleles < 0){
+		parameters.minimum_sum_alternative_haplotype_count = atoi(optarg);
+		if(parameters.minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
 			return(1);
 		}
 		break;
 
 	  case 'A':
-		parameters.maximum_alleles = atoi(optarg);
-		if(parameters.maximum_alleles < 0){
+		parameters.maximum_sum_alternative_haplotype_count = atoi(optarg);
+		if(parameters.maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
 			return(1);
 		}

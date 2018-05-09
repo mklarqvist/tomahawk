@@ -474,7 +474,7 @@ bool LDSlave<T>::ChooseF11Calculate(helper_type& helper, const double& target, c
 	helper.R2 = helper.D*helper.D / (p * (1 - p) * q * (1 - q));
 	helper.R  = sqrt(helper.R2);
 
-	if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_alleles)
+	if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_sum_alternative_haplotype_count)
 		return false;
 
 	if(helper.R2 < this->parameters.R2_min || helper.R2 > this->parameters.R2_max)
@@ -497,12 +497,13 @@ bool LDSlave<T>::ChooseF11Calculate(helper_type& helper, const double& target, c
 					&left,&right,&both);
 	helper.P = both;
 
-	if(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1)
-		helper.setIncomplete();
-
 	// Fisher's exact test P value filter
 	if(helper.P > this->parameters.P_threshold)
 		return false;
+
+
+	helper.setCompleteLD(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1);
+	helper.setPerfectLD(helper.R2 > 0.99);
 
 	//helper.chiSqFisher = this->fisherController.chiSquaredTest(helper[0],helper[1],helper[4],helper[5]);
 	helper.chiSqFisher = 0;
@@ -1390,7 +1391,7 @@ bool LDSlave<T>::CalculateLDPhasedMath(helper_type& helper) const{
 	//++this->possible;
 
 	// Filter by total minor haplotype frequency
-	if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_alleles)
+	if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_sum_alternative_haplotype_count)
 		return false;
 
 
@@ -1426,13 +1427,13 @@ bool LDSlave<T>::CalculateLDPhasedMath(helper_type& helper) const{
 						&left, &right, &both);
 		helper.P = both;
 
-		if(helper[0] == 0 || helper[1] == 0 || helper[4] == 0 || helper[5] == 0)
-			helper.setIncomplete();
-
 		// Fisher's exact test P value filter
 		if(helper.P > this->parameters.P_threshold){
 			return false;
 		}
+
+		helper.setCompleteLD(helper[0] == 0 || helper[1] == 0 || helper[4] == 0 || helper[5] == 0);
+		helper.setPerfectLD(helper.R2 > 0.99);
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		helper.chiSqModel = 0;
@@ -1449,7 +1450,7 @@ bool LDSlave<T>::CalculateLDPhasedMathSimple(helper_type& helper, const block_ty
 	//++this->possible;
 
 	// If haplotype count for (0,0) >
-	if(helper[0] >= 2*this->samples - this->parameters.minimum_alleles)
+	if(helper[0] >= 2*this->samples - this->parameters.minimum_sum_alternative_haplotype_count)
 		return false;
 
 	// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
@@ -1476,6 +1477,8 @@ bool LDSlave<T>::CalculateLDPhasedMathSimple(helper_type& helper, const block_ty
 		// Trigger phased flag
 		helper.setUsedPhasedMath();
 		helper.setFastMode();
+		helper.setPerfectLD(helper.R2 > 0.99);
+		helper.setCompleteLD(helper.Dprime > 0.99);
 		this->setFLAGs(helper, block1, block2);
 
 		return true;

@@ -532,7 +532,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	// Natural output required parsing
@@ -567,7 +567,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	if(this->interval_tree != nullptr){
@@ -587,7 +587,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 
 	if(this->showHeader_ == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tHOM_HOM\tHOM_HET\tHET_HOM\tHET_HET\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
 	while(this->parseBlock()){

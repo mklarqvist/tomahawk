@@ -29,8 +29,8 @@ public:
 		R2_min(CALC_DEFAULT_MINR2),
 		R2_max(CALC_DEFAULT_MAXR2),
 		P_threshold(CALC_DEFAULT_MINP),
-		minimum_alleles(CALC_DEFAULT_MINALLELES),
-		maximum_alleles(CALC_DEFAULT_MAXALLELES),
+		minimum_sum_alternative_haplotype_count(CALC_DEFAULT_MINALLELES),
+		maximum_sum_alternative_haplotype_count(CALC_DEFAULT_MAXALLELES),
 		compression_type(writer_type::compression::binary),
 		force(force_method::none),
 		detailed_progress(false)
@@ -47,8 +47,8 @@ public:
 		R2_min(other.R2_min),
 		R2_max(other.R2_max),
 		P_threshold(other.P_threshold),
-		minimum_alleles(other.minimum_alleles),
-		maximum_alleles(other.maximum_alleles),
+		minimum_sum_alternative_haplotype_count(other.minimum_sum_alternative_haplotype_count),
+		maximum_sum_alternative_haplotype_count(other.maximum_sum_alternative_haplotype_count),
 		compression_type(other.compression_type),
 		force(other.force),
 		detailed_progress(other.detailed_progress)
@@ -93,17 +93,17 @@ public:
 			return false;
 		}
 
-		if(minimum_alleles < 0){
+		if(minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum number of alleles..." << std::endl;
 			return false;
 		}
 
-		if(maximum_alleles < 0){
+		if(maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum number of alleles..." << std::endl;
 			return false;
 		}
 
-		if(minimum_alleles > maximum_alleles){
+		if(minimum_sum_alternative_haplotype_count > maximum_sum_alternative_haplotype_count){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum number of alleles > maximum number of alleles..." << std::endl;
 			return false;
 		}
@@ -119,7 +119,7 @@ public:
 				" window_mode=" + (this->window_mode ? std::string("TRUE window_bases=") + std::to_string(this->n_window_bases) : std::string("FALSE") ) +
 				" minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
 				" minP=" + std::to_string(this->P_threshold) +
-				" minMHF=" + std::to_string(this->minimum_alleles) + " maxMHF=" + std::to_string(this->maximum_alleles) +
+				" minAHC=" + std::to_string(this->minimum_sum_alternative_haplotype_count) + " maxAHC=" + std::to_string(this->maximum_sum_alternative_haplotype_count) +
 				" partStart=" + std::to_string(this->chunk_selected) + " parts="  + std::to_string(this->n_chunks) +
 				" threads=" + std::to_string(this->n_threads) + " compression=" + std::to_string(this->compression_type) +
 				" force_type=" + std::to_string(this->force)
@@ -143,8 +143,8 @@ public:
 	double  R2_min;
 	double  R2_max;
 	double  P_threshold;
-	int64_t minimum_alleles;
-	int64_t maximum_alleles;
+	int64_t minimum_sum_alternative_haplotype_count;
+	int64_t maximum_sum_alternative_haplotype_count;
 	writer_type::compression compression_type;
 	force_method force;
 	bool    detailed_progress;

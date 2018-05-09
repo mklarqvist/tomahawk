@@ -118,10 +118,10 @@ Tomahawk can output binary `two` data in the human-readable `ld` format by invok
 | `POS_A`    | Position for marker A            |
 | `CHROM_B`  | Chromosome for marker B            |
 | `POS_B`    | Position for marker B            |
-| `HOM_HOM`  | Count of (0,0) haplotypes            |
-| `HOM_HET`  | Count of (0,1) haplotypes            |
-| `HET_HOM`  | Count of (1,0) haplotypes            |
-| `HET_HET`  | Count of (1,1) haplotypes            |
+| `REF_REF`  | Count of (0,0) haplotypes            |
+| `REF_ALT`  | Count of (0,1) haplotypes            |
+| `ALT_REF`  | Count of (1,0) haplotypes            |
+| `ALT_ALT`  | Count of (1,1) haplotypes            |
 | [`D`](https://en.wikipedia.org/wiki/Linkage_disequilibrium)        | Coefficient of linkage disequilibrium            |
 | `DPrime`   | Normalized coefficient of linkage disequilibrium (scaled to [-1,1])            |
 | [`R`](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient)        | Pearson correlation coefficient            |
@@ -132,10 +132,10 @@ Tomahawk can output binary `two` data in the human-readable `ld` format by invok
 
 The 2x2 contingency table, or matrix, for the Fisher's exact test (`P`) for haplotypes look like this:
 
-|                | Marker A - ref | Marker A - alt |
+|                | REF-A | REF-B |
 |----------------|---------------|-------------------|
-| **Marker B - ref** | A             | B                 |
-| **Marker B - alt** | C             | D                 |
+| **REF-B** | A             | B                 |
+| **ALT-B** | C             | D                 |
 
 The 3x3 contigency table, or matrix, for the Chi-squared test for the unphased model looks like this:
 
@@ -152,16 +152,17 @@ The `two` `FLAG` values are bit-packed booleans in a single integer field and de
 | Markers are phased (or no phase uncertainty)                   | 1          | 1         |
 | Markers on the same contig           | 2          | 2        |
 | Markers far apart on the same contig (> 500kb) | 3          | 4        |
-| Incomplete association (at least one haplotype count with < 1 count)                           | 4          | 8         |
-| Multiple valid roots                 | 5          | 16         |
-| Computed in fast mode                 | 6          | 32         |
-| Was sampled in fast mode                 | 7          | 64         |
-| Marker A has missing values                   | 8          | 128         |
-| Marker B has missing values                   | 9          | 256         |
-| Marker A have MAF < 0.01             | 10          | 512       |
-| Marker B have MAF < 0.01             | 11         | 1024       |
-| Marker A failed HWE test (P < 1e-6)  | 12          | 2048        |
-| Marker B failed HWE test (P < 1e-6)  | 13          | 4096       |
+| Complete LD (at least one haplotype count with < 1 count OR `Dprime` > 0.99)                           | 4          | 8         |
+| Perfect LD (`R2` > 0.99)                           | 5          | 16         |
+| Multiple valid roots                 | 6          | 32         |
+| Computed in fast mode                 | 7          | 64         |
+| Was sampled in fast mode                 | 8          | 128         |
+| Marker A has missing values                   | 9          | 256         |
+| Marker B has missing values                   | 10          | 512         |
+| Marker A have MAF < 0.01             | 11          | 1024       |
+| Marker B have MAF < 0.01             | 12         | 2048       |
+| Marker A failed HWE test (P < 1e-6)  | 13          | 4096        |
+| Marker B failed HWE test (P < 1e-6)  | 14          | 8192       |
 
 Viewing `ld` data from the binary `two` file format and filtering out lines with a
 Fisher's exact test P-value < 1e-4, minor haplotype frequency < 5 and have
