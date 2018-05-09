@@ -1,3 +1,12 @@
+# Release 0.4.0
+
+## Breaking Changes
+* All changes are breaking because of structural rechanges. No files generated prior to this release are supported.
+
+## Major Features And Improvements
+* Added large number of new FLAG fields to `two` files
+* Reintroduced speed mode for calculations when contingency tables are not required
+
 # Release 0.3.3
 
 ## Major Features And Improvements

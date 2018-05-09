@@ -86,7 +86,7 @@ private:
 	bool ExtendBCF(); // extend a Twk file with a BCF file
 
 	// Parse a `bcf`/`vcf` line
-	bool parseVCFLine(vcf_entry_type& line);      // Import a VCF line
+	bool parseVCFLine(vcf_entry_type& line); // Import a VCF line
 	bool parseBCFLine(bcf_entry_type& line); // Import a BCF line
 
 	// Check if the current meta and RLE buffers exceeds

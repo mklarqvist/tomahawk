@@ -5,6 +5,7 @@ namespace Support {
 
 OutputEntrySupport::OutputEntrySupport() :
 	controller(0),
+	R(0),
 	R2(0),
 	D(0),
 	Dprime(0),
@@ -12,7 +13,7 @@ OutputEntrySupport::OutputEntrySupport() :
 	P(0),
 	chiSqModel(0),
 	chiSqFisher(0),
-	totalAlleleCounts(0)
+	totalHaplotypeCounts(0)
 	{
 	}
 
@@ -24,7 +25,7 @@ void OutputEntrySupport::operator=(const OutputEntrySupport& other){
 	this->D = other.D;
 	this->Dprime = other.Dprime;
 	this->P = other.P;
-	this->totalAlleleCounts = other.totalAlleleCounts;
+	this->totalHaplotypeCounts = other.totalHaplotypeCounts;
 	memcpy(&this->alleleCounts[0], &other.alleleCounts[0], sizeof(float)*171);
 	memcpy(&this->haplotypeCounts[0], &other.haplotypeCounts[0], sizeof(float)*4);
 }

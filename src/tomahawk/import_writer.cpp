@@ -112,98 +112,87 @@ void ImportWriter::setHeader(VCF::VCFHeader& header){
 	this->rleController_->DetermineBitWidth();
 }
 
-bool ImportWriter::add(const VCF::VCFLine& line){
-	const U32 meta_start_pos = this->buffer_meta_.size();
+bool ImportWriter::add(const VCF::VCFLine& vcf_entry){
+	//const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
-	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+
+	// Run-length encode
+	MetaEntry meta;
+	if(!this->rleController_->RunLengthEncode(vcf_entry, meta, this->buffer_rle_)){
+		//this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.n_chars - rle_start_pos)/this->rleController_->getBitWidth();
-	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
+	//const U64 n_runs = (this->buffer_rle_.n_chars - rle_start_pos)/this->rleController_->getBitWidth();
 
-	if(n_runs == 1){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+
+	if(meta.runs == 1){
+		//this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "singleton" << std::endl;
 		return false;
 	}
 
-	if(base_meta.HWE_P < this->filter.HWE_P){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+	if(meta.HWE_P < this->filter.HWE_P){
+		//this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << '\t' << base_meta << std::endl;
 		return false;
 	}
 
-	if(base_meta.MAF < this->filter.MAF){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+	if(meta.AF < this->filter.MAF){
+		//this->buffer_meta_.n_chars = meta_start_pos; // reroll back
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << '\t' << base_meta << std::endl;
 		return false;
 	}
 
 	if(this->totempole_entry.min_position == 0)
-		this->totempole_entry.min_position = line.position;
+		this->totempole_entry.min_position = vcf_entry.position;
 
-	this->totempole_entry.max_position = line.position;
+	this->totempole_entry.max_position = vcf_entry.position;
 	++this->totempole_entry;
+	this->buffer_meta_ << meta;
 
 	return true;
 }
 
-bool ImportWriter::add(const BCF::BCFEntry& line){
-	const U32 meta_start_pos = this->buffer_meta_.size();
+bool ImportWriter::add(const BCF::BCFEntry& bcf_entry){
+	//const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
 
-	if(!this->rleController_->RunLengthEncode(line, this->buffer_meta_, this->buffer_rle_)){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+	// Run-length encode
+	MetaEntry meta;
+	if(!this->rleController_->RunLengthEncode(bcf_entry, meta, this->buffer_rle_)){
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	const U64 n_runs = (this->buffer_rle_.n_chars - rle_start_pos)/this->rleController_->getBitWidth();
-	const MetaEntryBase& base_meta = *reinterpret_cast<const MetaEntryBase* const>(&this->buffer_meta_[meta_start_pos]);
-
-	if(n_runs == 1){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+	if(meta.HWE_P < this->filter.HWE_P){
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
 		return false;
 	}
 
-	if(base_meta.HWE_P < this->filter.HWE_P){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
+	if(meta.AF < this->filter.MAF){
 		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
-		//std::cerr << "HWE_P < " << this->filter.HWE_P << ": " << base_meta.HWE_P << std::endl;
-		return false;
-	}
-
-
-
-	if(base_meta.MAF < this->filter.MAF){
-		this->buffer_meta_.n_chars = meta_start_pos; // reroll back
-		this->buffer_rle_.n_chars  = rle_start_pos; // reroll back
-		//std::cerr << "MAF < " << this->filter.MAF << ": " << base_meta.MAF << std::endl;
 		return false;
 	}
 
 	if(this->totempole_entry.min_position == 0)
-		this->totempole_entry.min_position = line.body->POS + 1;
+		this->totempole_entry.min_position = meta.position;
 
-	this->totempole_entry.max_position = line.body->POS + 1;
+	this->totempole_entry.max_position = meta.position;
 	++this->totempole_entry;
+	this->buffer_meta_ << meta;
 
 	return true;
 }
 
 // flush and write
 bool ImportWriter::flush(void){
-	if(this->buffer_meta_.size() == 0){
-		//std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Cannot flush writer with 0 entries..." << std::endl;
+	if(this->buffer_meta_.size() == 0)
 		return false;
-	}
 
 	this->totempole_entry.byte_offset = this->stream.tellp(); // IO offset in Tomahawk output
 	this->gzip_controller_.Deflate(this->buffer_meta_, this->buffer_rle_); // Deflate block

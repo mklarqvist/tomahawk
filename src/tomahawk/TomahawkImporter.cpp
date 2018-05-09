@@ -41,10 +41,13 @@ bool TomahawkImporter::Build(){
 	temp.close();
 
 	if(tempData[0] == '#' && tempData[1] == '#'){
+		/*
 		if(!this->BuildVCF()){
 			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
 			return false;
 		}
+		*/
+		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Import file has to be binary VCF (BCF)!" << std::endl;
 	} else if((BYTE)tempData[0] == IO::Constants::GZIP_ID1 && (BYTE)tempData[1] == IO::Constants::GZIP_ID2){
 		if(!this->BuildBCF()){
 			std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "Failed build!" << std::endl;
@@ -88,7 +91,8 @@ bool TomahawkImporter::BuildBCF(void){
 	// Get a line
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
-		if(!entry.good()){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+			std::cerr << "first: " << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << ",miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -107,6 +111,7 @@ bool TomahawkImporter::BuildBCF(void){
 	this->sort_order_helper.prevcontigID       = contigID;
 	this->writer_.totempole_entry.contigID     = contigID;
 	this->writer_.totempole_entry.min_position = entry.body->POS;
+	this->writer_.totempole_entry.max_position = entry.body->POS;
 
 	if(!this->parseBCFLine(entry)){
 		std::cerr << Helpers::timestamp("ERROR", "BCF") << "Failed to parse BCF entry..." << std::endl;
@@ -116,7 +121,8 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Parse lines
 	while(reader.nextVariant(entry)){
-		if(!entry.good()){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+			if(entry.gt_support.hasEOV) std::cerr << "EOV: " << entry.gt_support.hasGenotypes << "," << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << " miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -286,21 +292,19 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	}
 
 	// Assert position is in range
-	if(line.body->POS+1 > this->vcf_header_->getContig(line.body->CHROM).length){
+	if(line.body->POS + 1 > this->vcf_header_->getContig(line.body->CHROM).length){
 		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << (*this->vcf_header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > reported max size of contig (" << (*this->vcf_header_)[line.body->CHROM].length << ")..." << std::endl;
 		return false;
 	}
 
 	// Assert file is ordered
-	if(line.body->POS < this->sort_order_helper.previous_position){
+	if(line.body->POS + 1 < this->sort_order_helper.previous_position){
 		std::cerr << Helpers::timestamp("ERROR", "IMPORT") << "File is not sorted by coordinates (" << (*this->vcf_header_)[line.body->CHROM].name << ':' << line.body->POS+1 << " > " << (*this->vcf_header_)[line.body->CHROM].name << ':' << this->sort_order_helper.previous_position << ")..." << std::endl;
 		return false;
 	}
 
 
 	// Assess missingness
-	const double missing = line.getMissingness(this->vcf_header_->samples);
-	//const float missing = 0;
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
 			//if(!SILENT)
@@ -316,13 +320,6 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
-		if(missing > this->filters.missingness){
-			//if(!SILENT)
-			//std::cerr << Helpers::timestamp("WARNING", "VCF") << "Large missingness (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << ", " << missing << "%).  Dropping... / " << this->filters.missingness << std::endl;
-			this->sort_order_helper.previous_included = false;
-			goto next;
-		}
-
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(line.body->CHROM); // update block count for this contigID
@@ -332,7 +329,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			if(this->writer_.totempole_entry.size())
 				this->index += this->writer_.totempole_entry;
 
-			this->writer_.TotempoleSwitch(line.body->CHROM, this->sort_order_helper.previous_position);
+			this->writer_.TotempoleSwitch(line.body->CHROM, 0);
 		}
 		if(this->writer_.add(line))
 			this->sort_order_helper.previous_included = true;
@@ -342,8 +339,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		this->sort_order_helper.previous_included = false;
 
 	next:
-	this->sort_order_helper.previous_position = line.body->POS;
-	this->sort_order_helper.prevcontigID = line.body->CHROM;
+	this->sort_order_helper.previous_position = line.body->POS + 1;
+	this->sort_order_helper.prevcontigID      = line.body->CHROM;
 
 	return true;
 }

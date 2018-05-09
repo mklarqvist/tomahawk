@@ -26,11 +26,11 @@ DEALINGS IN THE SOFTWARE.
 void import_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Convert VCF/BCF->TWK/; subset and slice TWK/TWO data\n"
+	"About:  Convert BCF->TWK/; subset and slice TWK/TWO data\n"
 	"        Only biallelic diploid genotypes from SNVs will be retained\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.vcf>/<in.bcf> -o <output.twk>\n\n"
+	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.bcf> -o <output.twk>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
+	"  -i FILE  input BCF file (required)\n"
 	"  -o FILE  output file prefix (required)\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
 	"  -m FLOAT Minor-allele frequency (MAF) cutoff (default: 0)\n"

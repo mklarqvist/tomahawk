@@ -15,7 +15,7 @@ class OutputSortSlave {
 private:
 	typedef OutputSortSlave       self_type;
 	typedef IO::OutputEntry       entry_type;
-	typedef IO::OutputWriterFile  writer_type;
+	typedef IO::OutputWriter      writer_type;
 	typedef TomahawkOutputReader  reader_type;
 	typedef IO::TGZFController    tgzf_controller_type;
 	typedef IO::BasicBuffer       buffer_type;
@@ -79,21 +79,22 @@ private:
 				}
 				container += *e;
 			}
-
-			std::sort(container.pfront(), container.pback());
+			std::sort(&container.front(), &container.back() + 1);
 
 			const entry_type* prev = &container[0];
 			for(size_t j = 1; j < container.size(); ++j){
 				if(*prev >= container[j]){
-					std::cerr << Helpers::timestamp("ERROR") << j-1 << ',' << j << std::endl;
-					std::cerr << Helpers::timestamp("ERROR") << *prev << std::endl;
-					std::cerr << Helpers::timestamp("ERROR") << container[j] << std::endl;
+					std::cerr << Helpers::timestamp("ERROR","SORT");
+					std::cerr << j-1 << ',' << j << std::endl;
+					std::cerr << *prev << std::endl;
+					std::cerr << container[j] << std::endl;
 					exit(1);
 				}
 				prev = &container[j];
 			}
 
 			this->writer_ << container;
+
 			if(finished_)
 				break;
 		}

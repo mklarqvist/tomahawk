@@ -7,6 +7,7 @@
 #include "../../math/fisher_math.h"
 #include "../../io/bcf/BCFReader.h"
 #include "../../io/vcf/VCFLines.h"
+#include "../../tomahawk/meta_entry.h"
 
 namespace Tomahawk{
 namespace Algorithm{
@@ -21,8 +22,7 @@ struct TomahawkImportRLEHelper{
 		HWE_P(0),
 		missingValues(0),
 		phased(false),
-		expectedSamples(expectedSamples),
-		fisherTable(1)
+		expectedSamples(expectedSamples)
 	{
 		memset(&this->countsGenotypes[0], 0, sizeof(U64)*16);
 		memset(&this->countsAlleles[0],   0, sizeof(U64)*3);
@@ -42,11 +42,8 @@ struct TomahawkImportRLEHelper{
 	}
 	inline const bool& hasMissing(void) const{ return(this->missingValues); }
 
-	double calculateMAF(void){
-		if(this->countsAlleles[0] > this->countsAlleles[1])
-			return(this->countsAlleles[1]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
-		else
-			return(this->countsAlleles[0]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
+	inline const double calculateAF(void) const{
+		return(this->countsAlleles[0]/((double)this->countsAlleles[0]+this->countsAlleles[1]));
 	}
 
 	void calculateMGF(void){
@@ -183,19 +180,19 @@ struct TomahawkImportRLEHelper{
 
 	U64   countsGenotypes[16];
 	U64   countsAlleles[3];
-	float MAF;
-	float MGF;
-	float HWE_P;
+	double MAF;
+	double MGF;
+	double HWE_P;
 	bool  missingValues;
 	bool  phased;
 	const U64  expectedSamples;
-	FisherMath fisherTable;
 };
 
 class GenotypeEncoder {
 	typedef GenotypeEncoder self_type;
-	typedef bool (self_type::*rleFunction)(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
-	typedef bool (self_type::*bcfFunction)(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+	typedef MetaEntry meta_entry_type;
+	typedef bool (self_type::*rleFunction)(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+	typedef bool (self_type::*bcfFunction)(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs); // Type cast pointer to function
 
 	typedef TomahawkImportRLEHelper helper_type;
 
@@ -265,23 +262,23 @@ public:
 		}
 	}
 
-	inline bool RunLengthEncode(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+	inline bool RunLengthEncode(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
 		if(!line.getComplex())
 			return((*this.*encode)(line, meta, runs));
 		else
 			return((*this.*encodeComplex)(line, meta, runs));
 	}
 
-	inline bool RunLengthEncode(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
+	inline bool RunLengthEncode(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs){
 		return((*this.*encodeBCF)(line, meta, runs));
 	}
 
 	inline const BYTE& getBitWidth(void) const{ return this->bit_width; }
 
 private:
-	template <class T> bool RunLengthEncodeSimple (const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs);
-	template <class T> bool RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs);
-	template <class T> bool RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeSimple (const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeComplex(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs);
 
 private:
 	U64         n_samples;
@@ -297,23 +294,19 @@ public:
 };
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
-	//std::cerr << meta.size() << '\t' << runs.size();
+bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+	meta.position = (U32)line.body->POS + 1;
+	meta.ref_alt  = line.ref_alt;
 
-	meta += (U32)line.body->POS + 1;
-	meta += line.ref_alt;
-
-	U32 internal_pos = line.p_genotypes;
+	U32 internal_pos = line.formatID[0].l_offset;
 	U64 sumLength = 0;
 	T length = 1;
 	T __dump = 0;
 	T n_runs = 0;
-	//const U64 runs_pointer_begin = runs.pointer;
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-	//assert(packed == 0 || packed == 1 || packed == 4 || packed == 5);
 
 	this->helper.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
@@ -321,7 +314,6 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
-		//assert(packed_internal == 0 || packed_internal == 1 || packed_internal == 4 || packed_internal == 5);
 
 		if(packed != packed_internal){
 			__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
@@ -345,7 +337,6 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 	__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
 	__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 	runs += __dump;
-	//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
 	++n_runs;
 
 	this->helper[packed] += length;
@@ -354,233 +345,29 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, IO::BasicBuf
 
 	sumLength += length;
 	assert(sumLength == this->n_samples);
-	//assert(internal_pos == line.size());
 
 	this->helper.calculateMGF();
 	this->helper.calculateHardyWeinberg();
 
-	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
-	position <<= 2;
-	position |= this->helper.phased << 1;
-	position |= this->helper.missingValues << 0;
-	meta += this->helper.MGF;
-	meta += this->helper.HWE_P;
-	//std::cerr << this->helper.MGF << std::endl;
-	//n_runs = runs.pointer - runs_pointer_begin; // temp
-	meta += n_runs;
+	meta.all_phased  = this->helper.phased;
+	meta.has_missing = this->helper.missingValues;
+	meta.AF          = this->helper.calculateAF();
+	meta.HWE_P       = this->helper.HWE_P;
+	meta.runs        = n_runs;
 
 	this->helper.reset();
 	return true;
 }
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeSimple(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
-	meta += line.position;
-	meta += line.ref_alt;
-
-	/*//////////////////////////////
-	// Encoding:
-	// First 8|T| - TOMAHAWK_SNP_PACK_WIDTH bits encode the run length
-	// remaining TOMAHAWK_SNP_PACK_WIDTH bits encode
-	// TOMAHAWK_ALLELE_PACK_WIDTH bits of snpA and TOMAHAWK_ALLELE_PACK_WIDTH bits of snpB
-	//////////////////////////////*/
-	T run_length = 1;
-
-	// ASCII value for '.' is 46
-	// Therefore:
-	// . - 46 = 0
-	// 0 - 46 = 2
-	// 1 - 46 = 3
-	//
-	// Remap:
-	// 0 -> 2 (missing)
-	// 2 -> 0 (1)
-	// 3 -> 1 (0)
-	//
-	// Genotypes are thus:
-	// 0/0 -> 0000b = 0
-	// 0/1 -> 0001b = 1
-	// 1/0 -> 0100b = 4
-	// 1/1 -> 0101b = 5
-	// ...
-	// mixed values for missing
-	// ....
-	// largest value:
-	// ./. -> 0101b = 10
-
-	// Determine phase of the variant
-	// Sets the phase of all genotypes in this variant to whatever the first one is
-	this->helper.determinePhase(line.simple_[0].separator);
-
-	BYTE type =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[0].snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
-		 type ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[0].snpB - 46] << 0;
-	BYTE curType = type;
-	T __dump = 0;
-	T total_samples = 0;
-	T runsCount = 0;
-	//U32 startOffset = runs.pointer;
-
-	// Encode
-	for(U32 i = 1; i < this->n_samples; ++i){
-		curType =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
-		curType ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.simple_[i].snpB - 46] << 0;
-
-		// Current type is different from previous type
-		if(curType != type){
-			__dump =  (run_length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-			__dump ^= (type & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-
-
-			total_samples += run_length;
-			//runs.pointer += PACK3(curType, &runs.data[runs.pointer], run_length);
-			runs += __dump;
-
-			this->helper[type] += run_length;
-			this->helper.countsAlleles[type >> 2] += run_length;
-			this->helper.countsAlleles[type & 3]  += run_length;
-
-			run_length = 1;
-			type = curType;
-			++runsCount;
-
-		} else ++run_length;
-	}
-
-	// Encode final
-	__dump =  (run_length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-	__dump ^= (type & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-	runs += __dump;
-	total_samples += run_length;
-	//runs.pointer += PACK3(curType, &runs.data[runs.pointer], run_length);
-	this->helper[type] += run_length;
-	this->helper.countsAlleles[type >> 2] += run_length;
-	this->helper.countsAlleles[type & 3]  += run_length;
-	++runsCount;
-
-	if(total_samples != this->n_samples){
-		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->n_samples << std::endl;
-		exit(1);
-	}
-
-	this->helper.calculateMGF();
-	this->helper.calculateHardyWeinberg();
-
-	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
-	position <<= 2;
-	position |= this->helper.phased << 1;
-	position |= this->helper.missingValues << 0;
-	meta += this->helper.MGF;
-	meta += this->helper.HWE_P;
-	meta += runsCount;
-
-	this->helper.reset();
-	return true;
+bool GenotypeEncoder::RunLengthEncodeSimple(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+	return false;
 }
 
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeComplex(const VCF::VCFLine& line, IO::BasicBuffer& meta, IO::BasicBuffer& runs){
-	meta += line.position;
-	meta += line.ref_alt;
-
-	/*//////////////////////////////
-	// Encoding:
-	// First 8|T| - TOMAHAWK_SNP_PACK_WIDTH bits encode the run length
-	// remaining TOMAHAWK_SNP_PACK_WIDTH bits encode
-	// TOMAHAWK_ALLELE_PACK_WIDTH bits of snpA and TOMAHAWK_ALLELE_PACK_WIDTH bits of snpB
-	//////////////////////////////*/
-	T run_length = 1;
-
-	// ASCII value for '.' is 46
-	// Therefore:
-	// . - 46 = 0
-	// 0 - 46 = 2
-	// 1 - 46 = 3
-	//
-	// Remap:
-	// 0 -> 2 (missing)
-	// 2 -> 0 (1)
-	// 3 -> 1 (0)
-	//
-	// Genotypes are thus:
-	// 0/0 -> 0000b = 0
-	// 0/1 -> 0001b = 1
-	// 1/0 -> 0100b = 4
-	// 1/1 -> 0101b = 5
-	// ...
-	// mixed values for missing
-	// ....
-	// largest value:
-	// ./. -> 0101b = 10
-
-	// Determine phase of the variant
-	// Sets the phase of all genotypes in this variant to whatever the first one is
-	this->helper.determinePhase(line.complex_[0]->separator);
-
-	BYTE type =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[0]->snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
-		 type ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[0]->snpB - 46] << 0;
-	BYTE curType = type;
-	T __dump = 0;
-	T total_samples = 0;
-	T runsCount = 0;
-
-	// Encode
-	for(U32 i = 1; i < this->n_samples; ++i){
-		curType =  Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[i]->snpA - 46] << Constants::TOMAHAWK_ALLELE_PACK_WIDTH;
-		curType ^= Constants::TOMAHAWK_ALLELE_LOOKUP[line.complex_[i]->snpB - 46] << 0;
-
-		// Current type is different from previous type
-		if(curType != type){
-			__dump =  (run_length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-			__dump ^= (type & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-			runs += __dump;
-			this->helper[type] += run_length;
-			this->helper.countsAlleles[type >> 2] += run_length;
-			this->helper.countsAlleles[type & 3]  += run_length;
-
-			//std::cerr << run_length << '|' << (int)type << '\t';
-
-			total_samples += run_length;
-			run_length = 1;
-			type = curType;
-			++runsCount;
-
-		} else ++run_length;
-	}
-
-	// Encode final
-	__dump =  (run_length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-	__dump ^= (curType & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
-	runs += __dump;
-	this->helper[type] += run_length;
-	this->helper.countsAlleles[type >> 2] += run_length;
-	this->helper.countsAlleles[type & 3]  += run_length;
-	//std::cerr << run_length << '|' << (int)type << std::endl;
-	++runsCount;
-
-	total_samples += run_length;
-
-	if(total_samples != this->n_samples){
-		std::cerr << Helpers::timestamp("ERROR", "RLE") << "Sum of run lengths does not equal number of samples: " << total_samples << "/" << this->n_samples << std::endl;
-		exit(1);
-	}
-
-	this->helper.calculateMGF();
-	this->helper.calculateHardyWeinberg();
-
-	// Position
-	U32& position = *reinterpret_cast<U32*>(&meta[meta.size() - 5]);
-	position <<= 2;
-	position |= this->helper.phased << 1;
-	position |= this->helper.missingValues << 0;
-	meta += this->helper.MGF;
-	meta += this->helper.HWE_P;
-	meta += runsCount;
-
-	this->helper.reset();
-	return true;
+bool GenotypeEncoder::RunLengthEncodeComplex(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+	return false;
 }
 
 }

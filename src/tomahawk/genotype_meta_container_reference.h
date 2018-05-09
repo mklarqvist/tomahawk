@@ -20,7 +20,7 @@ private:
     typedef const value_type*                   const_pointer;
     typedef std::ptrdiff_t                      difference_type;
     typedef std::size_t                         size_type;
-	typedef Totempole::IndexEntry           header_entry;;
+	typedef Totempole::IndexEntry               header_entry;;
 
 public:
 	GenotypeMetaContainerReference(const U64 n_samples) :

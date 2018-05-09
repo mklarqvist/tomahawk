@@ -11,7 +11,9 @@ TomahawkReader::TomahawkReader() :
 	dropGenotypes(false),
 	showHeader(true),
 	index_(nullptr),
-	writer(nullptr)
+	writer(nullptr),
+	interval_tree(nullptr),
+	interval_tree_entries(nullptr)
 {}
 
 TomahawkReader::~TomahawkReader(){
@@ -20,6 +22,12 @@ TomahawkReader::~TomahawkReader(){
 	this->outputBuffer_.deleteAll();
 	delete this->writer;
 	delete this->index_;
+
+	// Todo: fix
+	//for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
+	//	delete this->interval_tree[i];
+	delete [] this->interval_tree;
+	delete [] this->interval_tree_entries;
 }
 
 bool TomahawkReader::open(const std::string input){
@@ -76,6 +84,11 @@ bool TomahawkReader::open(const std::string input){
 
 	if(this->header_.validate() == false){
 		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
+		return false;
+	}
+
+	if(this->header_.magic_.major_version == 0 && this->header_.magic_.minor_version < 0.4){
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Legacy file not supported..." << std::endl;
 		return false;
 	}
 
@@ -264,15 +277,28 @@ bool TomahawkReader::outputBlocks(){
 	typedef bool (Tomahawk::TomahawkReader::*blockFunction)(const U32 blockID);
 	blockFunction func__ = nullptr;
 
-	switch(this->bit_width_){
-	case 1: func__ = &TomahawkReader::outputBlock<BYTE>; break;
-	case 2: func__ = &TomahawkReader::outputBlock<U16>;  break;
-	case 4: func__ = &TomahawkReader::outputBlock<U32>;  break;
-	case 8: func__ = &TomahawkReader::outputBlock<U64>;  break;
-	default:
-		std::cerr << Helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
-		exit(1);
-		break;
+	if(this->interval_tree_entries != nullptr){
+		switch(this->bit_width_){
+		case 1: func__ = &TomahawkReader::outputBlockFilter<BYTE>; break;
+		case 2: func__ = &TomahawkReader::outputBlockFilter<U16>;  break;
+		case 4: func__ = &TomahawkReader::outputBlockFilter<U32>;  break;
+		case 8: func__ = &TomahawkReader::outputBlockFilter<U64>;  break;
+		default:
+			std::cerr << Helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
+			exit(1);
+			break;
+		}
+	} else {
+		switch(this->bit_width_){
+		case 1: func__ = &TomahawkReader::outputBlock<BYTE>; break;
+		case 2: func__ = &TomahawkReader::outputBlock<U16>;  break;
+		case 4: func__ = &TomahawkReader::outputBlock<U32>;  break;
+		case 8: func__ = &TomahawkReader::outputBlock<U64>;  break;
+		default:
+			std::cerr << Helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
+			exit(1);
+			break;
+		}
 	}
 
 	if(!SILENT)
@@ -284,17 +310,36 @@ bool TomahawkReader::outputBlocks(){
 		std::cout << "##INFO=<ID=HWE_P,Number=1,Type=Float,Description=\"Hardy-Weinberg P-value (Fisher's exact test)\">" << std::endl;
 		std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
 		std::cout << "##tomahawk_viewCommand=" + Helpers::program_string() << std::endl;
-		std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
+		if(this->dropGenotypes){
+			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
+		} else {
+			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 
-		std::cout << this->header_.getSample(0);
-		for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
-			std::cout << '\t' << this->header_.getSample(i);
+			std::cout << this->header_.getSample(0);
+			for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
+				std::cout << '\t' << this->header_.getSample(i);
+		}
+
 		std::cout.put('\n');
-
 	}
 
-	for(U32 i = 0; i < this->index_->getContainer().size(); ++i){
-		(*this.*func__)(i);
+	if(this->interval_tree_entries != nullptr){
+		// [a, b] overlaps with [x, y] iff b > x and a < y.
+		for(U32 i = 0; i < this->index_->size(); ++i){
+			// No matches in this contig
+			if(this->interval_tree_entries[this->index_->getContainer().at(i).contigID].size() == 0)
+				continue;
+
+			// Find overlapping matches
+			std::vector<interval_type> ret = this->interval_tree[this->index_->getContainer().at(i).contigID]->findOverlapping(this->index_->getContainer().at(i).min_position, this->index_->getContainer().at(i).max_position);
+
+			// If there are any then use
+			if(ret.size()) (*this.*func__)(i);
+		}
+	} else { // no filter
+		for(U32 i = 0; i < this->index_->getContainer().size(); ++i){
+			(*this.*func__)(i);
+		}
 	}
 
 	return true;

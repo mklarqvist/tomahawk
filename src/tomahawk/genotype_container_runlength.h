@@ -21,7 +21,7 @@ private:
     typedef const value_type*                    const_pointer;
     typedef std::ptrdiff_t                       difference_type;
     typedef std::size_t                          size_type;
-	typedef MetaEntry<T>                         meta_type;
+	typedef MetaEntry                            meta_type;
 
 public:
 	GenotypeContainerRunlength() :

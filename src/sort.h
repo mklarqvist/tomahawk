@@ -137,7 +137,7 @@ int sort(int argc, char** argv){
 	Tomahawk::Algorithm::OutputSorter reader;
 	reader.n_threads = threads;
 
-	if(!merge){
+	if(merge == false){
 		if(!reader.sort(input, output, memory_limit)){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
 			return 1;

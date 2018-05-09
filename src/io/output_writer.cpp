@@ -12,7 +12,25 @@ OutputWriter::OutputWriter(void) :
 	n_blocks(0),
 	l_flush_limit(2000000),
 	l_largest_uncompressed(0),
-	//stream(nullptr),
+	stream(nullptr),
+	buffer(this->l_flush_limit*2),
+	spin_lock(new spin_lock_type),
+	index_(new index_type),
+	footer_(new footer_type)
+{
+
+}
+
+OutputWriter::OutputWriter(std::string input_file) :
+	owns_pointers(true),
+	writing_sorted_(false),
+	writing_sorted_partial_(false),
+	n_entries(0),
+	n_progress_count(0),
+	n_blocks(0),
+	l_flush_limit(2000000),
+	l_largest_uncompressed(0),
+	stream(new std::ofstream(input_file, std::ios::binary | std::ios::out)),
 	buffer(this->l_flush_limit*2),
 	spin_lock(new spin_lock_type),
 	index_(new index_type),
@@ -30,7 +48,7 @@ OutputWriter::OutputWriter(const self_type& other) :
 	n_blocks(other.n_blocks),
 	l_flush_limit(other.l_flush_limit),
 	l_largest_uncompressed(0),
-	//stream(other.stream),
+	stream(other.stream),
 	buffer(other.buffer.capacity()),
 	spin_lock(other.spin_lock),
 	index_(other.index_),
@@ -41,49 +59,16 @@ OutputWriter::OutputWriter(const self_type& other) :
 
 OutputWriter::~OutputWriter(void){
 	if(this->owns_pointers){
-		//this->stream->flush();
-		//this->stream->close();
-		//delete this->stream;
+		this->stream->flush();
+		this->stream->close();
+		delete this->stream;
 		delete this->spin_lock;
 		delete this->index_;
 		delete this->footer_;
 	}
 }
 
-
-OutputWriterFile::OutputWriterFile(void) :
-	stream(nullptr)
-{
-}
-
-OutputWriterFile::OutputWriterFile(std::string input_file) :
-	filename(input_file),
-	stream(nullptr)
-{
-
-}
-
-OutputWriterFile::OutputWriterFile(const self_type& other) :
-	OutputWriter(other),
-	filename(other.filename),
-	basePath(other.basePath),
-	baseName(other.baseName),
-	stream(other.stream)
-{
-
-}
-
-OutputWriterFile::~OutputWriterFile(){}
-
-void OutputWriter::operator<<(const container_type& container){
-	for(size_type i = 0; i < container.size(); ++i)
-		this->buffer << container[i];
-
-	this->n_entries += buffer.size() / sizeof(entry_type);
-	*this << this->buffer;
-}
-
-bool OutputWriterFile::open(const std::string& output_file){
+bool OutputWriter::open(const std::string& output_file){
 	if(output_file.size() == 0)
 		return false;
 
@@ -99,7 +84,7 @@ bool OutputWriterFile::open(const std::string& output_file){
 	return true;
 }
 
-int OutputWriterFile::writeHeaders(twk_header_type& twk_header){
+int OutputWriter::writeHeaders(twk_header_type& twk_header){
 	const std::string command = "##tomahawk_calcCommand=" + Helpers::program_string();
 	twk_header.getLiterals() += command;
 	// Set file type to TWO
@@ -108,7 +93,7 @@ int OutputWriterFile::writeHeaders(twk_header_type& twk_header){
 	return(twk_header.write(*this->stream));
 }
 
-void OutputWriterFile::writeFinal(void){
+void OutputWriter::writeFinal(void){
 	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
 	this->footer_->offset_end_of_data = this->stream->tellp();
 	this->index_->setSorted(this->isSorted());
@@ -120,7 +105,7 @@ void OutputWriterFile::writeFinal(void){
 	this->stream->flush();
 }
 
-void OutputWriterFile::flush(void){
+void OutputWriter::flush(void){
 	if(this->buffer.size() > 0){
 		if(!this->compressor.Deflate(this->buffer)){
 			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -149,7 +134,15 @@ void OutputWriterFile::flush(void){
 	}
 }
 
-void OutputWriterFile::operator<<(buffer_type& buffer){
+void OutputWriter::operator<<(const container_type& container){
+	for(size_type i = 0; i < container.size(); ++i)
+		this->buffer << container[i];
+
+	this->n_entries += buffer.size() / sizeof(entry_type);
+	*this << this->buffer;
+}
+
+void OutputWriter::operator<<(buffer_type& buffer){
 	if(buffer.size() > 0){
 		if(!this->compressor.Deflate(buffer)){
 			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -179,7 +172,7 @@ void OutputWriterFile::operator<<(buffer_type& buffer){
 	}
 }
 
-void OutputWriterFile::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
+void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
 	if(buffer.size() == 0) return;
 
 	assert(uncompressed_size % sizeof(entry_type) == 0);
@@ -205,7 +198,7 @@ void OutputWriterFile::writePrecompressedBlock(buffer_type& buffer, const U64& u
 	this->index_entry.reset();
 }
 
-void OutputWriterFile::CheckOutputNames(const std::string& input){
+void OutputWriter::CheckOutputNames(const std::string& input){
 	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)
@@ -216,130 +209,31 @@ void OutputWriterFile::CheckOutputNames(const std::string& input){
 	else this->baseName = paths[1];
 }
 
+void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
+	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
+	this->buffer += helper.controller;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer << helper;
 
+	// Todo: toggleable
+	// Add reverse
+	this->buffer += helper.controller;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer << helper;
 
+	this->n_entries += 2;
+	this->n_progress_count += 2;
+	this->index_entry.n_variants += 2;
 
-OutputWriterStream::OutputWriterStream(void) :
-	b_written(0)
-{
-}
-
-OutputWriterStream::OutputWriterStream(const self_type& other) :
-	OutputWriter(other),
-	b_written(0)
-{
-
-}
-
-OutputWriterStream::~OutputWriterStream(){}
-
-int OutputWriterStream::writeHeaders(twk_header_type& twk_header){
-	const std::string command = "##tomahawk_calcCommand=" + Helpers::program_string();
-	twk_header.getLiterals() += command;
-	// Set file type to TWO
-	twk_header.magic_.file_type = 1;
-
-	return(twk_header.write(std::cout));
-}
-
-void OutputWriterStream::writeFinal(void){
-	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
-	this->footer_->offset_end_of_data = std::cout.tellp();
-	this->index_->setSorted(this->isSorted());
-	this->index_->setPartialSorted(this->isPartialSorted());
-
-	std::cout.flush();
-	//this->index_->write(std::cout);
-	//this->footer_->write(std::cout);
-	std::cout << *this->index_;
-	std::cout << *this->footer_;
-	std::cout.flush();
-}
-
-void OutputWriterStream::flush(void){
-	if(this->buffer.size() > 0){
-		if(!this->compressor.Deflate(this->buffer)){
-			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
-			exit(1);
-		}
-
-		if(this->buffer.size() > l_largest_uncompressed)
-			this->l_largest_uncompressed = this->buffer.size();
-
-		this->spin_lock->lock();
-		this->index_entry.byte_offset = (U64)std::cout.tellp();
-		this->index_entry.uncompressed_size = this->buffer.size();
-		std::cout.write(this->compressor.buffer.data(), this->compressor.buffer.size());
-		//this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
-		this->index_entry.byte_offset_end = (U64)std::cout.tellp();
-		this->index_entry.n_variants = this->buffer.size() / sizeof(entry_type);
-		//*this->stream << this->index_entry;
-		this->index_->getContainer() += this->index_entry;
-		//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
-		++this->n_blocks;
-
-		this->spin_lock->unlock();
-
-		this->buffer.reset();
-		this->compressor.Clear();
-		this->index_entry.reset();
-	}
-}
-
-void OutputWriterStream::operator<<(buffer_type& buffer){
-	if(buffer.size() > 0){
-		if(!this->compressor.Deflate(buffer)){
-			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
-			exit(1);
-		}
-
-		if(buffer.size() > l_largest_uncompressed)
-			this->l_largest_uncompressed = buffer.size();
-
-		// Lock
-		this->spin_lock->lock();
-
-		this->index_entry.byte_offset       = (U64)std::cout.tellp();
-		this->index_entry.uncompressed_size = buffer.size();
-		std::cout.write(this->compressor.buffer.data(), this->compressor.buffer.size());
-		this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
-		this->index_entry.n_variants        = buffer.size() / sizeof(entry_type);
-		this->index_->getContainer()       += this->index_entry;
-		++this->n_blocks;
-
-		// Unlock
-		this->spin_lock->unlock();
-
-		buffer.reset();
-		this->compressor.Clear();
-		this->index_entry.reset();
-	}
-}
-
-void OutputWriterStream::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
-	if(buffer.size() == 0) return;
-
-	assert(uncompressed_size % sizeof(entry_type) == 0);
-
-	if(uncompressed_size > l_largest_uncompressed)
-		this->l_largest_uncompressed = uncompressed_size;
-
-	// Lock
-	this->spin_lock->lock();
-
-	this->index_entry.byte_offset       = (U64)std::cout.tellp();
-	this->index_entry.uncompressed_size = uncompressed_size;
-	std::cout.write(buffer.data(), buffer.size());
-	this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
-	this->index_entry.n_variants        = uncompressed_size / sizeof(entry_type);
-	this->index_->getContainer()       += this->index_entry;
-	++this->n_blocks;
-
-	// Unlock
-	this->spin_lock->unlock();
-
-	buffer.reset();
-	this->index_entry.reset();
+	if(this->buffer.size() > this->l_flush_limit)
+		this->flush();
 }
 
 }

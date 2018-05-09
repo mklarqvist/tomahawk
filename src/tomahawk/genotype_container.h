@@ -20,7 +20,7 @@ private:
 	typedef GenotypeContainerRunlength<T>        container_runlength_type;
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
 	typedef Base::GenotypeBitvector<>            genotype_bitvector_type;
-	typedef MetaEntry<T>                         meta_type;
+	typedef MetaEntry                            meta_type;
 	typedef Totempole::IndexEntry                header_entry;
     typedef genotype_runlength_type              value_type;
     typedef value_type&                          reference;
@@ -47,7 +47,7 @@ public:
 
 		for(size_t i = 0; i < this->size(); ++i){
 			new( &this->meta_entries[i] ) meta_type( &data_buffer[cumulative_position] );
-			cumulative_position += TOMAHAWK_ENTRY_META_SIZE + sizeof(T);
+			cumulative_position += TOMAHAWK_ENTRY_META_SIZE;
 			genotype_cost += meta_entries[i].runs*sizeof(T);
 		}
 		assert(cumulative_position + genotype_cost == l_buffer_length);
@@ -61,7 +61,7 @@ public:
 
 	~GenotypeContainer(){
 		for(size_type i = 0; i < this->size(); ++i)
-			((this->meta_entries + i)->~MetaEntry<T>)();
+			((this->meta_entries + i)->~MetaEntry)();
 
 		::operator delete[](static_cast<void*>(this->meta_entries));
 		delete this->container_runlength;

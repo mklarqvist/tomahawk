@@ -48,7 +48,14 @@ public:
 	void __run(void){
 		U32 i = 0;
 
-		std::cerr << Helpers::timestamp("PROGRESS") << "Time elapsed\tVariants\tGenotypes\tOutput\tProgress\tEst. Time left" << std::endl;
+		char support_buffer[256];
+		std::cerr << Helpers::timestamp("PROGRESS")
+				<< std::setw(12) << "Time elapsed"
+				<< std::setw(15) << "Variants"
+				<< std::setw(20) << "Genotypes"
+				<< std::setw(15) << "Output"
+				<< std::setw(10) << "Progress"
+				<< "\tEst. Time left" << std::endl;
 		while(this->Run){
 			// Triggered every cycle (119 ms)
 			if(this->Detailed)
@@ -58,11 +65,14 @@ public:
 			if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
 				const double ComparisonsPerSecond = (double)this->counter/this->timer.Elapsed().count();
 
-				std::cerr << Helpers::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t"
-						<< Helpers::ToPrettyString(this->counter) << "\t"
-						<< Helpers::ToPrettyString(this->counter*this->samples) << "\t"
-						<< Helpers::ToPrettyString(this->outputCount) << '\t'
-						<< (double)this->counter.load()/this->totalComparisons*100 << '%' << '\t'
+				const U32 n_p = sprintf(&support_buffer[0], "%0.3f", (double)this->counter.load()/this->totalComparisons*100);
+				support_buffer[n_p] = '%';
+				std::cerr << Helpers::timestamp("PROGRESS")
+						<< std::setw(12) << this->timer.ElapsedString()
+						<< std::setw(15) << Helpers::ToPrettyString(this->counter)
+						<< std::setw(20) << Helpers::ToPrettyString(this->counter*this->samples)
+						<< std::setw(15) << Helpers::ToPrettyString(this->outputCount)
+						<< std::setw(10) << std::string(&support_buffer[0], n_p + 1) << '\t'
 						<< Helpers::secondsToTimestring((this->totalComparisons - this->counter.load())/ComparisonsPerSecond) << std::endl;
 				i = 0;
 			}

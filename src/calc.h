@@ -21,6 +21,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
+#include <regex>
 
 #include "support/MagicConstants.h"
 #include "tomahawk/TomahawkCalc.h"
@@ -28,20 +29,22 @@ DEALINGS IN THE SOFTWARE.
 void calc_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Calculate LD\n"
+	"About:  Calculate linkage disequilibrium\n"
 	"        Force phased -p or unphased -u for faster calculations if\n"
-	"        the entire file is guaranteed to have that phasing.\n"
+	"        the all variant sites are guaranteed to have the given phasing.\n"
 	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -o FILE  output file (required)\n"
 	"  -t INT   number of CPU threads (default: maximum available)\n"
-	"  -c INT   number of parts to split problem into (default: 1)\n"
-	"  -C INT   chosen part to compute (0 < -C < -c; default: 1)\n"
+	"  -c INT   number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
+	"  -C INT   chosen part to compute (0 < -C < -c)\n"
+	"  -w INT   sliding window width in bases (approximative)\n"
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
-	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 5)\n"
-	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1e-4)\n"
+	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
+	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
+	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -d       Show real-time progress update in cerr [null]\n"
@@ -60,24 +63,25 @@ int calc(int argc, char** argv){
 
 	int option_index = 0;
 	static struct option long_options[] = {
-		{"input",		required_argument, 0,  'i' },
-		{"threads",		optional_argument,       0,  't' },
-		{"output",		required_argument, 0,  'o' },
-		{"parts",		optional_argument, 0,  'c' },
-		{"partStart",	optional_argument, 0,  'C' },
-		{"minP",		optional_argument, 0,  'P' },
-		{"phased",		no_argument, 0,  'p' },
-		{"unphased",	no_argument, 0,  'u' },
-		{"minR2",		optional_argument, 0,  'r' },
-		{"maxR2",		optional_argument, 0,  'R' },
-		{"minMHF",	optional_argument, 0,  'a' },
-		{"maxMHF",	optional_argument, 0,  'A' },
-		{"detailedProgress",		no_argument, 0,  'd' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",             required_argument, 0, 'i' },
+		{"threads",           optional_argument, 0, 't' },
+		{"output",            required_argument, 0, 'o' },
+		{"parts",             optional_argument, 0, 'c' },
+		{"partStart",         optional_argument, 0, 'C' },
+		{"minP",              optional_argument, 0, 'P' },
+		{"phased",            no_argument,       0, 'p' },
+		{"unphased",          no_argument,       0, 'u' },
+		{"fast-mode",         no_argument,       0, 'f' },
+		{"minR2",             optional_argument, 0, 'r' },
+		{"maxR2",             optional_argument, 0, 'R' },
+		{"minMHF",            optional_argument, 0, 'a' },
+		{"maxMHF",            optional_argument, 0, 'A' },
+		{"detailedProgress",  no_argument,       0, 'd' },
+		{"silent",            no_argument,       0, 's' },
 		// Not implemented
-		{"windowBases",	optional_argument, 0,  'w' },
-		{"windowPosition",optional_argument, 0,  'W' },
-		{"longHelp",	optional_argument, 0, '?' },
+		{"windowBases",       optional_argument, 0, 'w' },
+		{"windowSites",       optional_argument, 0, 'W' },
+		{"longHelp",          optional_argument, 0, '?' },
 		{0,0,0,0}
 	};
 
@@ -86,9 +90,9 @@ int calc(int argc, char** argv){
 	std::string input;
 	std::string output;
 
-	S32 windowBases = -1, windowPosition = -1; // not implemented
+	double windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -151,6 +155,10 @@ int calc(int argc, char** argv){
 		  parameters.force = Tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
 		  break;
 
+	  case 'f':
+		  parameters.fast_mode = true;
+		  break;
+
 	  case 'P':
 		  parameters.P_threshold = atof(optarg);
 		  if(parameters.P_threshold < 0){
@@ -162,35 +170,47 @@ int calc(int argc, char** argv){
 		  }
 		  break;
 	  case 'a':
-		parameters.minimum_alleles = atoi(optarg);
-		if(parameters.minimum_alleles < 0){
+		parameters.minimum_sum_alternative_haplotype_count = atoi(optarg);
+		if(parameters.minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
 			return(1);
 		}
 		break;
 
 	  case 'A':
-		parameters.maximum_alleles = atoi(optarg);
-		if(parameters.maximum_alleles < 0){
+		parameters.maximum_sum_alternative_haplotype_count = atoi(optarg);
+		if(parameters.maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
 			return(1);
 		}
 		break;
 
 	  case 'w':
-		windowBases = atoi(optarg);
-		if(windowBases <= 0){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
-			return(1);
-		}
+		  if(std::regex_match(std::string(optarg), std::regex("^(([0-9]+)|([0-9]+[eE]{1}[0-9]+))$")) == false){
+			  std::cerr << "not an integer" << std::endl;
+			  return(1);
+		  }
+		  if(std::regex_match(std::string(optarg), std::regex("^[0-9]+$"))){
+			windowBases = atoi(optarg);
+		  } else if(std::regex_match(std::string(optarg), std::regex("^[0-9]+[eE]{1}[0-9]+$"))){
+			  windowBases = atof(optarg);
+		  }
+
+		  if(windowBases <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+				return(1);
+			}
+		parameters.window_mode = true;
+		parameters.n_window_bases = windowBases;
 		break;
 
 	  case 'W':
-		windowPosition = atoi(optarg);
+	    windowPosition = atoi(optarg);
 		if(windowPosition <= 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
 		}
+
 		break;
 
 	  case 's':
@@ -224,6 +244,7 @@ int calc(int argc, char** argv){
 		programMessage();
 		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling calc..." << std::endl;
 	}
+
 
 	// Parse Tomahawk
 	if(!tomahawk.Open(input, output)){

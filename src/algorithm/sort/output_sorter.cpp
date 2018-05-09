@@ -54,13 +54,11 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_sortCommand=" + Helpers::program_string();
 
-	IO::OutputWriterFile writer;
+	IO::OutputWriter writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
-	writer.getIndex().setSorted(false);
-	writer.getIndex().setPartialSorted(true);
 	writer.writeHeaders(this->reader.getHeader());
 
 	if(!SILENT)
@@ -121,30 +119,28 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_mergeSortCommand=" + Helpers::program_string();
 
-	IO::OutputWriterFile writer;
+	IO::OutputWriter writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
 	}
 	writer.setFlushLimit(block_size);
-	writer.getIndex().setSorted(true);
-	writer.getIndex().setPartialSorted(false);
 	writer.writeHeaders(this->reader.getHeader());
 
-	const U32 n_blocks        = this->reader.getIndex().size();
-	std::ifstream* streams    = new std::ifstream[n_blocks];
-	tgzf_iterator** iterators = new tgzf_iterator*[n_blocks];
+	// New index
+	Index index_updated;
+
+	const U32 n_toi_entries = this->reader.getIndex().size();
+	std::ifstream* streams = new std::ifstream[n_toi_entries];
+	tgzf_iterator** iterators = new tgzf_iterator*[n_toi_entries];
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_blocks << " file handles...";
+		std::cerr << Helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
 
-	for(U32 i = 0; i < n_blocks; ++i){
+	for(U32 i = 0; i < n_toi_entries; ++i){
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.getIndex().getContainer()[i].byte_offset);
-		iterators[i] = new tgzf_iterator(streams[i],
-                                         65536,
-                                         this->reader.getIndex().getContainer()[i].byte_offset,
-                                         this->reader.getIndex().getContainer()[i].byte_offset_end);
+		iterators[i] = new tgzf_iterator(streams[i], 65536, this->reader.getIndex().getContainer()[i].byte_offset, this->reader.getIndex().getContainer()[i].byte_offset_end);
 	}
 
 	if(!SILENT)
@@ -159,7 +155,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 
 	// draw one from each
 	const entry_type* e = nullptr;
-	for(U32 i = 0; i < n_blocks; ++i){
+	for(U32 i = 0; i < n_toi_entries; ++i){
 		if(!iterators[i]->nextEntry(e)){
 			std::cerr << Helpers::timestamp("ERROR", "SORT") << "Failed to get an entry..." << std::endl;
 			return false;
@@ -172,39 +168,38 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		return false;
 	}
 
-	// Set first previous entry and current index bounds
-	writer.getPreviousEntry() = outQueue.top().data;
-	writer.getCurrentIndexEntry() = outQueue.top().data;
-
 	// while queue is not empty
 	while(outQueue.empty() == false){
 		// peek at top entry in queue
 		const U32 id = outQueue.top().streamID;
-		writer.addSorted(outQueue.top().data);
+		writer << outQueue.top().data;
 
 		// remove this record from the queue
 		outQueue.pop();
+
+		//iterators[id]->nextEntry(e);
+		//outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
 
 		while(iterators[id]->nextEntry(e)){
 			if(!(*e < outQueue.top().data)){
 				outQueue.push( queue_entry(e, id, entry_type::sortDescending) );
 				break;
 			}
-			writer.addSorted(*e);
+			writer << *e;
 		}
+
 	}
 
 	writer.setPartialSorted(false);
 	writer.setSorted(true);
 	writer.flush();
-	writer.getIndex().buildMetaIndex(this->reader.getHeader().getMagic().getNumberContigs());
 	writer.writeFinal();
 
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 
 	// Cleanup
-	for(U32 i = 0; i < n_blocks; ++i)
+	for(U32 i = 0; i < n_toi_entries; ++i)
 		delete iterators[i];
 
 	delete [] iterators;

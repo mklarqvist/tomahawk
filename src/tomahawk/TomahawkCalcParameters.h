@@ -8,8 +8,8 @@ namespace Tomahawk{
 
 #define CALC_DEFAULT_MINR2      0.1
 #define CALC_DEFAULT_MAXR2      1.0
-#define CALC_DEFAULT_MINP       1e-4
-#define CALC_DEFAULT_MINALLELES 5
+#define CALC_DEFAULT_MINP       1
+#define CALC_DEFAULT_MINALLELES 1
 #define CALC_DEFAULT_MAXALLELES std::numeric_limits<int64_t>::max()
 
 struct TomahawkCalcParameters{
@@ -20,14 +20,17 @@ public:
 
 public:
 	TomahawkCalcParameters() :
+		window_mode(false),
+		fast_mode(false),
 		n_threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 		n_chunks(1),
 		chunk_selected(0),
+		n_window_bases(0),
 		R2_min(CALC_DEFAULT_MINR2),
 		R2_max(CALC_DEFAULT_MAXR2),
 		P_threshold(CALC_DEFAULT_MINP),
-		minimum_alleles(CALC_DEFAULT_MINALLELES),
-		maximum_alleles(CALC_DEFAULT_MAXALLELES),
+		minimum_sum_alternative_haplotype_count(CALC_DEFAULT_MINALLELES),
+		maximum_sum_alternative_haplotype_count(CALC_DEFAULT_MAXALLELES),
 		compression_type(writer_type::compression::binary),
 		force(force_method::none),
 		detailed_progress(false)
@@ -35,14 +38,17 @@ public:
 	}
 
 	TomahawkCalcParameters(const self_type& other):
+		window_mode(other.window_mode),
+		fast_mode(other.fast_mode),
 		n_threads(other.n_threads),
 		n_chunks(other.n_chunks),
 		chunk_selected(other.chunk_selected),
+		n_window_bases(other.n_window_bases),
 		R2_min(other.R2_min),
 		R2_max(other.R2_max),
 		P_threshold(other.P_threshold),
-		minimum_alleles(other.minimum_alleles),
-		maximum_alleles(other.maximum_alleles),
+		minimum_sum_alternative_haplotype_count(other.minimum_sum_alternative_haplotype_count),
+		maximum_sum_alternative_haplotype_count(other.maximum_sum_alternative_haplotype_count),
 		compression_type(other.compression_type),
 		force(other.force),
 		detailed_progress(other.detailed_progress)
@@ -87,17 +93,17 @@ public:
 			return false;
 		}
 
-		if(minimum_alleles < 0){
+		if(minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum number of alleles..." << std::endl;
 			return false;
 		}
 
-		if(maximum_alleles < 0){
+		if(maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum number of alleles..." << std::endl;
 			return false;
 		}
 
-		if(minimum_alleles > maximum_alleles){
+		if(minimum_sum_alternative_haplotype_count > maximum_sum_alternative_haplotype_count){
 			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum number of alleles > maximum number of alleles..." << std::endl;
 			return false;
 		}
@@ -109,9 +115,11 @@ public:
 	}
 
 	std::string getInterpretedString(void) const{
-		return(std::string("minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
+		return(std::string("fast_mode=" + (this->fast_mode ? std::string("TRUE") : std::string("FALSE") ) +
+				" window_mode=" + (this->window_mode ? std::string("TRUE window_bases=") + std::to_string(this->n_window_bases) : std::string("FALSE") ) +
+				" minR2=" + std::to_string(this->R2_min) + " maxR2=" + std::to_string(this->R2_max) +
 				" minP=" + std::to_string(this->P_threshold) +
-				" minMHF=" + std::to_string(this->minimum_alleles) + " maxMHF=" + std::to_string(this->maximum_alleles) +
+				" minAHC=" + std::to_string(this->minimum_sum_alternative_haplotype_count) + " maxAHC=" + std::to_string(this->maximum_sum_alternative_haplotype_count) +
 				" partStart=" + std::to_string(this->chunk_selected) + " parts="  + std::to_string(this->n_chunks) +
 				" threads=" + std::to_string(this->n_threads) + " compression=" + std::to_string(this->compression_type) +
 				" force_type=" + std::to_string(this->force)
@@ -126,14 +134,17 @@ public:
 	}
 
 public:
+	bool    window_mode;
+	bool    fast_mode;
 	S32     n_threads;
 	S32     n_chunks;
 	S32     chunk_selected;
+	U32     n_window_bases;
 	double  R2_min;
 	double  R2_max;
 	double  P_threshold;
-	int64_t minimum_alleles;
-	int64_t maximum_alleles;
+	int64_t minimum_sum_alternative_haplotype_count;
+	int64_t maximum_sum_alternative_haplotype_count;
 	writer_type::compression compression_type;
 	force_method force;
 	bool    detailed_progress;

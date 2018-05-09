@@ -1,7 +1,9 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 
+#include "../tomahawk/genotype_objects.h"
 #include "../support/simd_definitions.h"
+
 
 namespace Tomahawk{
 namespace Base{
@@ -49,6 +51,50 @@ public:
 		delete [] this->data;
 		delete [] this->mask;
 	#endif
+	}
+
+	template <class RLE_TYPE>
+	bool build(const MetaEntry& meta_entry, const RLE_TYPE* const genotypes, const U32& n_samples){
+		const U32 byte_width = ceil((double)n_samples/4);
+
+		// INVERSE mask is cheaper in terms of instructions used
+		// exploited in calculations: TomahawkCalculationSlave
+		const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+		const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+		Algorithm::GenotypeBitPacker packerA(this->data, 2);
+		Algorithm::GenotypeBitPacker packerB(this->mask, 2);
+
+		// Cycle over runs in container
+		for(U32 j = 0; j < meta_entry.runs; ++j){
+			const Support::GenotypeDiploidRunPacked<RLE_TYPE>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<RLE_TYPE>* const>(&genotypes);
+			packerA.add(lookup_data[packed->alleles], packed->runs);
+			packerB.add(lookup_mask[packed->alleles], packed->runs);
+		}
+
+		const U32 byteAlignedEnd  = byte_width / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
+
+		S32 j = 0;
+		// Search from left->right
+		for(; j < byteAlignedEnd; ++j){
+			if(this->data[j] != 0 || this->mask[j] != 0)
+				break;
+		}
+
+		// Front of zeroes
+		this->frontZero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
+		if(j != byteAlignedEnd){
+			j = byteAlignedEnd - 1;
+			for(; j > 0; --j){
+				if(this->data[j] != 0 || this->mask[j] != 0)
+					break;
+			}
+		}
+
+		// Tail of zeroes
+		this->tailZero = ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
+
+		return(true);
 	}
 
 public:

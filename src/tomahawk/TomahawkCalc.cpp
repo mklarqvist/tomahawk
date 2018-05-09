@@ -23,19 +23,6 @@ bool TomahawkCalc::Open(const std::string input, const std::string output){
 template <typename K, typename V>
 bool comparePairs(const std::pair<K,V>& a, const std::pair<K,V>& b){ return a.first < b.first; }
 
-bool TomahawkCalc::CalculateWrapper(){
-	const BYTE bit_width = this->reader.getBitWidth();
-	if(bit_width == 1) 	    return(this->Calculate<BYTE>());
-	else if(bit_width == 2) return(this->Calculate<U16>());
-	else if(bit_width == 4) return(this->Calculate<U32>());
-	else if(bit_width == 8) return(this->Calculate<U64>());
-	else {
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
-		exit(1);
-	}
-
-	return false;
-}
 
 bool TomahawkCalc::Calculate(pair_vector& blocks){
 	if((this->parameters_validated == false) && (!this->parameters.Validate()))
@@ -49,7 +36,17 @@ bool TomahawkCalc::Calculate(pair_vector& blocks){
 		return false;
 	}
 
-	return(this->CalculateWrapper());
+	const BYTE bit_width = this->reader.getBitWidth();
+	if(bit_width == 1) 	    return(this->Calculate<BYTE>());
+	else if(bit_width == 2) return(this->Calculate<U16>());
+	else if(bit_width == 4) return(this->Calculate<U32>());
+	else if(bit_width == 8) return(this->Calculate<U64>());
+	else {
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
+		exit(1);
+	}
+
+	return false;
 }
 
 bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
@@ -66,7 +63,17 @@ bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
 	if(!SILENT)
 		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflated " << blocks.size() << " blocks..." << std::endl;
 
-	return(this->CalculateWrapper());
+	const BYTE bit_width = this->reader.getBitWidth();
+	if(bit_width == 1) 	    return(this->Calculate<BYTE>());
+	else if(bit_width == 2) return(this->Calculate<U16>());
+	else if(bit_width == 4) return(this->Calculate<U32>());
+	else if(bit_width == 8) return(this->Calculate<U64>());
+	else {
+		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
+		exit(1);
+	}
+
+	return false;
 }
 
 bool TomahawkCalc::Calculate(){
@@ -77,10 +84,18 @@ bool TomahawkCalc::Calculate(){
 	this->balancer.setSelected(this->parameters.chunk_selected);
 	this->balancer.setDesired(this->parameters.n_chunks);
 
-	if(!this->balancer.Build(this->reader.getIndex().getContainer().size(), this->parameters.n_threads)){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
-		return false;
+	if(this->parameters.window_mode){
+		if(!this->balancer.BuildWindow(this->reader, this->parameters.n_threads, this->parameters.n_window_bases)){
+			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
+			return false;
+		}
+	} else {
+		if(!this->balancer.Build(this->reader, this->parameters.n_threads)){
+			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
+			return false;
+		}
 	}
+
 
 	return(this->Calculate(this->balancer.getLoad()));
 }

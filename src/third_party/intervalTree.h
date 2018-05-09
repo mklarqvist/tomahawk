@@ -53,7 +53,7 @@ public:
 };
 
 template <class T, typename K>
-class Interval<T*, K> { // Partial specialisation for pointer type
+class Interval<T*, K> {
 	typedef Interval<T*, K> self_type;
 
 public:
@@ -62,7 +62,6 @@ public:
         , stop(e)
         , value(v)
     {
-    	//std::cerr << "partial specialised ctor" << std::endl;
     }
 
     ~Interval(){}
@@ -72,11 +71,9 @@ public:
 		stop(other.stop),
 		value(other.value)
     {
-    	//std::cerr << "party copy ctor: " << this << '\t' << other.value << '\t' << *this << std::endl;
     }
 
     self_type& operator= (const self_type& other){
-    	//std::cerr << "assign" << std::endl;
     	self_type tmp(other);       // re-use copy-constructor
 		*this = std::move(tmp); 	// re-use move-assignment
 		return *this;
@@ -86,7 +83,6 @@ public:
 		this->start = other.start;
 		this->stop = other.stop;
 		this->value = other.value;
-		//std::cerr << "assign move" << std::endl;
 		return *this;
 	}
 
@@ -95,7 +91,6 @@ public:
 		stop(other.stop),
 		value(other.value)
 	{
-    	//std::cerr << "partial move ctor " << this << '\t' << other.value << '\t' << *this << std::endl;
 	}
 
 public:

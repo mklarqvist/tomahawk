@@ -27,26 +27,27 @@ namespace IO{
  * main instance.
  */
 class OutputWriter{
-protected:
-	typedef OutputWriter                self_type;
-	typedef TGZFController              compression_type;
-	typedef Algorithm::SpinLock         spin_lock_type;
-	typedef BasicBuffer                 buffer_type;
-	typedef TomahawkHeader              twk_header_type;
-	typedef Totempole::IndexEntry       index_entry_type;
-	typedef OutputEntry                 entry_type;
-	typedef Support::OutputEntrySupport entry_support_type;
-	typedef Totempole::IndexEntry       header_entry_type;
-	typedef Totempole::IndexContainer   index_container_type;
-	typedef Index                       index_type;
-	typedef Totempole::Footer           footer_type;
-	typedef size_t                      size_type;
-	typedef OutputContainer             container_type;
+private:
+	typedef OutputWriter                    self_type;
+	typedef TGZFController                  compression_type;
+	typedef Algorithm::SpinLock             spin_lock_type;
+	typedef BasicBuffer                     buffer_type;
+	typedef TomahawkHeader                  twk_header_type;
+	typedef Totempole::IndexEntry           index_entry_type;
+	typedef OutputEntry                     entry_type;
+	typedef Support::OutputEntrySupport     entry_support_type;
+	typedef Totempole::IndexEntry           header_entry_type;
+	typedef Totempole::IndexContainer       index_container_type;
+	typedef Index                           index_type;
+	typedef Totempole::Footer               footer_type;
+	typedef size_t                          size_type;
+	typedef OutputContainer                 container_type;
 
 public:
 	OutputWriter(void);
+	OutputWriter(std::string input_file);
 	OutputWriter(const self_type& other);
-	virtual ~OutputWriter(void);
+	~OutputWriter(void);
 
 	inline const U64& sizeEntries(void) const{ return(this->n_entries); }
 	inline const U32& sizeBlocks(void) const{ return(this->n_blocks); }
@@ -59,14 +60,11 @@ public:
 	// Getters
 	inline const bool isSorted(void) const{ return(this->writing_sorted_); }
 	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
-	inline index_type& getIndex(void) const{ return(*this->index_); }
-	inline entry_type& getPreviousEntry(void){ return(this->previous_entry); }
-	inline index_entry_type& getCurrentIndexEntry(void){ return(this->index_entry); }
 
-	virtual bool open(const std::string& output_file) =0;
-	virtual int writeHeaders(twk_header_type& twk_header) =0;
-	virtual void writeFinal(void) =0;
-	virtual void flush(void) =0;
+	bool open(const std::string& output_file);
+	int writeHeaders(twk_header_type& twk_header);
+	void writeFinal(void);
+	void flush(void);
 
 	inline void ResetProgress(void){ this->n_progress_count = 0; }
 	inline const U32& getProgressCounts(void) const{ return this->n_progress_count; }
@@ -97,43 +95,37 @@ public:
 	 * @param header_b Tomahawk index entry for the to container
 	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
 	 */
-	template <class T>
-	void Add(const MetaEntry<T>& meta_a, const MetaEntry<T>& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
+	void Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
 
 	/**<
 	 * Overloaded operator for adding a single `two` entry
 	 * @param entry Input `two` entry
 	 */
 	inline void operator<<(const entry_type& entry){
-		this->buffer << entry;
-		++this->n_entries;
+		if(this->index_entry.n_variants == 0){
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
 
-		// Check if the buffer has to be flushed after adding this entry
-		if(this->buffer.size() > this->l_flush_limit)
+		if(this->index_entry.contigID != entry.AcontigID){
 			this->flush();
-	}
-
-	/**<
-	 *
-	 * @param entry
-	 */
-	inline void addSorted(const entry_type& entry){
-		if(this->previous_entry.AcontigID != entry.AcontigID
-			|| this->previous_entry.BcontigID != entry.BcontigID){
-			//std::cerr << "switch in contig" << std::endl;
-			this->flush();
-			this->index_entry = entry;
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
 		}
 
 		// Check if the buffer has to be flushed after adding this entry
 		if(this->buffer.size() > this->l_flush_limit){
 			this->flush();
-			this->index_entry = entry;
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
 		}
 
 		this->buffer << entry;
 		++this->n_entries;
-		this->previous_entry = entry;
+		++this->index_entry;
 		this->index_entry.max_position = entry.Aposition;
 	}
 
@@ -147,14 +139,17 @@ public:
 	 * Overloaded operator for adding an entire buffer of `two` entries
 	 * @param buffer Target buffer of entries
 	 */
-	virtual void operator<<(buffer_type& buffer) =0;
+	void operator<<(buffer_type& buffer);
 
-	virtual void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size) =0;
+	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
 
-protected:
-	virtual void CheckOutputNames(const std::string& input) =0;
+private:
+	void CheckOutputNames(const std::string& input);
 
-protected:
+private:
+	std::string      filename;
+	std::string      basePath;
+	std::string      baseName;
 	bool             owns_pointers;
 	bool             writing_sorted_;
 	bool             writing_sorted_partial_;
@@ -163,91 +158,13 @@ protected:
 	U32              n_blocks;         // number of index blocks writtenflush_limit
 	U32              l_flush_limit;
 	U32              l_largest_uncompressed;
-	entry_type       previous_entry;
 	index_entry_type index_entry;      // keep track of sort order
-
+	std::ofstream*   stream;
 	buffer_type      buffer;
 	compression_type compressor;
 	spin_lock_type*  spin_lock;
 	index_type*      index_;
 	footer_type*     footer_;
-};
-
-template <class T>
-void OutputWriter::Add(const MetaEntry<T>& meta_a, const MetaEntry<T>& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
-	const U32 writePosA = meta_a.position << 2 | meta_a.phased << 1 | meta_a.missing;
-	const U32 writePosB = meta_b.position << 2 | meta_b.phased << 1 | meta_b.missing;
-	this->buffer += helper.controller;
-	this->buffer += header_a.contigID;
-	this->buffer += writePosA;
-	this->buffer += header_b.contigID;
-	this->buffer += writePosB;
-	this->buffer << helper;
-	// Add reverse
-	this->buffer += helper.controller;
-	this->buffer += header_b.contigID;
-	this->buffer += writePosB;
-	this->buffer += header_a.contigID;
-	this->buffer += writePosA;
-	this->buffer << helper;
-
-	this->n_entries += 2;
-	this->n_progress_count += 2;
-	this->index_entry.n_variants += 2;
-
-	if(this->buffer.size() > this->l_flush_limit)
-		this->flush();
-}
-
-class OutputWriterStream : public OutputWriter{
-private:
-	typedef OutputWriterStream self_type;
-	typedef OutputWriter       parent_type;
-
-public:
-	OutputWriterStream(void);
-	OutputWriterStream(const self_type& other);
-	~OutputWriterStream(void);
-
-	bool open(const std::string& output_file){ return true; }
-	int writeHeaders(twk_header_type& twk_header);
-	void writeFinal(void);
-	void flush(void);
-	void operator<<(buffer_type& buffer);
-	void operator<<(const container_type& container){ parent_type::operator<<(container); }
-	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
-
-private:
-	U64 b_written;
-};
-
-class OutputWriterFile : public OutputWriter {
-private:
-	typedef OutputWriterFile self_type;
-	typedef OutputWriter     parent_type;
-
-public:
-	OutputWriterFile(void);
-	OutputWriterFile(std::string input_file);
-	OutputWriterFile(const self_type& other);
-	~OutputWriterFile(void);
-
-	bool open(const std::string& output_file);
-	int writeHeaders(twk_header_type& twk_header);
-	void writeFinal(void);
-	void flush(void);
-	void operator<<(buffer_type& buffer);
-	void operator<<(const container_type& container){ parent_type::operator<<(container); }
-	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
-
-private:
-	void CheckOutputNames(const std::string& input);
-
-public:
-	std::string      filename;
-	std::string      basePath;
-	std::string      baseName;
-	std::ofstream*   stream;
 };
 
 }

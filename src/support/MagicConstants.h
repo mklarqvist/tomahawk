@@ -14,8 +14,8 @@ extern std::string LITERAL_COMMAND_LINE;
 extern std::string INTERPRETED_COMMAND;
 
 // Versioning
-const float PROGRAM_VERSION_MAJOR = 0.3; // major
-const float PROGRAM_VERSION_MINOR = 4;
+const float PROGRAM_VERSION_MAJOR = 0.4; // major
+const float PROGRAM_VERSION_MINOR = 0;
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
