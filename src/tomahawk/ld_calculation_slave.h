@@ -1437,7 +1437,8 @@ bool LDSlave<T>::CalculateLDPhasedMath(helper_type& helper) const{
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		helper.chiSqModel = 0;
-		helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+		//helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+		helper.chiSqFisher = helper.totalHaplotypeCounts * helper.R2;
 		//helper.chiSqFisher = 0;
 
 		return true;
