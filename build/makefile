@@ -1,3 +1,7 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
 -include ../makefile.init
 
 RM := rm
@@ -45,19 +49,17 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ifneq ($BRANCH, master)
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
-else
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
-endif
 
 # All Target
 all: tomahawk
 
 # Tool invocations
 tomahawk: $(OBJS) $(USER_OBJS)
+	@echo 'Building target: $@'
+	@echo 'Invoking: Cross G++ Linker'
 	g++ -pthread -o "tomahawk" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
 # Other Targets

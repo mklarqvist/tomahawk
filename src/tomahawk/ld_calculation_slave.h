@@ -505,8 +505,8 @@ bool LDSlave<T>::ChooseF11Calculate(helper_type& helper, const double& target, c
 	helper.setCompleteLD(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1);
 	helper.setPerfectLD(helper.R2 > 0.99);
 
-	//helper.chiSqFisher = this->fisherController.chiSquaredTest(helper[0],helper[1],helper[4],helper[5]);
-	helper.chiSqFisher = 0;
+	helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+	//helper.chiSqFisher = 0;
 
 	return true;
 }
@@ -1437,8 +1437,8 @@ bool LDSlave<T>::CalculateLDPhasedMath(helper_type& helper) const{
 
 		// Calculate Chi-Sq CV from 2x2 contingency table
 		helper.chiSqModel = 0;
-		//helper.chiSqFisher = this->fisherController.chiSquaredTest(helper[0],helper[1],helper[4],helper[5]);
-		helper.chiSqFisher = 0;
+		helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+		//helper.chiSqFisher = 0;
 
 		return true;
 	}
