@@ -21,6 +21,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
+#include <regex>
 
 #include "support/MagicConstants.h"
 #include "tomahawk/TomahawkCalc.h"
@@ -89,7 +90,7 @@ int calc(int argc, char** argv){
 	std::string input;
 	std::string output;
 
-	S32 windowBases = -1, windowPosition = -1; // not implemented
+	double windowBases = -1, windowPosition = -1; // not implemented
 
 	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
@@ -185,19 +186,31 @@ int calc(int argc, char** argv){
 		break;
 
 	  case 'w':
-		  windowBases = atoi(optarg);
-		if(windowBases <= 0){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
-			return(1);
-		}
+		  if(std::regex_match(std::string(optarg), std::regex("^(([0-9]+)|([0-9]+[eE]{1}[0-9]+))$")) == false){
+			  std::cerr << "not an integer" << std::endl;
+			  return(1);
+		  }
+		  if(std::regex_match(std::string(optarg), std::regex("^[0-9]+$"))){
+			windowBases = atoi(optarg);
+		  } else if(std::regex_match(std::string(optarg), std::regex("^[0-9]+[eE]{1}[0-9]+$"))){
+			  windowBases = atof(optarg);
+		  }
+
+		  if(windowBases <= 0){
+				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+				return(1);
+			}
+		parameters.window_mode = true;
+		parameters.n_window_bases = windowBases;
 		break;
 
 	  case 'W':
-		  windowPosition = atoi(optarg);
+	    windowPosition = atoi(optarg);
 		if(windowPosition <= 0){
 			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
 			return(1);
 		}
+
 		break;
 
 	  case 's':

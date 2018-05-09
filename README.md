@@ -18,14 +18,16 @@ The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are av
   - [Importing to Tomahawk](#importing-to-tomahawk)
   - [Importing sequence variant data (`bcf`)](#importing-sequence-variant-data-bcf)
   - [Calculating linkage disequilibrium](#calculating-linkage-disequilibrium)
+  - [Sliding window](#sliding-window)
+  - [Fast mode](#fast-mode)
   - [Converting between file formats and filtering](#converting-between-file-formats-and-filtering)
   - [`LD` format description](#ld-format-description)
   - [Subsetting output](#subsetting-output)
   - [Sort a `TWO` file](#sort-a-two-file)
 - [Plotting in `R`](#plotting-in-r)
-- [Algorithmic overview](#Algorithmic-overview)
+- [Algorithmic overview](#algorithmic-overview)
 - [Author](#author)
-- [Acknowledgements](#Acknowledgements)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ## Getting started
@@ -46,6 +48,7 @@ that internally compiles for the most recent SIMD-instruction set available.
 This might result in additional effort when submitting jobs to
 computer farms/clouds with a hardware architecture that is different from the
 compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially substantial loss in compute speed.  
+
 Because Tomahawk is compiled using native CPU-instructions by default, no pre-compiled binaries are available for download.
 
 ## Usage instructions
@@ -77,15 +80,26 @@ bcftools view file.vcf -O b -o file.bcf
 In this example we force computations to use phased math (`-p`) and show a live progressbar
 (`-d`). Generated data is filtered for minimum genotype frequency (`-a`), squared Pearson correlation
 coefficient (`-r`) and by test statistics P-value (`-p`). Total computation is partitioned into 990 psuedo-balanced blocks (`-c`)
-and select the first partition (`-C`) to compute using 28 threads (`-t`);
+and select the first partition (`-C`) to compute using 28 threads (`-t`). When computing genome-wide LD the balancing requires that number of sub-problems (`-c`) is in the set `c choose 2 + c` which is equivalent to the upper-triangular of a square (`c`-by-`c`) matrix plus the diagonal.
 ```bash
 tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28
 ```
 This command will output the file `output_prefix.two`
 
-If you are working with a species with well-know LD structure (such as humans) you can reduce the computational cost by limiting the search-space to a fixed-sized sliding window (`-w`)
+### Sliding window
+If you are working with a species with well-know LD structure (such as humans) you can reduce the computational cost by limiting the search-space to a fixed-sized sliding window (`-w`). In window mode you are free to choose any arbitrary sub-problem (`-c`) size.
 ```bash
-tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -w 1e6 -t 28
+tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -w 1e6 -t 28 -c 100 -C 1
+```
+
+### Fast mode
+If you have no need of the additional information that Tomahawk produce (contigency matrices and statistics) then you can invoke fast-mode (`-f`). This mode calculates correlation and linkage coefficients extremely fast.
+```bash
+tomahawk calc -pdfi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -t 28 -c 990 -C 1
+```
+Fast mode is available for sliding window computations
+```bash
+tomahawk calc -pdfi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -t 28 -c 100 -C 1 -w 500000
 ```
 
 ### Converting between file formats and filtering
@@ -225,6 +239,10 @@ Load some `ld` data:
 ```R
 # Load some LD data from Tomahawk
 ld<-read.delim("hrc_chunk1.ld",h=T,comment.char='#')
+
+# Use `data.table` package for fast loads
+library(data.table)
+ld<-fread("hrc_chunk1.ld",skip="FLAG") # First line starts with the pattern "^FLAG"
 ```
 and then plot using either of the two support functions. First plotting the data as is (all data), upper-triangular (A < B), and lower triangular (B < A)
 ```R

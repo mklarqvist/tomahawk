@@ -4,19 +4,31 @@ colors[1]<-paste0(colors[1],"0")
 colors[length(colors)]<- substr(colors[length(colors)],1,7)
 
 # Define support functions
-plotLDRegion<-function(dataSource, from, to, ...){
-  # B is A but sorted for plotting reasons (Z-stack)
-  b<-dataSource[dataSource$V3>=from & dataSource$V3 <= to & dataSource$V5 >= from & dataSource$V5 <= to,]
-  b<-b[order(b$V12,decreasing = F),]
-  plot(b$V3,b$V5,pch=20,cex=.1,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+plotLDRegion<-function(dataSource, from, to, upper = FALSE, lower = FALSE, add = FALSE, ...){
+  # Assumes all the data is from the same chromosome
+  if(upper == TRUE){
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to & dataSource$POS_A < dataSource$POS_B,]
+  } else if(lower == TRUE){
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to & dataSource$POS_B < dataSource$POS_A,]
+  } else {
+    b<-dataSource[dataSource$POS_A >= from & dataSource$POS_A <= to & dataSource$POS_B >= from & dataSource$POS_B <= to,]
+  }
+  b$R2[b$R2>1]<-1 # In cases of rounding error
+  b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
+  if(add == TRUE){
+    points(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)], ...)
+  } else {
+    plot(b$POS_A,b$POS_B,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xlim=c(from,to),ylim=c(from,to),xaxs="i",yaxs="i", ...)
+    abline(0,1,lwd=2,col="grey")
+  }
 }
 
 plotLDRegionTriangular<-function(dataSource, from, to, ...){
-  # B is A but sorted for plotting reasons (Z-stack)
-  b<-dataSource[dataSource$V3>=from & dataSource$V5<=to & dataSource$V3>=from & dataSource$V5<=to,]
-  b<-b[b$V3<b$V5,] # upper triangular only
-  b<-b[order(b$V12,decreasing = F),]
-  plot(b$V3 + ((b$V5-b$V3)/2),b$V5-b$V3,pch=20,cex=.2,col=colors[cut(b$V12,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
+  # Assumes all the data is from the same chromosome
+  b<-dataSource[dataSource$POS_A>=from & dataSource$POS_A<=to & dataSource$POS_B>=from & dataSource$POS_B<=to,]
+  b<-b[b$POS_A<b$POS_B,] # upper triangular only
+  b<-b[order(b$R2,decreasing = F),] # sort for Z-stack
+  plot(b$POS_A + ((b$POS_B-b$POS_A)/2),b$POS_B-b$POS_A,pch=20,cex=.2,col=colors[cut(b$R2,breaks=seq(0,1,length.out = 11),include.lowest = T)],xaxs="i",yaxs="i", ...)
 }
 
 # Load some LD data from Tomahawk

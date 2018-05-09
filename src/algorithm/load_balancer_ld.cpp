@@ -248,56 +248,51 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 	}
 
 	// temp
+	U32 n_block_extension = 0;
+
 	// If selecting > 1 chunk
 	if(this->n_desired_chunks != 1){
 		const U32 n_blocks_loaded = reader.getIndex().getContainer().size() / this->n_desired_chunks;
 		const U32 from_block = n_blocks_loaded * this->selected_chunk;
-		U32 to_block = n_blocks_loaded * (this->selected_chunk+1);
+		U32 to_block = n_blocks_loaded * (this->selected_chunk + 1);
 		if(this->selected_chunk + 1 == this->n_desired_chunks) to_block = reader.getIndex().getContainer().size();
 
 		// for i = 0:n_blocks_loaded
 		// for j if not break
-		std::cerr << "Range is: " << from_block << "->" << to_block << "/" << reader.getIndex().getContainer().size() << std::endl;
-		this->blocks.push_back(value_type(from_block, to_block, from_block, to_block));
+		//std::cerr << "Range is: " << from_block << "->" << to_block << "/" << reader.getIndex().getContainer().size() << std::endl;
 
 		// Todo: extend command
 		// Search for extension end
-		U32 extension = 0;
 		if(this->selected_chunk + 1 != this->n_desired_chunks){
-
 			const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(to_block - 1);
 			for(U32 j = to_block; j < reader.getIndex().getContainer().size(); ++j){
 				const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 				if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
-					std::cerr << "extend: " << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
-					++extension;
+					//std::cerr << "extend: " << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
+					++n_block_extension;
 				} else
 					break;
 			}
-
 		}
+
+		this->data_to_load.push_back(std::pair<U32,U32>(from_block, to_block + n_block_extension));
 
 	} else {
 		// All blocks
-		this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
+		this->data_to_load.push_back(std::pair<U32,U32>(0, reader.getIndex().getContainer().size()));
 	}
 
-	std::cerr << this->n_desired_chunks << std::endl;
-	exit(1);
+	//std::cerr << "Data to load: " << this->data_to_load[0].first << "->" << this->data_to_load[0].second << std::endl;
+	//std::cerr << this->n_desired_chunks << std::endl;
 
-
-	for(U32 i = 0; i < reader.getIndex().size(); ++i){
-		const Totempole::IndexEntry& index_entry = reader.getIndex().getContainer().at(i);
-		std::cerr << index_entry.contigID << "\t" << index_entry.min_position << "-" << index_entry.max_position << std::endl;
-	}
-
-	const U32 n_blocks = reader.getIndex().getContainer().size();
+	const U32 n_blocks = this->data_to_load[0].second - this->data_to_load[0].first + 1 - n_block_extension;
 	U64 n_max_possible_comparisons = 0;
 	for(U32 i = 0; i < n_blocks; ++i){
 		const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
 		n_max_possible_comparisons += (index_entry_i.n_variants*index_entry_i.n_variants + index_entry_i.n_variants) / 2 - index_entry_i.n_variants;
+		//std::cerr << "keep internal" << std::endl;
 
-		for(U32 j = i + 1; j < n_blocks; ++j){
+		for(U32 j = i + 1; j < n_blocks + n_block_extension; ++j){
 			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 
 			// Check if they share the same contig
@@ -307,16 +302,16 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 			if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
 				n_max_possible_comparisons += index_entry_j.n_variants * index_entry_i.n_variants;
 
-				//std::cerr << "keep: " << i << "/" << j << " " << index_entry_j.min_position << "->" << index_entry_i.max_position << std::endl;
+				//std::cerr << "keep: " << i << "/" << j << " " << index_entry_j.min_position << "->" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
 			} else {
-				std::cerr << "drop: " << i << "/" << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
+				//std::cerr << "drop: " << i << "/" << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
 				break;
 			}
 		}
 	}
 
 	const U64 n_variants_thread = n_max_possible_comparisons / threads;
-	std::cerr << "Max total: " << n_max_possible_comparisons << "per thread " << n_variants_thread << std::endl;
+	//std::cerr << "Max total: " << n_max_possible_comparisons << "per thread " << n_variants_thread << std::endl;
 	this->n_comparisons_chunk = n_max_possible_comparisons;
 
 	this->thread_distribution.resize(threads);
@@ -337,7 +332,7 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 
 		bool breaking = false;
 
-		for(U32 j = i + 1; j < n_blocks; ++j){
+		for(U32 j = i + 1; j < n_blocks + n_block_extension; ++j){
 			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 			// Check if they share the same contig
 			if(index_entry_i.contigID != index_entry_j.contigID)
@@ -352,7 +347,7 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 					n_total_current_thread = 0;
 					++current_thread_id;
 				}
-				std::cerr << "Add: " << current_thread_id << ": " << i << "," << last_index << "->" << j + 1 << "/" << n_blocks << std::endl;
+				//std::cerr << "Add: " << current_thread_id << ": " << i << "," << last_index << "->" << j + 1 << "/" << n_blocks << std::endl;
 				this->thread_distribution[current_thread_id].push_back(LoadBalancerThread(i, last_index, j + !breaking));
 				break;
 			}
@@ -365,13 +360,10 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 			++current_thread_id;
 		}
 	}
-	std::cerr << current_thread_id << std::endl;
-	std::cerr << "total blocks: " << reader.getIndex().getContainer().size() << std::endl;
+	//std::cerr << current_thread_id << std::endl;
+	//std::cerr << "total blocks: " << reader.getIndex().getContainer().size() << std::endl;
 
 	//exit(1);
-
-	// Divide data into threads
-	this->getSelectedLoad();
 
 	// Get thread load
 	//if(!this->getSelectedLoadThreads(reader, threads))
