@@ -117,6 +117,10 @@ private:
 		return(stream);
 	}
 
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& index){
+		return(stream);
+	}
+
 private:
 	controller_type     controller_;
     meta_container_type meta_container_;

@@ -1,6 +1,7 @@
 #ifndef TOTEMPOLEENTRY_H_
 #define TOTEMPOLEENTRY_H_
 
+#include "../tomahawk/two/output_entry.h"
 #include <fstream>
 
 namespace Tomahawk{
@@ -10,7 +11,8 @@ namespace Totempole{
 
 struct IndexEntry{
 public:
-	typedef IndexEntry self_type;
+	typedef IndexEntry      self_type;
+	typedef IO::OutputEntry entry_type;
 
 public:
 	IndexEntry() :
@@ -52,6 +54,13 @@ public:
 	inline bool isValid(void) const{ return(this->byte_offset != 0); }
 	inline void operator++(void){ ++this->n_variants; }
 	inline U64 sizeBytes(void) const{ return(this->byte_offset_end - this->byte_offset); }
+
+	inline self_type& operator=(const entry_type& entry){
+		this->contigID     = entry.AcontigID;
+		this->min_position = entry.Aposition;
+		this->max_position = entry.Aposition;
+		return(*this);
+	}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream << entry.byte_offset << '\t' << entry.byte_offset_end << '\t' << entry.contigID << '\t' << entry.min_position << '-' << entry.max_position << '\t' << entry.n_variants << '\t' << entry.uncompressed_size;
@@ -98,8 +107,8 @@ public:
 	}
 	inline const bool overlaps(const S32& contigID, const U64& from_position, const U64& to_position) const{
 		if(this->contigID != contigID) return false;
-		if(from_position < this->min_position) return false;
-		if(to_position > this->max_position) return false;
+		if(to_position < this->min_position) return false;
+		if(from_position > this->max_position) return false;
 		return true;
 	}
 

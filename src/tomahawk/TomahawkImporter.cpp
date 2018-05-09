@@ -144,7 +144,9 @@ bool TomahawkImporter::BuildBCF(void){
 	++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
 	// Update container with this totempole entry
-	this->index += this->writer_.totempole_entry;
+	if(this->writer_.totempole_entry.size())
+		this->index += this->writer_.totempole_entry;
+
 	this->index.buildMetaIndex(this->vcf_header_->contigs.size());
 	this->writer_.WriteFinal(this->index, this->footer_);
 
@@ -154,9 +156,9 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
+		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Wrote: "       << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.GetVariantsWritten()))
 														 << " variants to " << Helpers::NumberThousandsSeparator(std::to_string(this->writer_.blocksWritten()))
-														 << " blocks..." << std::endl;
+														 << " blocks..."    << std::endl;
 
 	return true;
 }
@@ -240,7 +242,8 @@ bool TomahawkImporter::BuildVCF(void){
 	++this->vcf_header_->getContig(*this->sort_order_helper.contigID);
 	this->writer_.flush();
 	// Update container with this totempole entry
-	this->index += this->writer_.totempole_entry;
+	if(this->writer_.totempole_entry.size())
+		this->index += this->writer_.totempole_entry;
 
 	//		return false;
 	this->index.buildMetaIndex(this->vcf_header_->contigs.size());
@@ -268,8 +271,10 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			exit(1);
 		}
 
-		if(!SILENT)
+		if(!SILENT){
+			std::cerr << this->writer_.totempole_entry.n_variants << std::endl;
 			std::cerr << Helpers::timestamp("LOG", "IMPORT") << "Switch detected: " << this->vcf_header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->vcf_header_->getContig(line.body->CHROM).name << "..." << std::endl;
+		}
 
 		this->sort_order_helper.previous_position = 0;
 
@@ -279,7 +284,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		this->writer_.flush();
 
 		// Update container with this totempole entry
-		this->index += this->writer_.totempole_entry;
+		if(this->writer_.totempole_entry.size())
+			this->index += this->writer_.totempole_entry;
 
 		// Update index values
 		this->writer_.TotempoleSwitch(line.body->CHROM, 0);
@@ -320,7 +326,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 			this->writer_.flush();
 
 			// Update container with this totempole entry
-			this->index += this->writer_.totempole_entry;
+			if(this->writer_.totempole_entry.size())
+				this->index += this->writer_.totempole_entry;
 
 			this->writer_.TotempoleSwitch(line.body->CHROM, 0);
 		}
@@ -369,7 +376,8 @@ bool TomahawkImporter::parseVCFLine(vcf_entry_type& line){
 		this->writer_.flush();
 
 		// Update container with this totempole entry
-		this->index += this->writer_.totempole_entry;
+		if(this->writer_.totempole_entry.size())
+			this->index += this->writer_.totempole_entry;
 
 		// Update index values
 		this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, 0);
@@ -417,7 +425,8 @@ bool TomahawkImporter::parseVCFLine(vcf_entry_type& line){
 			this->writer_.flush();
 
 			// Update container with this totempole entry
-			this->index += this->writer_.totempole_entry;
+			if(this->writer_.totempole_entry.size())
+				this->index += this->writer_.totempole_entry;
 
 			this->writer_.TotempoleSwitch(*this->sort_order_helper.contigID, this->sort_order_helper.previous_position);
 		}
