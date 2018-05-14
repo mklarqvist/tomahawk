@@ -5,10 +5,10 @@
 
 #define BCF_ASSERT 1
 
-#include "../basic_buffer.h"
-#include "../compression/bgzf_controller.h"
+#include "io/basic_buffer.h"
+#include "io/compression/bgzf_controller.h"
 #include "bcf_entry.h"
-#include "../vcf/vcf_header.h"
+#include "io/vcf/vcf_header.h"
 
 namespace tomahawk {
 namespace bcf {

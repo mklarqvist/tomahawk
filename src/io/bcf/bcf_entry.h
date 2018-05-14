@@ -1,7 +1,7 @@
 #ifndef BCFENTRY_H_
 #define BCFENTRY_H_
 
-#include "../basic_buffer.h"
+#include "io/basic_buffer.h"
 
 namespace tomahawk {
 namespace bcf {

@@ -3,7 +3,7 @@
 
 #include <io/bcf/bcf_reader.h>
 
-#include "../vcf/vcf_header.h"
+#include "io/vcf/vcf_header.h"
 
 namespace tomahawk{
 namespace bcf{
