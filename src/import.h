@@ -20,7 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-#include "tomahawk/TomahawkImporter.h"
+#include "tomahawk/tomahawk_importer.h"
 #include "utility.h"
 
 void import_usage(void){
@@ -28,7 +28,7 @@ void import_usage(void){
 	std::cerr <<
 	"About:  Convert BCF->TWK/; subset and slice TWK/TWO data\n"
 	"        Only biallelic diploid genotypes from SNVs will be retained\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " import [options] -i <in.bcf> -o <output.twk>\n\n"
+	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " import [options] -i <in.bcf> -o <output.twk>\n\n"
 	"Options:\n"
 	"  -i FILE  input BCF file (required)\n"
 	"  -o FILE  output file prefix (required)\n"
@@ -84,12 +84,12 @@ int import(int argc, char** argv){
 		case 'h':
 			hwe_p = atof(optarg);
 			if(hwe_p < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to < 0..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to < 0..." << std::endl;
 				return(1);
 			}
 
 			if(hwe_p > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to > 1..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to > 1..." << std::endl;
 				return(1);
 			}
 
@@ -97,12 +97,12 @@ int import(int argc, char** argv){
 		case 'n':
 			missingness = atof(optarg);
 			if(missingness < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set missingness filter to < 0..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set missingness filter to < 0..." << std::endl;
 				return(1);
 			}
 
 			if(missingness > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set missingness filter to > 1..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set missingness filter to > 1..." << std::endl;
 				return(1);
 			}
 
@@ -110,12 +110,12 @@ int import(int argc, char** argv){
 		case 'm':
 			maf = atof(optarg);
 			if(maf < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to < 0..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set MAF filter to < 0..." << std::endl;
 				return(1);
 			}
 
 			if(maf > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set MAF filter to > 1..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set MAF filter to > 1..." << std::endl;
 				return(1);
 			}
 
@@ -125,33 +125,33 @@ int import(int argc, char** argv){
 			break;
 
 		default:
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
 			return(1);
 		}
 	}
 
 	if(input.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input value specified..." << std::endl;
 		return(1);
 	}
 
 	if(!extension_mode && output.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
 		return(1);
 	}
 
 	if(extension_mode && extend.size() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No file to extend provided..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No file to extend provided..." << std::endl;
 		return(1);
 	}
 
 	// Print messages
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling import..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling import..." << std::endl;
 	}
 
-	Tomahawk::TomahawkImporter importer(input, output);
+	tomahawk::TomahawkImporter importer(input, output);
 	importer.getFilters().HWE_P       = hwe_p;
 	importer.getFilters().MAF         = maf;
 	importer.getFilters().missingness = missingness;

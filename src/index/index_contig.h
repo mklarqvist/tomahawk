@@ -4,16 +4,16 @@
 #include <ostream>
 #include <fstream>
 
-#include "../support/type_definitions.h"
-#include "../io/BasicBuffer.h"
+#include "../io/basic_buffer.h"
+#include "support/type_definitions.h"
 
-namespace Tomahawk{
-namespace Totempole{
+namespace tomahawk{
+namespace totempole{
 
 struct HeaderContig{
 public:
 	typedef HeaderContig    self_type;
-	typedef IO::BasicBuffer buffer_type;
+	typedef io::BasicBuffer buffer_type;
 
 public:
 	HeaderContig(const U32& bases, const U32& n_char, const std::string& name) :

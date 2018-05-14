@@ -7,8 +7,8 @@
 #include "genotype_objects.h"
 #include "meta_entry.h"
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 template <class T>
 class GenotypeContainerRunlength{

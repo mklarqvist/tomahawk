@@ -1,7 +1,7 @@
-#include "../index/tomahawk_header.h"
+#include "index/tomahawk_header.h"
 #include "import_writer.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 ImportWriter::ImportWriter(const filter_type& filter) :
 	flush_limit(1000000),
@@ -25,16 +25,16 @@ ImportWriter::~ImportWriter(){
 bool ImportWriter::Open(const std::string output){
 	this->filename = output;
 	this->CheckOutputNames(output);
-	this->stream.open(this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
+	this->stream.open(this->basePath + this->baseName + '.' + constants::OUTPUT_SUFFIX, std::ios::out | std::ios::binary);
 
 	// Check streams
 	if(!this->stream.good()){
-		std::cerr << Helpers::timestamp("ERROR", "WRITER") << "Could not open: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX << "!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "WRITER") << "Could not open: " << this->basePath + this->baseName + '.' + constants::OUTPUT_SUFFIX << "!" << std::endl;
 		return false;
 	}
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG", "WRITER") << "Opening: " << this->basePath + this->baseName + '.' + Constants::OUTPUT_SUFFIX << "..." << std::endl;
+		std::cerr << helpers::timestamp("LOG", "WRITER") << "Opening: " << this->basePath + this->baseName + '.' + constants::OUTPUT_SUFFIX << "..." << std::endl;
 	}
 
 	// Write Tomahawk and Totempole headers
@@ -48,11 +48,11 @@ bool ImportWriter::Open(const std::string output){
 
 void ImportWriter::DetermineFlushLimit(void){
 	this->flush_limit = this->vcf_header_->samples * this->n_variants_limit / 10; // Worst case
-	if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1)
+	if(this->vcf_header_->samples <= constants::UPPER_LIMIT_SAMPLES_8B - 1)
 		this->flush_limit *= sizeof(BYTE);
-	else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1)
+	else if(this->vcf_header_->samples <= constants::UPPER_LIMIT_SAMPLES_16B - 1)
 		this->flush_limit *= sizeof(U16);
-	else if(this->vcf_header_->samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1)
+	else if(this->vcf_header_->samples <= constants::UPPER_LIMIT_SAMPLES_32B - 1)
 		this->flush_limit *= sizeof(U32);
 	else this->flush_limit *= sizeof(U64);
 }
@@ -64,7 +64,7 @@ bool ImportWriter::OpenExtend(const std::string output){
 
 int ImportWriter::WriteHeaders(void){
 	if(this->vcf_header_ == nullptr){
-		std::cerr << Helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "INTERNAL") << "Header not set!" << std::endl;
 		exit(1);
 	}
 
@@ -73,7 +73,7 @@ int ImportWriter::WriteHeaders(void){
 	header.magic_.n_contigs = this->vcf_header_->contigs.size();
 	header.magic_.n_samples = this->vcf_header_->samples;
 	header.sample_names_    = new std::string[this->vcf_header_->samples];
-	header.contigs_         = new Totempole::HeaderContig[this->vcf_header_->contigs.size()];
+	header.contigs_         = new totempole::HeaderContig[this->vcf_header_->contigs.size()];
 
 	for(U32 i = 0; i < this->vcf_header_->contigs.size(); ++i){
 
@@ -88,9 +88,9 @@ int ImportWriter::WriteHeaders(void){
 	for(U32 i = 0; i < this->vcf_header_->literal_lines.size(); ++i)
 		header.literals_ += this->vcf_header_->literal_lines[i] + '\n';
 
-	const std::string command = "##tomahawk_importCommand=" + std::string(Constants::LITERAL_COMMAND_LINE)
+	const std::string command = "##tomahawk_importCommand=" + std::string(constants::LITERAL_COMMAND_LINE)
 			+ "; VERSION=" + std::string(VERSION)
-			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
+			+ "; Date=" + helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION];
 
 	header.literals_ += command;
 
@@ -106,13 +106,13 @@ void ImportWriter::WriteFinal(index_type& index, footer_type& footer){
 	this->stream << footer;
 }
 
-void ImportWriter::setHeader(VCF::VCFHeader& header){
+void ImportWriter::setHeader(vcf::VCFHeader& header){
 	this->vcf_header_ = &header;
-	this->rleController_ = new Algorithm::GenotypeEncoder(header.samples);
+	this->rleController_ = new algorithm::GenotypeEncoder(header.samples);
 	this->rleController_->DetermineBitWidth();
 }
 
-bool ImportWriter::add(const VCF::VCFLine& vcf_entry){
+bool ImportWriter::add(const vcf::VCFLine& vcf_entry){
 	//const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
 
@@ -158,7 +158,7 @@ bool ImportWriter::add(const VCF::VCFLine& vcf_entry){
 	return true;
 }
 
-bool ImportWriter::add(const BCF::BCFEntry& bcf_entry){
+bool ImportWriter::add(const bcf::BCFEntry& bcf_entry){
 	//const U32 meta_start_pos = this->buffer_meta_.size();
 	const U32 rle_start_pos  = this->buffer_rle_.size();
 
@@ -214,12 +214,12 @@ bool ImportWriter::flush(void){
 }
 
 void ImportWriter::CheckOutputNames(const std::string& input){
-	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+	std::vector<std::string> paths = helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)
 		this->basePath += '/';
 
-	if(paths[3].size() == Constants::OUTPUT_SUFFIX.size() && strncasecmp(&paths[3][0], &Constants::OUTPUT_SUFFIX[0], Constants::OUTPUT_SUFFIX.size()) == 0)
+	if(paths[3].size() == constants::OUTPUT_SUFFIX.size() && strncasecmp(&paths[3][0], &constants::OUTPUT_SUFFIX[0], constants::OUTPUT_SUFFIX.size()) == 0)
 		this->baseName = paths[2];
 	else this->baseName = paths[1];
 }

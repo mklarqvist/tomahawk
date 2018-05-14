@@ -1,15 +1,15 @@
 #ifndef TOMAHAWK_TOMAHAWKOUTPUTLD_H_
 #define TOMAHAWK_TOMAHAWKOUTPUTLD_H_
 
-#include "../../io/BasicBuffer.h"
+#include "../../io/basic_buffer.h"
 
-namespace Tomahawk {
-namespace Support{
+namespace tomahawk {
+namespace support{
 
 struct OutputEntrySupport{
 private:
 	typedef OutputEntrySupport self_type;
-	typedef IO::BasicBuffer    buffer_type;
+	typedef io::BasicBuffer    buffer_type;
 
 public:
 	OutputEntrySupport();
@@ -54,7 +54,7 @@ public:
 	void printUnphasedCounts(void) const;
 	void printPhasedCounts(void) const;
 
-	friend IO::BasicBuffer& operator<<(buffer_type& os, const self_type& entry){
+	friend io::BasicBuffer& operator<<(buffer_type& os, const self_type& entry){
 		// Notice that CONTROLLER is written separately
 		os += entry.alleleCounts[0];
 		os += entry.alleleCounts[1];

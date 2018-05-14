@@ -3,22 +3,24 @@
 
 #include <cstring>  // size_t, ptrdiff_t
 
-#include "../support/type_definitions.h"
-#include "../index/index_entry.h"
+#include "support/type_definitions.h"
+#include "index/index_entry.h"
 #include "genotype_container_bitvector.h"
 #include "haplotype_bitvector.h"
 
-namespace Tomahawk{
-namespace Base{
+//#include "../algorithm/sbbst.h"
+
+namespace tomahawk{
+namespace base{
 
 template <class T>
 struct GenotypeRefEntry{
 public:
 	typedef GenotypeRefEntry<T>            self_type;
-	typedef Support::GenotypeDiploidRun<T> genotype_type;
-	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
+	typedef support::GenotypeDiploidRun<T> genotype_type;
+	typedef base::GenotypeBitvector<>      genotype_bitvector_type;
 	typedef MetaEntry                      meta_type;
-	typedef Base::HaplotypeBitVector       haplotype_bitvector_type;
+	typedef base::HaplotypeBitVector       haplotype_bitvector_type;
 
 public:
 	GenotypeRefEntry(const meta_type& meta_entry, const T* const genotypes) :
@@ -63,11 +65,11 @@ private:
 	typedef GenotypeContainerReference  self_type;
 
 protected:
-	typedef Totempole::IndexEntry          header_entry_type;
+	typedef totempole::IndexEntry          header_entry_type;
 	typedef GenotypeContainerBitvector     container_bitvector_type;
-	typedef Base::GenotypeBitvector<>      genotype_bitvector_type;
-	typedef Base::HaplotypeBitVector       haplotype_bitvector_type;
-	typedef Support::GenotypeDiploidRun<T> value_type;
+	typedef base::GenotypeBitvector<>      genotype_bitvector_type;
+	typedef base::HaplotypeBitVector       haplotype_bitvector_type;
+	typedef support::GenotypeDiploidRun<T> value_type;
 	typedef value_type&                    reference;
 	typedef const value_type&              const_reference;
 	typedef value_type*                    pointer;
@@ -75,6 +77,8 @@ protected:
 	typedef std::ptrdiff_t                 difference_type;
 	typedef std::size_t                    size_type;
 	typedef MetaEntry                      meta_type;
+
+	//typedef Algorithm::AVLTree<U32,U32> sbbst_type;
 
 public:
 	GenotypeContainerReference() :
@@ -88,6 +92,7 @@ public:
 		index_entry(nullptr),
 		bit_vectors(nullptr),
 		haplotype_bitvectors(nullptr)
+		//sbbst_trees(nullptr)
 	{
 	}
 
@@ -106,6 +111,7 @@ public:
 		index_entry(&index_entry),
 		bit_vectors(nullptr),
 		haplotype_bitvectors(nullptr)
+		//sbbst_trees(new sbbst_type[this->size()])
 	{
 		if(l_data == 0) return;
 
@@ -136,7 +142,7 @@ public:
 				tempListIdx = 0;
 				U32 cumsum = 0;
 				for(U32 j = 0; j < meta_entries[i].runs; ++j, cumulative_position++){
-					const Support::GenotypeDiploidRun<T>* const packed = reinterpret_cast<const Support::GenotypeDiploidRun<T>* const>(&this->genotype_entries[cumulative_position]);
+					const support::GenotypeDiploidRun<T>* const packed = reinterpret_cast<const support::GenotypeDiploidRun<T>* const>(&this->genotype_entries[cumulative_position]);
 
 					if((packed->alleleA & 3) != 0 || (packed->alleleB & 3) != 0){
 						for(U32 k = 0; k < 2*packed->runs; k+=2){
@@ -153,9 +159,10 @@ public:
 
 				// Update index
 				this->haplotype_bitvectors[i].indices = new U32[tempListIdx];
-				for(U32 j = 0; j < tempListIdx; ++j)
+				for(U32 j = 0; j < tempListIdx; ++j){
 					this->haplotype_bitvectors[i].indices[j] = tempList[j];
-				//std::cerr << std::endl;
+					//this->sbbst_trees[i].Insert(tempList[j], tempList[j]);
+				}
 			}
 
 			delete [] tempList;
@@ -174,6 +181,7 @@ public:
 		index_entry(other.index_entry),
 		bit_vectors(other.bit_vectors),
 		haplotype_bitvectors(other.haplotype_bitvectors)
+		//sbbst_trees(other.sbbst_trees)
 	{
 
 	}
@@ -193,6 +201,8 @@ public:
 				((this->meta_entries + i)->~MetaEntry)();
 
 			::operator delete[](static_cast<void*>(this->meta_entries));
+
+			//delete [] this->sbbst_trees;
 		}
 	}
 
@@ -222,6 +232,7 @@ public:
 	inline const_pointer current(void) const{ return(&this->genotype_entries[this->iterator_position_runs]); }
 	inline const genotype_bitvector_type& currentBitvector(void) const{ return(this->bit_vectors->at(this->iterator_position_meta)); }
 	inline const haplotype_bitvector_type& currentHaplotypeBitvector(void) const{ return(this->haplotype_bitvectors[this->iterator_position_meta]); }
+	//inline const sbbst_type& currentSBBST(void) const{ return(this->sbbst_trees[this->iterator_position_meta]); }
 
 
 	// Psuedo-iterator functionality
@@ -241,6 +252,7 @@ protected:
 	const header_entry_type*  index_entry;
 	container_bitvector_type* bit_vectors;
 	haplotype_bitvector_type* haplotype_bitvectors;
+	//sbbst_type*               sbbst_trees;
 };
 
 }

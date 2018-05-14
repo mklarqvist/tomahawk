@@ -2,7 +2,7 @@
 #include <string>
 #include "output_filter.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 OutputFilter::OutputFilter() :
 	any_filter_user_set(false),
@@ -151,8 +151,8 @@ bool OutputFilter::setFilterD(const float& min, const float& max){
 		return false;
 	}
 
-	this->minD = min - Constants::ALLOWED_ROUNDING_ERROR;
-	this->maxD = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->minD = min - constants::ALLOWED_ROUNDING_ERROR;
+	this->maxD = max + constants::ALLOWED_ROUNDING_ERROR;
 	this->trigger();
 	return true;
 }
@@ -171,8 +171,8 @@ bool OutputFilter::setFilterDprime(const float& min, const float& max){
 		return false;
 	}
 
-	this->minDprime = min - Constants::ALLOWED_ROUNDING_ERROR;
-	this->maxDprime = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->minDprime = min - constants::ALLOWED_ROUNDING_ERROR;
+	this->maxDprime = max + constants::ALLOWED_ROUNDING_ERROR;
 	this->trigger();
 	return true;
 }
@@ -191,8 +191,8 @@ bool OutputFilter::setFilterRsquared(const float& min, const float& max){
 		return false;
 	}
 
-	this->minR2 = min - Constants::ALLOWED_ROUNDING_ERROR;
-	this->maxR2 = max + Constants::ALLOWED_ROUNDING_ERROR;
+	this->minR2 = min - constants::ALLOWED_ROUNDING_ERROR;
+	this->maxR2 = max + constants::ALLOWED_ROUNDING_ERROR;
 	this->trigger();
 	return true;
 }

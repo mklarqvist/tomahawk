@@ -5,15 +5,15 @@
 #include <iomanip>
 #include <vector>
 
-#include "../../support/type_definitions.h"
-#include "../../support/MagicConstants.h"
-#include "../two/output_entry.h"
+#include "support/type_definitions.h"
+#include "support/MagicConstants.h"
+#include "output_entry.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 class OutputFilter {
 	typedef OutputFilter self_type;
-	typedef IO::OutputEntry entry_type;
+	typedef io::OutputEntry entry_type;
 	typedef bool (self_type::*filterFunction)(const entry_type& entry) const;
 
 public:

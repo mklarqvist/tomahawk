@@ -1,7 +1,7 @@
 #ifndef TOMAHAWKIMPORTERFILTERS_H_
 #define TOMAHAWKIMPORTERFILTERS_H_
 
-namespace Tomahawk{
+namespace tomahawk{
 
 struct ImporterFilters{
 	ImporterFilters() : MAF(0), HWE_P(0), missingness(0.2){}

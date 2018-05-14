@@ -1,13 +1,13 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 
-#include "../algorithm/genotype_bitpacker.h"
+#include "algorithm/genotype_bitpacker.h"
 #include "genotype_bitvector.h"
 #include "genotype_container_runlength.h"
 #include "genotype_objects.h"
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 /**<
  * Meta container for bit-packed blocks of genotypes
@@ -15,14 +15,14 @@ namespace Base{
 class GenotypeContainerBitvector{
 private:
     typedef GenotypeContainerBitvector self_type;
-    typedef Base::GenotypeBitvector<>  value_type;
+    typedef base::GenotypeBitvector<>  value_type;
     typedef value_type&                reference;
     typedef const value_type&          const_reference;
     typedef value_type*                pointer;
     typedef const value_type*          const_pointer;
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
-    typedef Totempole::IndexEntry      support_type;
+    typedef totempole::IndexEntry      support_type;
 
 public:
 	GenotypeContainerBitvector() : n_entries(0), n_capacity(0), __entries(nullptr){}
@@ -158,7 +158,7 @@ public:
 	bool Build(const GenotypeContainerRunlength<T>& genotype_container, const U64& n_samples);
 
 	template <class T>
-	bool Build(const Support::GenotypeDiploidRun<T>* const genotype_runs, const MetaEntry* const meta_entries, const size_t& n_entries, const U64& n_samples);
+	bool Build(const support::GenotypeDiploidRun<T>* const genotype_runs, const MetaEntry* const meta_entries, const size_t& n_entries, const U64& n_samples);
 
 public:
 	size_type n_entries;
@@ -196,12 +196,12 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 		new( &this->__entries[i] ) value_type( byte_width );
 
 
-		Algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
-		Algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
+		algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
+		algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
 
 		// Cycle over runs in container
 		for(U32 j = 0; j < genotype_container[i].size(); ++j){
-			const Support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<T>* const>(&genotype_container[i][j]);
+			const support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const support::GenotypeDiploidRunPacked<T>* const>(&genotype_container[i][j]);
 			packerA.add(lookup_data[packed->alleles], packed->runs);
 			packerB.add(lookup_mask[packed->alleles], packed->runs);
 		}
@@ -237,7 +237,7 @@ bool GenotypeContainerBitvector::Build(const GenotypeContainerRunlength<T>& geno
 }
 
 template <class T>
-bool GenotypeContainerBitvector::Build(const Support::GenotypeDiploidRun<T>* const genotype_runs,
+bool GenotypeContainerBitvector::Build(const support::GenotypeDiploidRun<T>* const genotype_runs,
                                           const MetaEntry* const meta_entries,
                                                         const size_t& n_entries,
                                                            const U64& n_samples)
@@ -267,12 +267,12 @@ bool GenotypeContainerBitvector::Build(const Support::GenotypeDiploidRun<T>* con
 	U32 cumulative_position = 0;
 	for(U32 i = 0; i < n_entries; ++i){
 		new( &this->__entries[i] ) value_type( byte_width );
-		Algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
-		Algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
+		algorithm::GenotypeBitPacker packerA(this->__entries[i].data, 2);
+		algorithm::GenotypeBitPacker packerB(this->__entries[i].mask, 2);
 
 		// Cycle over runs in container
 		for(U32 j = 0; j < meta_entries[i].runs; ++j, cumulative_position++){
-			const Support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<T>* const>(&genotype_runs[cumulative_position]);
+			const support::GenotypeDiploidRunPacked<T>* const packed = reinterpret_cast<const support::GenotypeDiploidRunPacked<T>* const>(&genotype_runs[cumulative_position]);
 			packerA.add(lookup_data[packed->alleles], packed->runs);
 			packerB.add(lookup_mask[packed->alleles], packed->runs);
 		}

@@ -1,8 +1,8 @@
 #ifndef INDEX_INDEX_META_ENTRY_H_
 #define INDEX_INDEX_META_ENTRY_H_
 
-namespace Tomahawk{
-namespace Totempole{
+namespace tomahawk{
+namespace totempole{
 
 #define TWK_INDEX_META_ENTRY_SIZE (sizeof(U64)*4 + sizeof(U32)*2)
 

@@ -6,7 +6,7 @@
 #define BCF_ASSERT 1
 
 #include "../BasicBuffer.h"
-#include "../compression/BGZFController.h"
+#include "../compression/bgzf_controller.h"
 #include "BCFEntry.h"
 #include "../vcf/VCFHeader.h"
 

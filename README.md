@@ -11,6 +11,8 @@ Tomahawk is unique in that it constructs complete haplotype/genotype contigency 
 
 The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are available [TWKv0](spec/TWKv0.pdf)
 
+![screenshot](R/tomahawk_hrc_chr12_filter_animation.gif)
+
 ## Table of contents
 - [Getting started](#getting-started)
     - [Installation instructions](#installation-instructions)
@@ -32,13 +34,12 @@ The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are av
 
 ## Getting started
 ### Installation instructions
-For modern x86-64 CPUs with `SSE4.2` or later, just type `make` in the `build`
-directory. If you see compilation errors, you most likely do not have `SSE4.2`.
+For modern x86-64 CPUs with `SSE4.2` or later, just type `make`.
+If you see compilation errors, you most likely do not have `SSE4.2`.
 At the present time, we do not support non-x86-64 CPUs or old CPU architecture.
 ```bash
 git clone --recursive https://github.com/mklarqvist/tomahawk
 cd tomahawk
-cd build
 make
 ```
 By default, Tomahawk is compiled with aggressive optimization flags and

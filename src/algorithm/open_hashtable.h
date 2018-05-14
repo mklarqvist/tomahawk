@@ -7,11 +7,11 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "../support/type_definitions.h"
-#include "../third_party/xxhash/xxhash.h"
+#include "support/type_definitions.h"
+#include "third_party/xxhash/xxhash.h"
 
-namespace Tomahawk {
-namespace Hash {
+namespace tomahawk {
+namespace hash {
 
 #define HASH_CONSTANT1 452930477
 

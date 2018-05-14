@@ -5,12 +5,12 @@
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 
-#include "../support/type_definitions.h"
-#include "../io/BasicBuffer.h"
+#include "../io/basic_buffer.h"
+#include "support/type_definitions.h"
 #include "index_entry.h"
 
-namespace Tomahawk{
-namespace Totempole{
+namespace tomahawk{
+namespace totempole{
 
 /**<
  * STL-like container for Tomahawk index entries
@@ -25,7 +25,7 @@ private:
     typedef const value_type* const_pointer;
     typedef std::ptrdiff_t    difference_type;
     typedef std::size_t       size_type;
-    typedef IO::BasicBuffer   buffer_type;
+    typedef io::BasicBuffer   buffer_type;
 
 public:
     IndexContainer(void);

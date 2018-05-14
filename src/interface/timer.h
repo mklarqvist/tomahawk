@@ -3,8 +3,8 @@
 
 #include <chrono>
 
-namespace Tomahawk{
-namespace Interface{
+namespace tomahawk{
+namespace interface{
 
 class Timer {
 public:

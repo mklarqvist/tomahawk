@@ -1,7 +1,7 @@
 #include "output_entry.h"
 
-namespace Tomahawk{
-namespace IO{
+namespace tomahawk{
+namespace io{
 
 // These memcpy works because the struct is aligned without padding
 OutputEntry::OutputEntry(const char* const data_buffer){
@@ -9,7 +9,7 @@ OutputEntry::OutputEntry(const char* const data_buffer){
 }
 
 // Copy data from stream
-OutputEntry::OutputEntry(const IO::BasicBuffer& data_buffer){
+OutputEntry::OutputEntry(const io::BasicBuffer& data_buffer){
 	memcpy(this, data_buffer.data(), sizeof(self_type));
 }
 

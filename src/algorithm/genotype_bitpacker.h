@@ -1,8 +1,8 @@
 #ifndef ALGORITHM_GENOTYPE_BITPACKER_H_
 #define ALGORITHM_GENOTYPE_BITPACKER_H_
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
 
 #define PACKER_BITS_BYTE (sizeof(BYTE)*8)
 

@@ -1,12 +1,13 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 #define TOMAHAWK_BASE_GENOTYPE_BITVECTOR_H_
 
-#include "../tomahawk/genotype_objects.h"
-#include "../support/simd_definitions.h"
+#include "meta_entry.h"
+#include "tomahawk/genotype_objects.h"
+#include "support/simd_definitions.h"
 
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 /**<
  * Data structure to representing a 1-bit allele
@@ -62,12 +63,12 @@ public:
 		const BYTE lookup_mask[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 		const BYTE lookup_data[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-		Algorithm::GenotypeBitPacker packerA(this->data, 2);
-		Algorithm::GenotypeBitPacker packerB(this->mask, 2);
+		algorithm::GenotypeBitPacker packerA(this->data, 2);
+		algorithm::GenotypeBitPacker packerB(this->mask, 2);
 
 		// Cycle over runs in container
 		for(U32 j = 0; j < meta_entry.runs; ++j){
-			const Support::GenotypeDiploidRunPacked<RLE_TYPE>* const packed = reinterpret_cast<const Support::GenotypeDiploidRunPacked<RLE_TYPE>* const>(&genotypes);
+			const support::GenotypeDiploidRunPacked<RLE_TYPE>* const packed = reinterpret_cast<const support::GenotypeDiploidRunPacked<RLE_TYPE>* const>(&genotypes);
 			packerA.add(lookup_data[packed->alleles], packed->runs);
 			packerB.add(lookup_mask[packed->alleles], packed->runs);
 		}

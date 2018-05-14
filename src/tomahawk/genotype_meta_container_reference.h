@@ -3,24 +3,24 @@
 
 #include <cstring>  // size_t, ptrdiff_t
 
-#include "../support/type_definitions.h"
-#include "../index/index_entry.h"
+#include "support/type_definitions.h"
+#include "index/index_entry.h"
 #include "genotype_container_reference.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 template <class T>
 class GenotypeMetaContainerReference{
 private:
 	typedef GenotypeMetaContainerReference      self_type;
-	typedef Base::GenotypeContainerReference<T> value_type;
+	typedef base::GenotypeContainerReference<T> value_type;
     typedef value_type&                         reference;
     typedef const value_type&                   const_reference;
     typedef value_type*                         pointer;
     typedef const value_type*                   const_pointer;
     typedef std::ptrdiff_t                      difference_type;
     typedef std::size_t                         size_type;
-	typedef Totempole::IndexEntry               header_entry;;
+	typedef totempole::IndexEntry               header_entry;;
 
 public:
 	GenotypeMetaContainerReference(const U64 n_samples) :

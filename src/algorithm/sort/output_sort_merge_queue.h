@@ -1,8 +1,9 @@
 #ifndef TOMAHAWKOUTPUTSORTMERGEQUEUECONTAINER_H_
 #define TOMAHAWKOUTPUTSORTMERGEQUEUECONTAINER_H_
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
+
 template <class T>
 struct OutputSortMergeQueue {
 private:

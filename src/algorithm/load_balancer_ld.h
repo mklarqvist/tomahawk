@@ -1,12 +1,12 @@
 #ifndef ALGORITHM_LOAD_BALANCER_LD_H_
 #define ALGORITHM_LOAD_BALANCER_LD_H_
 
-#include "../support/MagicConstants.h"
-#include "../support/helpers.h"
-#include "../tomahawk/TomahawkReader.h"
+#include "../tomahawk/tomahawk_reader.h"
+#include "support/MagicConstants.h"
+#include "support/helpers.h"
 #include "load_balancer_block.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 class LoadBalancerLD{
 private:

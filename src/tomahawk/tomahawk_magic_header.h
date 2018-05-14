@@ -3,8 +3,8 @@
 
 #include "../support/MagicConstants.h"
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 struct TomahawkMagicHeader{
 public:
@@ -12,8 +12,8 @@ public:
 
 public:
 	TomahawkMagicHeader() :
-		major_version(Tomahawk::Constants::PROGRAM_VERSION_MAJOR),
-		minor_version(Tomahawk::Constants::PROGRAM_VERSION_MINOR),
+		major_version(constants::PROGRAM_VERSION_MAJOR),
+		minor_version(constants::PROGRAM_VERSION_MINOR),
 		file_type(0),
 		n_samples(0),
 		n_contigs(0),
@@ -22,8 +22,8 @@ public:
 		l_header_uncompressed(0)
 	{
 		memcpy(&this->magic_string[0],
-               &Tomahawk::Constants::WRITE_HEADER_MAGIC[0],
-                Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
+               &constants::WRITE_HEADER_MAGIC[0],
+                constants::WRITE_HEADER_MAGIC_LENGTH);
 	}
 
 	TomahawkMagicHeader(const self_type& other) :
@@ -38,7 +38,7 @@ public:
 	{
 		memcpy(&this->magic_string[0],
 			   &other.magic_string[0],
-				Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
+				constants::WRITE_HEADER_MAGIC_LENGTH);
 	}
 
 	~TomahawkMagicHeader() = default;
@@ -48,13 +48,13 @@ public:
 	inline const U32& getNumberContigs(void) const{ return(this->n_contigs); }
 	inline U32& getNumberContigs(void){ return(this->n_contigs); }
 
-	inline bool validateMagic(void) const{ return(strncmp(&this->magic_string[0], &Tomahawk::Constants::WRITE_HEADER_MAGIC[0], Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH) == 0); }
+	inline bool validateMagic(void) const{ return(strncmp(&this->magic_string[0], &constants::WRITE_HEADER_MAGIC[0], constants::WRITE_HEADER_MAGIC_LENGTH) == 0); }
 	inline bool validate(void) const{
 		return(this->validateMagic() && this->n_samples > 0 && this->n_contigs > 0 && (this->major_version > 0 || this->minor_version > 0) && this->l_header > 0 && this->l_header_uncompressed > 0);
 	}
 
 	inline const bool operator==(const self_type& other) const{
-		if(strncmp(&this->magic_string[0], &other.magic_string[0], Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH) != 0) return false;
+		if(strncmp(&this->magic_string[0], &other.magic_string[0], constants::WRITE_HEADER_MAGIC_LENGTH) != 0) return false;
 		if(this->file_type != other.file_type) return false;
 		if(this->n_samples != other.n_samples) return false;
 		if(this->n_contigs != other.n_contigs) return false;
@@ -63,9 +63,9 @@ public:
 
 private:
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& header){
-		stream.write(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
-		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MAJOR), sizeof(float));
-		stream.write(reinterpret_cast<const char*>(&Tomahawk::Constants::PROGRAM_VERSION_MINOR), sizeof(float));
+		stream.write(header.magic_string, constants::WRITE_HEADER_MAGIC_LENGTH);
+		stream.write(reinterpret_cast<const char*>(&constants::PROGRAM_VERSION_MAJOR), sizeof(float));
+		stream.write(reinterpret_cast<const char*>(&constants::PROGRAM_VERSION_MINOR), sizeof(float));
 		stream.write(reinterpret_cast<const char*>(&header.file_type),  sizeof(BYTE));
 		stream.write(reinterpret_cast<const char*>(&header.n_samples),  sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&header.n_contigs),  sizeof(U32));
@@ -76,7 +76,7 @@ private:
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& header){
-		stream.read(header.magic_string, Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH);
+		stream.read(header.magic_string, constants::WRITE_HEADER_MAGIC_LENGTH);
 		stream.read(reinterpret_cast<char*>(&header.major_version), sizeof(float));
 		stream.read(reinterpret_cast<char*>(&header.minor_version), sizeof(float));
 		stream.read(reinterpret_cast<char*>(&header.file_type),     sizeof(BYTE));
@@ -89,7 +89,7 @@ private:
 	}
 
 public:
-	char  magic_string[Tomahawk::Constants::WRITE_HEADER_MAGIC_LENGTH];
+	char  magic_string[constants::WRITE_HEADER_MAGIC_LENGTH];
 	float major_version;
 	float minor_version;
 	BYTE  file_type;

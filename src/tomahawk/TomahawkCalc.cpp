@@ -1,7 +1,7 @@
 
 #include "TomahawkCalc.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 TomahawkCalc::TomahawkCalc(void) :
 	parameters_validated(false)
@@ -32,7 +32,7 @@ bool TomahawkCalc::Calculate(pair_vector& blocks){
 
 	std::sort(blocks.begin(), blocks.end(), comparePairs<U32, U32>);
 	if(!this->reader.getBlocks(blocks)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
 		return false;
 	}
 
@@ -42,7 +42,7 @@ bool TomahawkCalc::Calculate(pair_vector& blocks){
 	else if(bit_width == 4) return(this->Calculate<U32>());
 	else if(bit_width == 8) return(this->Calculate<U64>());
 	else {
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
 		exit(1);
 	}
 
@@ -56,12 +56,12 @@ bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
 	this->parameters_validated = true;
 
 	if(!this->reader.getBlocks(blocks)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to get Tomahawk blocks..." << std::endl;
 		return false;
 	}
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","TOMAHAWK") << "Inflated " << blocks.size() << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG","TOMAHAWK") << "Inflated " << blocks.size() << " blocks..." << std::endl;
 
 	const BYTE bit_width = this->reader.getBitWidth();
 	if(bit_width == 1) 	    return(this->Calculate<BYTE>());
@@ -69,7 +69,7 @@ bool TomahawkCalc::Calculate(std::vector<U32>& blocks){
 	else if(bit_width == 4) return(this->Calculate<U32>());
 	else if(bit_width == 8) return(this->Calculate<U64>());
 	else {
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Impossible bit width..." << std::endl;
 		exit(1);
 	}
 
@@ -86,12 +86,12 @@ bool TomahawkCalc::Calculate(){
 
 	if(this->parameters.window_mode){
 		if(!this->balancer.BuildWindow(this->reader, this->parameters.n_threads, this->parameters.n_window_bases)){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 			return false;
 		}
 	} else {
 		if(!this->balancer.Build(this->reader, this->parameters.n_threads)){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 			return false;
 		}
 	}

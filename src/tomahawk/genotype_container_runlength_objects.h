@@ -3,8 +3,8 @@
 
 #include "genotype_objects.h"
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 /**<
  * Primary run-length encoded genotype objects used in Tomahawk.
@@ -17,7 +17,7 @@ template <class T>
 class GenotypeContainerRunlengthObjects{
 private:
     typedef GenotypeContainerRunlengthObjects self_type;
-    typedef Support::GenotypeDiploidRun<T>    value_type;
+    typedef support::GenotypeDiploidRun<T>    value_type;
     typedef value_type&                       reference;
     typedef const value_type&                 const_reference;
     typedef value_type*                       pointer;

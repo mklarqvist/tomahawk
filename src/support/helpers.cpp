@@ -11,8 +11,8 @@
 #include "MagicConstants.h"
 #include "type_definitions.h"
 
-namespace Tomahawk{
-namespace Helpers{
+namespace tomahawk{
+namespace helpers{
 
 int isBigEndian(){
 	union {
@@ -64,9 +64,9 @@ std::vector<std::string> splitLastOf(const std::string& s, const char delim, con
 }
 
 std::string program_string(){
-	return(std::string(Constants::LITERAL_COMMAND_LINE)
+	return(std::string(constants::LITERAL_COMMAND_LINE)
 			+ "; VERSION=" + VERSION
-			+ "; Date=" + Tomahawk::Helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION]);
+			+ "; Date=" + helpers::datetime() + "; SIMD=" + SIMD_MAPPING[SIMD_VERSION]);
 }
 
 std::string datetime(){
@@ -205,17 +205,17 @@ bool matchPositionalStringTWO(const std::string& param){
 bool parsePositionalStringTWO(const std::string& param){
 	std::size_t found = param.find(',');
 	if(found != std::string::npos){
-		std::vector<std::string> ret = Tomahawk::Helpers::split(param, ',');
+		std::vector<std::string> ret = helpers::split(param, ',');
 		if(ret.size() != 2){
-			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format!" << std::endl;
+			std::cerr << helpers::timestamp("LOG") << "Illegal TWO region format!" << std::endl;
 			return 1;
 		}
 		if(!matchPositionalStringTWO(ret[0])){
-			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format: part 1!" << std::endl;
+			std::cerr << helpers::timestamp("LOG") << "Illegal TWO region format: part 1!" << std::endl;
 			return false;
 		}
 		if(!matchPositionalStringTWO(ret[1])){
-			std::cerr << Helpers::timestamp("LOG") << "Illegal TWO region format: part 2!" << std::endl;
+			std::cerr << helpers::timestamp("LOG") << "Illegal TWO region format: part 2!" << std::endl;
 			return false;
 		}
 		return true;

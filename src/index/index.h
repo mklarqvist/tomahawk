@@ -1,13 +1,13 @@
 #ifndef INDEX_INDEX_H_
 #define INDEX_INDEX_H_
 
+#include "../io/basic_buffer.h"
 #include "index_contig.h"
 #include "index_container.h"
 #include "index_meta_container.h"
-#include "../io/BasicBuffer.h"
 #include "footer.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 /**<
  * Index controller for bit flags
@@ -50,18 +50,18 @@ public:
 class Index{
 private:
 	typedef Index                         self_type;
-	typedef Totempole::Footer             footer_type;
-	typedef Totempole::IndexEntry         value_type;
-	typedef Totempole::IndexContainer     container_type;
-	typedef Totempole::IndexMetaContainer meta_container_type;
-	typedef Totempole::IndexMetaEntry     meta_entry_type;
+	typedef totempole::Footer             footer_type;
+	typedef totempole::IndexEntry         value_type;
+	typedef totempole::IndexContainer     container_type;
+	typedef totempole::IndexMetaContainer meta_container_type;
+	typedef totempole::IndexMetaEntry     meta_entry_type;
     typedef value_type&                   reference;
     typedef const value_type&             const_reference;
     typedef value_type*                   pointer;
     typedef const value_type*             const_pointer;
     typedef std::ptrdiff_t                difference_type;
     typedef std::size_t                   size_type;
-    typedef IO::BasicBuffer               buffer_type;
+    typedef io::BasicBuffer               buffer_type;
     typedef IndexController               controller_type;
 
 public:

@@ -5,18 +5,18 @@
 
 #include "two/output_entry.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 class OutputContainerReference{
 private:
-    typedef IO::OutputEntry    value_type;
+    typedef io::OutputEntry    value_type;
     typedef value_type&        reference;
     typedef const value_type&  const_reference;
     typedef value_type*        pointer;
     typedef const value_type*  const_pointer;
     typedef std::ptrdiff_t     difference_type;
     typedef std::size_t        size_type;
-    typedef IO::BasicBuffer    buffer_type;
+    typedef io::BasicBuffer    buffer_type;
 
 public:
     OutputContainerReference() :
@@ -28,7 +28,7 @@ public:
 
     OutputContainerReference(char* const data, const U64 l_data) :
     	n_entries(l_data / sizeof(value_type)),
-		__entries(reinterpret_cast<IO::OutputEntry* const>(data))
+		__entries(reinterpret_cast<io::OutputEntry* const>(data))
 	{
 		assert(n_entries > 0);
 		assert(l_data % sizeof(value_type) == 0);
@@ -36,7 +36,7 @@ public:
 
     OutputContainerReference(const buffer_type& data_buffer) :
 		n_entries(data_buffer.size() / sizeof(value_type)),
-		__entries(reinterpret_cast<IO::OutputEntry* const>(data_buffer.buffer))
+		__entries(reinterpret_cast<io::OutputEntry* const>(data_buffer.buffer))
 	{
 		assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);

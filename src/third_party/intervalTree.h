@@ -34,8 +34,8 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
 
 template <class T, typename K = std::size_t>
 class Interval {

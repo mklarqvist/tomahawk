@@ -1,14 +1,14 @@
 #ifndef TOMAHAWK_TOMAHAWKCALC_H_
 #define TOMAHAWK_TOMAHAWKCALC_H_
 
-#include "TomahawkReader.h"
 #include "twk_reader_implementation.h"
 #include "genotype_meta_container_reference.h"
-#include "../io/output_writer.h"
-#include "../index/index.h"
-#include "../algorithm/load_balancer_ld.h"
+#include "io/output_writer.h"
+#include "index/index.h"
+#include "algorithm/load_balancer_ld.h"
+#include "tomahawk_reader.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 class TomahawkCalc{
 	typedef TomahawkCalc               self_type;
@@ -17,7 +17,7 @@ class TomahawkCalc{
 	typedef std::vector<pair_type>     pair_vector;
 	typedef LoadBalancerLD             balancer_type;
 	typedef TomahawkHeader             header_type;
-	typedef Interface::ProgressBar     progress_type;
+	typedef interface::ProgressBar     progress_type;
 	typedef TomahawkReader             reader_type;
 
 public:
@@ -46,13 +46,13 @@ template <class T>
 bool TomahawkCalc::Calculate(){
 	// Retrieve reference to Totempole reader
 	header_type& header = this->reader.getHeader();
-	header.addLiteral("\n##tomahawk_calcCommand=" + Helpers::program_string());
+	header.addLiteral("\n##tomahawk_calcCommand=" + helpers::program_string());
 	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
 
-	IO::OutputWriter writer;
+	io::OutputWriter writer;
 	if(!writer.open(this->output_file)){
-		std::cerr << Helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
 		return false;
 	}
 
@@ -61,11 +61,11 @@ bool TomahawkCalc::Calculate(){
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+		std::cerr << helpers::timestamp("LOG","SIMD") << "Vectorized instructions available: " << SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
 	#else
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+		std::cerr << helpers::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
 	#endif
-		std::cerr << Helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
+		std::cerr << helpers::timestamp("LOG","SIMD") << "Building 1-bit representation: ";
 	}
 
 	// Construct Tomahawk manager
@@ -101,7 +101,7 @@ bool TomahawkCalc::Calculate(){
 	const U64 variants = references.countVariants();
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","CALC") << "Total " << Helpers::ToPrettyString(variants) << " variants..." << std::endl;
+		std::cerr << helpers::timestamp("LOG","CALC") << "Total " << helpers::ToPrettyString(variants) << " variants..." << std::endl;
 
 	// Update progress bar with data
 	this->progress.SetComparisons(this->balancer.n_comparisons_chunk);
@@ -109,7 +109,7 @@ bool TomahawkCalc::Calculate(){
 	this->progress.SetDetailed(this->parameters.detailed_progress);
 
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG","CALC") << "Performing " <<  Helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " variant comparisons..."<< std::endl;
+		std::cerr << helpers::timestamp("LOG","CALC") << "Performing " <<  helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " variant comparisons..."<< std::endl;
 
 	// Setup slaves
 	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
@@ -117,9 +117,9 @@ bool TomahawkCalc::Calculate(){
 
 	if(!SILENT){
 		if(this->parameters.fast_mode){
-			std::cerr << Helpers::timestamp("LOG") << "Running in fast mode! No matrices will be built..." << std::endl;
+			std::cerr << helpers::timestamp("LOG") << "Running in fast mode! No matrices will be built..." << std::endl;
 		} else {
-			std::cerr << Helpers::timestamp("LOG") << "Running in complete mode! 2x2/3x3/4x4 matrices will be built..." << std::endl;
+			std::cerr << helpers::timestamp("LOG") << "Running in complete mode! 2x2/3x3/4x4 matrices will be built..." << std::endl;
 		}
 
 	}
@@ -127,7 +127,7 @@ bool TomahawkCalc::Calculate(){
 	// Setup workers
 	if(!SILENT){
 		std::cerr << this->parameters << std::endl;
-		std::cerr << Helpers::timestamp("LOG","THREAD") << "Spawning " << this->parameters.n_threads << " threads: ";
+		std::cerr << helpers::timestamp("LOG","THREAD") << "Spawning " << this->parameters.n_threads << " threads: ";
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
@@ -144,7 +144,7 @@ bool TomahawkCalc::Calculate(){
 		this->progress.Start();
 
 	// Setup front-end interface
-	Interface::Timer timer;
+	interface::Timer timer;
 	timer.Start();
 
 	// Start workers
@@ -161,9 +161,9 @@ bool TomahawkCalc::Calculate(){
 	// Print slave statistics
 	/*
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
+		std::cerr << helpers::timestamp("LOG", "THREAD") << "Thread\tPossible\tImpossible\tNoHets\tInsuffucient\tTotal" << std::endl;
 		for(U32 i = 0; i < this->parameters.n_threads; ++i)
-			std::cerr << Helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
+			std::cerr << helpers::timestamp("LOG", "THREAD") << i << '\t' << slaves[i]->getPossible() << '\t' << slaves[i]->getImpossible() << '\t' << slaves[i]->getNoHets() << '\t' << slaves[i]->getInsufficientData() << '\t' << slaves[i]->getComparisons() << std::endl;
 	}
 	*/
 
@@ -174,9 +174,9 @@ bool TomahawkCalc::Calculate(){
 	writer = slaves[0]->getWriter();
 
 	if(!SILENT){
-		std::cerr << Helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << Helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk/timer.Elapsed().count())) << " pairs of SNP/s, " << Helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Comparisons: " << Helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " pairwise SNPs and " << Helpers::ToPrettyString(this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
-		std::cerr << Helpers::timestamp("LOG") << "Output: " << Helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << Helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk/timer.Elapsed().count())) << " pairs of SNP/s, " << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Comparisons: " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " pairwise SNPs and " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Output: " << helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
 	}
 
 	// Cleanup
@@ -188,7 +188,7 @@ bool TomahawkCalc::Calculate(){
 
 	/*
 	if(!writer.finalise()){
-		std::cerr << Helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
 		return false;
 	}
 

@@ -3,13 +3,13 @@
 
 #include "genotype_container.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 template <class T>
 class TomahawkReaderImpl{
 private:
 	typedef TomahawkReaderImpl         self_type;
-	typedef Base::GenotypeContainer<T> value_type;
+	typedef base::GenotypeContainer<T> value_type;
     typedef value_type&                reference;
     typedef const value_type&          const_reference;
     typedef value_type*                pointer;
@@ -17,8 +17,8 @@ private:
     typedef std::ptrdiff_t             difference_type;
     typedef std::size_t                size_type;
 	typedef MetaEntry                  meta_type;
-	typedef Totempole::IndexEntry      header_entry;
-	typedef Totempole::IndexEntry      support_type;
+	typedef totempole::IndexEntry      header_entry;
+	typedef totempole::IndexEntry      support_type;
 
 public:
 	TomahawkReaderImpl(const U64 n_samples) :

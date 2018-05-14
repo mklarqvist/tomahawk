@@ -1,18 +1,19 @@
 #ifndef TOTEMPOLEENTRY_H_
 #define TOTEMPOLEENTRY_H_
 
-#include "../tomahawk/two/output_entry.h"
 #include <fstream>
 
-namespace Tomahawk{
-namespace Totempole{
+#include "tomahawk/two/output_entry.h"
+
+namespace tomahawk{
+namespace totempole{
 
 #define TWK_INDEX_ENTRY_SIZE (sizeof(U64)*4 + sizeof(S32) + sizeof(U32)*2)
 
 struct IndexEntry{
 public:
 	typedef IndexEntry      self_type;
-	typedef IO::OutputEntry entry_type;
+	typedef io::OutputEntry entry_type;
 
 public:
 	IndexEntry() :

@@ -3,30 +3,30 @@
 
 #include <fstream>
 
-#include "../algorithm/compression/genotype_encoder.h"
-#include "../support/type_definitions.h"
-#include "../io/BasicBuffer.h"
-#include "../io/BasicWriters.h"
-#include "../io/compression/TGZFController.h"
-#include "../io/vcf/VCFHeaderConstants.h"
-#include "../io/vcf/VCFLines.h"
-#include "../io/vcf/VCFHeader.h"
-#include "../index/index.h"
-#include "../support/simd_definitions.h"
+#include "../io/basic_buffer.h"
+#include "../io/basic_writers.h"
+#include "../io/compression/tgzf_controller.h"
+#include "../io/vcf/vcf_header.h"
+#include "../io/vcf/vcf_header_constants.h"
+#include "../io/vcf/vcf_lines.h"
+#include "algorithm/compression/genotype_encoder.h"
+#include "support/type_definitions.h"
+#include "index/index.h"
+#include "support/simd_definitions.h"
 #include "import_filters.h"
 #include "meta_entry.h"
-#include "../index/footer.h"
+#include "index/footer.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 class ImportWriter {
 private:
 	typedef ImportWriter              self_type;
-	typedef IO::BasicBuffer           buffer_type;
+	typedef io::BasicBuffer           buffer_type;
 	typedef ImporterFilters           filter_type;
-	typedef Totempole::IndexEntry     index_entry_type;
+	typedef totempole::IndexEntry     index_entry_type;
 	typedef Index                     index_type;
-	typedef Totempole::Footer         footer_type;
+	typedef totempole::Footer         footer_type;
 
 public:
 	ImportWriter(const filter_type& filter);
@@ -38,9 +38,9 @@ public:
 	int WriteHeaders(void);
 	void WriteFinal(index_type& container, footer_type& footer);
 
-	void setHeader(VCF::VCFHeader& header);
-	bool add(const VCF::VCFLine& line);
-	bool add(const BCF::BCFEntry& line);
+	void setHeader(vcf::VCFHeader& header);
+	bool add(const vcf::VCFLine& line);
+	bool add(const bcf::BCFEntry& line);
 
 	inline void reset(void){
 		this->buffer_rle_.reset();
@@ -87,12 +87,12 @@ public:
 	const filter_type& filter;		// filters
 
 	index_entry_type totempole_entry;
-	IO::TGZFController gzip_controller_;
-	Algorithm::GenotypeEncoder* rleController_;
+	io::TGZFController gzip_controller_;
+	algorithm::GenotypeEncoder* rleController_;
 	buffer_type buffer_rle_;	// run lengths
 	buffer_type buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 
-	VCF::VCFHeader* vcf_header_;
+	vcf::VCFHeader* vcf_header_;
 
 	std::string filename;
 	std::string basePath;

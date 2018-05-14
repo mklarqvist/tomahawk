@@ -22,10 +22,10 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
+#include "tomahawk/tomahawk_reader.h"
 #include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "tomahawk/TomahawkReader.h"
 
 void stats_usage(void){
 	programMessage();
@@ -33,7 +33,7 @@ void stats_usage(void){
 	"About:  Calculates basic summary statistics for a TWK/TWO file.\n"
 	"        Data does not have to be indexed. However, operations are faster if they\n"
 	"        are.\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
+	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " stats [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input Tomahawk (required)\n"
 	"  -b INT   number of bins (default: 10)\n";
@@ -77,7 +77,7 @@ int stats(int argc, char** argv){
 		case 'b':
 			bins = atoi(optarg);
 			if(bins <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Cannot set bins to <= 0..." << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot set bins to <= 0..." << std::endl;
 				return(1);
 			}
 			break;
@@ -88,29 +88,29 @@ int stats(int argc, char** argv){
 	}
 
 	if(input.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
 		return(1);
 	}
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling stats..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling stats..." << std::endl;
 	}
 
 	// Todo: move out
-	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
+	std::vector<std::string> inputFile_parts = tomahawk::helpers::split(input, '.');
 	std::string& end = inputFile_parts[inputFile_parts.size() - 1];
 	std::transform(end.begin(), end.end(), end.begin(), ::tolower); // transform chars to lower case
 
-	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unsupported" << std::endl;
+	if(end == tomahawk::constants::OUTPUT_SUFFIX){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unsupported" << std::endl;
 		return(1);
 
-	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		Tomahawk::TomahawkOutputReader reader;
+	} else if(end == tomahawk::constants::OUTPUT_LD_SUFFIX){
+		tomahawk::TomahawkOutputReader reader;
 		//reader.setWriteHeader(outputHeader);
-		//Tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
-		//filter = Tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
+		//tomahawk::TomahawkOutputFilterController& filter = reader.getFilter();
+		//filter = tomahawk::TomahawkOutputFilterController(two_filter); // use copy ctor to transfer data
 
 		//if(!reader.setWriterType(outputType))
 		//	return 1;
@@ -119,7 +119,7 @@ int stats(int argc, char** argv){
 		//	return 1;
 
 		//if(!reader.AddRegions(filter_regions)){
-		//	std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+		//	std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 		//	return 1;
 		//}
 
@@ -127,7 +127,7 @@ int stats(int argc, char** argv){
 		//	return 1;
 
 	} else {
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
 		return 1;
 	}
 

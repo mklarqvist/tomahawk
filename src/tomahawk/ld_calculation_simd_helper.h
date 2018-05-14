@@ -1,10 +1,10 @@
 #ifndef ALGORITHM_TOMAHAWKSLAVESIMDHELPER_H_
 #define ALGORITHM_TOMAHAWKSLAVESIMDHELPER_H_
 
-#include "../support/simd_definitions.h"
+#include "support/simd_definitions.h"
 
-namespace Tomahawk{
-namespace Support{
+namespace tomahawk{
+namespace support{
 
 template <int Y = SIMD_ALIGNMENT>
 struct LDCalculationSIMDHelper{

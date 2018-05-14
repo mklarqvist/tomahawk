@@ -1,7 +1,7 @@
 #include "output_writer.h"
 
-namespace Tomahawk{
-namespace IO{
+namespace tomahawk{
+namespace io{
 
 OutputWriter::OutputWriter(void) :
 	owns_pointers(true),
@@ -75,7 +75,7 @@ bool OutputWriter::open(const std::string& output_file){
 	this->CheckOutputNames(output_file);
 	this->filename = output_file;
 
-	this->stream = new std::ofstream(this->basePath + this->baseName + '.' + Tomahawk::Constants::OUTPUT_LD_SUFFIX, std::ios::binary | std::ios::out);
+	this->stream = new std::ofstream(this->basePath + this->baseName + '.' + tomahawk::constants::OUTPUT_LD_SUFFIX, std::ios::binary | std::ios::out);
 	if(this->stream->good() == false){
 		std::cerr << "Failed to open: " << output_file << std::endl;
 		return false;
@@ -85,7 +85,7 @@ bool OutputWriter::open(const std::string& output_file){
 }
 
 int OutputWriter::writeHeaders(twk_header_type& twk_header){
-	const std::string command = "##tomahawk_calcCommand=" + Helpers::program_string();
+	const std::string command = "##tomahawk_calcCommand=" + helpers::program_string();
 	twk_header.getLiterals() += command;
 	// Set file type to TWO
 	twk_header.magic_.file_type = 1;
@@ -108,7 +108,7 @@ void OutputWriter::writeFinal(void){
 void OutputWriter::flush(void){
 	if(this->buffer.size() > 0){
 		if(!this->compressor.Deflate(this->buffer)){
-			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 			exit(1);
 		}
 
@@ -145,7 +145,7 @@ void OutputWriter::operator<<(const container_type& container){
 void OutputWriter::operator<<(buffer_type& buffer){
 	if(buffer.size() > 0){
 		if(!this->compressor.Deflate(buffer)){
-			std::cerr << Helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 			exit(1);
 		}
 
@@ -199,12 +199,12 @@ void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncom
 }
 
 void OutputWriter::CheckOutputNames(const std::string& input){
-	std::vector<std::string> paths = Helpers::filePathBaseExtension(input);
+	std::vector<std::string> paths = helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)
 		this->basePath += '/';
 
-	if(paths[3].size() == Tomahawk::Constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &Tomahawk::Constants::OUTPUT_LD_SUFFIX[0], Tomahawk::Constants::OUTPUT_LD_SUFFIX.size()) == 0)
+	if(paths[3].size() == tomahawk::constants::OUTPUT_LD_SUFFIX.size() && strncasecmp(&paths[3][0], &tomahawk::constants::OUTPUT_LD_SUFFIX[0], tomahawk::constants::OUTPUT_LD_SUFFIX.size()) == 0)
 		this->baseName = paths[2];
 	else this->baseName = paths[1];
 }

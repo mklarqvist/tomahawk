@@ -1,8 +1,8 @@
 #ifndef TOMAHAWKOUTPUT_TOMAHAWKOUTPUTSTATS_H_
 #define TOMAHAWKOUTPUT_TOMAHAWKOUTPUTSTATS_H_
 
-namespace Tomahawk{
-namespace TWO{
+namespace tomahawk{
+namespace two{
 
 struct TomahawkOutputStatsData{
 	typedef TomahawkOutputStatsData self_type;
@@ -83,7 +83,7 @@ struct TomahawkOutputStats{
 
 struct TomahawkOutputStatsContainer{
 	typedef TomahawkOutputStats stats_type;
-	typedef IO::OutputEntry entry_type;
+	typedef io::OutputEntry entry_type;
 
 	TomahawkOutputStatsContainer(const U32& bins) : n_bins(bins), R2(this->n_bins), D(this->n_bins), Dprime(this->n_bins){}
 

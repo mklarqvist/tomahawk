@@ -1,7 +1,7 @@
-#include "../two/output_entry_support.h"
+#include "tomahawk/two/output_entry_support.h"
 
-namespace Tomahawk {
-namespace Support {
+namespace tomahawk {
+namespace support {
 
 OutputEntrySupport::OutputEntrySupport() :
 	controller(0),

@@ -1,6 +1,6 @@
 #include "tomahawk_header.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 TomahawkHeader::TomahawkHeader(void) :
     contigs_(nullptr),
@@ -22,18 +22,18 @@ TomahawkHeader::~TomahawkHeader(void){
 // Open and close functions
 int TomahawkHeader::open(std::istream& stream){
 	if(stream.good() == false){
-		std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 		return(-1);
 	}
 
 	stream >> this->magic_;
 	if(this->validate() == false){
-		std::cerr << Helpers::timestamp("ERROR") << "Failed to validate MAGIC header!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR") << "Failed to validate MAGIC header!" << std::endl;
 		return(-2);
 	}
 
 	if(stream.good() == false){
-			std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 			return(-1);
 	}
 
@@ -45,12 +45,12 @@ int TomahawkHeader::open(std::istream& stream){
 	buffer.n_chars = this->magic_.l_header;
 
 	if(stream.good() == false){
-			std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 			return(-1);
 		}
 
 		if(!tgzf_controller.Inflate(buffer, buffer_uncompressed)){
-			std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 			return(-3);
 		}
 
@@ -84,7 +84,7 @@ int TomahawkHeader::open(std::istream& stream){
 
 		// Build hash tables for contigs and sample names
 		if(this->BuildHashTables() == false){
-			std::cerr << Helpers::timestamp("ERROR") << "Cannot build hash tables" << std::endl;
+			std::cerr << helpers::timestamp("ERROR") << "Cannot build hash tables" << std::endl;
 			return(-4);
 		}
 
@@ -97,7 +97,7 @@ int TomahawkHeader::open(std::istream& stream){
 
 int TomahawkHeader::write(std::ostream& stream){
 	if(stream.good() == false){
-		std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 		return(-1);
 	}
 
@@ -106,13 +106,13 @@ int TomahawkHeader::write(std::ostream& stream){
 
 	buffer_type buffer(l_uncompressed_size + 1024);
 	for(U32 i = 0; i < this->magic_.getNumberContigs(); ++i){
-		//std::cerr << Helpers::timestamp("DEBUG") << this->contigs_[i] << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG") << this->contigs_[i] << std::endl;
 		buffer += this->contigs_[i];
 	}
 
 	for(U32 i = 0; i < this->magic_.getNumberSamples(); ++i){
 		buffer += (U32)this->sample_names_[i].size();
-		//std::cerr << Helpers::timestamp("DEBUG") << this->sample_names_[i] << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG") << this->sample_names_[i] << std::endl;
 		buffer.Add(this->sample_names_[i].data(), this->sample_names_[i].size());
 	}
 
@@ -124,7 +124,7 @@ int TomahawkHeader::write(std::ostream& stream){
 
 	compressor_type tgzf_controller(this->magic_.l_header_uncompressed + 1024);
 	if(!tgzf_controller.Deflate(buffer)){
-		std::cerr << Helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TGZF") << "Failed to get deflate literal TGZF DATA!" << std::endl;
 		return(-3);
 	}
 
@@ -133,12 +133,12 @@ int TomahawkHeader::write(std::ostream& stream){
 
 	stream << this->magic_;
 	if(stream.good() == false){
-		std::cerr << Helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR") << "Stream is bad!" << std::endl;
 		return(-1);
 	}
 	stream.write(tgzf_controller.buffer.data(), tgzf_controller.buffer.size());
 
-	//std::cerr << Helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
+	//std::cerr << helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
 
 	// Cleanup buffer
 	buffer.deleteAll();
@@ -227,7 +227,7 @@ bool TomahawkHeader::BuildHashTables(void){
 	S32* retValue = 0;
 	for(U32 i = 0; i < this->magic_.getNumberContigs(); ++i){
 		if(this->contigs_hash_table_->GetItem(&this->contigs_[i].name[0], &this->contigs_[i].name, retValue, this->contigs_[i].name.size())){
-			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated contig! Impossible!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated contig! Impossible!" << std::endl;
 			return false;
 		}
 		this->contigs_hash_table_->SetItem(&this->contigs_[i].name[0], &this->contigs_[i].name, i, this->contigs_[i].name.size());
@@ -242,7 +242,7 @@ bool TomahawkHeader::BuildHashTables(void){
 	retValue = 0;
 	for(U32 i = 0; i < this->magic_.getNumberSamples(); ++i){
 		if(this->sample_hash_table_->GetItem(&this->sample_names_[i][0], &this->sample_names_[i], retValue, this->sample_names_[i].size())){
-			std::cerr << Helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated name! Impossible!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "TOTEMPOLE") << "Duplicated name! Impossible!" << std::endl;
 			return false;
 		}
 		this->sample_hash_table_->SetItem(&this->sample_names_[i][0], &this->sample_names_[i], i, this->sample_names_[i].size());
