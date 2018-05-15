@@ -1,6 +1,5 @@
 *.o
 *.d
 .DS_Store
-tomahawk
 *.so
 *.so.*
