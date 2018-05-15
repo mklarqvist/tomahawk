@@ -1,6 +1,6 @@
 #include "load_balancer_ld.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 LoadBalancerLD::LoadBalancerLD() : selected_chunk(0), n_desired_chunks(1){}
 LoadBalancerLD::~LoadBalancerLD(){}
@@ -162,7 +162,7 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 
 bool LoadBalancerLD::setSelected(const S32 selected){
 	if(selected < 0){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot set select a negative chunk..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Cannot set select a negative chunk..." << std::endl;
 		return false;
 	}
 
@@ -172,7 +172,7 @@ bool LoadBalancerLD::setSelected(const S32 selected){
 
 bool LoadBalancerLD::setDesired(const S32 desired){
 	if(desired < 0){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut workload into a negative number of blocks..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Cannot cut workload into a negative number of blocks..." << std::endl;
 		return false;
 	}
 
@@ -182,7 +182,7 @@ bool LoadBalancerLD::setDesired(const S32 desired){
 
 bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 	if(this->selected_chunk > this->n_desired_chunks){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
 		return false;
 	}
 
@@ -195,12 +195,12 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		}
 
 		if(cutSize == 1){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->n_desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->n_desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
 			return(false);
 		}
 
 		// temp
-		//std::cerr << Helpers::timestamp("DEBUG") << "Cutsize is: " << cutSize << " and total blocks: " << reader.getIndex().getContainer().size() << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG") << "Cutsize is: " << cutSize << " and total blocks: " << reader.getIndex().getContainer().size() << std::endl;
 		const U32 rowLength = reader.getIndex().getContainer().size() / cutSize;
 		U32 total = 0; // Sanity
 		for(U32 i = 0; i < cutSize; ++i){
@@ -217,7 +217,7 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		}
 
 		if(total != this->n_desired_chunks){
-			std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
 			return(false);
 		}
 
@@ -238,12 +238,12 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 
 bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, const U64 n_window_bases){
 	if(this->selected_chunk > this->n_desired_chunks){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Incorrectly selected block (" << this->selected_chunk << '/' << this->n_desired_chunks << ")..." << std::endl;
 		return false;
 	}
 
 	if(n_window_bases < 1000){
-		std::cerr << Helpers::timestamp("ERROR", "BALANCER") << "Probably not useful to set window size < 1000 bp" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Probably not useful to set window size < 1000 bp" << std::endl;
 		return false;
 	}
 
@@ -264,9 +264,9 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 		// Todo: extend command
 		// Search for extension end
 		if(this->selected_chunk + 1 != this->n_desired_chunks){
-			const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(to_block - 1);
+			const totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(to_block - 1);
 			for(U32 j = to_block; j < reader.getIndex().getContainer().size(); ++j){
-				const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+				const totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 				if(index_entry_j.min_position - index_entry_i.max_position < n_window_bases){
 					//std::cerr << "extend: " << j << " " << index_entry_j.min_position << "-" << index_entry_i.max_position << "=" << index_entry_j.min_position - index_entry_i.max_position << std::endl;
 					++n_block_extension;
@@ -288,12 +288,12 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 	const U32 n_blocks = this->data_to_load[0].second - this->data_to_load[0].first + 1 - n_block_extension;
 	U64 n_max_possible_comparisons = 0;
 	for(U32 i = 0; i < n_blocks; ++i){
-		const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
+		const totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
 		n_max_possible_comparisons += (index_entry_i.n_variants*index_entry_i.n_variants + index_entry_i.n_variants) / 2 - index_entry_i.n_variants;
 		//std::cerr << "keep internal" << std::endl;
 
 		for(U32 j = i + 1; j < n_blocks + n_block_extension; ++j){
-			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+			const totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 
 			// Check if they share the same contig
 			if(index_entry_i.contigID != index_entry_j.contigID)
@@ -319,7 +319,7 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 	U32 current_thread_id = 0;
 
 	for(U32 i = 0; i < n_blocks; ++i){
-		const Totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
+		const totempole::IndexEntry& index_entry_i = reader.getIndex().getContainer().at(i);
 		n_total_current_thread += (index_entry_i.n_variants*index_entry_i.n_variants + index_entry_i.n_variants) / 2 - index_entry_i.n_variants;
 
 		U32 last_index = i;
@@ -333,7 +333,7 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 		bool breaking = false;
 
 		for(U32 j = i + 1; j < n_blocks + n_block_extension; ++j){
-			const Totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
+			const totempole::IndexEntry& index_entry_j = reader.getIndex().getContainer().at(j);
 			// Check if they share the same contig
 			if(index_entry_i.contigID != index_entry_j.contigID)
 				break;

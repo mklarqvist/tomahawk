@@ -1,23 +1,23 @@
 #ifndef IO_OUTPUT_WRITER_H_
 #define IO_OUTPUT_WRITER_H_
 
-#include "../support/MagicConstants.h"
-#include "../support/simd_definitions.h"
-#include "../support/helpers.h"
-#include "../io/compression/TGZFController.h"
-#include "../algorithm/spinlock.h"
-#include "../index/tomahawk_header.h"
-#include "../index/index_entry.h"
-#include "../tomahawk/output_container.h"
-#include "../tomahawk/two/output_entry_support.h"
-#include "../tomahawk/meta_entry.h"
-#include "../index/index_entry.h"
-#include "../index/index_container.h"
-#include "../index/index.h"
-#include "../index/footer.h"
+#include "support/MagicConstants.h"
+#include "support/simd_definitions.h"
+#include "support/helpers.h"
+#include "algorithm/spinlock.h"
+#include "compression/tgzf_controller.h"
+#include "index/tomahawk_header.h"
+#include "index/index_entry.h"
+#include "tomahawk/output_container.h"
+#include "tomahawk/two/output_entry_support.h"
+#include "tomahawk/meta_entry.h"
+#include "index/index_entry.h"
+#include "index/index_container.h"
+#include "index/index.h"
+#include "index/footer.h"
 
-namespace Tomahawk{
-namespace IO{
+namespace tomahawk{
+namespace io{
 
 /**<
  * Writer class for `two` entries. This class supports parallel writing
@@ -30,16 +30,16 @@ class OutputWriter{
 private:
 	typedef OutputWriter                    self_type;
 	typedef TGZFController                  compression_type;
-	typedef Algorithm::SpinLock             spin_lock_type;
+	typedef algorithm::SpinLock             spin_lock_type;
 	typedef BasicBuffer                     buffer_type;
 	typedef TomahawkHeader                  twk_header_type;
-	typedef Totempole::IndexEntry           index_entry_type;
+	typedef totempole::IndexEntry           index_entry_type;
 	typedef OutputEntry                     entry_type;
-	typedef Support::OutputEntrySupport     entry_support_type;
-	typedef Totempole::IndexEntry           header_entry_type;
-	typedef Totempole::IndexContainer       index_container_type;
+	typedef support::OutputEntrySupport     entry_support_type;
+	typedef totempole::IndexEntry           header_entry_type;
+	typedef totempole::IndexContainer       index_container_type;
 	typedef Index                           index_type;
-	typedef Totempole::Footer               footer_type;
+	typedef totempole::Footer               footer_type;
 	typedef size_t                          size_type;
 	typedef OutputContainer                 container_type;
 

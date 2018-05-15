@@ -1,7 +1,7 @@
 #include "index_container.h"
 
-namespace Tomahawk{
-namespace Totempole{
+namespace tomahawk{
+namespace totempole{
 
 IndexContainer::IndexContainer(void) :
 	n_entries_(0),
@@ -47,14 +47,14 @@ IndexContainer& IndexContainer::operator+=(const value_type& index_entry){
 		this->resize();
 	}
 
-	//std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
+	//std::cerr << helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
 	new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
 	++this->n_entries_;
 	return(*this);
 }
 
 void IndexContainer::resize(const size_t new_capacity){
-	//std::cerr << Helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
+	//std::cerr << helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
 	// if resizing to a smaller size
 	if(new_capacity < this->capacity()){
 		// Call destructor for values between shrunk size and previous numbers

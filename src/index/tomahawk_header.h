@@ -3,13 +3,13 @@
 
 #include <cassert>
 
-#include "../algorithm/open_hashtable.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
+#include "algorithm/open_hashtable.h"
 #include "index_contig.h"
-#include "../io/BasicBuffer.h"
-#include "../tomahawk/tomahawk_magic_header.h"
-#include "../io/compression/TGZFController.h"
+#include "tomahawk/tomahawk_magic_header.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 /**<
  * This container handles the header data for
@@ -18,11 +18,11 @@ namespace Tomahawk{
 class TomahawkHeader{
 public:
 	typedef TomahawkHeader                    self_type;
-	typedef Totempole::HeaderContig           contig_type;
-    typedef Base::TomahawkMagicHeader         magic_type;
-    typedef IO::BasicBuffer                   buffer_type;
-    typedef Hash::HashTable<std::string, S32> hash_table;
-    typedef IO::TGZFController                compressor_type;
+	typedef totempole::HeaderContig           contig_type;
+    typedef base::TomahawkMagicHeader         magic_type;
+    typedef io::BasicBuffer                   buffer_type;
+    typedef hash::HashTable<std::string, S32> hash_table;
+    typedef io::TGZFController                compressor_type;
 
 public:
     TomahawkHeader(void);

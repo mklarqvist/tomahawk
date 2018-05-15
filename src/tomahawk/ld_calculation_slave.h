@@ -6,18 +6,18 @@
 #include <cassert>
 #include <cmath>
 
-#include "../support/simd_definitions.h"
-#include "../algorithm/spinlock.h"
-#include "../interface/progressbar.h"
+#include "io/basic_writers.h"
+#include "support/simd_definitions.h"
+#include "algorithm/spinlock.h"
+#include "interface/progressbar.h"
 #include "TomahawkCalcParameters.h"
-#include "../algorithm/load_balancer_block.h"
-#include "../algorithm/genotype_bitpacker.h"
-#include "../io/BasicWriters.h"
-#include "../math/fisher_math.h"
+#include "algorithm/load_balancer_block.h"
+#include "algorithm/genotype_bitpacker.h"
+#include "math/fisher_math.h"
 #include "genotype_meta_container_reference.h"
 #include "ld_calculation_simd_helper.h"
 #include "two/output_entry_support.h"
-#include "../io/output_writer.h"
+#include "io/output_writer.h"
 #include "haplotype_bitvector.h"
 
 // Method 1: None: Input-specified (default)
@@ -29,7 +29,7 @@
 // Method 7: All algorithms run-time output (debug)
 #define SLAVE_DEBUG_MODE 1
 
-namespace Tomahawk{
+namespace tomahawk{
 
 // Parameter thresholds for FLAGs
 #define LOW_MAF_THRESHOLD		0.01
@@ -155,20 +155,20 @@ template <class T>
 class LDSlave{
 	typedef LDSlave<T>                           self_type;
 	typedef GenotypeMetaContainerReference<T>    manager_type;
-	typedef Base::GenotypeContainerReference<T>  block_type;
+	typedef base::GenotypeContainerReference<T>  block_type;
 	typedef const MetaEntry                      meta_type;
-	typedef const Support::GenotypeDiploidRun<T> run_type;
-	typedef Totempole::IndexEntry                totempole_entry_type;
-	typedef IO::OutputWriter                     output_writer_type;
-	typedef Support::OutputEntrySupport          helper_type;
-	typedef Base::GenotypeBitvector<>            simd_pair;
-	typedef Base::GenotypeContainerRunlengthObjects<T> rle_type;
-	typedef Interface::ProgressBar               progress_bar_type;
-	typedef Support::LDCalculationSIMDHelper<>   simd_helper_type;
+	typedef const support::GenotypeDiploidRun<T> run_type;
+	typedef totempole::IndexEntry                totempole_entry_type;
+	typedef io::OutputWriter                     output_writer_type;
+	typedef support::OutputEntrySupport          helper_type;
+	typedef base::GenotypeBitvector<>            simd_pair;
+	typedef base::GenotypeContainerRunlengthObjects<T> rle_type;
+	typedef interface::ProgressBar               progress_bar_type;
+	typedef support::LDCalculationSIMDHelper<>   simd_helper_type;
 	typedef TomahawkCalcParameters               parameter_type;
 
 	// Work orders
-	typedef Tomahawk::LoadBalancerThread         order_type;
+	typedef LoadBalancerThread         order_type;
 	typedef std::vector<order_type>              work_order;
 
 	// Function pointers
@@ -177,7 +177,7 @@ class LDSlave{
 public:
 	LDSlave(const manager_type& manager,
 			output_writer_type& writer,
-        Interface::ProgressBar& progress,
+        interface::ProgressBar& progress,
   const TomahawkCalcParameters& parameters,
               const work_order& orders);
 
@@ -385,10 +385,10 @@ bool LDSlave<T>::CalculateLDUnphased(helper_type& helper, const block_type& bloc
 	T currentLengthA = a[0].runs;
 	T currentLengthB = b[0].runs;
 
-	BYTE currentMix = ((a[0].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*3)
-					^ ((a[0].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*2)
-					^ ((b[0].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*1)
-					^ ((b[0].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)));
+	BYTE currentMix = ((a[0].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*3)
+					^ ((a[0].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*2)
+					^ ((b[0].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*1)
+					^ ((b[0].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)));
 
 	U32 pointerA = 0;
 	U32 pointerB = 0;
@@ -426,16 +426,16 @@ bool LDSlave<T>::CalculateLDUnphased(helper_type& helper, const block_type& bloc
 		if(pointerA == block1.currentMeta().runs || pointerB == block2.currentMeta().runs){
 			//std::cerr << pointerA << '/' << a.meta[a.metaPointer].runs << '\t' << pointerB << '/' << b.meta[b.metaPointer].runs << std::endl;
 			if(pointerA != block1.currentMeta().runs || pointerB != block2.currentMeta().runs){
-				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << block1.currentMeta().runs << " and " << pointerB << "/" << block2.currentMeta().runs << std::endl;
+				std::cerr << helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << block1.currentMeta().runs << " and " << pointerB << "/" << block2.currentMeta().runs << std::endl;
 				exit(1);
 			}
 			break;
 		}
 
-		currentMix  = ((a[pointerA].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*3)
-					^ ((a[pointerA].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*2)
-					^ ((b[pointerB].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH*1)
-					^ ((b[pointerB].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)));
+		currentMix  = ((a[pointerA].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*3)
+					^ ((a[pointerA].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*2)
+					^ ((b[pointerB].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH*1)
+					^ ((b[pointerB].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)));
 	}
 
 #if SLAVE_DEBUG_MODE == 4 || SLAVE_DEBUG_MODE == 5
@@ -622,13 +622,13 @@ bool LDSlave<T>::CalculateLDUnphasedMath(helper_type& helper) const{
 		BYTE biologically_possible = 0;
 		helper.chiSqModel = std::numeric_limits<float>::max();
 		const double* chosen = &alpha;
-		if(alpha >= minhap - Constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + Constants::ALLOWED_ROUNDING_ERROR){
+		if(alpha >= minhap - constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + constants::ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
 			helper.chiSqModel = this->ChiSquaredUnphasedTable(helper, alpha, p, q);
 			chosen = &alpha;
 		}
 
-		if(beta >= minhap - Constants::ALLOWED_ROUNDING_ERROR && beta <= maxhap + Constants::ALLOWED_ROUNDING_ERROR){
+		if(beta >= minhap - constants::ALLOWED_ROUNDING_ERROR && beta <= maxhap + constants::ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
 			if(this->ChiSquaredUnphasedTable(helper, beta, p, q) < helper.chiSqModel){
 				chosen = &beta;
@@ -636,7 +636,7 @@ bool LDSlave<T>::CalculateLDUnphasedMath(helper_type& helper) const{
 			}
 		}
 
-		if(gamma >= minhap - Constants::ALLOWED_ROUNDING_ERROR && gamma <= maxhap + Constants::ALLOWED_ROUNDING_ERROR){
+		if(gamma >= minhap - constants::ALLOWED_ROUNDING_ERROR && gamma <= maxhap + constants::ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
 			if(this->ChiSquaredUnphasedTable(helper, gamma, p, q) < helper.chiSqModel){
 				chosen = &gamma;
@@ -666,7 +666,7 @@ bool LDSlave<T>::CalculateLDUnphasedMath(helper_type& helper) const{
 		else right =  pow( 1.0/(2.0*a)*(-yN - constant), 1.0/3.0);
 
 		const double alpha = xN + right + left;
-		if(!(alpha >= minhap - Constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + Constants::ALLOWED_ROUNDING_ERROR)){
+		if(!(alpha >= minhap - constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + constants::ALLOWED_ROUNDING_ERROR)){
 			//++this->impossible;
 			return false;
 		}
@@ -689,13 +689,13 @@ bool LDSlave<T>::CalculateLDUnphasedMath(helper_type& helper) const{
 		BYTE biologically_possible = 0;
 		helper.chiSqModel = std::numeric_limits<float>::max();
 		const double* chosen = &alpha;
-		if(alpha >= minhap - Constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + Constants::ALLOWED_ROUNDING_ERROR){
+		if(alpha >= minhap - constants::ALLOWED_ROUNDING_ERROR && alpha <= maxhap + constants::ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
 			helper.chiSqModel = this->ChiSquaredUnphasedTable(helper, alpha, p, q);
 			chosen = &alpha;
 		}
 
-		if(gamma >= minhap - Constants::ALLOWED_ROUNDING_ERROR && gamma <= maxhap + Constants::ALLOWED_ROUNDING_ERROR){
+		if(gamma >= minhap - constants::ALLOWED_ROUNDING_ERROR && gamma <= maxhap + constants::ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
 			if(this->ChiSquaredUnphasedTable(helper, gamma, p, q) < helper.chiSqModel){
 				chosen = &gamma;
@@ -1267,12 +1267,14 @@ template <class T>
 bool LDSlave<T>::CalculateLDPhasedSimple(helper_type& helper, const block_type& block1, const block_type& block2) const{
 	helper.resetPhased();
 
-	const Base::HaplotypeBitVector& bitvectorA = block1.currentHaplotypeBitvector();
-	const Base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
+
+	const base::HaplotypeBitVector& bitvectorA = block1.currentHaplotypeBitvector();
+	const base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
 
 	const U32 n_cycles = std::min(bitvectorA.l_list, bitvectorB.l_list);
 	const U32 n_total = bitvectorA.l_list + bitvectorB.l_list;
 	U32 n_same = 0;
+
 
 	// compare A to B
 	if(bitvectorA.l_list >= bitvectorB.l_list){
@@ -1285,6 +1287,25 @@ bool LDSlave<T>::CalculateLDPhasedSimple(helper_type& helper, const block_type& 
 		}
 	}
 
+	/*
+	// test
+	U32 n_same_second = 0;
+	if(bitvectorA.l_list >= bitvectorB.l_list){
+		for(U32 i = 0; i < n_cycles; ++i){
+			n_same_second += block1.currentSBBST().GetPtr(bitvectorB.indices[i]) != nullptr;
+		}
+
+	} else {
+		for(U32 i = 0; i < n_cycles; ++i){
+			n_same_second += block2.currentSBBST().GetPtr(bitvectorA.indices[i]) != nullptr;
+		}
+	}
+*/
+
+	//if(n_same != n_same_second)
+	//	std::cerr << n_same << "\t" << n_same_second << std::endl;
+
+
 	helper[0] = 2*this->samples - (n_total - n_same);
 
 	return(this->CalculateLDPhasedMathSimple(helper, block1, block2));
@@ -1294,8 +1315,8 @@ template <class T>
 bool LDSlave<T>::CalculateLDPhasedSimpleSample(helper_type& helper, const block_type& block1, const block_type& block2) const{
 	helper.resetPhased();
 
-	const Base::HaplotypeBitVector& bitvectorA = block1.currentHaplotypeBitvector();
-	const Base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
+	const base::HaplotypeBitVector& bitvectorA = block1.currentHaplotypeBitvector();
+	const base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
 
 	const U32 n_cycles = 1000;
 	U32 n_same = 0;
@@ -1330,10 +1351,10 @@ bool LDSlave<T>::CalculateLDPhased(helper_type& helper, const block_type& block1
 	T currentLengthA = a[0].runs;
 	T currentLengthB = b[0].runs;
 
-	BYTE currentMixL = ((  a[0].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)
-						^ (b[0].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
-	BYTE currentMixR = ((  a[0].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)
-						^ (b[0].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
+	BYTE currentMixL = ((  a[0].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH)
+						^ (b[0].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
+	BYTE currentMixR = ((  a[0].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH)
+						^ (b[0].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
 
 	U32 pointerA = 0;
 	U32 pointerB = 0;
@@ -1367,17 +1388,17 @@ bool LDSlave<T>::CalculateLDPhased(helper_type& helper, const block_type& block1
 		// Exit condition
 		if(pointerA == block1.currentMeta().runs || pointerB == block2.currentMeta().runs){
 			if(pointerA != block1.currentMeta().runs || pointerB != block2.currentMeta().runs){
-				std::cerr << Tomahawk::Helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << block1.currentMeta().runs << " and " << pointerB << "/" << block2.currentMeta().runs << std::endl;
+				std::cerr << helpers::timestamp("FATAL") << "Failed to exit equally!\n" << pointerA << "/" << block1.currentMeta().runs << " and " << pointerB << "/" << block2.currentMeta().runs << std::endl;
 				exit(1);
 			}
 			break;
 		}
 
 		// Update mixing value
-		currentMixL = ((  a[pointerA].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)
-					   ^ (b[pointerB].alleleA & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
-		currentMixR = ((  a[pointerA].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)
-					   ^ (b[pointerB].alleleB & ((1 << Constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
+		currentMixL = ((  a[pointerA].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH)
+					   ^ (b[pointerB].alleleA & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
+		currentMixR = ((  a[pointerA].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1)) << constants::TOMAHAWK_ALLELE_PACK_WIDTH)
+					   ^ (b[pointerB].alleleB & ((1 << constants::TOMAHAWK_ALLELE_PACK_WIDTH)-1));
 
 	#if SLAVE_DEBUG_MODE == 3
 		++iterations;
@@ -1516,7 +1537,7 @@ bool LDSlave<T>::DiagonalWorkOrder(const order_type& order){
 	helper_type helper;
 
 	for(U32 j = order.fromColumn; j < order.toColumn; ++j){
-		//std::cerr << Helpers::timestamp("DEBUG", "DIAG") << i << '/' << j << '\t' << order << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG", "DIAG") << i << '/' << j << '\t' << order << std::endl;
 		if(order.row == j)
 			this->CompareBlocks(helper, block1);
 		else {
@@ -1535,7 +1556,7 @@ bool LDSlave<T>::SquareWorkOrder(const order_type& order){
 	helper_type helper;
 
 	for(U32 j = order.fromColumn; j < order.toColumn; ++j){
-		//std::cerr << Helpers::timestamp("DEBUG", "SQUARE") << i << '/' << j << '\t' << order << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG", "SQUARE") << i << '/' << j << '\t' << order << std::endl;
 		if(order.row == j)
 			this->CompareBlocks(helper, block1);
 		else {
@@ -1551,13 +1572,13 @@ template <class T>
 bool LDSlave<T>::Calculate(void){
 	// If there is no data
 	if(this->manager.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR", "CONTROLLER") << "There is no data..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "CONTROLLER") << "There is no data..." << std::endl;
 		return false;
 	}
 
 	// If there is no data
 	if(this->orders.size() == 0){
-		std::cerr << Helpers::timestamp("WARNING", "SLAVE") << "No data was given to this worker. Balancing incomplete..." << std::endl;
+		std::cerr << helpers::timestamp("WARNING", "SLAVE") << "No data was given to this worker. Balancing incomplete..." << std::endl;
 		return false;
 	}
 
@@ -1623,7 +1644,7 @@ bool LDSlave<T>::CompareBlocksFunction(helper_type& helper, const block_type& bl
 	m.addUnphased(2, helper);
 
 	if(!m.validate()){
-		std::cerr << Helpers::timestamp("ERROR", "VALIDATION") << "Failed validation..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "VALIDATION") << "Failed validation..." << std::endl;
 		std::cerr << m << std::endl;
 		//exit(1);
 	}
@@ -1685,7 +1706,7 @@ bool LDSlave<T>::CompareBlocksFunctionForcedUnphased(helper_type& helper, const 
 // Within-block comparisons
 template <class T>
 bool LDSlave<T>::CompareBlocks(helper_type& helper, block_type& block1){
-	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-INTERNAL") << (block1.size()*block1.size()-block1.size())/2 << std::endl;
+	//std::cerr << helpers::timestamp("DEBUG", "DIAG-INTERNAL") << (block1.size()*block1.size()-block1.size())/2 << std::endl;
 	block1.resetIterator(); // make sure it is reset
 	block_type block2(block1);
 
@@ -1715,7 +1736,7 @@ bool LDSlave<T>::CompareBlocks(helper_type& helper, block_type& block1){
 // Across block comparisons
 template <class T>
 bool LDSlave<T>::CompareBlocks(helper_type& helper, block_type& block1, block_type& block2){
-	//std::cerr << Helpers::timestamp("DEBUG", "DIAG-SQUARE") << block1.size()*block2.size() << std::endl;
+	//std::cerr << helpers::timestamp("DEBUG", "DIAG-SQUARE") << block1.size()*block2.size() << std::endl;
 
 	// Reset
 	block1.resetIterator();

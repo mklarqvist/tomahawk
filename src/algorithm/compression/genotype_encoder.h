@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../../math/fisher_math.h"
-#include "../../io/bcf/BCFReader.h"
-#include "../../io/vcf/VCFLines.h"
-#include "../../tomahawk/meta_entry.h"
+#include "io/bcf/bcf_reader.h"
+#include "io/vcf/vcf_lines.h"
+#include "math/fisher_math.h"
+#include "tomahawk/meta_entry.h"
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
 
 // Todo: These should all be moved to VCF or BCF entry class
 struct TomahawkImportRLEHelper{
@@ -191,8 +191,8 @@ struct TomahawkImportRLEHelper{
 class GenotypeEncoder {
 	typedef GenotypeEncoder self_type;
 	typedef MetaEntry meta_entry_type;
-	typedef bool (self_type::*rleFunction)(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs); // Type cast pointer to function
-	typedef bool (self_type::*bcfFunction)(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs); // Type cast pointer to function
+	typedef bool (self_type::*rleFunction)(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs); // Type cast pointer to function
+	typedef bool (self_type::*bcfFunction)(const bcf::BCFEntry& line, meta_entry_type& meta, io::BasicBuffer& runs); // Type cast pointer to function
 
 	typedef TomahawkImportRLEHelper helper_type;
 
@@ -213,72 +213,72 @@ public:
 	}
 
 	void DetermineBitWidth(void){
-		if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_8B - 1){
+		if(this->n_samples <= constants::UPPER_LIMIT_SAMPLES_8B - 1){
 			if(!SILENT){
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << constants::UPPER_LIMIT_SAMPLES_8B << "..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Using 8-bit width..." << std::endl;
 			}
 			this->encode = &self_type::RunLengthEncodeSimple<BYTE>;
 			this->encodeComplex = &self_type::RunLengthEncodeComplex<BYTE>;
 			this->encodeBCF = &self_type::RunLengthEncodeBCF<BYTE>;
-			this->shiftSize = sizeof(BYTE)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+			this->shiftSize = sizeof(BYTE)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width = sizeof(BYTE);
-		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_16B - 1){
+		} else if(this->n_samples <= constants::UPPER_LIMIT_SAMPLES_16B - 1){
 			if(!SILENT){
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << constants::UPPER_LIMIT_SAMPLES_16B << "..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Using 16-bit width..." << std::endl;
 			}
 			this->encode = &self_type::RunLengthEncodeSimple<U16>;
 			this->encodeComplex = &self_type::RunLengthEncodeComplex<U16>;
 			this->encodeBCF = &self_type::RunLengthEncodeBCF<U16>;
-			this->shiftSize = sizeof(U16)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+			this->shiftSize = sizeof(U16)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width = sizeof(U16);
-		} else if(this->n_samples <= Constants::UPPER_LIMIT_SAMPLES_32B - 1){
+		} else if(this->n_samples <= constants::UPPER_LIMIT_SAMPLES_32B - 1){
 			if(!SILENT){
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << constants::UPPER_LIMIT_SAMPLES_32B << "..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Using 32-bit width..." << std::endl;
 			}
 			this->encode = &self_type::RunLengthEncodeSimple<U32>;
 			this->encodeComplex = &self_type::RunLengthEncodeComplex<U32>;
 			this->encodeBCF = &self_type::RunLengthEncodeBCF<U32>;
-			this->shiftSize = sizeof(U32)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+			this->shiftSize = sizeof(U32)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width = sizeof(U32);
 		} else {
 			if(!SILENT){
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << Constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << Constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
-				std::cerr << Helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_8B  << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_16B << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " > " << constants::UPPER_LIMIT_SAMPLES_32B << "... Skip" << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Samples: " << this->n_samples << " < " << constants::UPPER_LIMIT_SAMPLES_64B << "..." << std::endl;
+				std::cerr << helpers::timestamp("LOG", "RLE") << "Using 64-bit width..." << std::endl;
 			}
 			this->encode = &self_type::RunLengthEncodeSimple<U64>;
 			this->encodeComplex = &self_type::RunLengthEncodeComplex<U64>;
 			this->encodeBCF = &self_type::RunLengthEncodeBCF<U64>;
-			this->shiftSize = sizeof(U64)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+			this->shiftSize = sizeof(U64)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 			this->bit_width = sizeof(U64);
 		}
 	}
 
-	inline bool RunLengthEncode(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+	inline bool RunLengthEncode(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs){
 		if(!line.getComplex())
 			return((*this.*encode)(line, meta, runs));
 		else
 			return((*this.*encodeComplex)(line, meta, runs));
 	}
 
-	inline bool RunLengthEncode(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+	inline bool RunLengthEncode(const bcf::BCFEntry& line, meta_entry_type& meta, io::BasicBuffer& runs){
 		return((*this.*encodeBCF)(line, meta, runs));
 	}
 
 	inline const BYTE& getBitWidth(void) const{ return this->bit_width; }
 
 private:
-	template <class T> bool RunLengthEncodeSimple (const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs);
-	template <class T> bool RunLengthEncodeComplex(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs);
-	template <class T> bool RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeSimple (const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeComplex(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs);
+	template <class T> bool RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_type& meta, io::BasicBuffer& runs);
 
 private:
 	U64         n_samples;
@@ -294,7 +294,7 @@ public:
 };
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_type& meta, io::BasicBuffer& runs){
 	meta.position = (U32)line.body->POS + 1;
 	meta.ref_alt  = line.ref_alt;
 
@@ -306,18 +306,18 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_t
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-	BYTE packed = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+	BYTE packed = (bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1);
 
 	this->helper.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-		BYTE packed_internal = (BCF::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | BCF::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+		BYTE packed_internal = (bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1);
 
 		if(packed != packed_internal){
-			__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-			__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+			__dump =  (length & (((T)1 << this->shiftSize) - 1)) << constants::TOMAHAWK_SNP_PACK_WIDTH;
+			__dump ^= (packed & ((1 << constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 			runs += __dump;
 
 			this->helper[packed] += length;
@@ -334,8 +334,8 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_t
 		}
 		++length;
 	}
-	__dump =  (length & (((T)1 << this->shiftSize) - 1)) << Constants::TOMAHAWK_SNP_PACK_WIDTH;
-	__dump ^= (packed & ((1 << Constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
+	__dump =  (length & (((T)1 << this->shiftSize) - 1)) << constants::TOMAHAWK_SNP_PACK_WIDTH;
+	__dump ^= (packed & ((1 << constants::TOMAHAWK_SNP_PACK_WIDTH) - 1));
 	runs += __dump;
 	++n_runs;
 
@@ -360,13 +360,13 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const BCF::BCFEntry& line, meta_entry_t
 }
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeSimple(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeSimple(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs){
 	return false;
 }
 
 
 template <class T>
-bool GenotypeEncoder::RunLengthEncodeComplex(const VCF::VCFLine& line, meta_entry_type& meta, IO::BasicBuffer& runs){
+bool GenotypeEncoder::RunLengthEncodeComplex(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs){
 	return false;
 }
 

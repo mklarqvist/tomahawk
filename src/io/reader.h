@@ -8,9 +8,9 @@
 #include <cstddef>
 #include <cstring>
 
-#include "../support/MagicConstants.h" // for SILENT
+#include "support/MagicConstants.h" // for SILENT
 
-namespace Tomahawk{
+namespace tomahawk{
 
 /*
  * Basic block-wise reader

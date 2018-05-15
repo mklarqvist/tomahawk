@@ -1,6 +1,6 @@
 #include "index.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 Index::Index(){}
 Index::~Index(){}

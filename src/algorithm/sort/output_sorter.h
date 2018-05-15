@@ -4,21 +4,21 @@
 #include <thread>
 #include <queue>
 
-#include "../../io/compression/TGZFEntryIterator.h"
-#include "../../tomahawk/two/TomahawkOutputReader.h"
+#include "io/compression/tgzf_entry_iterator.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 #include "output_sort_merge_queue.h"
 #include "output_sort_slave.h"
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
 
 /**<
  * Primary class for sorting `TWO` data
  */
 class OutputSorter{
-	typedef IO::OutputEntry                   entry_type;
+	typedef io::OutputEntry                   entry_type;
 	typedef TomahawkOutputReader              two_reader_type;
-	typedef IO::TGZFEntryIterator<entry_type> tgzf_iterator;
+	typedef io::TGZFEntryIterator<entry_type> tgzf_iterator;
 	typedef OutputSorter                      self_type;
 	typedef OutputSortMergeQueue<entry_type>  queue_entry;
 	typedef std::priority_queue<queue_entry>  queue_type; // priority queue

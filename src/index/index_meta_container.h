@@ -5,12 +5,12 @@
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 
-#include "../support/type_definitions.h"
-#include "../io/BasicBuffer.h"
+#include "io/basic_buffer.h"
+#include "support/type_definitions.h"
 #include "index_meta_entry.h"
 
-namespace Tomahawk{
-namespace Totempole{
+namespace tomahawk{
+namespace totempole{
 
 /**<
  * STL-like container for Tomahawk meta index entries
@@ -25,7 +25,7 @@ private:
     typedef const value_type*     const_pointer;
     typedef std::ptrdiff_t        difference_type;
     typedef std::size_t           size_type;
-    typedef IO::BasicBuffer       buffer_type;
+    typedef io::BasicBuffer       buffer_type;
 
 public:
     IndexMetaContainer(void) :
@@ -132,14 +132,14 @@ public:
 			this->resize();
 		}
 
-		//std::cerr << Helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG") << "Adding: " << this->size() << "/" << this->capacity() << std::endl;
 		new( &this->entries_[this->n_entries_] ) value_type(index_entry); // invoke copy ctor
 		++this->n_entries_;
 		return(*this);
 	}
 
 	void resize(const size_t new_capacity){
-		//std::cerr << Helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
+		//std::cerr << helpers::timestamp("DEBUG") << "Resize: " << this->capacity() << "->" << new_capacity << std::endl;
 		// if resizing to a smaller size
 		if(new_capacity < this->capacity()){
 			// Call destructor for values between shrunk size and previous numbers

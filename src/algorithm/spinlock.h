@@ -3,8 +3,8 @@
 
 #include <atomic>
 
-namespace Tomahawk{
-namespace Algorithm{
+namespace tomahawk{
+namespace algorithm{
 
 class SpinLock{
 public:

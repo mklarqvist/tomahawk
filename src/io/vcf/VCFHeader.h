@@ -10,7 +10,7 @@
 #include "../reader.h"
 #include "../../algorithm/open_hashtable.h"
 #include "../BasicBuffer.h"
-#include "../compression/TGZFController.h"
+#include "../compression/tgzf_controller.h"
 
 namespace Tomahawk {
 namespace VCF{

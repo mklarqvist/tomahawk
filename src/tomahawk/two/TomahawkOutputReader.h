@@ -7,40 +7,40 @@
 #include <stddef.h>
 #include <regex>
 
-#include "../../io/BasicBuffer.h"
-#include "../../io/compression/TGZFController.h"
-#include "../../support/MagicConstants.h"
-#include "../../algorithm/open_hashtable.h"
-#include "../../support/type_definitions.h"
-#include "../../third_party/intervalTree.h"
-#include "../../tomahawk/output_container.h"
-#include "../../tomahawk/output_container_reference.h"
-#include "../two/output_entry.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
+#include "support/MagicConstants.h"
+#include "algorithm/open_hashtable.h"
+#include "support/type_definitions.h"
+#include "third_party/intervalTree.h"
+#include "tomahawk/output_container.h"
+#include "tomahawk/output_container_reference.h"
+#include "tomahawk/two/output_entry.h"
 #include "output_filter.h"
-#include "../../index/index.h"
-#include "../../index/footer.h"
-#include "../../index/tomahawk_header.h"
+#include "index/index.h"
+#include "index/footer.h"
+#include "index/tomahawk_header.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 class TomahawkOutputReader {
 private:
-	typedef TomahawkOutputReader           self_type;
-	typedef IO::OutputEntry                entry_type;
-	typedef OutputFilter                   filter_type;
-	typedef OutputContainer                output_container_type;
-	typedef OutputContainerReference       output_container_reference_type;
-	typedef Totempole::HeaderContig        contig_type;
-	typedef IO::TGZFHeader                 tgzf_header_type;
-	typedef Algorithm::ContigInterval      interval_type;
-	typedef TomahawkHeader                 header_type;
-	typedef Index                          index_type;
-	typedef IO::BasicBuffer                buffer_type;
-	typedef IO::TGZFController             tgzf_controller_type;
-	typedef Totempole::Footer              footer_type;
+	typedef TomahawkOutputReader      self_type;
+	typedef io::OutputEntry           entry_type;
+	typedef OutputFilter              filter_type;
+	typedef OutputContainer           output_container_type;
+	typedef OutputContainerReference  output_container_reference_type;
+	typedef totempole::HeaderContig   contig_type;
+	typedef io::TGZFHeader            tgzf_header_type;
+	typedef algorithm::ContigInterval interval_type;
+	typedef TomahawkHeader            header_type;
+	typedef Index                     index_type;
+	typedef io::BasicBuffer           buffer_type;
+	typedef io::TGZFController        tgzf_controller_type;
+	typedef totempole::Footer         footer_type;
 
-	typedef Algorithm::IntervalTree<interval_type, U32> tree_type;
-	typedef Hash::HashTable<std::string, U32> hash_table;
+	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
+	typedef hash::HashTable<std::string, U32> hash_table;
 
 public:
 	TomahawkOutputReader();

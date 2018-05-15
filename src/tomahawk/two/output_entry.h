@@ -1,11 +1,11 @@
 #ifndef TOMAHAWKOUTPUTENTRY_H_
 #define TOMAHAWKOUTPUTENTRY_H_
 
-#include "../../io/BasicBuffer.h"
-#include "../../index/index_contig.h"
+#include "io/basic_buffer.h"
+#include "index/index_contig.h"
 
-namespace Tomahawk{
-namespace IO{
+namespace tomahawk{
+namespace io{
 
 /**<
  * Primary data structure for Tomahawk-generated LD output.
@@ -17,8 +17,8 @@ namespace IO{
 struct __attribute__((packed, aligned(1))) OutputEntry{
 public:
 	typedef OutputEntry                    self_type;
-	typedef Totempole::HeaderContig        contig_type;
-	typedef IO::BasicBuffer                buffer_type;
+	typedef totempole::HeaderContig        contig_type;
+	typedef io::BasicBuffer                buffer_type;
 
 public:
 	// if interpreted directly from buffer stream

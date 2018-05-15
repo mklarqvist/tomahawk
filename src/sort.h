@@ -21,9 +21,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 #include "algorithm/sort/output_sorter.h"
+#include "tomahawk/tomahawk_reader.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "tomahawk/TomahawkReader.h"
 
 void sort_usage(void){
 	programMessage();
@@ -33,7 +33,7 @@ void sort_usage(void){
 	"        sorted chunks no larger than -L MB in size. Then rerun sort with the -M option\n"
 	"        to perform a k-way merge sort using the partially block-sorted data.\n"
 	"        Note that combining -L and -t incur O(L*t) memory!\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
+	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (required)\n"
@@ -92,21 +92,21 @@ int sort(int argc, char** argv){
 		case 'L':
 			memory_limit = atof(optarg) * 1e6;
 			if(memory_limit <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
 		case 'b':
 			block_size = atoi(optarg) * 1e6;
 			if(block_size <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
 		case 't':
 			threads = atoi(optarg);
 			if(threads <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter t cannot be <= 0" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter t cannot be <= 0" << std::endl;
 				return(1);
 			}
 			break;
@@ -118,33 +118,33 @@ int sort(int argc, char** argv){
 	}
 
 	if(input.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
 		std::cerr << input.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
 	if(output.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
 		std::cerr << output.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling sort..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling sort..." << std::endl;
 	}
 
-	Tomahawk::Algorithm::OutputSorter reader;
+	tomahawk::algorithm::OutputSorter reader;
 	reader.n_threads = threads;
 
 	if(merge == false){
 		if(!reader.sort(input, output, memory_limit)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
 			return 1;
 		}
 	} else {
 		if(!reader.sortMerge(input, output, block_size)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
 			return 1;
 		}
 	}

@@ -1,8 +1,10 @@
 #ifndef TOMAHAWK_TOMAHAWKSUPPORT_H_
 #define TOMAHAWK_TOMAHAWKSUPPORT_H_
 
-namespace Tomahawk{
-namespace Support{
+#include "support/MagicConstants.h"
+
+namespace tomahawk{
+namespace support{
 
 #pragma pack(push, 1)
 template <class T>
@@ -15,9 +17,9 @@ public:
 	}
 	~GenotypeDiploidRun(){}
 
-	T alleleA: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
-	  alleleB: Constants::TOMAHAWK_ALLELE_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+	T alleleA: constants::TOMAHAWK_ALLELE_PACK_WIDTH,
+	  alleleB: constants::TOMAHAWK_ALLELE_PACK_WIDTH,
+	  runs:    sizeof(T)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 };
 
 
@@ -31,8 +33,8 @@ public:
 	}
 	~GenotypeDiploidRunPacked(){}
 
-	T alleles: Constants::TOMAHAWK_SNP_PACK_WIDTH,
-	  runs:    sizeof(T)*8 - Constants::TOMAHAWK_SNP_PACK_WIDTH;
+	T alleles: constants::TOMAHAWK_SNP_PACK_WIDTH,
+	  runs:    sizeof(T)*8 - constants::TOMAHAWK_SNP_PACK_WIDTH;
 };
 
 #pragma pack(pop)

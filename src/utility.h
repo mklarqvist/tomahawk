@@ -5,11 +5,11 @@
 #include "support/MagicConstants.h"
 
 // Declare extern
-std::string Tomahawk::Constants::LITERAL_COMMAND_LINE;
-std::string Tomahawk::Constants::INTERPRETED_COMMAND;
+std::string tomahawk::constants::LITERAL_COMMAND_LINE;
+std::string tomahawk::constants::INTERPRETED_COMMAND;
 
 void programMessage(const bool separator = true){
-	std::cerr << "Program: " << Tomahawk::Constants::PROGRAM_NAME << " " << VERSION << std::endl;
+	std::cerr << "Program: " << tomahawk::constants::PROGRAM_NAME << " " << VERSION << std::endl;
 	std::cerr << "Contact: Marcus D. R. Klarqvist <mk819@cam.ac.uk>" << std::endl;
 	std::cerr << "Documentation: https://github.com/mklarqvist/tomahawk" << std::endl;
 	std::cerr << "License: MIT" << std::endl;
@@ -17,7 +17,7 @@ void programMessage(const bool separator = true){
 }
 
 void programHelp(void){
-	std::cerr << "Usage: " << Tomahawk::Constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
+	std::cerr << "Usage: " << tomahawk::constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
 	std::cerr << "Commands: import, view, calc, sort, index, stats, concat" << std::endl;
 }
 

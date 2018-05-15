@@ -120,5 +120,4 @@ before_install:
   - gcc -march=native -dM -E - < /dev/null | egrep "SSE|AVX" | sort
 script:
   - git submodule update --recursive
-  - cd build
   - make -j4

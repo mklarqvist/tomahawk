@@ -1,7 +1,9 @@
 #ifndef TOMAHAWKENTRYMETA_H_
 #define TOMAHAWKENTRYMETA_H_
 
-namespace Tomahawk{
+#include "support/MagicConstants.h"
+
+namespace tomahawk{
 
 #define TOMAHAWK_ENTRY_META_SIZE (sizeof(U32) + sizeof(BYTE) + sizeof(double)*2 + sizeof(U32))
 
@@ -33,11 +35,11 @@ public:
 	~MetaEntry() = default;
 
 	inline bool isSingleton(void) const{ return(this->AF == 0); }
-	inline const char getRefAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt >> 4]); }
-	inline const char getAltAllele(void) const{ return(Constants::REF_ALT_LOOKUP[this->ref_alt & ((1 << 4) - 1)]); }
+	inline const char getRefAllele(void) const{ return(constants::REF_ALT_LOOKUP[this->ref_alt >> 4]); }
+	inline const char getAltAllele(void) const{ return(constants::REF_ALT_LOOKUP[this->ref_alt & ((1 << 4) - 1)]); }
 	inline const char getPhaseVCFCharacter(void) const{ return(this->all_phased == 1 ? '|' : '/'); }
 
-	friend IO::BasicBuffer& operator<<(IO::BasicBuffer& buffer, const MetaEntry& meta_entry){
+	friend io::BasicBuffer& operator<<(io::BasicBuffer& buffer, const MetaEntry& meta_entry){
 		U32 pstring = meta_entry.position << 2;
 		pstring |= meta_entry.all_phased << 1;
 		pstring |= meta_entry.has_missing;

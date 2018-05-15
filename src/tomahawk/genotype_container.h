@@ -4,13 +4,13 @@
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 
-#include "../support/type_definitions.h"
-#include "../index/index_entry.h"
+#include "support/type_definitions.h"
+#include "index/index_entry.h"
 #include "genotype_container_bitvector.h"
 #include "genotype_container_runlength.h"
 
-namespace Tomahawk{
-namespace Base{
+namespace tomahawk{
+namespace base{
 
 template <class T>
 class GenotypeContainer{
@@ -19,9 +19,9 @@ private:
 	typedef GenotypeContainerBitvector           container_bitvector_type;
 	typedef GenotypeContainerRunlength<T>        container_runlength_type;
 	typedef GenotypeContainerRunlengthObjects<T> genotype_runlength_type;
-	typedef Base::GenotypeBitvector<>            genotype_bitvector_type;
+	typedef base::GenotypeBitvector<>            genotype_bitvector_type;
 	typedef MetaEntry                            meta_type;
-	typedef Totempole::IndexEntry                header_entry;
+	typedef totempole::IndexEntry                header_entry;
     typedef genotype_runlength_type              value_type;
     typedef value_type&                          reference;
     typedef const value_type&                    const_reference;

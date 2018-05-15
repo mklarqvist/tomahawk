@@ -22,10 +22,10 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <getopt.h>
 
+#include "tomahawk/tomahawk_reader.h"
 #include "tomahawk/two/output_filter.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "utility.h"
-#include "tomahawk/TomahawkReader.h"
 
 void view_usage(void){
 	programMessage();
@@ -33,7 +33,7 @@ void view_usage(void){
 	"About:  Convert binary TWK->VCF or TWO->LD; subset and slice TWK/TWO data\n"
 	"        Data does not have to be indexed. However, operations are faster if they\n"
 	"        are.\n"
-	"Usage:  " << Tomahawk::Constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
+	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
@@ -104,7 +104,7 @@ int view(int argc, char** argv){
 
 	// Parameter defaults
 	std::string input, output;
-	Tomahawk::OutputFilter two_filter;
+	tomahawk::OutputFilter two_filter;
 	bool outputHeader = true;
 	int outputType = 1;
 	bool dropGenotypes = false;
@@ -139,11 +139,11 @@ int view(int argc, char** argv){
 		case 'r':
 			two_filter.minR2 = atof(optarg);
 			if(two_filter.minR2 < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter r cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter r cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.minR2 > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter r has to be in range 0 < r < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter r has to be in range 0 < r < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -151,11 +151,11 @@ int view(int argc, char** argv){
 		case 'R':
 			two_filter.maxR2 = atof(optarg);
 			if(two_filter.maxR2 < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter R cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter R cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.maxR2 > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter R has to be in range 0 < R < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter R has to be in range 0 < R < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -163,11 +163,11 @@ int view(int argc, char** argv){
 		case 'd':
 			two_filter.minDprime = atof(optarg);
 			if(two_filter.minDprime < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter d cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.minDprime > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter d has to be in range 0 < d < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d has to be in range 0 < d < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -175,11 +175,11 @@ int view(int argc, char** argv){
 		case 'D':
 			two_filter.maxDprime = atof(optarg);
 			if(two_filter.maxDprime < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter D cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.maxDprime > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter D has to be in range 0 < D < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D has to be in range 0 < D < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -187,11 +187,11 @@ int view(int argc, char** argv){
 		case 'p':
 			two_filter.minP = atof(optarg);
 			if(two_filter.minP < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter p cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter p cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.minP > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter p has to be in range 0 < p < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter p has to be in range 0 < p < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -199,11 +199,11 @@ int view(int argc, char** argv){
 		case 'P':
 			two_filter.maxP = atof(optarg);
 			if(two_filter.maxP < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter P cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter P cannot be negative" << std::endl;
 				return(1);
 			}
 			if(two_filter.maxP > 1){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter P has to be in range 0 < P < 1" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter P has to be in range 0 < P < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -212,7 +212,7 @@ int view(int argc, char** argv){
 		case 'x':
 			two_filter.minChiSquared = atof(optarg);
 			if(two_filter.minChiSquared < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter x cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter x cannot be negative" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -220,7 +220,7 @@ int view(int argc, char** argv){
 		case 'X':
 			two_filter.maxChiSquared = atof(optarg);
 			if(two_filter.maxChiSquared <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter X cannot be <= 0" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter X cannot be <= 0" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -229,7 +229,7 @@ int view(int argc, char** argv){
 		case 'm':
 			two_filter.minPmodel = atof(optarg);
 			if(two_filter.minPmodel < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter m cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter m cannot be negative" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -237,7 +237,7 @@ int view(int argc, char** argv){
 		case 'M':
 			two_filter.maxPmodel = atof(optarg);
 			if(two_filter.maxPmodel <= 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter M cannot be <= 0" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter M cannot be <= 0" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -246,7 +246,7 @@ int view(int argc, char** argv){
 		case 'a':
 			two_filter.minMHF = atof(optarg);
 			if(two_filter.minMHF < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter a cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter a cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
@@ -254,7 +254,7 @@ int view(int argc, char** argv){
 		case 'A':
 			two_filter.maxMHF = atof(optarg);
 			if(two_filter.maxMHF < 0){
-				std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Parameter A cannot be negative" << std::endl;
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter A cannot be negative" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -299,47 +299,47 @@ int view(int argc, char** argv){
 	}
 
 	if(input.length() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
 		std::cerr << input.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << Tomahawk::Helpers::timestamp("LOG") << "Calling view..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling view..." << std::endl;
 	}
 
-	std::vector<std::string> inputFile_parts = Tomahawk::Helpers::split(input, '.');
+	std::vector<std::string> inputFile_parts = tomahawk::helpers::split(input, '.');
 	std::string& end = inputFile_parts[inputFile_parts.size() - 1];
 	std::transform(end.begin(), end.end(), end.begin(), ::tolower); // transform chars to lower case
 
-	if(end == Tomahawk::Constants::OUTPUT_SUFFIX){
-		Tomahawk::TomahawkReader tomahawk;
+	if(end == tomahawk::constants::OUTPUT_SUFFIX){
+		tomahawk::TomahawkReader tomahawk;
 		tomahawk.setDropGenotypes(dropGenotypes);
 		tomahawk.setShowHeader(outputHeader);
 		if(!tomahawk.open(input)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to open!" << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to open!" << std::endl;
 			return 1;
 		}
 
 		if(!tomahawk.addRegions(filter_regions)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
 		}
 
 		tomahawk.outputBlocks();
 
-	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
-		Tomahawk::TomahawkOutputReader reader;
+	} else if(end == tomahawk::constants::OUTPUT_LD_SUFFIX){
+		tomahawk::TomahawkOutputReader reader;
 		reader.setShowHeader(outputHeader);
-		Tomahawk::OutputFilter& filter = reader.getFilter();
-		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
+		tomahawk::OutputFilter& filter = reader.getFilter();
+		filter = tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
 		if(!reader.open(input))
 			return 1;
 
 		if(!reader.addRegions(filter_regions)){
-			std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
 		}
 
@@ -348,7 +348,7 @@ int view(int argc, char** argv){
 
 
 	} else {
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognised input file format: " << input << std::endl;
 		return 1;
 	}
 

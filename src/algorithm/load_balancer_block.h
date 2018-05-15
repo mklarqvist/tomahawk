@@ -2,9 +2,9 @@
 #define ALGORITHM_LOAD_BALANCER_BLOCK_H_
 
 #include <vector>
-#include "../support/type_definitions.h"
+#include "support/type_definitions.h"
 
-namespace Tomahawk{
+namespace tomahawk{
 
 struct LoadBalancerBlock{
 	LoadBalancerBlock() :

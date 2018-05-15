@@ -2,9 +2,10 @@
 #define TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_
 
 #include <thread>
-#include "../io/BasicWriters.h"
 
-namespace Tomahawk{
+#include "io/basic_writers.h"
+
+namespace tomahawk{
 
 #define CALC_DEFAULT_MINR2      0.1
 #define CALC_DEFAULT_MAXR2      1.0
@@ -15,7 +16,7 @@ namespace Tomahawk{
 struct TomahawkCalcParameters{
 public:
 	typedef TomahawkCalcParameters    self_type;
-	typedef IO::GenericWriterInterace writer_type;
+	typedef io::GenericWriterInterace writer_type;
 	enum force_method {none, phasedFunction, unphasedFunction};
 
 public:
@@ -59,57 +60,57 @@ public:
 
 	bool Validate(void){
 		if(n_threads < 0){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid number of threads..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid number of threads..." << std::endl;
 			return false;
 		}
 
 		if(n_chunks < 0){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid number of partitions..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid number of partitions..." << std::endl;
 			return false;
 		}
 
 		if(chunk_selected < 0 || chunk_selected > n_chunks){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid selected partition..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid selected partition..." << std::endl;
 			return false;
 		}
 
 		if(R2_min < 0 || R2_min > 1){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum R-squared cutoff... " << this->R2_min << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid minimum R-squared cutoff... " << this->R2_min << std::endl;
 			return false;
 		}
 
 		if(R2_max < 0 || R2_max > 1){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum R-squared cutoff... " << this->R2_max << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid maximum R-squared cutoff... " << this->R2_max << std::endl;
 			return false;
 		}
 
 		if(R2_min > R2_max){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum R-squared value > maximum R-squared value..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Minimum R-squared value > maximum R-squared value..." << std::endl;
 			return false;
 		}
 
 		if(P_threshold < 0 || P_threshold > 1){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid P-value cutoff..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid P-value cutoff..." << std::endl;
 			return false;
 		}
 
 		if(minimum_sum_alternative_haplotype_count < 0){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid minimum number of alleles..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid minimum number of alleles..." << std::endl;
 			return false;
 		}
 
 		if(maximum_sum_alternative_haplotype_count < 0){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Invalid maximum number of alleles..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Invalid maximum number of alleles..." << std::endl;
 			return false;
 		}
 
 		if(minimum_sum_alternative_haplotype_count > maximum_sum_alternative_haplotype_count){
-			std::cerr << Helpers::timestamp("ERROR", "CALC") << "Minimum number of alleles > maximum number of alleles..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "CALC") << "Minimum number of alleles > maximum number of alleles..." << std::endl;
 			return false;
 		}
 
-		this->R2_min -= Constants::ALLOWED_ROUNDING_ERROR;
-		this->R2_max += Constants::ALLOWED_ROUNDING_ERROR;
+		this->R2_min -= constants::ALLOWED_ROUNDING_ERROR;
+		this->R2_max += constants::ALLOWED_ROUNDING_ERROR;
 
 		return true;
 	}
@@ -128,7 +129,7 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& os, const self_type& p){
 		// Todo: extend to dump all implicit parameters and store in TWO header output
-		os << Helpers::timestamp("CALC", "PARAMETERS") << p.getInterpretedString();
+		os << helpers::timestamp("CALC", "PARAMETERS") << p.getInterpretedString();
 
 		return(os);
 	}

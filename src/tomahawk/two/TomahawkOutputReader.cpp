@@ -1,17 +1,17 @@
-#include "../two/TomahawkOutputReader.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 
 #include <bits/move.h>
+#include <io/compression/gz_constants.h>
+#include <io/compression/gz_header.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 
-#include "../../io/compression/GZFConstants.h"
-#include "../../io/compression/GZFHeader.h"
-#include "../../support/helpers.h"
-#include "../two/TomahawkOutputStats.h"
-#include "../../io/output_writer.h"
+#include "support/helpers.h"
+#include "tomahawk/two/TomahawkOutputStats.h"
+#include "io/output_writer.h"
 
-namespace Tomahawk {
+namespace tomahawk {
 
 TomahawkOutputReader::TomahawkOutputReader() :
 		filesize_(0),
@@ -43,25 +43,25 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 
 bool TomahawkOutputReader::open(const std::string input){
 	if(input.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "No input filename..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "No input filename..." << std::endl;
 		return false;
 	}
 
 	this->stream_.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open file handle: " << input << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open file handle: " << input << std::endl;
 	}
 	this->filesize_ = this->stream_.tellg();
 
 	this->stream_.seekg(this->filesize_ - TWK_FOOTER_LENGTH);
 	this->stream_ >> this->footer_;
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Stream corrupted after loading footer..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Stream corrupted after loading footer..." << std::endl;
 		return false;
 	}
 
 	if(this->footer_.validate() == false){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate footer! The file is truncated or corrupted..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate footer! The file is truncated or corrupted..." << std::endl;
 		return false;
 	}
 
@@ -84,22 +84,22 @@ bool TomahawkOutputReader::open(const std::string input){
 	// Seek to beginning
 	this->stream_.seekg(0);
 	if(!this->header_.open(this->stream_)){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to load header data..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to load header data..." << std::endl;
 		return false;
 	}
 
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Stream is bad..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Stream is bad..." << std::endl;
 		return false;
 	}
 
 	if(this->header_.validate() == false){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to validate header..." << std::endl;
 		return false;
 	}
 
 	if(this->header_.magic_.major_version == 0 && this->header_.magic_.minor_version < 0.4){
-		std::cerr << Helpers::timestamp("ERROR", "TOMAHAWK") << "Legacy file not supported..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Legacy file not supported..." << std::endl;
 		return false;
 	}
 
@@ -111,7 +111,7 @@ bool TomahawkOutputReader::open(const std::string input){
 int TomahawkOutputReader::parseBlock(const bool clear){
 	// Stream died
 	if(this->stream_.good() == false){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
 		return -1;
 	}
 
@@ -123,11 +123,11 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 
 	// Read TGZF header
 	this->buffer_.resize(sizeof(tgzf_header_type));
-	this->stream_.read(this->buffer_.data(),  IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	this->stream_.read(this->buffer_.data(),  io::constants::TGZF_BLOCK_HEADER_LENGTH);
 	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(this->buffer_.data());
-	this->buffer_.n_chars = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	this->buffer_.n_chars = io::constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
 		return -2;
 	}
 
@@ -137,9 +137,9 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 	// resulting in segfault
 	h = reinterpret_cast<const tgzf_header_type*>(this->buffer_.data());
 
-	this->stream_.read(&this->buffer_.buffer[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	this->stream_.read(&this->buffer_.buffer[io::constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - io::constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!this->stream_.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 		return -3;
 	}
 
@@ -155,12 +155,12 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 	}
 
 	if(!this->tgzf_controller_.Inflate(this->buffer_, this->data_)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 		return -4;
 	}
 
 	if(this->data_.size() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 		return 0;
 	}
 
@@ -173,7 +173,7 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 
 	// Validity check
 	if(this->data_.size() % sizeof(entry_type) != 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 		return -5;
 	}
 
@@ -188,7 +188,7 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 {
 	// Stream died
 	if(stream.good() == false){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
 		return -1;
 	}
 
@@ -200,11 +200,11 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 
 	// Read TGZF header
 	inflate_buffer.resize(sizeof(tgzf_header_type));
-	stream.read(inflate_buffer.data(),  IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	stream.read(inflate_buffer.data(),  io::constants::TGZF_BLOCK_HEADER_LENGTH);
 	const tgzf_header_type* h = reinterpret_cast<const tgzf_header_type*>(inflate_buffer.data());
-	inflate_buffer.n_chars = IO::Constants::TGZF_BLOCK_HEADER_LENGTH;
+	inflate_buffer.n_chars = io::constants::TGZF_BLOCK_HEADER_LENGTH;
 	if(!h->Validate()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Failed to validate!" << std::endl;
 		return -2;
 	}
 
@@ -214,9 +214,9 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 	// resulting in segfault
 	h = reinterpret_cast<const tgzf_header_type*>(inflate_buffer.data());
 
-	stream.read(&inflate_buffer.buffer[IO::Constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - IO::Constants::TGZF_BLOCK_HEADER_LENGTH);
+	stream.read(&inflate_buffer.buffer[io::constants::TGZF_BLOCK_HEADER_LENGTH], h->BSIZE - io::constants::TGZF_BLOCK_HEADER_LENGTH);
 	if(!stream.good()){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Truncated file..." << std::endl;
 		return -3;
 	}
 
@@ -232,12 +232,12 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 	}
 
 	if(!this->tgzf_controller_.Inflate(inflate_buffer, data_buffer)){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Failed inflate!" << std::endl;
 		return -4;
 	}
 
 	if(data_buffer.size() == 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 		return 0;
 	}
 
@@ -250,7 +250,7 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 
 	// Validity check
 	if(data_buffer.size() % sizeof(entry_type) != 0){
-		std::cerr << Tomahawk::Helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TWO") << "Data is corrupted!" << std::endl;
 		return -5;
 	}
 
@@ -304,18 +304,18 @@ OutputContainer TomahawkOutputReader::getContainerBlocks(const U32 n_blocks){
 
 bool TomahawkOutputReader::seekBlock(const U32 blockID){
 	if(blockID > this->getIndex().getContainer().size()){
-		std::cerr << Helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
 		return false;
 	}
 
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
 		return false;
 	}
 
 	this->stream_.seekg(this->getIndex().getContainer()[blockID].byte_offset);
 	if(!this->stream_.good()){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
 		return false;
 	}
 
@@ -324,18 +324,18 @@ bool TomahawkOutputReader::seekBlock(const U32 blockID){
 
 bool TomahawkOutputReader::seekBlock(std::ifstream& stream, const U32 blockID) const{
 	if(blockID > this->getIndex().getContainer().size()){
-		std::cerr << Helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TOI") << "Illegal blockID (" << blockID << ">" << this->getIndex().getContainer().size() << ")!" << std::endl;
 		return false;
 	}
 
 	if(!stream.good()){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Stream is bad!" << std::endl;
 		return false;
 	}
 
 	stream.seekg(this->getIndex().getContainer()[blockID].byte_offset);
 	if(!stream.good()){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Stream is bad following seek!" << std::endl;
 		return false;
 	}
 
@@ -418,9 +418,9 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 	for(U32 i = 0; i < positions.size(); ++i){
 		if(positions[i].find(',') != std::string::npos){
-			std::vector<std::string> ret = Helpers::split(positions[i], ',');
+			std::vector<std::string> ret = helpers::split(positions[i], ',');
 			if(ret.size() == 1){
-				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
+				std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
 				return false;
 
 			} else if(ret.size() == 2){
@@ -435,7 +435,7 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
 
 			} else {
-				std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
+				std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
 				return false;
 			}
 		}
@@ -451,19 +451,19 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 }
 
 bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, interval_type& interval){
-	std::vector<std::string> ret = Helpers::split(region, ':');
+	std::vector<std::string> ret = helpers::split(region, ':');
 
 	// If vector does not contain a colon
 	if(ret.size() == 1){
 		if(ret[0].find('-') != std::string::npos){
-			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 			return false;
 		}
 
 		// is contigID only
 		const S32 contigID = this->getHeader().getContigID(ret[0]);
 		if(contigID < 0){
-			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << region << " is not defined in the header!" << std::endl;
 			return false;
 		}
 
@@ -475,11 +475,11 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 		// is contigID:pos-pos
 		const S32 contigID = this->getHeader().getContigID(ret[0]);
 		if(contigID < 0){
-			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << ret[0] << " is not defined in the header!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Contig: " << ret[0] << " is not defined in the header!" << std::endl;
 			return false;
 		}
 
-		std::vector<std::string> retPos = Helpers::split(ret[1], '-');
+		std::vector<std::string> retPos = helpers::split(ret[1], '-');
 		if(retPos.size() == 1){
 			// only one pos
 			const double pos = std::stod(retPos[0]);
@@ -499,14 +499,14 @@ bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, inter
 			interval(contigID, posA, posB);
 			interval.state = interval_type::INTERVAL_TYPE::INTERVAL_FULL;
 		} else {
-			std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
+			std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 			return false;
 		}
 	}
 	// contains > 1 colons
 	// illegal
 	else {
-		std::cerr << Helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << region << "!" << std::endl;
 		return false;
 	}
 
@@ -523,8 +523,8 @@ bool TomahawkOutputReader::view(void){
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
-	//std::cerr << Helpers::timestamp("LOG") << "Sorted: " << (int)this->getIndex().getController().isSorted << " partial: " << (int)this->getIndex().getController().isPartialSorted << std::endl;
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
+	//std::cerr << helpers::timestamp("LOG") << "Sorted: " << (int)this->getIndex().getController().isSorted << " partial: " << (int)this->getIndex().getController().isPartialSorted << std::endl;
+	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
 	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=NO";
 
 	//if(!this->OpenWriter())
@@ -561,7 +561,7 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
+	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
 	if(this->filters_.any_filter_user_set)
 		this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=YES";
 
@@ -582,7 +582,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + Helpers::program_string();
+	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
 	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO";
 
 	if(this->showHeader_ == true){
@@ -666,27 +666,27 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 
 bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "No input files..." << std::endl;
 		return false;
 	}
 
 	// open first one
 	if(!SILENT)
-		std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
+		std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
 
 	if(!this->open(files[0])){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
 		return false;
 	}
 
-	this->getHeader().getLiterals() += "\n##tomahawk_concatCommand=" + Helpers::program_string();
+	this->getHeader().getLiterals() += "\n##tomahawk_concatCommand=" + helpers::program_string();
 	this->getHeader().getLiterals() += "\n##tomahawk_concatFiles=";
 	for(U32 i = 0; i < files.size(); ++i)
 		this->getHeader().getLiterals() += files[i] + ',';
 
-	IO::OutputWriter writer;
+	io::OutputWriter writer;
 	if(!writer.open(output)){
-		std::cerr << Helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
 		return false;
 	}
 	writer.writeHeaders(this->getHeader());
@@ -696,12 +696,12 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 	for(U32 i = 1; i < files.size(); ++i){
 		if(!SILENT)
-			std::cerr << Helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
+			std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
 
 		this->stream_.close();
 		self_type second_reader;
 		if(!second_reader.open(files[i])){
-			std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
 			return false;
 		}
 
@@ -724,7 +724,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const std::string& output){
 	if(files.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input files given..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "No input files given..." << std::endl;
 		return false;
 	}
 
@@ -733,13 +733,13 @@ bool TomahawkOutputReader::concat(const std::vector<std::string>& files, const s
 
 bool TomahawkOutputReader::concat(const std::string& file_list, const std::string& output){
 	if(file_list.size() == 0){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "No input file list given..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "No input file list given..." << std::endl;
 		return false;
 	}
 
 	std::ifstream file_list_read(file_list);
 	if(!file_list_read.good()){
-		std::cerr << Helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
 		return false;
 	}
 
@@ -747,7 +747,7 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	std::string line;
 	while(getline(file_list_read, line)){
 		if(line.size() == 0){
-			std::cerr << Helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
+			std::cerr << helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
 			break;
 		}
 		files.push_back(line);
