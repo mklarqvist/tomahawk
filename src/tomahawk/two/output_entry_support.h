@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWKOUTPUTLD_H_
 #define TOMAHAWK_TOMAHAWKOUTPUTLD_H_
 
-#include "../../io/basic_buffer.h"
+#include "io/basic_buffer.h"
 
 namespace tomahawk {
 namespace support{

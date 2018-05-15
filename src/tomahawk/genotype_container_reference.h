@@ -8,8 +8,6 @@
 #include "genotype_container_bitvector.h"
 #include "haplotype_bitvector.h"
 
-//#include "../algorithm/sbbst.h"
-
 namespace tomahawk{
 namespace base{
 

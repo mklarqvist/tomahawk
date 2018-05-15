@@ -1,4 +1,4 @@
-#include "../two/TomahawkOutputReader.h"
+#include "tomahawk/two/TomahawkOutputReader.h"
 
 #include <bits/move.h>
 #include <io/compression/gz_constants.h>

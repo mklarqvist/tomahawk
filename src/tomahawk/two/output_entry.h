@@ -1,7 +1,7 @@
 #ifndef TOMAHAWKOUTPUTENTRY_H_
 #define TOMAHAWKOUTPUTENTRY_H_
 
-#include "../../io/basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "index/index_contig.h"
 
 namespace tomahawk{

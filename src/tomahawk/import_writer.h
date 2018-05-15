@@ -3,12 +3,12 @@
 
 #include <fstream>
 
-#include "../io/basic_buffer.h"
-#include "../io/basic_writers.h"
-#include "../io/compression/tgzf_controller.h"
-#include "../io/vcf/vcf_header.h"
-#include "../io/vcf/vcf_header_constants.h"
-#include "../io/vcf/vcf_lines.h"
+#include "io/basic_buffer.h"
+#include "io/basic_writers.h"
+#include "io/compression/tgzf_controller.h"
+#include "io/vcf/vcf_header.h"
+#include "io/vcf/vcf_header_constants.h"
+#include "io/vcf/vcf_lines.h"
 #include "algorithm/compression/genotype_encoder.h"
 #include "support/type_definitions.h"
 #include "index/index.h"

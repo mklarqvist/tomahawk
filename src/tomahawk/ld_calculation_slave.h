@@ -6,7 +6,7 @@
 #include <cassert>
 #include <cmath>
 
-#include "../io/basic_writers.h"
+#include "io/basic_writers.h"
 #include "support/simd_definitions.h"
 #include "algorithm/spinlock.h"
 #include "interface/progressbar.h"

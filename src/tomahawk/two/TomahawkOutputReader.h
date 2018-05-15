@@ -7,8 +7,8 @@
 #include <stddef.h>
 #include <regex>
 
-#include "../../io/basic_buffer.h"
-#include "../../io/compression/tgzf_controller.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
 #include "support/MagicConstants.h"
 #include "algorithm/open_hashtable.h"
 #include "support/type_definitions.h"

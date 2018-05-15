@@ -3,7 +3,7 @@
 
 #include <thread>
 
-#include "../io/basic_writers.h"
+#include "io/basic_writers.h"
 
 namespace tomahawk{
 
