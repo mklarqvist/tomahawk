@@ -331,7 +331,7 @@ int view(int argc, char** argv){
 
 	} else if(end == Tomahawk::Constants::OUTPUT_LD_SUFFIX){
 		Tomahawk::TomahawkOutputReader reader;
-		reader.setWriteHeader(outputHeader);
+		reader.setShowHeader(outputHeader);
 		Tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = Tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
