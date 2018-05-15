@@ -43,6 +43,11 @@ LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]
 LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
 LIBVER_PATCH_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
 LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
+LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
+LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
+LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
+LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
+LIBVER := $(shell echo $(LIBVER_SCRIPT))
 
 # All Target
 all: tomahawk
@@ -52,7 +57,7 @@ tomahawk: $(OBJS) $(USER_OBJS)
 	@echo 'Constructing shared library...'
 	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.so.$(LIBVER_SCRIPT) $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Symlinking library...'
-	ln -sf ltomahawk.so.$(LIBVER_SCRIPT) ltomahawk.so
+	ln -sf ltomahawk.so.$(LIBVER) ltomahawk.so
 
 clean:
 	rm -f $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS) tomahawk ltomahawk.so ltomahawk.so.*

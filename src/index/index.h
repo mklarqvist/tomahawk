@@ -1,7 +1,7 @@
 #ifndef INDEX_INDEX_H_
 #define INDEX_INDEX_H_
 
-#include "../io/basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "index_contig.h"
 #include "index_container.h"
 #include "index_meta_container.h"

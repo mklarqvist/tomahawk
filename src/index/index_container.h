@@ -5,7 +5,7 @@
 #include <cstring>  // size_t, ptrdiff_t
 #include <iterator> // forward_iterator_tag
 
-#include "../io/basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "support/type_definitions.h"
 #include "index_entry.h"
 

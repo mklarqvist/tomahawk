@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../../io/bcf/bcf_reader.h"
-#include "../../io/vcf/vcf_lines.h"
+#include "io/bcf/bcf_reader.h"
+#include "io/vcf/vcf_lines.h"
 #include "math/fisher_math.h"
 #include "tomahawk/meta_entry.h"
 

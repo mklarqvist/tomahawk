@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "../io/basic_buffer.h"
-#include "../io/compression/tgzf_controller.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
 #include "algorithm/open_hashtable.h"
 #include "index_contig.h"
 #include "tomahawk/tomahawk_magic_header.h"

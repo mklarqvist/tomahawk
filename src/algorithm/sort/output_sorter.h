@@ -4,7 +4,7 @@
 #include <thread>
 #include <queue>
 
-#include "../../io/compression/tgzf_entry_iterator.h"
+#include "io/compression/tgzf_entry_iterator.h"
 #include "tomahawk/two/TomahawkOutputReader.h"
 #include "output_sort_merge_queue.h"
 #include "output_sort_slave.h"

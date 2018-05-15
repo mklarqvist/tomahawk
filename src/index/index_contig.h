@@ -4,7 +4,7 @@
 #include <ostream>
 #include <fstream>
 
-#include "../io/basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "support/type_definitions.h"
 
 namespace tomahawk{
