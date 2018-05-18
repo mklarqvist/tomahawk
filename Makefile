@@ -28,7 +28,7 @@ src/tomahawk/two \
 -include src/algorithm/subdir.mk
 -include src/subdir.mk
 
-LD_LIB_FLAGS := -fPIC -Wl,-rpath,$(CWD),-soname,ltomahawk.so.1 
+LD_LIB_FLAGS := -fPIC -Wl,-rpath,"./",-soname,ltomahawk.so.1 
 
 # Inject git information
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
@@ -55,7 +55,7 @@ all: tomahawk
 tomahawk: $(OBJS) $(USER_OBJS)
 	g++ -pthread -o "tomahawk" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Constructing shared library...'
-	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.so.$(LIBVER_SCRIPT) $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.so.$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Symlinking library...'
 	ln -sf ltomahawk.so.$(LIBVER) ltomahawk.so
 

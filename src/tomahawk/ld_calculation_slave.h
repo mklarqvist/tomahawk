@@ -1319,23 +1319,42 @@ bool LDSlave<T>::CalculateLDPhasedSimpleSample(helper_type& helper, const block_
 	const base::HaplotypeBitVector& bitvectorB = block2.currentHaplotypeBitvector();
 
 	const U32 n_cycles = 1000;
+	const U32 n_total = bitvectorA.l_list + bitvectorB.l_list; // Number of positions that are non-reference
 	U32 n_same = 0;
+
+	//const double min_length = std::min(bitvectorA.l_list, bitvectorB.l_list);
+	//assert(min_length > 1000);
+	//const double factor = min_length / n_cycles;
+	//assert(factor >= 1);
+	//double factor = 0;
 
 	// compare A to B
 	if(bitvectorA.l_list >= bitvectorB.l_list){
 		for(U32 i = 0; i < n_cycles; ++i){
-			n_same += bitvectorA.get(bitvectorB.indices[i]);
+			n_same += bitvectorA.get(bitvectorB.sampled_indicies[i]); // If bit[position] is set in both then is not jointly REF
 		}
+		n_same *= bitvectorB.l_list / n_cycles;
 	} else {
 		for(U32 i = 0; i < n_cycles; ++i){
-			n_same += bitvectorB.get(bitvectorA.indices[i]);
+			n_same += bitvectorB.get(bitvectorA.sampled_indicies[i]); // If bit[position] is set in both then is not jointly REF
 		}
+		n_same *= bitvectorA.l_list / n_cycles;
 	}
 
-	helper[0] = 2*this->samples - (n_cycles - n_same);
+	//std::cerr << n_same << "\t" << factor << "\t" << n_same*factor << "\t" << block1.currentMeta().AF << "\t" << block2.currentMeta().AF << std::endl;
+	//n_same *= factor;
+	//assert(factor >= 1 && std::isfinite(factor));
+
+	// Number of joint REF = 2N - (total alleles not REF - total joint REF)
+	helper[0] = 2*this->samples - (n_total - n_same);
 	helper.setSampled(true);
 
 	return(this->CalculateLDPhasedMathSimple(helper, block1, block2));
+	/*
+	{
+		std::cerr << helper[0] << ": " << helper.R2 << " with " << n_same << std::endl;
+	}
+	*/
 }
 
 template <class T>
@@ -1680,8 +1699,10 @@ bool LDSlave<T>::CompareBlocksFunctionForcedPhasedSimple(helper_type& helper, co
 		return(this->CalculateLDPhased(helper, block1, block2));
 	} else {
 		//return(false);
-		if(block1.currentMeta().has_missing == false && block2.currentMeta().has_missing == false)
-			return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
+		if(block1.currentMeta().has_missing == false && block2.currentMeta().has_missing == false){
+			//return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
+			return(this->CalculateLDPhasedSimpleSample(helper, block1, block2));
+		}
 		return(this->CalculateLDPhasedVectorized(helper, block1, block2));
 	}
 }

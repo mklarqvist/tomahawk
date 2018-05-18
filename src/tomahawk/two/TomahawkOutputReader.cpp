@@ -17,6 +17,7 @@ TomahawkOutputReader::TomahawkOutputReader() :
 		filesize_(0),
 		offset_end_of_data_(0),
 		showHeader_(true),
+		output_json_(false),
 		index_(nullptr),
 		buffer_(3000000),
 		data_(3000000),
@@ -538,13 +539,31 @@ bool TomahawkOutputReader::__viewOnly(void){
 	// Natural output required parsing
 	size_t n_total = 0;
 	//if(this->writer_output_type == WRITER_TYPE::natural){
-		while(this->parseBlock()){
+	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
+	func a = &entry_type::write;
+	if(this->output_json_) a = &entry_type::writeJSON;
+
+
+	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
+
+	std::cout << "{\n\"type\":\"tomahawk\",\n\"sorted\":" << (this->getIndex().getController().isSorted ? "true" : "false") << ",\n\"partial_sort\":" << (this->getIndex().getController().isPartialSorted ? "true" : "false");
+	std::cout <<  ",\n\"version\":\"" << version_string << "\",\n\"data\":[\n";
+
+
+	this->parseBlock();
+		//while(this->parseBlock()){
 			OutputContainerReference o = this->getContainerReference();
 			n_total += o.size();
-			for(U32 i = 0; i < o.size(); ++i){
-				o[i].write(std::cout, this->getHeader().contigs_);
+			//if(o.size() == 0) break;
+
+			(o[0].*a)(std::cout, this->getHeader().contigs_);
+			for(U32 i = 1; i < o.size(); ++i){
+				std::cout << ",\n";
+				(o[i].*a)(std::cout, this->getHeader().contigs_);
 			}
-		}
+		//}
+
+		std::cout << "]\n}\n";
 		//std::cerr << "total: " << n_total << std::endl;
 	//}
 	// Binary output without filtering simply writes it back out
@@ -602,6 +621,9 @@ bool TomahawkOutputReader::__viewFilter(void){
 }
 
 bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
+	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
+	func a = &entry_type::writeJSON;
+
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
 		std::vector<interval_type> rets = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
@@ -614,7 +636,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							entry.write(std::cout, this->getHeader().contigs_);
+							(entry.*a)(std::cout, this->getHeader().contigs_);
 						}
 
 						return true;
@@ -623,7 +645,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						entry.write(std::cout, this->getHeader().contigs_);
+						(entry.*a)(std::cout, this->getHeader().contigs_);
 					}
 
 					return true;
@@ -644,7 +666,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							entry.write(std::cout, this->getHeader().contigs_);
+							(entry.*a)(std::cout, this->getHeader().contigs_);
 						}
 						return true;
 					} // end match
@@ -652,7 +674,7 @@ bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						entry.write(std::cout, this->getHeader().contigs_);
+						(entry.*a)(std::cout, this->getHeader().contigs_);
 					}
 
 					return true;

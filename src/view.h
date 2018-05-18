@@ -42,6 +42,7 @@ void view_usage(void){
 	"  -N        output in tab-delimited text format (see -O) [null]\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)[null]\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
+	"  -J        output JSON object\n"
 	"  -s        Hide all program messages [null]\n\n"
 
 	// Twk parameters
@@ -74,7 +75,7 @@ void view_usage(void){
 int view(int argc, char** argv){
 	if(argc < 3){
 		view_usage();
-		return(1);
+		return(0);
 	}
 
 	static struct option long_options[] = {
@@ -92,6 +93,7 @@ int view(int argc, char** argv){
 		{"maxAlleles",  optional_argument, 0, 'A' },
 		{"minMP",       optional_argument, 0, 'm' },
 		{"maxMP",       optional_argument, 0, 'M' },
+		{"JSON",        optional_argument, 0, 'J' },
 		{"flagInclude", optional_argument, 0, 'f' },
 		{"flagExclude", optional_argument, 0, 'F' },
 		{"headerOnly",  no_argument, 0, 'H' },
@@ -109,11 +111,12 @@ int view(int argc, char** argv){
 	int outputType = 1;
 	bool dropGenotypes = false;
 	std::vector<std::string> filter_regions;
+	bool output_JSON = false;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsBN", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:JHhGsBN", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -135,6 +138,9 @@ int view(int argc, char** argv){
 			break;
 		case 'I':
 			filter_regions.push_back(std::string(optarg));
+			break;
+		case 'J':
+			output_JSON = true;
 			break;
 		case 'r':
 			two_filter.minR2 = atof(optarg);
@@ -334,6 +340,8 @@ int view(int argc, char** argv){
 		reader.setShowHeader(outputHeader);
 		tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
+
+		reader.output_json_ = output_JSON;
 
 		if(!reader.open(input))
 			return 1;

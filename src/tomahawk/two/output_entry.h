@@ -81,6 +81,13 @@ public:
 		return(os);
 	}
 
+	std::ostream& writeJSON(std::ostream& os, const contig_type* contigs) const{
+		os << '[' << std::setprecision(8) << (int)this->FLAGS << ",\"" << contigs[this->AcontigID].name << "\"," << this->Aposition << ",\"" << contigs[this->BcontigID].name << "\"," << this->Bposition
+			<< ',' << this->p1 << ',' << this->p2 << ',' << this->q1 << ',' << this->q2 << ',' << this->D << ',' << this->Dprime
+			<< ',' << this->R << ',' << this->R2 << ',' << this->P << ',' << this->chiSqModel << ',' << this->chiSqFisher  << "]";
+		return(os);
+	}
+
 	// Write to buffer
 	friend buffer_type& operator<<(buffer_type& b, const self_type& entry){
 		b.Add(reinterpret_cast<const char*>(&entry), sizeof(self_type));

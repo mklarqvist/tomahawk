@@ -1,3 +1,12 @@
+# Release 0.5.0
+
+## Breaking Changes
+* All changes are breaking because of structural rechanges. No files generated prior to this release are supported.
+
+## Minor Features And Improvements
+* Build process now smoother
+* Shared C++ library is now built by default
+
 # Release 0.4.0
 
 ## Breaking Changes

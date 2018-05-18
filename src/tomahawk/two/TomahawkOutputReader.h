@@ -38,7 +38,6 @@ private:
 	typedef io::BasicBuffer           buffer_type;
 	typedef io::TGZFController        tgzf_controller_type;
 	typedef totempole::Footer         footer_type;
-
 	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef hash::HashTable<std::string, U32> hash_table;
 
@@ -55,7 +54,18 @@ public:
 	inline header_type& getHeader(void){ return(this->header_); }
 	inline index_type* getIndexPointer(void){ return(this->index_); }
 
+	/**<
+	 * Primary function to open a TWO file
+	 * @param input Input string file location
+	 * @return      Returns TRUE if basic parsing is successful or FALSE otherwise
+	 */
 	bool open(const std::string input);
+
+	/**<
+	 * Adds interval regions in unparsed string format.
+	 * @param positions Input vector of unparsed intervals
+	 * @return          Returns TRUE if parsing is successful or FALSE otherwise
+	 */
 	bool addRegions(std::vector<std::string>& positions);
 	//bool OpenExtend(const std::string input);
 
@@ -149,6 +159,7 @@ public:
 	U64            filesize_;  // filesize
 	U64            offset_end_of_data_;
 	bool           showHeader_; // flag to output header or not
+	bool           output_json_;
 	std::ifstream  stream_;    // reader stream
 
 	header_type    header_;
