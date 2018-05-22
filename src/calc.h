@@ -43,6 +43,7 @@ void calc_usage(void){
 	"  -p       force computations to use phased math [null]\n"
 	"  -u       force computations to use unphased math [null]\n"
 	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
+	"  -S INT   number of individuals to sample in fast-mode (default: 1000)\n"
 	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
 	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
@@ -72,6 +73,7 @@ int calc(int argc, char** argv){
 		{"phased",            no_argument,       0, 'p' },
 		{"unphased",          no_argument,       0, 'u' },
 		{"fast-mode",         no_argument,       0, 'f' },
+		{"samples",           optional_argument, 0, 'S' },
 		{"minR2",             optional_argument, 0, 'r' },
 		{"maxR2",             optional_argument, 0, 'R' },
 		{"minMHF",            optional_argument, 0, 'a' },
@@ -92,7 +94,7 @@ int calc(int argc, char** argv){
 
 	double windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:f?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -125,18 +127,17 @@ int calc(int argc, char** argv){
 				return(1);
 			}
 			break;
-	  case 'r':
-		parameters.R2_min = atof(optarg);
-		if(parameters.R2_min < 0){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
-			return(1);
-		} else if(parameters.R2_min > 1){
-			std::cerr << tomahawk::helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
-			return(1);
-		}
-		break;
-
-	  case 'R':
+		case 'r':
+			parameters.R2_min = atof(optarg);
+			if(parameters.R2_min < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
+				return(1);
+			} else if(parameters.R2_min > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
+				return(1);
+			}
+			break;
+		case 'R':
 		parameters.R2_max = atof(optarg);
 		if(parameters.R2_max < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
@@ -147,19 +148,19 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'p':
+		case 'p':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::phasedFunction;
 		  break;
 
-	  case 'u':
+		case 'u':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
 		  break;
 
-	  case 'f':
+		case 'f':
 		  parameters.fast_mode = true;
 		  break;
 
-	  case 'P':
+		case 'P':
 		  parameters.P_threshold = atof(optarg);
 		  if(parameters.P_threshold < 0){
 			  std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative cutoff P-value" << std::endl;
@@ -169,7 +170,7 @@ int calc(int argc, char** argv){
 			return(1);
 		  }
 		  break;
-	  case 'a':
+		case 'a':
 		parameters.minimum_sum_alternative_haplotype_count = atoi(optarg);
 		if(parameters.minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
@@ -177,7 +178,7 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'A':
+		case 'A':
 		parameters.maximum_sum_alternative_haplotype_count = atoi(optarg);
 		if(parameters.maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
@@ -185,7 +186,7 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'w':
+		case 'w':
 		  if(std::regex_match(std::string(optarg), std::regex("^(([0-9]+)|([0-9]+[eE]{1}[0-9]+))$")) == false){
 			  std::cerr << "not an integer" << std::endl;
 			  return(1);
@@ -204,26 +205,26 @@ int calc(int argc, char** argv){
 		parameters.n_window_bases = windowBases;
 		break;
 
-	  case 'W':
-	    windowPosition = atoi(optarg);
-		if(windowPosition <= 0){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
-			return(1);
-		}
+		case 'W':
+			windowPosition = atoi(optarg);
+			if(windowPosition <= 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+				return(1);
+			}
 
 		break;
 
-	  case 's':
-		  SILENT = 1;
-		  parameters.detailed_progress = false;
-		  break;
+		case 's':
+			SILENT = 1;
+			parameters.detailed_progress = false;
+			break;
 
-	  case 'd':
+		case 'd':
 		  SILENT = 0;
 		  parameters.detailed_progress = true;
 		  break;
 
-	  default:
+		default:
 		  std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
 		  return(1);
 		}

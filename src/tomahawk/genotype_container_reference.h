@@ -173,7 +173,7 @@ public:
 						this->haplotype_bitvectors[i].sampled_indicies[j] = a[j];
 						//std::cerr << a[j] << ",";
 					}
-					std::sort(this->haplotype_bitvectors[i].sampled_indicies, &this->haplotype_bitvectors[i].sampled_indicies[1000]);
+					//std::sort(this->haplotype_bitvectors[i].sampled_indicies, &this->haplotype_bitvectors[i].sampled_indicies[1000]);
 				}
 
 				for(U32 j = 0; j < tempListIdx; ++j){

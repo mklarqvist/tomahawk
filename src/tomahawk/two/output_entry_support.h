@@ -22,6 +22,7 @@ public:
 		this->alleleCounts[4] = 0;
 		this->alleleCounts[5] = 0;
 		this->chiSqModel      = 0;
+		this->R2 = 0;
 		// All other values can legally overflow
 		// They are not used
 	}
@@ -48,8 +49,8 @@ public:
 		// They are not used
 	}
 
-	inline float& operator[](const U32& p){ return(this->alleleCounts[p]); }
-	inline const float& operator[](const U32& p) const{ return(this->alleleCounts[p]); }
+	inline double& operator[](const U32& p){ return(this->alleleCounts[p]); }
+	inline const double& operator[](const U32& p) const{ return(this->alleleCounts[p]); }
 	void operator=(const OutputEntrySupport& other);
 	void printUnphasedCounts(void) const;
 	void printPhasedCounts(void) const;
@@ -91,15 +92,15 @@ public:
 	inline void setFailedHWEA(const bool yes = true)       { this->controller |= yes << 12; } // 4096
 	inline void setFailedHWEB(const bool yes = true)       { this->controller |= yes << 13; } // 8192
 
-	inline const float getTotalAltHaplotypeCount(void) const{
+	inline const double getTotalAltHaplotypeCount(void) const{
 		// Find largest
-		const float* max = &this->alleleCounts[0];
+		const double* max = &this->alleleCounts[0];
 		if(this->alleleCounts[1] > *max) max = &this->alleleCounts[1];
 		if(this->alleleCounts[4] > *max) max = &this->alleleCounts[4];
 		if(this->alleleCounts[5] > *max) max = &this->alleleCounts[5];
 
 		// Count number of non-major allele combinations
-		float max2 = 0;
+		double max2 = 0;
 		if(&this->alleleCounts[0] != max) max2 += this->alleleCounts[0];
 		if(&this->alleleCounts[1] != max) max2 += this->alleleCounts[1];
 		if(&this->alleleCounts[4] != max) max2 += this->alleleCounts[4];
@@ -115,11 +116,11 @@ public:
 	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
 	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
 	double chiSqFisher;       // Chi-Squared critical value for 2x2 contingency table
-	float  totalHaplotypeCounts; // Total number of alleles
+	double  totalHaplotypeCounts; // Total number of alleles
 
 	// Counters
-	float  alleleCounts[171];
-	float  haplotypeCounts[4];
+	double alleleCounts[171];
+	double haplotypeCounts[4];
 };
 
 } /* namespace Support */

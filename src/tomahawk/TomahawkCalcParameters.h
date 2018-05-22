@@ -8,7 +8,7 @@
 namespace tomahawk{
 
 #define CALC_DEFAULT_MINR2      0.1
-#define CALC_DEFAULT_MAXR2      1.0
+#define CALC_DEFAULT_MAXR2      2.0
 #define CALC_DEFAULT_MINP       1
 #define CALC_DEFAULT_MINALLELES 1
 #define CALC_DEFAULT_MAXALLELES std::numeric_limits<int64_t>::max()
