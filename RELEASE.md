@@ -1,3 +1,10 @@
+# Release 0.5.1
+
+## Minor Features And Improvements
+* Meta index for faster queries of `two` files now builds correctly
+* Interval slicing for sorted `two` files now outputs filtering hits for the from positions only
+* Haplotype counts in binary `two` files are now stored as `double` instead of `float` 
+
 # Release 0.5.0
 
 ## Breaking Changes

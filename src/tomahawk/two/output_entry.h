@@ -100,7 +100,7 @@ public:
 	U32    Amissing: 1, Aphased: 1, Aposition: 30;
 	U32    BcontigID;
 	U32    Bmissing: 1, Bphased: 1, Bposition: 30;
-	float  p1, p2, q1, q2;
+	double  p1, p2, q1, q2;
 	float  D, Dprime; // D and D'
 	float  R, R2;     // Correlation coefficient
 	double P;         // P-value

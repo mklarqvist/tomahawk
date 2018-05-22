@@ -86,13 +86,13 @@ bool OutputFilter::filterHF(const entry_type& target) const{
 
 bool OutputFilter::filterJointHF(const entry_type& target) const{
 	// find largest
-	const float* max = &target.p1;
+	const double* max = &target.p1;
 	if(target.p2 > *max) max = &target.p2;
 	if(target.q1 > *max) max = &target.q1;
 	if(target.q2 > *max) max = &target.q2;
 
 	// sum of cells excluding largest
-	float total = 0;
+	double total = 0;
 	if(&target.p1 != max) total += target.p1;
 	if(&target.p2 != max) total += target.p2;
 	if(&target.q1 != max) total += target.q1;

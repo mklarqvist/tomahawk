@@ -116,7 +116,7 @@ public:
 	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
 	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
 	double chiSqFisher;       // Chi-Squared critical value for 2x2 contingency table
-	double  totalHaplotypeCounts; // Total number of alleles
+	double totalHaplotypeCounts; // Total number of alleles
 
 	// Counters
 	double alleleCounts[171];

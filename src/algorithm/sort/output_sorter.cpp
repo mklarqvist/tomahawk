@@ -193,6 +193,8 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	writer.setPartialSorted(false);
 	writer.setSorted(true);
 	writer.flush();
+	writer.getIndex()->getController().isSorted = true;
+	writer.getIndex()->buildMetaIndex(this->reader.getHeader().magic_.n_contigs);
 	writer.writeFinal();
 
 	if(!SILENT)

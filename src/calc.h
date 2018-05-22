@@ -34,22 +34,23 @@ void calc_usage(void){
 	"        the all variant sites are guaranteed to have the given phasing.\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (required)\n"
-	"  -t INT   number of CPU threads (default: maximum available)\n"
-	"  -c INT   number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
-	"  -C INT   chosen part to compute (0 < -C < -c)\n"
-	"  -w INT   sliding window width in bases (approximative)\n"
-	"  -p       force computations to use phased math [null]\n"
-	"  -u       force computations to use unphased math [null]\n"
-	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
-	"  -S INT   number of individuals to sample in fast-mode (default: 1000)\n"
-	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
-	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
-	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
-	"  -d       Show real-time progress update in cerr [null]\n"
-	"  -s       Hide all program messages [null]\n";
+	"  -i FILE   input Tomahawk (required)\n"
+	"  -o FILE   output file or file prefix (required)\n"
+	"  -t INT    number of CPU threads (default: maximum available)\n"
+	"  -c INT    number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
+	"  -C INT    chosen part to compute (0 < -C < -c)\n"
+	"  -w INT    sliding window width in bases (approximative)\n"
+	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
+	"  -p        force computations to use phased math\n"
+	"  -u        force computations to use unphased math\n"
+	"  -f        use fast-mode: output will have correlations only (no matrices or tests)\n"
+	"  -S INT    number of individuals to sample in fast-mode (default: 1000)\n"
+	"  -a INT    minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
+	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
+	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
+	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -d        Show real-time progress update in cerr\n"
+	"  -s        Hide all program messages\n";
 }
 
 int calc(int argc, char** argv){
@@ -246,12 +247,13 @@ int calc(int argc, char** argv){
 		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling calc..." << std::endl;
 	}
 
-
 	// Parse Tomahawk
 	if(!tomahawk.Open(input, output)){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;
 	}
 
-	return(tomahawk.Calculate());
+	// Return should be 0 for success
+	if(tomahawk.Calculate()) return 0;
+	else return 1;
 }

@@ -38,7 +38,7 @@ public:
 		n_entries(data_buffer.size() / sizeof(value_type)),
 		__entries(reinterpret_cast<io::OutputEntry* const>(data_buffer.buffer))
 	{
-		assert(n_entries >= 0);
+    	assert(n_entries >= 0);
 		assert(data_buffer.size() % sizeof(value_type) == 0);
 	}
 

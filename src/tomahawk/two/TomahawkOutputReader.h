@@ -67,7 +67,6 @@ public:
 	 * @return          Returns TRUE if parsing is successful or FALSE otherwise
 	 */
 	bool addRegions(std::vector<std::string>& positions);
-	//bool OpenExtend(const std::string input);
 
 	// Streaming functions
 	/**<
@@ -147,7 +146,8 @@ private:
 	bool __viewFilter(void);
 	bool __viewRegion(void);
 
-	bool __checkRegionNoIndex(const entry_type& entry);
+	bool __checkRegionUnsorted(const entry_type& entry);
+	bool __checkRegionSorted(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
 	bool __addRegions(std::vector<std::string>& positions);
@@ -173,8 +173,8 @@ public:
 
 	filter_type filters_;	// filter parameters
 
-	tree_type** interval_tree;
-	std::vector<interval_type>* interval_tree_entries;
+	tree_type** interval_tree; // actual interval trees
+	std::vector<interval_type>* interval_tree_entries; // entries for interval trees
 };
 
 } /* namespace Tomahawk */

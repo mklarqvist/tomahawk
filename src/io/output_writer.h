@@ -143,6 +143,8 @@ public:
 
 	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
 
+	inline index_type* getIndex(void){ return(this->index_); }
+
 private:
 	void CheckOutputNames(const std::string& input);
 

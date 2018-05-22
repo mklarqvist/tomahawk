@@ -535,35 +535,34 @@ bool TomahawkOutputReader::__viewOnly(void){
 		std::cout << this->getHeader().getLiterals() << '\n';
 		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
+	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
+
 
 	// Natural output required parsing
 	size_t n_total = 0;
 	//if(this->writer_output_type == WRITER_TYPE::natural){
 	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
 	func a = &entry_type::write;
-	if(this->output_json_) a = &entry_type::writeJSON;
+	if(this->output_json_){
+		a = &entry_type::writeJSON;
+		std::cout << "{\n\"type\":\"tomahawk\",\n\"sorted\":" << (this->getIndex().getController().isSorted ? "true" : "false") << ",\n\"partial_sort\":" << (this->getIndex().getController().isPartialSorted ? "true" : "false");
+		std::cout <<  ",\n\"version\":\"" << version_string << "\",\n\"data\":[\n";
+	}
 
-
-	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
-
-	std::cout << "{\n\"type\":\"tomahawk\",\n\"sorted\":" << (this->getIndex().getController().isSorted ? "true" : "false") << ",\n\"partial_sort\":" << (this->getIndex().getController().isPartialSorted ? "true" : "false");
-	std::cout <<  ",\n\"version\":\"" << version_string << "\",\n\"data\":[\n";
-
-
-	this->parseBlock();
-		//while(this->parseBlock()){
+	//this->parseBlock();
+		while(this->parseBlock()){
 			OutputContainerReference o = this->getContainerReference();
 			n_total += o.size();
 			//if(o.size() == 0) break;
 
 			(o[0].*a)(std::cout, this->getHeader().contigs_);
 			for(U32 i = 1; i < o.size(); ++i){
-				std::cout << ",\n";
+				//std::cout << ",\n";
 				(o[i].*a)(std::cout, this->getHeader().contigs_);
 			}
-		//}
+		}
 
-		std::cout << "]\n}\n";
+		//std::cout << "]\n}\n";
 		//std::cerr << "total: " << n_total << std::endl;
 	//}
 	// Binary output without filtering simply writes it back out
@@ -589,12 +588,40 @@ bool TomahawkOutputReader::__viewRegion(void){
 		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
 
-	if(this->interval_tree != nullptr){
+	if(this->interval_tree == nullptr)
+		return false;
+
+	typedef bool (TomahawkOutputReader::*func_slice)(const entry_type& entry);
+	func_slice region_function = &TomahawkOutputReader::__checkRegionUnsorted;
+	if(this->getIndex().getController().isSorted){
+		if(!SILENT)
+			std::cerr << helpers::timestamp("LOG") << "Using sorted query..." << std::endl;
+
+		region_function = &TomahawkOutputReader::__checkRegionSorted;
+
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){ // foreach contig
+			//std::cerr << "i: " << this->interval_tree_entries[i].size() << std::endl;
+			for(U32 j = 0; j < this->interval_tree_entries[i].size(); ++j){
+				//std::cerr << this->interval_tree_entries[i][j] << std::endl;
+				std::vector<U32> blocks = this->index_->findOverlaps(this->interval_tree_entries[i][j].contigID, this->interval_tree_entries[i][j].start, this->interval_tree_entries[i][j].stop);
+				for(U32 b = 0; b < blocks.size(); ++b){
+					output_container_reference_type o = this->getContainerReferenceBlock(blocks[b]);
+					for(U32 i = 0; i < o.size(); ++i)
+						(this->*region_function)(o[i]);
+
+				} // end of blocks
+			} // end of intervals in contig
+		} // end of contigs
+	} // end case sorted
+	else {
+		if(!SILENT)
+			std::cerr << helpers::timestamp("LOG") << "Using unsorted query..." << std::endl;
+
 		while(this->parseBlock()){
 			output_container_reference_type o(this->data_);
 			for(U32 i = 0; i < o.size(); ++i)
-				this->__checkRegionNoIndex(o[i]);
-		} // end while next block
+				(this->*region_function)(o[i]);
+		}
 	}
 
 	return true;
@@ -620,9 +647,47 @@ bool TomahawkOutputReader::__viewFilter(void){
 	return true;
 }
 
-bool TomahawkOutputReader::__checkRegionNoIndex(const entry_type& entry){
+bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
-	func a = &entry_type::writeJSON;
+	func a = &entry_type::write;
+
+	// If iTree for contigA exists
+	if(this->interval_tree[entry.AcontigID] != nullptr){
+		std::vector<interval_type> rets = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
+		if(rets.size() > 0){
+			for(U32 i = 0; i < rets.size(); ++i){
+				if(rets[i].value != nullptr){ // if linked
+					if((entry.BcontigID == rets[i].value->contigID) &&
+					   (entry.Bposition >= rets[i].value->start &&
+					    entry.Bposition <= rets[i].value->stop)){
+						if(this->filters_.filter(entry)){
+							//entry.write(std::cout, this->contigs);
+							//*this->writer << entry;
+							(entry.*a)(std::cout, this->getHeader().contigs_);
+						}
+
+						return true;
+					} // end match
+				} else { //  not linked
+					if(this->filters_.filter(entry)){
+						//entry.write(std::cout, this->contigs);
+						//*this->writer << entry;
+						(entry.*a)(std::cout, this->getHeader().contigs_);
+					}
+
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+
+bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
+	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
+	func a = &entry_type::write;
 
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
