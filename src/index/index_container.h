@@ -101,6 +101,7 @@ public:
 	// Overload basic operator
 	self_type& operator+=(const value_type& index_entry);
 
+	// These functions are used for `twk`
 	// Overlap functions: find blocks a target interval overlaps
 	//                    returns pairs of pointers. If pointerA == pointerB then the data is empty
 	std::pair<U32, U32> findOverlap(const S32& contigID) const;

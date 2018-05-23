@@ -394,6 +394,11 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 	if(positions.size() == 0)
 		return true;
 
+	// No contigs (usually means data has not been loaded)
+	if(this->getHeader().getMagic().getNumberContigs() == 0)
+		return false;
+
+	// Construct interval tree and interval vector if not set
 	if(this->interval_tree_entries == nullptr)
 		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
 
@@ -403,6 +408,7 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 			this->interval_tree[i] = nullptr;
 	}
 
+	// Parse and add region
 	if(!this->__addRegions(positions))
 		return false;
 
@@ -417,22 +423,23 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 }
 
 bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
+	// For each potential interval string in vector
 	for(U32 i = 0; i < positions.size(); ++i){
-		if(positions[i].find(',') != std::string::npos){
+		if(positions[i].find(',') != std::string::npos){ // Test if string has a comma
 			std::vector<std::string> ret = helpers::split(positions[i], ',');
-			if(ret.size() == 1){
+			if(ret.size() == 1){ //
 				std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
 				return false;
 
 			} else if(ret.size() == 2){
 				// parse left
 				interval_type intervalLeft;
-				if(this->__ParseRegionIndexed(ret[0], intervalLeft))
+				if(this->__ParseRegion(ret[0], intervalLeft))
 					this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
 
 				// parse right
 				interval_type intervalRight;
-				if(this->__ParseRegionIndexed(ret[1], intervalRight))
+				if(this->__ParseRegion(ret[1], intervalRight))
 					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
 
 			} else {
@@ -443,7 +450,7 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 		// Has no comma in string
 		else {
 			interval_type interval;
-			if(this->__ParseRegionIndexed(positions[i], interval))
+			if(this->__ParseRegion(positions[i], interval))
 				this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
 		}
 	}
@@ -451,7 +458,11 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 	return true;
 }
 
-bool TomahawkOutputReader::__ParseRegionIndexed(const std::string& region, interval_type& interval){
+bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_type& interval) const{
+	if(region.size() == 0)
+		return false;
+
+	// Search for colon
 	std::vector<std::string> ret = helpers::split(region, ':');
 
 	// If vector does not contain a colon

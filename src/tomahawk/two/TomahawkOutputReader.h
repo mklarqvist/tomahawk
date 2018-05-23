@@ -151,9 +151,9 @@ private:
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
 
 	bool __addRegions(std::vector<std::string>& positions);
-	bool __ParseRegion(const std::string& region, interval_type& interval);
-	bool __ParseRegionIndexed(const std::string& region, interval_type& interval);
-	bool __ParseRegionIndexedBlocks(void);
+	//bool __ParseRegion(const std::string& region, interval_type& interval);
+	bool __ParseRegion(const std::string& region, interval_type& interval) const;
+	//bool __ParseRegionIndexedBlocks(void);
 
 public:
 	U64            filesize_;  // filesize

@@ -186,6 +186,24 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		return false;
 	}
 
+	// If slicing
+	std::cerr << "here" << std::endl;
+	if(reader.interval_tree_entries != nullptr){
+		std::cerr << "in tree" << std::endl;
+		for(U32 i = 0; i < reader.getHeader().getMagic().n_contigs; ++i){
+			for(U32 j = 0; j < reader.interval_tree_entries[i].size(); ++j){
+				std::cerr << reader.interval_tree_entries[i][j] << std::endl;
+				std::pair<U32,U32> blocks = reader.getIndex().getContainer().findOverlap(reader.interval_tree_entries[i][j].contigID,
+				                                                         reader.interval_tree_entries[i][j].start,
+																		 reader.interval_tree_entries[i][j].stop);
+				std::cerr << "found blocks: " << blocks.first << "->" << blocks.second << std::endl;
+				for(U32 b = blocks.first; b < blocks.second; ++b){
+					std::cerr << "Matches: " << b << std::endl;
+				}
+			}
+		}
+	}
+
 	// If selecting > 1 chunk
 	if(this->n_desired_chunks != 1){
 		U32 cutSize = 1;

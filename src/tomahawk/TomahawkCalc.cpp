@@ -20,6 +20,10 @@ bool TomahawkCalc::Open(const std::string input, const std::string output){
 	return true;
 }
 
+bool TomahawkCalc::addRegions(std::vector<std::string>& positions){
+	return(this->reader.addRegions(positions));
+}
+
 template <typename K, typename V>
 bool comparePairs(const std::pair<K,V>& a, const std::pair<K,V>& b){ return a.first < b.first; }
 

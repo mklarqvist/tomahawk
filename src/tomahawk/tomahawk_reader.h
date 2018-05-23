@@ -74,9 +74,11 @@ public:
 	bool outputBlocks();
 
 	bool addRegions(const std::vector<std::string>& intervals){
+		// No interval strings given
 		if(intervals.size() == 0)
 			return true;
 
+		// Build interval tree and interval vector is not set
 		if(this->interval_tree_entries == nullptr)
 			this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
 
@@ -84,7 +86,7 @@ public:
 			this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
 			for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
 				this->interval_tree[i] = nullptr;
-		}
+		} else delete [] this->interval_tree;
 
 		// Parse intervals
 		for(U32 i = 0; i < intervals.size(); ++i){
@@ -108,7 +110,7 @@ public:
 				std::vector<std::string> sections = helpers::split(first[1],'-');
 				if(sections.size() == 2){ // Is contig + position->position
 					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data()) - 1;
+						interval.start = atof(sections[0].data());
 					} else {
 						std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
 						return false;
@@ -124,7 +126,7 @@ public:
 				} else if(sections.size() == 1){ // Is contig + position
 					interval.state = algorithm::ContigInterval::INTERVAL_POSITION;
 					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data()) - 1;
+						interval.start = atof(sections[0].data());
 						interval.stop  = atof(sections[0].data());
 					} else {
 						std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
@@ -198,6 +200,7 @@ private:
 
 	io::GenericWriterInterace* writer;
 
+public:
 	tree_type** interval_tree;
 	std::vector<interval_type>* interval_tree_entries;
 };

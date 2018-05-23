@@ -68,6 +68,7 @@ int calc(int argc, char** argv){
 		{"input",             required_argument, 0, 'i' },
 		{"threads",           optional_argument, 0, 't' },
 		{"output",            required_argument, 0, 'o' },
+		{"interval",          optional_argument, 0, 'I' },
 		{"parts",             optional_argument, 0, 'c' },
 		{"partStart",         optional_argument, 0, 'C' },
 		{"minP",              optional_argument, 0, 'P' },
@@ -92,10 +93,11 @@ int calc(int argc, char** argv){
 	tomahawk::TomahawkCalcParameters& parameters = tomahawk.getParameters();
 	std::string input;
 	std::string output;
+	std::vector<std::string> filter_regions;
 
 	double windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:sdc:C:f?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:I:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -105,6 +107,9 @@ int calc(int argc, char** argv){
 			break;
 		case 'o':
 			output = std::string(optarg);
+			break;
+		case 'I':
+			filter_regions.push_back(std::string(optarg));
 			break;
 		case 't':
 			parameters.n_threads = atoi(optarg);
@@ -250,6 +255,11 @@ int calc(int argc, char** argv){
 	// Parse Tomahawk
 	if(!tomahawk.Open(input, output)){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed build!" << std::endl;
+		return 1;
+	}
+
+	if(!tomahawk.addRegions(filter_regions)){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 		return 1;
 	}
 
