@@ -25,7 +25,7 @@ public:
 	~LoadBalancerLD();
 
 	bool getSelectedLoad();
-	bool getSelectedLoadInterval(const std::vector< std::pair<U32,U32> >& intervals);
+	bool getSelectedLoadInterval(const reader_type& reader, const std::vector< std::pair<U32,U32> >& intervals);
 	bool getSelectedLoadThreads(const reader_type& reader, const U32 threads);
 	bool getSelectedLoadThreadsInterval(const reader_type& reader, const U32 threads, const std::vector< std::pair<U32,U32> >& intervals);
 	bool setSelected(const S32 selected);

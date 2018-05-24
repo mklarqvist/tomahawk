@@ -25,7 +25,7 @@ bool LoadBalancerLD::getSelectedLoad(){
 	return true;
 }
 
-bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U32> >& intervals){
+bool LoadBalancerLD::getSelectedLoadInterval(const reader_type& reader, const std::vector< std::pair<U32,U32> >& intervals){
 	if(intervals.size() == 0) return false;
 	// Transform absolute offsets into relative offsets
 	// and store the absolute block offsets
@@ -45,26 +45,25 @@ bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U3
 	this->data_to_load.clear(); // clear old
 
 	std::vector<U32> cumsum(1, 0); // start with 0
-	std::cerr << cumsum[0] << std::endl;
+	//std::cerr << cumsum[0] << std::endl;
 	for(U32 i = 0; i < intervals.size(); ++i){
 		cumsum.push_back(intervals[i].second - intervals[i].first + cumsum.back());
-		std::cerr << cumsum.back() << std::endl;
+		//std::cerr << cumsum.back() << std::endl;
 	}
 
 	std::vector< std::pair<U32, U32> > relative_intervals;
 	for(U32 i = 0; i < intervals.size(); ++i){
 		relative_intervals.push_back(std::pair<U32,U32>(cumsum[i], cumsum[i+1]));
-		std::cerr << "Relative: " << relative_intervals.back().first << "->" << relative_intervals.back().second << std::endl;
-		std::cerr << "Absolute: " << intervals[i].first << "->" << intervals[i].second << std::endl;
+		//std::cerr << "Relative: " << relative_intervals.back().first << "->" << relative_intervals.back().second << std::endl;
+		//std::cerr << "Absolute: " << intervals[i].first << "->" << intervals[i].second << std::endl;
 	}
 
-	std::cerr << "Start desired" << std::endl;
-	for(U32 i = 0 ; i < old.size(); ++i){
-		std::cerr << old[i].first << "\t" << old[i].second << std::endl;
-	}
-	std::cerr << this->blocks[this->selected_chunk] << std::endl;
-
-	std::cerr << "Start map" << std::endl;
+	//std::cerr << "Start desired" << std::endl;
+	//for(U32 i = 0 ; i < old.size(); ++i){
+	//	std::cerr << old[i].first << "\t" << old[i].second << std::endl;
+	//}
+	//std::cerr << this->blocks[this->selected_chunk] << std::endl;
+	//std::cerr << "Start map" << std::endl;
 
 	// Cycle over desired relative regions
 	// overlap relative vs absolute
@@ -76,8 +75,8 @@ bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U3
 	for(U32 i = 0; i < old.size(); ++i){ // cycle over relative data to load
 		for(U32 j = 0; j < relative_intervals.size(); ++j){ // cycle over relative intervals
 			if(old[i].second > relative_intervals[j].first && old[i].first < relative_intervals[j].second){
-				std::cerr << "desired collapsed: " << old[i].first << "-" << old[i].second << " overlapping with relative interval " << relative_intervals[j].first << "-" << relative_intervals[j].second << std::endl;
-				std::cerr << "absolute: " << intervals[j].first << "->" << intervals[j].second << std::endl;
+				//std::cerr << "desired collapsed: " << old[i].first << "-" << old[i].second << " overlapping with relative interval " << relative_intervals[j].first << "-" << relative_intervals[j].second << std::endl;
+				//std::cerr << "absolute: " << intervals[j].first << "->" << intervals[j].second << std::endl;
 
 				U32 start = 0;
 				U32 end   = 0;
@@ -91,11 +90,11 @@ bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U3
 				// else end = B
 				else end = old[i].second;
 
-				std::cerr << start << "->" << end << std::endl;
+				//std::cerr << start << "->" << end << std::endl;
 
 				// Remove start position from these
-				std::cerr << start - relative_intervals[j].first << "->" << end - relative_intervals[j].first << std::endl;
-				std::cerr << "final: " << intervals[j].first + start - relative_intervals[j].first << "->" << intervals[j].first + end - relative_intervals[j].first << std::endl;
+				//std::cerr << start - relative_intervals[j].first << "->" << end - relative_intervals[j].first << std::endl;
+				//std::cerr << "final: " << intervals[j].first + start - relative_intervals[j].first << "->" << intervals[j].first + end - relative_intervals[j].first << std::endl;
 				this->data_to_load.push_back(std::pair<U32,U32>(intervals[j].first + start - relative_intervals[j].first, intervals[j].first + end - relative_intervals[j].first));
 
 			} else {
@@ -103,8 +102,6 @@ bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U3
 			}
 		}
 	}
-
-	//exit(1);
 
 	// Dedupe
 	std::sort(this->data_to_load.begin(), this->data_to_load.end());
@@ -118,21 +115,21 @@ bool LoadBalancerLD::getSelectedLoadInterval(const std::vector< std::pair<U32,U3
 		else deduped.push_back(this->data_to_load[i]);
 	}
 
-	for(U32 i = 0; i < this->data_to_load.size(); ++i){
-		std::cerr << "original: " << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
-	}
-
-	for(U32 i = 0; i < deduped.size(); ++i){
-		std::cerr << "deduped: " << deduped[i].first << "->" << deduped[i].second << std::endl;
-	}
+	//for(U32 i = 0; i < this->data_to_load.size(); ++i){
+	//	std::cerr << "original: " << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
+	//}
+	//for(U32 i = 0; i < deduped.size(); ++i){
+	//	std::cerr << "deduped: " << deduped[i].first << "->" << deduped[i].second << std::endl;
+	//}
 	this->data_to_load = deduped;
+
 	return true;
 }
 
 bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, const U32 threads, const std::vector< std::pair<U32,U32> >& intervals){
-	std::cerr << this->selected_chunk << "/" << this->blocks.size() << std::endl;
+	//std::cerr << this->selected_chunk << "/" << this->blocks.size() << std::endl;
 	const value_type& selected = this->blocks[this->selected_chunk];
-	std::cerr << selected << std::endl;
+	//std::cerr << selected << std::endl;
 	this->thread_distribution.resize(threads);
 
 	// If a square is attached to the diagonal
@@ -140,7 +137,7 @@ bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, c
 	// upper triangular of comparisons to avoid duplicate
 	// computation
 	if(selected.isDiagonal()){
-		std::cerr << "diagonal" << std::endl;
+		//std::cerr << "diagonal" << std::endl;
 		U64 n_comparisons_thread = selected.getSize() / threads;
 		if(threads == 1) n_comparisons_thread = std::numeric_limits<U64>::max();
 
@@ -182,6 +179,7 @@ bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, c
 			}
 		}
 
+		/*
 		std::cerr << "currentThread: " << currentThread << std::endl;
 		std::cerr << selected.toRow - selected.fromRow << std::endl;
 		for(U32 i = 0; i < this->thread_distribution.size(); ++i){
@@ -190,10 +188,10 @@ bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, c
 			}
 		}
 		std::cerr << "here" << std::endl;
-
+		*/
 
 	} else {
-		std::cerr << "square" << std::endl;
+		//std::cerr << "square" << std::endl;
 		const value_type& selectedRow = this->blocks[this->selected_chunk];
 		const value_type& selectedCol = this->blocks[this->selected_chunk];
 
@@ -244,6 +242,7 @@ bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, c
 			}
 		}
 
+		/*
 		std::cerr << "currentThread: " << currentThread << std::endl;
 		std::cerr << selected.toRow - selected.fromRow << std::endl;
 		for(U32 i = 0; i < this->thread_distribution.size(); ++i){
@@ -252,13 +251,13 @@ bool LoadBalancerLD::getSelectedLoadThreadsInterval(const reader_type& reader, c
 			}
 		}
 		std::cerr << "here" << std::endl;
-
+		*/
 	}
 
 	//for(U32 i = 0; i < this->data_to_load.size(); ++i)
 	//	std::cerr << i << '\t' << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
 
-	std::cerr << "returning" << std::endl;
+	//std::cerr << "returning" << std::endl;
 	return true;
 }
 
@@ -436,7 +435,7 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 
 	for(U32 i = 0; i < reader.getHeader().getMagic().n_contigs; ++i){
 		for(U32 j = 0; j < reader.interval_tree_entries[i].size(); ++j){
-			std::cerr << reader.interval_tree_entries[i][j] << std::endl;
+			//std::cerr << reader.interval_tree_entries[i][j] << std::endl;
 			std::pair<U32,U32> blocks = reader.getIndex().getContainer().findOverlap(reader.interval_tree_entries[i][j].contigID,
 																	 reader.interval_tree_entries[i][j].start,
 																	 reader.interval_tree_entries[i][j].stop);
@@ -465,26 +464,26 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 	std::sort(target_blocks.begin(), target_blocks.end());
 	std::vector< std::pair<U32,U32> > target_blocks_merged;
 	target_blocks_merged.push_back(target_blocks[0]);
-	std::cerr << target_blocks[0].first << "->" << target_blocks[0].second << std::endl;
+	//std::cerr << target_blocks[0].first << "->" << target_blocks[0].second << std::endl;
 	for(U32 i = 1; i < target_blocks.size(); ++i){
-		std::cerr << target_blocks[i].first << "->" << target_blocks[i].second << std::endl;
+		//std::cerr << target_blocks[i].first << "->" << target_blocks[i].second << std::endl;
 		if(target_blocks[i].first <= target_blocks_merged.back().second)
 			target_blocks_merged.back().second = target_blocks[i].second;
 		else
 			target_blocks_merged.push_back(target_blocks[i]);
 	}
 
-	std::cerr << "merged" << std::endl;
-	for(U32 i = 0; i < target_blocks_merged.size(); ++i){
-		std::cerr << target_blocks_merged[i].first << "->" << target_blocks_merged[i].second << std::endl;
-	}
+	//std::cerr << "merged" << std::endl;
+	//for(U32 i = 0; i < target_blocks_merged.size(); ++i){
+	//	std::cerr << target_blocks_merged[i].first << "->" << target_blocks_merged[i].second << std::endl;
+	//}
 
 	// Count available blocks;
 	U32 n_total_blocks = 0;
 	for(U32 j = 0; j < target_blocks_merged.size(); ++j)
 		n_total_blocks += target_blocks_merged[j].second - target_blocks_merged[j].first;
 
-	std::cerr << "total blocks: " << n_total_blocks << std::endl;
+	//std::cerr << "total blocks: " << n_total_blocks << std::endl;
 
 	if(this->n_desired_chunks != 1){
 		U32 cutSize = 1;
@@ -493,34 +492,34 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 				cutSize = i;
 		}
 
-		std::cerr << "n choose 2: n = " << cutSize << std::endl;
+		//std::cerr << "n choose 2: n = " << cutSize << std::endl;
 		if(cutSize == 1){
 			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Cannot cut into " << this->n_desired_chunks << " chunks. Chunks Have to be in the set choose(chunks,2) + chunks..." << std::endl;
 			return(false);
 		}
 
 		const U32 blocks_per_partition = n_total_blocks / cutSize;
-		std::cerr << "blocks/partition: " << blocks_per_partition << std::endl;
+		//std::cerr << "blocks/partition: " << blocks_per_partition << std::endl;
 		U32 total = 0; // Sanity
 		for(U32 i = 0; i < cutSize; ++i){ // column 0..N
 			for(U32 j = i; j < cutSize; ++j){ // row c..N
 				if(j + 1 == cutSize){
 					if(i + 1 == cutSize){
-						std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << n_total_blocks << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
+						//std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << n_total_blocks << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
 						this->blocks.push_back(value_type(blocks_per_partition*i, n_total_blocks, blocks_per_partition*j, n_total_blocks));
 					} else {
-						std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
+						//std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
 						this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, n_total_blocks));
 					}
 				} else {
-					std::cerr << this->blocks.size() << ", normal: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << blocks_per_partition*(j+1) << std::endl;
+					//std::cerr << this->blocks.size() << ", normal: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << blocks_per_partition*(j+1) << std::endl;
 					this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, blocks_per_partition*(j+1)));
 				}
 				++total;
 			}
 		}
 
-		std::cerr << "First block: " << this->blocks[0] << std::endl;
+		//std::cerr << "First block: " << this->blocks[0] << std::endl;
 
 		if(total != this->n_desired_chunks){
 			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
@@ -534,18 +533,18 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 
 	// Data to load
 	this->getSelectedLoad();
-	for(U32 i = 0; i < this->data_to_load.size(); ++i){
-		std::cerr << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
-	}
+	//for(U32 i = 0; i < this->data_to_load.size(); ++i){
+	//	std::cerr << this->data_to_load[i].first << "->" << this->data_to_load[i].second << std::endl;
+	//}
 
 	if(this->getSelectedLoadThreadsInterval(reader, threads, target_blocks_merged) == false){
 		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
 		return(false);
 	}
 
-	std::cerr << "here after threads" << std::endl;
+	//std::cerr << "here after threads" << std::endl;
 
-	if(this->getSelectedLoadInterval(target_blocks_merged) == false){
+	if(this->getSelectedLoadInterval(reader, target_blocks_merged) == false){
 		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Corrupted balancing..." << std::endl;
 		return(false);
 	}

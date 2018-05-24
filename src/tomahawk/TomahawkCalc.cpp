@@ -89,6 +89,11 @@ bool TomahawkCalc::Calculate(){
 	this->balancer.setDesired(this->parameters.n_chunks);
 
 	if(this->parameters.window_mode){
+		if(reader.interval_tree_entries != nullptr){
+			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Window mode when slicng is not supported..." << std::endl;
+			return false;
+		}
+
 		if(!this->balancer.BuildWindow(this->reader, this->parameters.n_threads, this->parameters.n_window_bases)){
 			std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Failed to split into blocks..." << std::endl;
 			return false;
@@ -100,8 +105,6 @@ bool TomahawkCalc::Calculate(){
 		}
 	}
 
-
-	std::cerr << this->balancer.getLoad()[0].second << std::endl;
 	return(this->Calculate(this->balancer.getLoad()));
 }
 
