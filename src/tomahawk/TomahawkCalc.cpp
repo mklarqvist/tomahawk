@@ -101,6 +101,7 @@ bool TomahawkCalc::Calculate(){
 	}
 
 
+	std::cerr << this->balancer.getLoad()[0].second << std::endl;
 	return(this->Calculate(this->balancer.getLoad()));
 }
 

@@ -796,7 +796,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		if(!SILENT)
 			std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
 
-		this->stream_.close();
+		//this->stream_.close();
 		self_type second_reader;
 		if(!second_reader.open(files[i])){
 			std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
@@ -808,7 +808,9 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		}
 
 		while(second_reader.parseBlock())
-			writer << this->data_;
+			writer << second_reader.data_;
+
+		writer.flush();
 	}
 
 	writer.setSorted(false);
@@ -837,7 +839,7 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 
 	std::ifstream file_list_read(file_list);
 	if(!file_list_read.good()){
-		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to get file_list..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to get file list..." << std::endl;
 		return false;
 	}
 
@@ -845,8 +847,8 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	std::string line;
 	while(getline(file_list_read, line)){
 		if(line.size() == 0){
-			std::cerr << helpers::timestamp("WARNING","TWO") << "Empty line" << std::endl;
-			break;
+			std::cerr << helpers::timestamp("WARNING","TWO") << "Empty line. Attempting to continue..." << std::endl;
+			continue;
 		}
 		files.push_back(line);
 	}
