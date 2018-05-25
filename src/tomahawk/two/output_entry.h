@@ -81,6 +81,13 @@ public:
 		return(os);
 	}
 
+	std::ostream& writeJSON(std::ostream& os, const contig_type* contigs) const{
+		os << '[' << std::setprecision(8) << (int)this->FLAGS << ",\"" << contigs[this->AcontigID].name << "\"," << this->Aposition << ",\"" << contigs[this->BcontigID].name << "\"," << this->Bposition
+			<< ',' << this->p1 << ',' << this->p2 << ',' << this->q1 << ',' << this->q2 << ',' << this->D << ',' << this->Dprime
+			<< ',' << this->R << ',' << this->R2 << ',' << this->P << ',' << this->chiSqModel << ',' << this->chiSqFisher  << "]";
+		return(os);
+	}
+
 	// Write to buffer
 	friend buffer_type& operator<<(buffer_type& b, const self_type& entry){
 		b.Add(reinterpret_cast<const char*>(&entry), sizeof(self_type));
@@ -93,7 +100,7 @@ public:
 	U32    Amissing: 1, Aphased: 1, Aposition: 30;
 	U32    BcontigID;
 	U32    Bmissing: 1, Bphased: 1, Bposition: 30;
-	float  p1, p2, q1, q2;
+	double  p1, p2, q1, q2;
 	float  D, Dprime; // D and D'
 	float  R, R2;     // Correlation coefficient
 	double P;         // P-value

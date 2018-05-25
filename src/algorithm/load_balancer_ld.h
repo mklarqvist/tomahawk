@@ -25,10 +25,13 @@ public:
 	~LoadBalancerLD();
 
 	bool getSelectedLoad();
+	bool getSelectedLoadInterval(const reader_type& reader, const std::vector< std::pair<U32,U32> >& intervals);
 	bool getSelectedLoadThreads(const reader_type& reader, const U32 threads);
+	bool getSelectedLoadThreadsInterval(const reader_type& reader, const U32 threads, const std::vector< std::pair<U32,U32> >& intervals);
 	bool setSelected(const S32 selected);
 	bool setDesired(const S32 desired);
 	bool Build(const reader_type& reader, const U32 threads);
+	bool BuildInterval(const reader_type& reader, const U32 threads);
 	bool BuildWindow(const reader_type& reader, const U32 threads, const U64 n_window_bases);
 	inline std::vector< std::pair<U32, U32> >& getLoad(void){ return(this->data_to_load); }
 

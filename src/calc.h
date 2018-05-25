@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2016-2017 Genome Research Ltd.
+Copyright (C) 2016-2018 Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,21 +34,23 @@ void calc_usage(void){
 	"        the all variant sites are guaranteed to have the given phasing.\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
-	"  -i FILE  input Tomahawk (required)\n"
-	"  -o FILE  output file (required)\n"
-	"  -t INT   number of CPU threads (default: maximum available)\n"
-	"  -c INT   number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
-	"  -C INT   chosen part to compute (0 < -C < -c)\n"
-	"  -w INT   sliding window width in bases (approximative)\n"
-	"  -p       force computations to use phased math [null]\n"
-	"  -u       force computations to use unphased math [null]\n"
-	"  -f       use fast-mode: output will have correlations only (no matrices or tests) [null]\n"
-	"  -a INT   minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
-	"  -P FLOAT Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
-	"  -r FLOAT Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R FLOAT Pearson's R-squared maximum cut-off value (default: 1.0)\n"
-	"  -d       Show real-time progress update in cerr [null]\n"
-	"  -s       Hide all program messages [null]\n";
+	"  -i FILE   input Tomahawk (required)\n"
+	"  -o FILE   output file or file prefix (required)\n"
+	"  -t INT    number of CPU threads (default: maximum available)\n"
+	"  -c INT    number of parts to split problem into (must be in c!2 + c unless -w is triggered)\n"
+	"  -C INT    chosen part to compute (0 < -C < -c)\n"
+	"  -w INT    sliding window width in bases (approximative)\n"
+	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
+	"  -p        force computations to use phased math\n"
+	"  -u        force computations to use unphased math\n"
+	"  -f        use fast-mode: output will have correlations only (no matrices or tests)\n"
+	"  -S INT    number of individuals to sample in fast-mode (default: 1000)\n"
+	"  -a INT    minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
+	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
+	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
+	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -d        Show real-time progress update in cerr\n"
+	"  -s        Hide all program messages\n";
 }
 
 int calc(int argc, char** argv){
@@ -66,12 +68,14 @@ int calc(int argc, char** argv){
 		{"input",             required_argument, 0, 'i' },
 		{"threads",           optional_argument, 0, 't' },
 		{"output",            required_argument, 0, 'o' },
+		{"interval",          optional_argument, 0, 'I' },
 		{"parts",             optional_argument, 0, 'c' },
 		{"partStart",         optional_argument, 0, 'C' },
 		{"minP",              optional_argument, 0, 'P' },
 		{"phased",            no_argument,       0, 'p' },
 		{"unphased",          no_argument,       0, 'u' },
 		{"fast-mode",         no_argument,       0, 'f' },
+		{"samples",           optional_argument, 0, 'S' },
 		{"minR2",             optional_argument, 0, 'r' },
 		{"maxR2",             optional_argument, 0, 'R' },
 		{"minMHF",            optional_argument, 0, 'a' },
@@ -89,10 +93,11 @@ int calc(int argc, char** argv){
 	tomahawk::TomahawkCalcParameters& parameters = tomahawk.getParameters();
 	std::string input;
 	std::string output;
+	std::vector<std::string> filter_regions;
 
 	double windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:sdc:C:f?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:I:sdc:C:f?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -102,6 +107,9 @@ int calc(int argc, char** argv){
 			break;
 		case 'o':
 			output = std::string(optarg);
+			break;
+		case 'I':
+			filter_regions.push_back(std::string(optarg));
 			break;
 		case 't':
 			parameters.n_threads = atoi(optarg);
@@ -125,18 +133,17 @@ int calc(int argc, char** argv){
 				return(1);
 			}
 			break;
-	  case 'r':
-		parameters.R2_min = atof(optarg);
-		if(parameters.R2_min < 0){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
-			return(1);
-		} else if(parameters.R2_min > 1){
-			std::cerr << tomahawk::helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
-			return(1);
-		}
-		break;
-
-	  case 'R':
+		case 'r':
+			parameters.R2_min = atof(optarg);
+			if(parameters.R2_min < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative minimum R-squared value" << std::endl;
+				return(1);
+			} else if(parameters.R2_min > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR")<< "Cannot have minimum R-squared value > 1" << std::endl;
+				return(1);
+			}
+			break;
+		case 'R':
 		parameters.R2_max = atof(optarg);
 		if(parameters.R2_max < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
@@ -147,19 +154,19 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'p':
+		case 'p':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::phasedFunction;
 		  break;
 
-	  case 'u':
+		case 'u':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
 		  break;
 
-	  case 'f':
+		case 'f':
 		  parameters.fast_mode = true;
 		  break;
 
-	  case 'P':
+		case 'P':
 		  parameters.P_threshold = atof(optarg);
 		  if(parameters.P_threshold < 0){
 			  std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative cutoff P-value" << std::endl;
@@ -169,7 +176,7 @@ int calc(int argc, char** argv){
 			return(1);
 		  }
 		  break;
-	  case 'a':
+		case 'a':
 		parameters.minimum_sum_alternative_haplotype_count = atoi(optarg);
 		if(parameters.minimum_sum_alternative_haplotype_count < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have negative minimum allele count" << std::endl;
@@ -177,7 +184,7 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'A':
+		case 'A':
 		parameters.maximum_sum_alternative_haplotype_count = atoi(optarg);
 		if(parameters.maximum_sum_alternative_haplotype_count < 0){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have negative maximum allele count" << std::endl;
@@ -185,7 +192,7 @@ int calc(int argc, char** argv){
 		}
 		break;
 
-	  case 'w':
+		case 'w':
 		  if(std::regex_match(std::string(optarg), std::regex("^(([0-9]+)|([0-9]+[eE]{1}[0-9]+))$")) == false){
 			  std::cerr << "not an integer" << std::endl;
 			  return(1);
@@ -204,26 +211,26 @@ int calc(int argc, char** argv){
 		parameters.n_window_bases = windowBases;
 		break;
 
-	  case 'W':
-	    windowPosition = atoi(optarg);
-		if(windowPosition <= 0){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
-			return(1);
-		}
+		case 'W':
+			windowPosition = atoi(optarg);
+			if(windowPosition <= 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a non-positive window size" << std::endl;
+				return(1);
+			}
 
 		break;
 
-	  case 's':
-		  SILENT = 1;
-		  parameters.detailed_progress = false;
-		  break;
+		case 's':
+			SILENT = 1;
+			parameters.detailed_progress = false;
+			break;
 
-	  case 'd':
+		case 'd':
 		  SILENT = 0;
 		  parameters.detailed_progress = true;
 		  break;
 
-	  default:
+		default:
 		  std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
 		  return(1);
 		}
@@ -245,12 +252,18 @@ int calc(int argc, char** argv){
 		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling calc..." << std::endl;
 	}
 
-
 	// Parse Tomahawk
 	if(!tomahawk.Open(input, output)){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed build!" << std::endl;
 		return 1;
 	}
 
-	return(tomahawk.Calculate());
+	if(!tomahawk.addRegions(filter_regions)){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
+		return 1;
+	}
+
+	// Return should be 0 for success
+	if(tomahawk.Calculate()) return 0;
+	else return 1;
 }

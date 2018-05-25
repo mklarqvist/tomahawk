@@ -1,3 +1,24 @@
+# Release 0.5.2
+
+## Minor Features And Improvements
+* Now correctly filters `two` files
+
+# Release 0.5.1
+
+## Minor Features And Improvements
+* Meta index for faster queries of `two` files now builds correctly
+* Interval slicing for sorted `two` files now outputs filtering hits for the from positions only
+* Haplotype counts in binary `two` files are now stored as `double` instead of `float` 
+
+# Release 0.5.0
+
+## Breaking Changes
+* All changes are breaking because of structural rechanges. No files generated prior to this release are supported.
+
+## Minor Features And Improvements
+* Build process now smoother
+* Shared C++ library is now built by default
+
 # Release 0.4.0
 
 ## Breaking Changes

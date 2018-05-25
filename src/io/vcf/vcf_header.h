@@ -59,7 +59,7 @@ public:
 		tgzf_type tgzf_controller;
 
 		for(U32 i = 0; i < this->literal_lines.size(); ++i){
-			std::cerr << this->literal_lines[i] << std::endl;
+			//std::cerr << this->literal_lines[i] << std::endl;
 			temp += this->literal_lines[i];
 		}
 		tgzf_controller.Deflate(temp);

@@ -24,6 +24,7 @@ public:
 	TomahawkCalc();
 	~TomahawkCalc();
 	bool Open(const std::string input, const std::string output);
+	bool addRegions(std::vector<std::string>& positions);
 	bool Calculate(pair_vector& blocks);
 	bool Calculate(std::vector<U32>& blocks);
 	bool Calculate();

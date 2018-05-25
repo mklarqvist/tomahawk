@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2016-2017 Genome Research Ltd.
+Copyright (C) 2016-2018 Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,7 +29,6 @@ DEALINGS IN THE SOFTWARE.
 #include "view.h"
 #include "sort.h"
 #include "concat.h"
-#include "stats.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::helpers::isBigEndian()){
@@ -62,9 +61,6 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));
-
-	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
-		return(stats(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage(false);

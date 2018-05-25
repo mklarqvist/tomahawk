@@ -1,5 +1,5 @@
-#ifndef VCFPARSER_H_
-#define VCFPARSER_H_
+#ifndef TOMAHAWK_TOMAHAWK_IMPORTER_
+#define TOMAHAWK_TOMAHAWK_IMPORTER_
 
 #include "io/bcf/bcf_reader.h"
 #include "io/vcf/vcf_header.h"
@@ -112,4 +112,4 @@ private:
 
 } /* namespace Tomahawk */
 
-#endif /* VCFPARSER_H_ */
+#endif /* TOMAHAWK_TOMAHAWK_IMPORTER_ */

@@ -109,15 +109,42 @@ public:
 	 */
 	bool buildMetaIndex(const U32 n_contigs);
 
+	/**<
+	 *
+	 * @param contigID
+	 * @param fromPos
+	 * @param toPos
+	 * @return
+	 */
+	std::vector<U32> findOverlaps(const U32 contigID, const U32 fromPos, const U32 toPos) const{
+		if(contigID > this->sizeMeta())
+			return std::vector<U32>();
+
+		const U32 blockFrom = this->meta_container_[contigID].index_begin;
+		const U32 blockTo   = this->meta_container_[contigID].index_end;
+		std::vector<U32> ret;
+
+		for(U32 i = blockFrom; i < blockTo; ++i){
+			// [a, b] overlaps with [x, y] iff b > x and a < y.
+			// a = fromPos
+			// b = toPos
+			// x = this->container_[i].min_position
+			// y = this->container_[i].max_position
+			if(toPos >= this->container_[i].min_position && fromPos < this->container_[i].max_position)
+				ret.push_back(i);
+
+			// Cannot extend any more
+			if(this->container_[i].min_position > toPos) break;
+		}
+
+		return ret;
+	}
+
 private:
 	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
 		stream << index.getController();
 		stream << index.getMetaContainer();
 		stream << index.getContainer();
-		return(stream);
-	}
-
-	friend std::ostream& operator<<(std::ostream& stream, const self_type& index){
 		return(stream);
 	}
 

@@ -15,11 +15,15 @@ Index::Index(const char* const data, const U32 l_data) :
 }
 
 bool Index::buildMetaIndex(const U32 n_contigs){
-	if(this->getContainer().size() == 0)
+	if(this->getContainer().size() == 0){
+		//std::cerr << "container size is 0..." << std::endl;
 		return false;
+	}
 
-	if(this->isSorted() == false)
+	if(this->isSorted() == false){
+		//std::cerr << "data not sorted..." << std::endl;
 		return false;
+	}
 
 	meta_entry_type reference_entry;
 	reference_entry.index_begin       = 0;

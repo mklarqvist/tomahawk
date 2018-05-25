@@ -91,7 +91,6 @@ bool TomahawkImporter::BuildBCF(void){
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
 		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
-			std::cerr << "first: " << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << ",miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -121,7 +120,6 @@ bool TomahawkImporter::BuildBCF(void){
 	// Parse lines
 	while(reader.nextVariant(entry)){
 		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
-			if(entry.gt_support.hasEOV) std::cerr << "EOV: " << entry.gt_support.hasGenotypes << "," << entry.gt_support.hasEOV << "," << entry.isBiallelicSimple() << " miss: " << entry.gt_support.n_missing << std::endl;
 			entry.reset();
 			continue;
 		}
@@ -220,7 +218,7 @@ bool TomahawkImporter::BuildVCF(void){
 	this->writer_.totempole_entry.contigID = *this->sort_order_helper.contigID;
 
 	if(!this->parseVCFLine(line)){
-		std::cerr << helpers::timestamp("ERROR", "VCF") << "Failed parse" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "VCF") << "Failed to parse..." << std::endl;
 		return false;
 	}
 
@@ -271,8 +269,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		}
 
 		if(!SILENT){
-			std::cerr << this->writer_.totempole_entry.n_variants << std::endl;
-			std::cerr << helpers::timestamp("LOG", "IMPORT") << "Switch detected: " << this->vcf_header_->getContig(this->sort_order_helper.prevcontigID).name << "->" << this->vcf_header_->getContig(line.body->CHROM).name << "..." << std::endl;
+			std::cerr << helpers::timestamp("LOG", "IMPORT") << "Switch detected: " << this->vcf_header_->getContig(this->sort_order_helper.prevcontigID).name << " -> " << this->vcf_header_->getContig(line.body->CHROM).name << "..." << std::endl;
 		}
 
 		this->sort_order_helper.previous_position = 0;

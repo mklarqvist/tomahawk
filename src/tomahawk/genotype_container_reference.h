@@ -2,6 +2,7 @@
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_REFERENCE_H_
 
 #include <cstring>  // size_t, ptrdiff_t
+#include <algorithm>
 
 #include "support/type_definitions.h"
 #include "index/index_entry.h"
@@ -157,6 +158,24 @@ public:
 
 				// Update index
 				this->haplotype_bitvectors[i].indices = new U32[tempListIdx];
+				this->haplotype_bitvectors[i].n_actual = this->haplotype_bitvectors[i].l_list;
+				if(this->haplotype_bitvectors[i].n_actual > 1000){
+					int N = 1000;
+					std::vector<U32> a(tempListIdx);
+					a.assign(tempList, tempList + tempListIdx);
+					for(S32 i = N-1; i > 0; --i){
+						S32 r = rand() % (i + 1);
+						std::swap(a[i], a[r]);
+					}
+
+					this->haplotype_bitvectors[i].sampled_indicies = new U32[1000];
+					for(U32 j = 0; j < 1000; ++j){
+						this->haplotype_bitvectors[i].sampled_indicies[j] = a[j];
+						//std::cerr << a[j] << ",";
+					}
+					//std::sort(this->haplotype_bitvectors[i].sampled_indicies, &this->haplotype_bitvectors[i].sampled_indicies[1000]);
+				}
+
 				for(U32 j = 0; j < tempListIdx; ++j){
 					this->haplotype_bitvectors[i].indices[j] = tempList[j];
 					//this->sbbst_trees[i].Insert(tempList[j], tempList[j]);

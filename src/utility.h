@@ -18,7 +18,7 @@ void programMessage(const bool separator = true){
 
 void programHelp(void){
 	std::cerr << "Usage: " << tomahawk::constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, index, stats, concat" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, concat" << std::endl;
 }
 
 void programHelpDetailed(void){
@@ -26,9 +26,8 @@ void programHelpDetailed(void){
 	std::cerr <<
     "\n"
 	"concat       concatenate TWO files from the same set of samples\n"
-	"calc         calculate linkage disequilibrium (TWO/TOI format)\n"
-	"import       import VCF/BCF to TWK/TWI\n"
-	"stats        basic statistics of TWK/TWO\n"
+	"calc         calculate linkage disequilibrium\n"
+	"import       import VCF/BCF to TWK\n"
 	"sort         sort TWO file\n"
     "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
 }

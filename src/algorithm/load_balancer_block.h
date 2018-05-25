@@ -23,6 +23,14 @@ struct LoadBalancerBlock{
 		staggered(false)
 	{}
 
+	LoadBalancerBlock(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn, bool staggered) :
+		fromRow(fromRow),
+		toRow(toRow),
+		fromColumn(fromColumn),
+		toColumn(toColumn),
+		staggered(staggered)
+	{}
+
 	~LoadBalancerBlock(){}
 
 	inline U32 getRows(void) const{ return(this->toRow - this->fromRow); }
@@ -47,15 +55,13 @@ struct LoadBalancerBlock{
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const LoadBalancerBlock& block){
-		os << block.fromRow << '-' << block.toRow << '\t' << block.fromColumn << '-' << block.toColumn << (int)block.staggered;
+		os << "[" << block.fromRow << '-' << block.toRow << ", " << block.fromColumn << '-' << block.toColumn << "] staggered: " << (int)block.staggered;
 		return(os);
 	}
 
 	// Relative order
-	U32 fromRow;
-	U32 toRow;
-	U32 fromColumn;
-	U32 toColumn;
+	U32 fromRow, toRow;
+	U32 fromColumn, toColumn;
 	bool staggered;
 };
 
