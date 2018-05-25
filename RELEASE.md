@@ -1,3 +1,8 @@
+# Release 0.5.2
+
+## Minor Features And Improvements
+* Now correctly filters `two` files
+
 # Release 0.5.1
 
 ## Minor Features And Improvements

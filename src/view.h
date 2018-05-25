@@ -30,9 +30,7 @@ DEALINGS IN THE SOFTWARE.
 void view_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Convert binary TWK->VCF or TWO->LD; subset and slice TWK/TWO data\n"
-	"        Data does not have to be indexed. However, operations are faster if they\n"
-	"        are.\n"
+	"About:  Convert binary TWK->VCF or TWO->LD, subset and slice TWK/TWO data\n\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
@@ -42,7 +40,7 @@ void view_usage(void){
 	"  -N        output in tab-delimited text format (see -O) [null]\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)[null]\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
-	"  -J        output JSON object\n"
+	//"  -J        output JSON object\n"
 	"  -s        Hide all program messages [null]\n\n"
 
 	// Twk parameters
@@ -83,20 +81,20 @@ int view(int argc, char** argv){
 		{"output",      optional_argument, 0, 'o' },
 		{"minP",        optional_argument, 0, 'p' },
 		{"maxP",        optional_argument, 0, 'P' },
-		{"minR",       optional_argument, 0, 'z' },
-		{"maxR",       optional_argument, 0, 'Z' },
+		{"minR",        optional_argument, 0, 'z' },
+		{"maxR",        optional_argument, 0, 'Z' },
 		{"minR2",       optional_argument, 0, 'r' },
 		{"maxR2",       optional_argument, 0, 'R' },
 		{"minDP",       optional_argument, 0, 'b' },
 		{"maxDP",       optional_argument, 0, 'B' },
-		{"minD",       optional_argument, 0, 'd' },
-		{"maxD",       optional_argument, 0, 'D' },
+		{"minD",        optional_argument, 0, 'd' },
+		{"maxD",        optional_argument, 0, 'D' },
 		{"minChi",      optional_argument, 0, 'x' },
 		{"maxChi",      optional_argument, 0, 'X' },
 		{"minAlelles",  optional_argument, 0, 'a' },
 		{"maxAlleles",  optional_argument, 0, 'A' },
-		{"minMCV",       optional_argument, 0, 'm' },
-		{"maxMCV",       optional_argument, 0, 'M' },
+		{"minMCV",      optional_argument, 0, 'm' },
+		{"maxMCV",      optional_argument, 0, 'M' },
 		{"JSON",        optional_argument, 0, 'J' },
 		{"flagInclude", optional_argument, 0, 'f' },
 		{"flagExclude", optional_argument, 0, 'F' },
@@ -104,7 +102,7 @@ int view(int argc, char** argv){
 		{"headerOnly",  no_argument, 0, 'H' },
 		{"noHeader",    no_argument, 0, 'h' },
 		{"dropGenotypes",optional_argument, 0, 'G' },
-		{"interval",       optional_argument, 0, 'I' },
+		{"interval",    optional_argument, 0, 'I' },
 		{"silent",      no_argument, 0,  's' },
 		{0,0,0,0}
 	};
@@ -115,12 +113,12 @@ int view(int argc, char** argv){
 	bool outputHeader = true;
 	bool dropGenotypes = false;
 	std::vector<std::string> filter_regions;
-	bool output_JSON = false;
+	//bool output_JSON = false;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:JHhGsb:B:Nuz:Z:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nuz:Z:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -143,10 +141,10 @@ int view(int argc, char** argv){
 		case 'I':
 			filter_regions.push_back(std::string(optarg));
 			break;
-		case 'J':
-			output_JSON = true;
-			--hits;
-			break;
+		//case 'J':
+		//	output_JSON = true;
+		//	--hits;
+		//	break;
 		case 'u':
 			two_filter.setFilterUpperTriangular(true);
 			--hits;
@@ -390,7 +388,7 @@ int view(int argc, char** argv){
 		tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
 
-		reader.output_json_ = output_JSON;
+		//reader.output_json_ = output_JSON;
 
 		if(!reader.open(input))
 			return 1;
