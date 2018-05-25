@@ -23,6 +23,31 @@
 
 namespace tomahawk {
 
+struct temp{
+	temp() :
+		n_hetA(0), n_hetB(0),
+		n_homA(0), n_homB(0),
+		n_missA(0), n_missB(0)
+	{
+
+	}
+
+	void clear(void){
+		this->n_hetA = 0; this->n_hetB = 0;
+		this->n_homA = 0; this->n_homB = 0;
+		this->n_missA = 0; this->n_missB = 0;
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const temp& self){
+		os << self.n_hetA << "\t" << self.n_hetB << "\t" << self.n_homA << "\t" << self.n_homB << "\t" << self.n_missA << "\t" << self.n_missB;
+		return(os);
+	}
+
+	U32 n_hetA, n_hetB;
+	U32 n_homA, n_homB;
+	U32 n_missA, n_missB;
+};
+
 // TomahawkReader class simply reads compressed data from disk
 class TomahawkReader {
 	typedef TomahawkCalcParameters     parameter_type;
@@ -53,6 +78,7 @@ public:
 	~TomahawkReader();
 
 	bool open(const std::string input);
+	bool addRegions(const std::vector<std::string>& intervals);
 
 	// Reader functions
 	bool getBlocks(void);
@@ -73,97 +99,7 @@ public:
 	bool outputBlocks(std::vector<U32>& blocks);
 	bool outputBlocks();
 
-	bool addRegions(const std::vector<std::string>& intervals){
-		// No interval strings given
-		if(intervals.size() == 0)
-			return true;
-
-		// Build interval tree and interval vector is not set
-		if(this->interval_tree_entries == nullptr)
-			this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
-
-		if(this->interval_tree == nullptr){
-			this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
-			for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
-				this->interval_tree[i] = nullptr;
-		} else delete [] this->interval_tree;
-
-		// Parse intervals
-		for(U32 i = 0; i < intervals.size(); ++i){
-			interval_type interval;
-			// has colon (:)
-			if(intervals[i].find(':') != std::string::npos){
-				std::vector<std::string> first = helpers::split(intervals[i], ':');
-				if(first.size() != 2){
-					std::cerr << helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << "..." << std::endl;
-					return false;
-				}
-
-				const S32 contigID = this->header_.getContigID(first[0]);
-				if(contigID == -1){
-					std::cerr << helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
-					return false;
-				}
-
-				interval.state = algorithm::ContigInterval::INTERVAL_FULL;
-				interval.contigID = contigID;
-				std::vector<std::string> sections = helpers::split(first[1],'-');
-				if(sections.size() == 2){ // Is contig + position->position
-					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data());
-					} else {
-						std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
-						return false;
-					}
-
-					if(std::regex_match(sections[1], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.stop = atof(sections[1].data());
-					} else {
-						std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[1] << " in interval string " << intervals[i] << std::endl;
-						return false;
-					}
-
-				} else if(sections.size() == 1){ // Is contig + position
-					interval.state = algorithm::ContigInterval::INTERVAL_POSITION;
-					if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
-						interval.start = atof(sections[0].data());
-						interval.stop  = atof(sections[0].data());
-					} else {
-						std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
-						return false;
-					}
-
-				} else {
-					std::cerr << helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << std::endl;
-					return false;
-				}
-			} else { // Is contig  only
-				interval.state = algorithm::ContigInterval::INTERVAL_CONTIG_ONLY;
-				const S32 contigID = this->header_.getContigID(intervals[i]);
-				if(contigID == -1){
-					std::cerr << helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
-					return false;
-				}
-				interval.contigID = contigID;
-				interval.start = 0;
-				interval.stop = this->header_.contigs_[contigID].n_bases + 1;
-			}
-			// Store interval
-			this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
-		}
-
-		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
-			delete this->interval_tree[i];
-
-			if(this->interval_tree_entries[i].size() != 0){
-				this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
-			} else
-				this->interval_tree[i] = nullptr;
-		}
-
-		return true;
-	}
-
+	bool summaryIndividuals();
 
 	inline const BYTE& getBitWidth(void) const{ return(this->bit_width_); }
 	inline const DataOffsetPair& getOffsetPair(const U32 p) const{ return(this->blockDataOffsets_[p]); }
@@ -178,6 +114,8 @@ private:
 	template <class T> bool outputBlockFilter(const U32 blockID);
 	template <class T> bool WriteBlock(const char* data, const U32 blockID);
 	template <class T> bool WriteBlockFilter(const char* data, const U32 blockID);
+
+	template <class T> bool statsIndividual(std::vector<temp>& stats, const char* data, const U32 blockID);
 
 private:
 	U64            filesize_;  // filesize
@@ -363,6 +301,34 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 	this->data_.reset(); // reset
 
 	return true;
+}
+
+template <class T>
+bool TomahawkReader::statsIndividual(std::vector<temp>& stats, const char* const data, const U32 blockID){
+	base::GenotypeContainerReference<T> o(data,
+                                          this->index_->getContainer()[blockID].uncompressed_size,
+                                          this->index_->getContainer()[blockID],
+                                          this->header_.magic_.getNumberSamples(),
+                                          false);
+
+
+
+	//std::vector<temp> stats(this->getHeader().getMagic().n_samples);
+	for(U32 j = 0; j < o.size(); ++j){
+		U32 cumsum = 0;
+		for(U32 i = 0; i < o.currentMeta().runs; ++i){
+			for(U32 r = 0; r < o[i].runs; ++r, cumsum++){
+				stats[cumsum].n_hetA += o[i].alleleA == 1;
+				stats[cumsum].n_hetB += o[i].alleleB == 1;
+				stats[cumsum].n_homA += o[i].alleleA == 0;
+				stats[cumsum].n_homB += o[i].alleleB == 0;
+				stats[cumsum].n_missA += o[i].alleleA == 2;
+				stats[cumsum].n_missB += o[i].alleleB == 2;
+			}
+		}
+		//std::cerr << cumsum << "/" << this->getHeader().getMagic().n_samples << std::endl;
+		assert(cumsum == this->getHeader().getMagic().n_samples);
+	}
 }
 
 } /* namespace Tomahawk */

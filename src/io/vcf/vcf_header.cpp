@@ -178,7 +178,7 @@ bool VCFHeader::__parseFirstLine(const char* const data, U32& offset){
 	offset = 4;
 	if(strncmp(&data[offset], &vcf::constants::HEADER_VCF_FORMAT[0], vcf::constants::HEADER_VCF_FORMAT.size()) != 0){
 		std::cerr << helpers::timestamp("ERROR", "BCF") << "Invalid VCF format..." << std::endl;
-		std::cerr << std::string(&data[offset], 100) << std::endl;
+		//std::cerr << std::string(&data[offset], 100) << std::endl;
 		this->error_bit = VCF_ERROR_LINE1;
 		return false;
 	}

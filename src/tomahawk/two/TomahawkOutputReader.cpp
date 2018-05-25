@@ -796,7 +796,6 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		if(!SILENT)
 			std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
 
-		//this->stream_.close();
 		self_type second_reader;
 		if(!second_reader.open(files[i])){
 			std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;

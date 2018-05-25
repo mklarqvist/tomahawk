@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2016-2017 Genome Research Ltd.
+Copyright (C) 2016-2018 Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +38,7 @@ void view_usage(void){
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
 	"  -h/H      (twk/two) header only / no header [null]\n"
-	"  -O char   output type: b for TWO format, n for tab-delimited format (default: b)\n"
+	"  -O char   output type: b for TWO format, n for tab-delimited format\n"
 	"  -N        output in tab-delimited text format (see -O) [null]\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)[null]\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
@@ -67,9 +67,7 @@ void view_usage(void){
 	"  -M, --maxMP  FLOAT   largest model Chi-squared CV (default: inf)\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
-	"  -u                   output only the upper triangular values\n"
-	"  --min<cell>  FLOAT   smallest cell count (default: 0)\n"
-	"  --max<cell>  FLOAT   largest cell count (default: inf)\n";
+	"  -u                   output only the upper triangular values\n";
 }
 
 int view(int argc, char** argv){
@@ -333,6 +331,7 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
+		//tomahawk.summaryIndividuals();
 		tomahawk.outputBlocks();
 
 	} else if(end == tomahawk::constants::OUTPUT_LD_SUFFIX){

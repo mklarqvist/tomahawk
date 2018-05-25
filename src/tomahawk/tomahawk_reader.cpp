@@ -273,6 +273,55 @@ bool TomahawkReader::outputBlocks(std::vector<U32>& blocks){
 	return true;
 }
 
+bool TomahawkReader::summaryIndividuals(){
+	typedef bool (tomahawk::TomahawkReader::*blockFunction)(std::vector<temp>& stats, const char* const data, const U32 blockID);
+	blockFunction func__ = nullptr;
+
+	switch(this->bit_width_){
+	case 1: func__ = &TomahawkReader::statsIndividual<BYTE>; break;
+	case 2: func__ = &TomahawkReader::statsIndividual<U16>;  break;
+	case 4: func__ = &TomahawkReader::statsIndividual<U32>;  break;
+	case 8: func__ = &TomahawkReader::statsIndividual<U64>;  break;
+	default:
+		std::cerr << helpers::timestamp("ERROR") << "Word sizing could not be determined!" << std::endl;
+		exit(1);
+		break;
+	}
+
+	std::vector<temp> stats(this->getHeader().getMagic().n_samples);
+	U32 previousContigID = 0;
+	for(U32 i = 0; i < this->index_->getContainer().size(); ++i){
+		if(!this->getBlock(i)){
+			std::cerr << "failed to get block" << std::endl;
+			return false;
+		}
+
+		if(this->index_->getContainer()[i].contigID != previousContigID && i != 0){
+			for(U32 i = 0; i < stats.size(); ++i){
+				std::cout << previousContigID << "\t" << i << "\t" << stats[i] << std::endl;
+				stats[i].clear();
+			}
+
+			previousContigID = this->index_->getContainer()[i].contigID;
+		}
+
+		(*this.*func__)(stats, this->data_.data(),i);
+
+		// Reset buffers
+		this->outputBuffer_.reset(); // reset
+		this->data_.reset(); // reset
+
+		//std::cerr << i << "/" << this->index_->getContainer().size() << std::endl;
+	}
+
+	for(U32 i = 0; i < stats.size(); ++i){
+		std::cout << previousContigID << "\t" << i << "\t" << stats[i] << std::endl;
+		stats[i].clear();
+	}
+
+	return true;
+}
+
 bool TomahawkReader::outputBlocks(){
 	typedef bool (tomahawk::TomahawkReader::*blockFunction)(const U32 blockID);
 	blockFunction func__ = nullptr;
@@ -340,6 +389,97 @@ bool TomahawkReader::outputBlocks(){
 		for(U32 i = 0; i < this->index_->getContainer().size(); ++i){
 			(*this.*func__)(i);
 		}
+	}
+
+	return true;
+}
+
+bool TomahawkReader::addRegions(const std::vector<std::string>& intervals){
+	// No interval strings given
+	if(intervals.size() == 0)
+		return true;
+
+	// Build interval tree and interval vector is not set
+	if(this->interval_tree_entries == nullptr)
+		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
+
+	if(this->interval_tree == nullptr){
+		this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
+			this->interval_tree[i] = nullptr;
+	} else delete [] this->interval_tree;
+
+	// Parse intervals
+	for(U32 i = 0; i < intervals.size(); ++i){
+		interval_type interval;
+		// has colon (:)
+		if(intervals[i].find(':') != std::string::npos){
+			std::vector<std::string> first = helpers::split(intervals[i], ':');
+			if(first.size() != 2){
+				std::cerr << helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << "..." << std::endl;
+				return false;
+			}
+
+			const S32 contigID = this->header_.getContigID(first[0]);
+			if(contigID == -1){
+				std::cerr << helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
+				return false;
+			}
+
+			interval.state = algorithm::ContigInterval::INTERVAL_FULL;
+			interval.contigID = contigID;
+			std::vector<std::string> sections = helpers::split(first[1],'-');
+			if(sections.size() == 2){ // Is contig + position->position
+				if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+					interval.start = atof(sections[0].data());
+				} else {
+					std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
+					return false;
+				}
+
+				if(std::regex_match(sections[1], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+					interval.stop = atof(sections[1].data());
+				} else {
+					std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[1] << " in interval string " << intervals[i] << std::endl;
+					return false;
+				}
+
+			} else if(sections.size() == 1){ // Is contig + position
+				interval.state = algorithm::ContigInterval::INTERVAL_POSITION;
+				if(std::regex_match(sections[0], std::regex("^[0-9]{1,}([\\.]{1}[0-9]{1,})?([eE]{1}[0-9]{1,})?$"))){
+					interval.start = atof(sections[0].data());
+					interval.stop  = atof(sections[0].data());
+				} else {
+					std::cerr << helpers::timestamp("ERROR") << "Illegal number: " << sections[0] << " in interval string " << intervals[i] << std::endl;
+					return false;
+				}
+
+			} else {
+				std::cerr << helpers::timestamp("ERROR") << "Malformed interval string: " << intervals[i] << std::endl;
+				return false;
+			}
+		} else { // Is contig  only
+			interval.state = algorithm::ContigInterval::INTERVAL_CONTIG_ONLY;
+			const S32 contigID = this->header_.getContigID(intervals[i]);
+			if(contigID == -1){
+				std::cerr << helpers::timestamp("ERROR") << "Contig: " << intervals[i] << " is not defined in this file..." << std::endl;
+				return false;
+			}
+			interval.contigID = contigID;
+			interval.start = 0;
+			interval.stop = this->header_.contigs_[contigID].n_bases + 1;
+		}
+		// Store interval
+		this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+	}
+
+	for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
+		delete this->interval_tree[i];
+
+		if(this->interval_tree_entries[i].size() != 0){
+			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
+		} else
+			this->interval_tree[i] = nullptr;
 	}
 
 	return true;
