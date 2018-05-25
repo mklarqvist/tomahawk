@@ -6,6 +6,7 @@ namespace tomahawk {
 
 OutputFilter::OutputFilter() :
 	any_filter_user_set(false),
+	upper_triangular_only(false),
 	minP1(0),
 	minP2(0),
 	minQ1(0),
@@ -18,10 +19,11 @@ OutputFilter::OutputFilter() :
 	maxMHF(std::numeric_limits<double>::max()),
 	minD(-100), maxD(100),
 	minDprime(-100), maxDprime(100),
+	minR(0), maxR(100),
 	minR2(0), maxR2(100),
 	minP(0), maxP(100),
-	minChiSquared(0), maxChiSquared(std::numeric_limits<double>::max()),
-	minPmodel(0), maxPmodel(std::numeric_limits<double>::max()),
+	minChiSquaredTable(0), maxChiSquaredTable(std::numeric_limits<double>::max()),
+	minChiSquaredModel(0), maxChiSquaredModel(std::numeric_limits<double>::max()),
 	filterValueInclude(0),
 	filterValueExclude(0)
 {}
@@ -31,6 +33,7 @@ OutputFilter::~OutputFilter(){}
 std::string OutputFilter::getInterpretedString(void) const{
 	if(this->any_filter_user_set){
 		return(std::string(
+				"upperTriangular=" + (this->upper_triangular_only ? std::string("TRUE") : std::string("FALSE")) +
 				"minP1=" + std::to_string(this->minP1) + " " +
 				"minP2=" + std::to_string(this->minP2) + " " +
 				"minQ1=" + std::to_string(this->minQ1) + " " +
@@ -47,12 +50,14 @@ std::string OutputFilter::getInterpretedString(void) const{
 				"maxDprime=" + std::to_string(this->maxDprime) + " " +
 				"minR2=" + std::to_string(this->minR2) + " " +
 				"maxR2=" + std::to_string(this->maxR2) + " " +
+				"minR=" + std::to_string(this->minR) + " " +
+				"maxR=" + std::to_string(this->maxR) + " " +
 				"minP=" + std::to_string(this->minP) + " " +
 				"maxP=" + std::to_string(this->maxP) + " " +
-				"minChiSquared=" + std::to_string(this->minChiSquared) + " " +
-				"maxChiSquared=" + (this->maxChiSquared == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquared)) + " " +
-				"minPmodel=" + std::to_string(this->minPmodel) + " " +
-				"maxPmodel=" + std::to_string(this->maxPmodel) + " " +
+				"minChiSquaredTable=" + std::to_string(this->minChiSquaredTable) + " " +
+				"maxChiSquaredTable=" + (this->maxChiSquaredTable == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredTable)) + " " +
+				"minChiSquaredModel=" + std::to_string(this->minChiSquaredModel) + " " +
+				"maxChiSquaredModel=" + (this->maxChiSquaredModel == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredModel)) + " " +
 				"filterValueInclude=" + std::to_string(this->filterValueInclude) + " " +
 				"filterValueExclude=" + std::to_string(this->filterValueExclude)
 		));
@@ -62,15 +67,22 @@ std::string OutputFilter::getInterpretedString(void) const{
 }
 
 bool OutputFilter::filter(const entry_type& target) const{
+	if(this->upper_triangular_only){
+		if(target.AcontigID == target.BcontigID && target.Aposition > target.Bposition){
+			return false;
+		}
+	}
+
 	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0))
 		return false;
 
+	if(!this->filter(target.R, this->minR, this->maxR)) return false;
 	if(!this->filter(target.R2, this->minR2, this->maxR2)) return false;
 	if(!this->filter(target.P, this->minP, this->maxP)) return false;
 	if(!this->filter(target.D, this->minD, this->maxD)) return false;
 	if(!this->filter(target.Dprime, this->minDprime, this->maxDprime)) return false;
-	if(!this->filter(target.chiSqModel, this->minChiSquared, this->maxChiSquared)) return false;
-	if(!this->filter(target.chiSqFisher, this->minPmodel, this->maxPmodel)) return false;
+	if(!this->filter(target.chiSqModel, this->minChiSquaredModel, this->maxChiSquaredModel)) return false;
+	if(!this->filter(target.chiSqFisher, this->minChiSquaredTable, this->maxChiSquaredTable)) return false;
 	if(!this->filterJointHF(target)) return false;
 	if(!this->filter(target.p1, this->minP1, this->maxP1)) return false;
 	if(!this->filter(target.p2, this->minP2, this->maxP2)) return false;
@@ -177,6 +189,27 @@ bool OutputFilter::setFilterDprime(const float& min, const float& max){
 	return true;
 }
 
+bool OutputFilter::setFilterR(const float& min, const float& max){
+	if(max < min){
+		std::cerr << "max < min" << std::endl;
+		return false;
+	}
+	if(min < 0 || max < 0){
+		std::cerr << "has negative" << std::endl;
+		return false;
+	}
+	if(min > 1 || max > 1){
+		std::cerr << "value > 1" << std::endl;
+		return false;
+	}
+
+	this->minR = min - constants::ALLOWED_ROUNDING_ERROR;
+	this->maxR = max + constants::ALLOWED_ROUNDING_ERROR;
+	this->trigger();
+	return true;
+}
+
+
 bool OutputFilter::setFilterRsquared(const float& min, const float& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
@@ -217,7 +250,7 @@ bool OutputFilter::setFilterP(const double& min, const double& max){
 	return true;
 }
 
-bool OutputFilter::setFilterPmodel(const double& min, const double& max){
+bool OutputFilter::setFilterChiSquaredTable(const double& min, const double& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -226,18 +259,14 @@ bool OutputFilter::setFilterPmodel(const double& min, const double& max){
 		std::cerr << "has negative" << std::endl;
 		return false;
 	}
-	if(min > 1 || max > 1){
-		std::cerr << "value > 1" << std::endl;
-		return false;
-	}
 
-	this->minPmodel = min;
-	this->maxPmodel = max;
+	this->minChiSquaredTable = min;
+	this->maxChiSquaredTable = max;
 	this->trigger();
 	return true;
 }
 
-bool OutputFilter::setFilterChiSquared(const double& min, const double& max){
+bool OutputFilter::setFilterChiSquaredModel(const double& min, const double& max){
 	if(max < min){
 		std::cerr << "max < min" << std::endl;
 		return false;
@@ -247,8 +276,8 @@ bool OutputFilter::setFilterChiSquared(const double& min, const double& max){
 		return false;
 	}
 
-	this->minChiSquared = min;
-	this->maxChiSquared = max;
+	this->minChiSquaredModel = min;
+	this->maxChiSquaredModel = max;
 	this->trigger();
 	return true;
 }

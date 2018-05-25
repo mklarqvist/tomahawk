@@ -51,20 +51,22 @@ void view_usage(void){
 
 	// Two parameters
 	"Two parameters\n"
-	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value\n"
+	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value\n"
+	"  -z, --minR   FLOAT   Pearson's R minimum cut-off value\n"
+	"  -Z, --maxR   FLOAT   Pearson's R maximum cut-off value\n"
 	"  -p, --minP   FLOAT   smallest P-value (default: 0)\n"
 	"  -P, --maxP   FLOAT   largest P-value (default: 1)\n"
 	"  -d, --minD   FLOAT   smallest D value (default: -1)\n"
 	"  -D, --maxD   FLOAT   largest D value (default: 1)\n"
 	"  -b, --minDP  FLOAT   smallest D' value (default: 0)\n"
 	"  -B, --maxDP  FLOAT   largest D' value (default: 1)\n"
-	"  -x, --minChi FLOAT   smallest Chi-squared CV (default: 0)\n"
-	"  -X, --maxChi FLOAT   largest Chi-squared CV (default: inf)\n"
+	"  -x, --minChi FLOAT   smallest Chi-squared CV of contingency table (default: 0)\n"
+	"  -X, --maxChi FLOAT   largest Chi-squared CV of contingency table (default: inf)\n"
 	"  -a, --minMHC FLOAT   minimum minor-haplotype count (default: 0)\n"
 	"  -A, --maxMHC FLOAT   maximum minor-haplotype count (default: inf)\n"
-	"  -m, --minMP  FLOAT   smallest model Chi-squared CV (default: 0)\n"
-	"  -M, --maxMP  FLOAT   largest model Chi-squared CV (default: inf)\n"
+	"  -m, --minMCV FLOAT   smallest Chi-squared CV of unphased model (default: 0)\n"
+	"  -M, --maxMCV FLOAT   largest Chi-squared CV of unphased model (default: inf)\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
 	"  -u                   output only the upper triangular values\n";
@@ -81,19 +83,24 @@ int view(int argc, char** argv){
 		{"output",      optional_argument, 0, 'o' },
 		{"minP",        optional_argument, 0, 'p' },
 		{"maxP",        optional_argument, 0, 'P' },
+		{"minR",       optional_argument, 0, 'z' },
+		{"maxR",       optional_argument, 0, 'Z' },
 		{"minR2",       optional_argument, 0, 'r' },
 		{"maxR2",       optional_argument, 0, 'R' },
-		{"minDP",       optional_argument, 0, 'd' },
-		{"maxDP",       optional_argument, 0, 'D' },
+		{"minDP",       optional_argument, 0, 'b' },
+		{"maxDP",       optional_argument, 0, 'B' },
+		{"minD",       optional_argument, 0, 'd' },
+		{"maxD",       optional_argument, 0, 'D' },
 		{"minChi",      optional_argument, 0, 'x' },
 		{"maxChi",      optional_argument, 0, 'X' },
 		{"minAlelles",  optional_argument, 0, 'a' },
 		{"maxAlleles",  optional_argument, 0, 'A' },
-		{"minMP",       optional_argument, 0, 'm' },
-		{"maxMP",       optional_argument, 0, 'M' },
+		{"minMCV",       optional_argument, 0, 'm' },
+		{"maxMCV",       optional_argument, 0, 'M' },
 		{"JSON",        optional_argument, 0, 'J' },
 		{"flagInclude", optional_argument, 0, 'f' },
 		{"flagExclude", optional_argument, 0, 'F' },
+		{"upperTriangular", no_argument, 0, 'u' },
 		{"headerOnly",  no_argument, 0, 'H' },
 		{"noHeader",    no_argument, 0, 'h' },
 		{"dropGenotypes",optional_argument, 0, 'G' },
@@ -106,7 +113,6 @@ int view(int argc, char** argv){
 	std::string input, output;
 	tomahawk::OutputFilter two_filter;
 	bool outputHeader = true;
-	int outputType = 1;
 	bool dropGenotypes = false;
 	std::vector<std::string> filter_regions;
 	bool output_JSON = false;
@@ -114,7 +120,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:JHhGsBN", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:JHhGsb:B:Nuz:Z:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -139,6 +145,11 @@ int view(int argc, char** argv){
 			break;
 		case 'J':
 			output_JSON = true;
+			--hits;
+			break;
+		case 'u':
+			two_filter.setFilterUpperTriangular(true);
+			--hits;
 			break;
 		case 'r':
 			two_filter.minR2 = atof(optarg);
@@ -164,26 +175,51 @@ int view(int argc, char** argv){
 			}
 			two_filter.trigger();
 			break;
-		case 'd':
-			two_filter.minDprime = atof(optarg);
-			if(two_filter.minDprime < 0){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d cannot be negative" << std::endl;
+
+		case 'z':
+			two_filter.minR = atof(optarg);
+			if(two_filter.minR < -1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter z cannot be < -1" << std::endl;
 				return(1);
 			}
-			if(two_filter.minDprime > 1){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d has to be in range 0 < d < 1" << std::endl;
+			if(two_filter.minR > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter z has to be in range -1 < r < 1" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+		case 'Z':
+			two_filter.maxR = atof(optarg);
+			if(two_filter.maxR < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter Z cannot be negative" << std::endl;
+				return(1);
+			}
+			if(two_filter.maxR > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter Z has to be in range 0 < R < 1" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
+			break;
+		case 'd':
+			two_filter.minD = atof(optarg);
+			if(two_filter.minD < -1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d cannot be < -1" << std::endl;
+				return(1);
+			}
+			if(two_filter.minD > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter d has to be in range -1 < d < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
 			break;
 		case 'D':
-			two_filter.maxDprime = atof(optarg);
-			if(two_filter.maxDprime < 0){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D cannot be negative" << std::endl;
+			two_filter.maxD = atof(optarg);
+			if(two_filter.maxD < -1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D cannot be < -1" << std::endl;
 				return(1);
 			}
-			if(two_filter.maxDprime > 1){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D has to be in range 0 < D < 1" << std::endl;
+			if(two_filter.maxD > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter D has to be in range -1 < D < 1" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
@@ -214,16 +250,16 @@ int view(int argc, char** argv){
 			break;
 
 		case 'x':
-			two_filter.minChiSquared = atof(optarg);
-			if(two_filter.minChiSquared < 0){
+			two_filter.minChiSquaredTable = atof(optarg);
+			if(two_filter.minChiSquaredTable < 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter x cannot be negative" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
 			break;
 		case 'X':
-			two_filter.maxChiSquared = atof(optarg);
-			if(two_filter.maxChiSquared <= 0){
+			two_filter.maxChiSquaredTable = atof(optarg);
+			if(two_filter.maxChiSquaredTable <= 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter X cannot be <= 0" << std::endl;
 				return(1);
 			}
@@ -231,16 +267,16 @@ int view(int argc, char** argv){
 			break;
 
 		case 'm':
-			two_filter.minPmodel = atof(optarg);
-			if(two_filter.minPmodel < 0){
+			two_filter.minChiSquaredModel = atof(optarg);
+			if(two_filter.minChiSquaredModel < 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter m cannot be negative" << std::endl;
 				return(1);
 			}
 			two_filter.trigger();
 			break;
 		case 'M':
-			two_filter.maxPmodel = atof(optarg);
-			if(two_filter.maxPmodel <= 0){
+			two_filter.maxChiSquaredModel = atof(optarg);
+			if(two_filter.maxChiSquaredModel <= 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter M cannot be <= 0" << std::endl;
 				return(1);
 			}
@@ -284,16 +320,30 @@ int view(int argc, char** argv){
 			outputHeader = false;
 			--hits;
 			break;
-		case 'N':
-			outputType = 1;
-			--hits;
+
+		case 'b':
+			two_filter.minDprime = atof(optarg);
+			if(two_filter.minDprime < -1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter b cannot be < -1" << std::endl;
+				return(1);
+			}
+			if(two_filter.minDprime > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter b has to be in range -1 < d < 1" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
 			break;
 		case 'B':
-			outputType = 0;
-			--hits;
-			break;
-		case 'O':
-			outputType = atoi(optarg);
+			two_filter.maxDprime = atof(optarg);
+			if(two_filter.maxDprime < -1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter B cannot be < -1" << std::endl;
+				return(1);
+			}
+			if(two_filter.maxDprime > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter B has to be in range -1 < D < 1" << std::endl;
+				return(1);
+			}
+			two_filter.trigger();
 			break;
 
 		case 'G':
