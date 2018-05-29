@@ -104,6 +104,12 @@ int view(int argc, char** argv){
 		{"dropGenotypes",optional_argument, 0, 'G' },
 		{"interval",    optional_argument, 0, 'I' },
 		{"silent",      no_argument, 0,  's' },
+
+		{"p1",  optional_argument, 0, '1' },
+		{"p2",  optional_argument, 0, '2' },
+		{"q1",  optional_argument, 0, '3' },
+		{"q2",  optional_argument, 0, '4' },
+
 		{0,0,0,0}
 	};
 
@@ -118,7 +124,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nuz:Z:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nuz:Z:1:2:3:4:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -346,6 +352,39 @@ int view(int argc, char** argv){
 
 		case 'G':
 			dropGenotypes = true;
+			break;
+
+
+		case '1':
+			two_filter.maxP1 = atof(optarg);
+			if(two_filter.maxP1 < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 1 has to be positive..." << std::endl;
+				return(1);
+			}
+			break;
+
+		case '2':
+			two_filter.maxP2 = atof(optarg);
+			if(two_filter.maxP2 < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 2 has to be positive..." << std::endl;
+				return(1);
+			}
+			break;
+
+		case '3':
+			two_filter.maxQ1 = atof(optarg);
+			if(two_filter.maxQ1 < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 3 has to be positive..." << std::endl;
+				return(1);
+			}
+			break;
+
+		case '4':
+			two_filter.maxQ2 = atof(optarg);
+			if(two_filter.maxQ2 < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 4 has to be positive..." << std::endl;
+				return(1);
+			}
 			break;
 		}
 	}
