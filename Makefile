@@ -37,6 +37,17 @@ src/third_party/zlib \
 src/tomahawk \
 src/tomahawk/two \
 
+# Version numbers slices from the source header
+LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
+LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
+LIBVER_PATCH_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
+LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
+LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
+LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
+LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
+LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
+LIBVER := $(shell echo $(LIBVER_SCRIPT))
+
 .PHONY: all clean cleanmost library dependents
 
 # If you want to build in debug mode then add DEBUG=true to your build command
@@ -60,10 +71,27 @@ OPTFLAGS := -O3 -msse4.2
 ifdef library
 OPTFLAGS += -fPIC
 endif
-LD_LIB_FLAGS := -shared -Wl,-rpath,"./" 
+
+# OS X linker doesn't support -soname, and use different extension
+# see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
+ifneq ($(shell uname), Darwin)
+SHARED_EXT = so
+LD_LIB_FLAGS := -shared -Wl,-rpath,"./",-soname,ltomahawk.$(SHARED_EXT)
+else
+SHARED_EXT = dylib
+LD_LIB_FLAGS := -dynamiclib -install_name ltomahawk.$(SHARED_EXT)
+endif
 
 CXXFLAGS := -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
 CFLAGS := -std=c99 $(OPTFLAGS) $(DEBUG_FLAGS)
+
+# Inject git information
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+ifneq ($(BRANCH), master)
+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
+else
+GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
+endif
 
 # Inject subdirs
 -include src/tomahawk/two/subdir.mk
@@ -80,25 +108,6 @@ CFLAGS := -std=c99 $(OPTFLAGS) $(DEBUG_FLAGS)
 -include src/algorithm/subdir.mk
 -include src/subdir.mk
 
-# Inject git information
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ifneq ($(BRANCH), master)
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)-$(BRANCH)
-else
-GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
-endif
-
-# Version numbers slices from the source header
-LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
-LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
-LIBVER_PATCH_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
-LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
-LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
-LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
-LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
-LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
-LIBVER := $(shell echo $(LIBVER_SCRIPT))
-
 # All Target
 all: tomahawk
 
@@ -109,9 +118,9 @@ tomahawk: $(OBJS) $(USER_OBJS)
 
 library: $(OBJS) $(USER_OBJS)
 	@echo 'Building with positional independence...'
-	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.so.$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.$(SHARED_EXT).$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Symlinking library...'
-	ln -sf ltomahawk.so.$(LIBVER) ltomahawk.so
+	ln -sf ltomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
 
 cleanmost:
 	rm -f $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS)
