@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.5.1-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.5.3-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
@@ -42,15 +42,12 @@ git clone --recursive https://github.com/mklarqvist/tomahawk
 cd tomahawk
 make
 ```
-By default, Tomahawk is compiled with aggressive optimization flags and
-native architecture-specific instructions
-(`-march=native -mtune=native -ftree-vectorize -frename-registers -funroll-loops`)
-that internally compiles for the most recent SIMD-instruction set available.
-This might result in additional effort when submitting jobs to
-computer farms/clouds with a hardware architecture that is different from the
-compiled target. If this is too cumbersome for your application then replace `-march=native -mtune=native` with `-msse4.2`. This will result in a potentially substantial loss in compute speed.  
 
-Because Tomahawk is compiled using native CPU-instructions by default, no pre-compiled binaries are available for download.
+### Debug mode
+If you are extending upon Tomahawk or debugging, we provide a `DEBUG` flag to build with all warnings triggered and with debug symbols enabled. See the main [makefile](Makefile) for more information.
+```
+make DEBUG=true
+```
 
 ## Usage instructions
 Tomahawk comprises five primary commands: `import`, `calc`, `view`, `sort`, and `concat`.
