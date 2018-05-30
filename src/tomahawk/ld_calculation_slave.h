@@ -534,7 +534,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 	helper.setCompleteLD(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1);
 	helper.setPerfectLD(helper.R2 > 0.99);
 
-	helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+	helper.chiSqFisher = helper.totalHaplotypeCounts * helper.R2;
 	//helper.chiSqFisher = 0;
 
 	return true;
