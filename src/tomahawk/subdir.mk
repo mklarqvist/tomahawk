@@ -19,6 +19,6 @@ src/tomahawk/import_writer.d
 
 # Each subdirectory must supply rules for building sources it contributes
 src/tomahawk/%.o: src/tomahawk/%.cpp
-	g++ -std=c++0x -I"src/" -O3 -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -c -DVERSION=\"$(GIT_VERSION)\" -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	g++ $(CXXFLAGS) $(INCLUDE_PATH) -c -DVERSION=\"$(GIT_VERSION)\" -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 
 

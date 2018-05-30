@@ -14,6 +14,24 @@ src/third_party/zlib \
 src/tomahawk \
 src/tomahawk/two \
 
+# If you want to build in debug mode then add DEBUG=true to your build command
+# make DEBUG=true
+ifdef DEBUG
+DEBUG_FLAGS := -g -Wall -Wextra -Wcast-qual -Wcast-align -Wshadow \
+                  -Wstrict-aliasing=1 -Wswitch-enum -Wdeclaration-after-statement \
+                  -Wstrict-prototypes -Wundef -Wpointer-arith -Wformat-security \
+                  -Wvla -Wformat=2 -Winit-self -Wfloat-equal -Wwrite-strings \
+-Wredundant-decls
+else
+DEBUG_FLAGS := 
+endif
+
+# Global build parameters
+INCLUDE_PATH := -I"src/"
+OPTFLAGS := -O3 -msse4.2 -ftree-vectorize -pipe -frename-registers -funroll-loops
+CXXFLAGS := -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
+CFLAGS := -std=c99 $(OPTFLAGS) $(DEBUG_FLAGS)
+
 -include src/tomahawk/two/subdir.mk
 -include src/tomahawk/subdir.mk
 -include src/third_party/subdir.mk

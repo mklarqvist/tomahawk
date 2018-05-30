@@ -23,7 +23,7 @@
      #include <spe.h>
 #endif
 
-const std::vector<std::string> SIMD_MAPPING = {"NONE","SSE","SSE2","SSE3","AVX","AVX2-256","AVX-512"};
+const std::vector<std::string> SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
 
 #if defined(__AVX512F__) && __AVX512F__ == 1
 #define SIMD_AVAILABLE	1
