@@ -8,6 +8,7 @@
 #include "io/vcf/vcf_lines.h"
 #include "math/fisher_math.h"
 #include "tomahawk/meta_entry.h"
+#include "tomahawk/import_filters.h"
 
 namespace tomahawk{
 namespace algorithm{
@@ -190,14 +191,15 @@ struct TomahawkImportRLEHelper{
 
 class GenotypeEncoder {
 	typedef GenotypeEncoder self_type;
-	typedef MetaEntry meta_entry_type;
+	typedef MetaEntry       meta_entry_type;
+	typedef ImporterFilters filter_type;
 	typedef bool (self_type::*rleFunction)(const vcf::VCFLine& line, meta_entry_type& meta, io::BasicBuffer& runs); // Type cast pointer to function
 	typedef bool (self_type::*bcfFunction)(const bcf::BCFEntry& line, meta_entry_type& meta, io::BasicBuffer& runs); // Type cast pointer to function
 
 	typedef TomahawkImportRLEHelper helper_type;
 
 public:
-	GenotypeEncoder(const U64 samples) :
+	GenotypeEncoder(const U64 samples, const filter_type& filters) :
 		n_samples(samples),
 		encode(nullptr),
 		encodeComplex(nullptr),
@@ -205,7 +207,8 @@ public:
 		bit_width(0),
 		shiftSize(0),
 		helper(samples),
-		savings(0)
+		savings(0),
+		filters(filters)
 	{
 	}
 
@@ -288,6 +291,7 @@ private:
 	BYTE        bit_width;
 	BYTE        shiftSize;     // bit shift size
 	helper_type helper;
+	const filter_type& filters;
 
 public:
 	U64 savings;
@@ -298,7 +302,45 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_t
 	meta.position = (U32)line.body->POS + 1;
 	meta.ref_alt  = line.ref_alt;
 
+
+	this->helper.reset();
 	U32 internal_pos = line.formatID[0].l_offset;
+
+	const std::vector<BYTE> swap = {0, 1, 2, 1, 0, 2};
+	BYTE add = 0;
+
+	// run pre-check
+	{
+		for(U32 i = 0; i < this->n_samples * 2; i += 2){
+			const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
+			BYTE packed_internal = (bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+			this->helper[packed_internal] += 1;
+			this->helper.countsAlleles[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2)] += 1;
+			this->helper.countsAlleles[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1)] += 1;
+		}
+
+		// Univariate for reference allele
+		if(this->filters.dropUnivariantRef && (this->helper.countsAlleles[0] == this->helper.countsAlleles[0] + this->helper.countsAlleles[1])){
+			//std::cerr << "all reference: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
+			return false;
+		}
+
+		// Univariate for alternative allele
+		if(this->filters.dropUnivariantAlt && (this->helper.countsAlleles[1] == this->helper.countsAlleles[0] + this->helper.countsAlleles[1])){
+			//std::cerr << "all alt: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
+			return false;
+		}
+
+		// Flip reference and alternative allele such that 0 is the major allele
+		if(this->filters.flipMajorMinor && this->helper.calculateAF() < 0.5){ // reference allele frequency
+			//std::cerr << "alt > ref: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
+			add = 3;
+		}
+		this->helper.reset();
+	}
+	internal_pos = line.formatID[0].l_offset;
+
 	U64 sumLength = 0;
 	T length = 1;
 	T __dump = 0;
@@ -306,14 +348,14 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_t
 
 	const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 	const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-	BYTE packed = (bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+	BYTE packed = (swap[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) + add] << 2) | swap[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1) + add];
 
 	this->helper.phased = fmt_type_value2 & 1; // MSB contains phasing information
 
 	for(U32 i = 2; i < this->n_samples * 2; i += 2){
 		const SBYTE& fmt_type_value1 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
 		const SBYTE& fmt_type_value2 = *reinterpret_cast<SBYTE*>(&line.data[internal_pos++]);
-		BYTE packed_internal = (bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) << 2) | bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1);
+		BYTE packed_internal = (swap[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value2) + add] << 2) | swap[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1) + add];
 
 		if(packed != packed_internal){
 			__dump =  (length & (((T)1 << this->shiftSize) - 1)) << constants::TOMAHAWK_SNP_PACK_WIDTH;
@@ -323,8 +365,6 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_t
 			this->helper[packed] += length;
 			this->helper.countsAlleles[packed >> 2] += length;
 			this->helper.countsAlleles[packed & 3]  += length;
-
-			//runs.pointer += PACK3(packed, &runs.data[runs.pointer], length);
 
 			sumLength += length;
 			length = 1;

@@ -1,6 +1,6 @@
 /*
-Copyright (C) 2016-2018 Genome Research Ltd.
-Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
+Copyright (C) 2016-present Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ void calc_usage(void){
 	std::cerr <<
 	"About:  Calculate linkage disequilibrium\n"
 	"        Force phased -p or unphased -u for faster calculations if\n"
-	"        the all variant sites are guaranteed to have the given phasing.\n"
+	"        all variant sites are guaranteed to have the given phasing.\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
@@ -243,6 +243,11 @@ int calc(int argc, char** argv){
 
 	if(output.length() == 0){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
+		return(1);
+	}
+
+	if(parameters.fast_mode && parameters.force == tomahawk::TomahawkCalcParameters::force_method::none){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Force mode requires that force phasing (-p) is set..." << std::endl;
 		return(1);
 	}
 

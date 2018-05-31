@@ -322,6 +322,28 @@ bool TomahawkReader::summaryIndividuals(){
 	return true;
 }
 
+bool TomahawkReader::printHeader(std::ostream& stream) const{
+	// Output header
+	if(this->showHeader){
+		stream << this->header_.getLiterals() << std::endl;
+		stream << "##INFO=<ID=HWE_P,Number=1,Type=Float,Description=\"Hardy-Weinberg P-value (Fisher's exact test)\">" << std::endl;
+		stream << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
+		stream << "##tomahawk_viewCommand=" + helpers::program_string() << std::endl;
+		if(this->dropGenotypes){
+			stream << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
+		} else {
+			stream << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
+
+			stream << this->header_.getSample(0);
+			for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
+				stream << '\t' << this->header_.getSample(i);
+		}
+
+		stream.put('\n');
+	}
+	return true;
+}
+
 bool TomahawkReader::outputBlocks(){
 	typedef bool (tomahawk::TomahawkReader::*blockFunction)(const U32 blockID);
 	blockFunction func__ = nullptr;
@@ -353,24 +375,8 @@ bool TomahawkReader::outputBlocks(){
 	if(!SILENT)
 		std::cerr << helpers::timestamp("LOG", "TGZF") << "Inflating " << this->index_->getContainer().size() << " blocks..." << std::endl;
 
-	// Output header
-	if(this->showHeader){
-		std::cout << this->header_.getLiterals() << std::endl;
-		std::cout << "##INFO=<ID=HWE_P,Number=1,Type=Float,Description=\"Hardy-Weinberg P-value (Fisher's exact test)\">" << std::endl;
-		std::cout << "##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Minor allele frequency\">" << std::endl;
-		std::cout << "##tomahawk_viewCommand=" + helpers::program_string() << std::endl;
-		if(this->dropGenotypes){
-			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
-		} else {
-			std::cout << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 
-			std::cout << this->header_.getSample(0);
-			for(U32 i = 1; i < this->header_.magic_.getNumberSamples(); ++i)
-				std::cout << '\t' << this->header_.getSample(i);
-		}
-
-		std::cout.put('\n');
-	}
+	this->printHeader(std::cout);
 
 	if(this->interval_tree_entries != nullptr){
 		// [a, b] overlaps with [x, y] iff b > x and a < y.

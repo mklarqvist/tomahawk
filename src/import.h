@@ -1,6 +1,6 @@
 /*
-Copyright (C) 2016-2018 Genome Research Ltd.
-Author: Marcus D. R. Klarqvist <mk21@sanger.ac.uk>
+Copyright (C) 2016-present Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,9 @@ void import_usage(void){
 	"Options:\n"
 	"  -i FILE  input BCF file (required)\n"
 	"  -o FILE  output file prefix (required)\n"
+	"  -f       Flip reference and alternative alleles when major is the alternative allele\n"
+	"  -r       Filter out variant sites that are univariate REF\n"
+	"  -a       Filter out variant sites that are univariate ALT\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
 	"  -m FLOAT Minor-allele frequency (MAF) cutoff (default: 0)\n"
 	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
@@ -47,26 +50,32 @@ int import(int argc, char** argv){
 
 	int option_index = 0;
 	static struct option long_options[] = {
-		{"input",		required_argument, 0,  'i' },
-		{"output",		optional_argument, 0,  'o' },
-		{"extend",		optional_argument, 0,  'e' },
-		{"hwep",		optional_argument, 0,  'h' },
-		{"missingness",		optional_argument, 0,  'n' },
-		{"maf",		optional_argument, 0,  'm' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",       required_argument, 0,  'i' },
+		{"output",      optional_argument, 0,  'o' },
+		//{"extend",      optional_argument, 0,  'e' },
+		{"filter-uni-ref",        optional_argument, 0,  'r' },
+		{"filter-uni-alt",        optional_argument, 0,  'a' },
+		{"flip",        optional_argument, 0,  'f' },
+		{"hwep",        optional_argument, 0,  'h' },
+		{"missingness", optional_argument, 0,  'n' },
+		{"maf",         optional_argument, 0,  'm' },
+		{"silent",      no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
 	std::string input;
 	std::string output;
 	std::string extend;
-	bool extension_mode = false;
-	SILENT = 0;
+	//bool extension_mode = false;
+	SILENT       = 0;
 	double hwe_p = 0;
-	double maf = 0;
-	double missingness = 0.2;
+	double maf   = 0;
+	double missingness  = 0.2;
+	bool flipMajorMinor = false;
+	bool filterUniRef   = false;
+	bool filterUniAlt   = false;
 
-	while ((c = getopt_long(argc, argv, "i:o:e:h:m:n:s?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:h:m:n:sraf?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -77,10 +86,10 @@ int import(int argc, char** argv){
 		case 'o':
 			output = std::string(optarg);
 			break;
-		case 'e':
-			extension_mode = true;
-			extend = std::string(optarg);
-			break;
+		//case 'e':
+		//	extension_mode = true;
+		//	extend = std::string(optarg);
+		//	break;
 		case 'h':
 			hwe_p = atof(optarg);
 			if(hwe_p < 0){
@@ -123,6 +132,15 @@ int import(int argc, char** argv){
 		case 's':
 			SILENT = 1;
 			break;
+		case 'r':
+			filterUniRef = true;
+			break;
+		case 'a':
+			filterUniAlt = true;
+			break;
+		case 'f':
+			flipMajorMinor = true;
+			break;
 
 		default:
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unrecognized option: " << (char)c << std::endl;
@@ -135,13 +153,8 @@ int import(int argc, char** argv){
 		return(1);
 	}
 
-	if(!extension_mode && output.length() == 0){
+	if(output.length() == 0){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No output value specified..." << std::endl;
-		return(1);
-	}
-
-	if(extension_mode && extend.size() == 0){
-		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No file to extend provided..." << std::endl;
 		return(1);
 	}
 
@@ -155,16 +168,13 @@ int import(int argc, char** argv){
 	importer.getFilters().HWE_P       = hwe_p;
 	importer.getFilters().MAF         = maf;
 	importer.getFilters().missingness = missingness;
+	importer.getFilters().flipMajorMinor    = flipMajorMinor;
+	importer.getFilters().dropUnivariantAlt = filterUniAlt;
+	importer.getFilters().dropUnivariantRef = filterUniRef;
 
-	if(!extension_mode){
-		if(!importer.Build())
-			return 1;
 
-	} else {
-		if(!importer.Extend(extend))
-			return 1;
-
-	}
+	if(!importer.Build())
+		return 1;
 
 	return 0;
 }

@@ -56,7 +56,7 @@ src/third_party/zlib/zutil.d
 
 # Each subdirectory must supply rules for building sources it contributes
 src/third_party/xxhash/%.o: src/third_party/xxhash/%.c
-	gcc -std=c99 -O3 -I"src/" -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc $(CFLAGS) $(INCLUDE_PATH) -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 
 src/third_party/zlib/%.o: src/third_party/zlib/%.c
-	gcc -std=c99 -O3 -I"src/" -march=native -mtune=native -ftree-vectorize -pipe -frename-registers -funroll-loops  -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc $(CFLAGS) $(INCLUDE_PATH) -c -fmessage-length=0 -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"

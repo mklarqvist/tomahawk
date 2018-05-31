@@ -25,6 +25,7 @@ public:
 	bool setFilterTable(const double& a, const double& b, const double& c, const double& d);
 	bool setFilterTable(const double& all);
 	inline void setFilterUpperTriangular(const bool set){ this->upper_triangular_only = set; }
+	inline void setFilterLowerTriangular(const bool set){ this->lower_triangular_only = set; }
 	bool setFilterD(const float& min, const float& max);
 	bool setFilterDprime(const float& min, const float& max);
 	bool setFilterR(const float& min, const float& max);
@@ -34,8 +35,8 @@ public:
 	bool setFilterChiSquaredTable(const double& min, const double& max);
 	bool setFilterChiSquaredModel(const double& min, const double& max);
 
-	void setFilterInclude(const U16& val){ this->filterValueInclude = val; this->trigger(); }
-	void setFilterExclude(const U16& val){ this->filterValueExclude = val; this->trigger(); }
+	void setFilterInclude(const U16& val){ this->FLAGInclude = val; this->trigger(); }
+	void setFilterExclude(const U16& val){ this->FLAGExclude = val; this->trigger(); }
 	bool setFilterMHF(const double& min, const double& max);
 
 	bool filter(const entry_type& target) const;
@@ -52,6 +53,7 @@ private:
 public:
 	bool any_filter_user_set;
 	bool upper_triangular_only;
+	bool lower_triangular_only;
 
 	// Filters
 	double minP1, minP2, minQ1, minQ2;
@@ -64,8 +66,8 @@ public:
 	double minP, maxP;
 	double minChiSquaredTable, maxChiSquaredTable;
 	double minChiSquaredModel, maxChiSquaredModel;
-	U16    filterValueInclude;
-	U16    filterValueExclude;
+	U16    FLAGInclude;
+	U16    FLAGExclude;
 
 	std::vector<filterFunction> filter_functions; // push filter functions to array and loop over
 };

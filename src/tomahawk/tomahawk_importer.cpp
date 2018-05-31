@@ -13,14 +13,14 @@ TomahawkImporter::TomahawkImporter(const std::string inputFile, const std::strin
 	output_prefix(outputPrefix),
 	reader_(inputFile),
 	writer_(this->filters),
-	vcf_header_(nullptr),
-	rle_controller(nullptr)
+	vcf_header_(nullptr)
+	//rle_controller(nullptr)
 {
 
 }
 
 TomahawkImporter::~TomahawkImporter(){
-	delete this->rle_controller;
+	//delete this->rle_controller;
 	// do not delete header: it might be a borrowed pointer
 }
 
@@ -78,10 +78,10 @@ bool TomahawkImporter::BuildBCF(void){
 	}
 
 	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->vcf_header_->samples);
-	this->rle_controller->DetermineBitWidth();
+	//this->rle_controller = new rle_controller_type(this->vcf_header_->samples);
+	//this->rle_controller->DetermineBitWidth();
 
-	this->writer_.setHeader(reader.header);
+	this->writer_.setup(reader.header, this->getFilters());
 	if(!this->writer_.Open(this->output_prefix)){
 		std::cerr << helpers::timestamp("ERROR", "WRITER") << "Failed to open writer..." << std::endl;
 		return false;
@@ -187,14 +187,14 @@ bool TomahawkImporter::BuildVCF(void){
 	}
 
 	// Spawn RLE controller
-	this->rle_controller = new rle_controller_type(this->vcf_header_->samples);
-	this->rle_controller->DetermineBitWidth();
+	//this->rle_controller = new rle_controller_type(this->vcf_header_->samples);
+	//this->rle_controller->DetermineBitWidth();
 
 	// Parse lines
 	vcf_entry_type line(this->vcf_header_->size());
 
 	this->reader_.clear();
-	this->writer_.setHeader(*this->vcf_header_);
+	this->writer_.setup(*this->vcf_header_, this->getFilters());
 	if(!this->writer_.Open(this->output_prefix))
 		return false;
 

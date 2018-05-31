@@ -1,3 +1,14 @@
+# Release 0.5.3
+
+## Minor Features And Improvements
+* Default build now uses SSE4.2 only
+* Will correctly build `dylib` on OSX
+* Added filtering for maxmimum cell counts when viewing `two` files (flags `-1`,`-2`,`-3`,`-4`)
+
+## Bug Fixes and Other Changes
+* Bug fixes
+   * Viewing a `two` file with `-l` or `-u` now correctly filters output when passed as the sole parameter
+
 # Release 0.5.2
 
 ## Minor Features And Improvements

@@ -106,7 +106,7 @@ private:
 	index_type           index;
 	footer_type          footer_;
 	vcf_header_type*     vcf_header_;      // vcf header
-	rle_controller_type* rle_controller;   // RLE packer algorithms
+	//rle_controller_type* rle_controller;   // RLE packer algorithms
 };
 
 

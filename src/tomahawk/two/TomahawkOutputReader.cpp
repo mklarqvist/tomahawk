@@ -1,12 +1,10 @@
-#include "tomahawk/two/TomahawkOutputReader.h"
-
-#include <bits/move.h>
-#include <io/compression/gz_constants.h>
-#include <io/compression/gz_header.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 
+#include "tomahawk/two/TomahawkOutputReader.h"
+#include "io/compression/gz_constants.h"
+#include "io/compression/gz_header.h"
 #include "support/helpers.h"
 #include "tomahawk/two/TomahawkOutputStats.h"
 #include "io/output_writer.h"
@@ -105,6 +103,23 @@ bool TomahawkOutputReader::open(const std::string input){
 	}
 
 	this->offset_end_of_data_ = this->footer_.offset_end_of_data;
+
+	return true;
+}
+
+bool TomahawkOutputReader::printHeader(std::ostream& stream, std::vector<std::string>& extra){
+	for(U32 i = 0; i < extra.size(); ++i){
+		this->getHeader().getLiterals() += "\n" + extra[i];
+	}
+
+	return(this->printHeader(stream));
+}
+
+bool TomahawkOutputReader::printHeader(std::ostream& stream) const{
+	if(this->showHeader_ == true){
+		std::cout << this->getHeader().getLiterals() << '\n';
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
+	}
 
 	return true;
 }
@@ -535,17 +550,13 @@ bool TomahawkOutputReader::view(void){
 }
 
 bool TomahawkOutputReader::__viewOnly(void){
-	//std::cerr << helpers::timestamp("LOG") << "Sorted: " << (int)this->getIndex().getController().isSorted << " partial: " << (int)this->getIndex().getController().isPartialSorted << std::endl;
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
-	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=NO";
+	std::vector<std::string> extra;
+	extra.push_back("##tomahawk_viewCommand=" + helpers::program_string());
+	extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=NO");
 
-	//if(!this->OpenWriter())
-	//	return false;
+	if(this->showHeader_ == true)
+		this->printHeader(std::cout, extra);
 
-	if(this->showHeader_ == true){
-		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
-	}
 	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
 
 
@@ -590,14 +601,13 @@ bool TomahawkOutputReader::__viewOnly(void){
 }
 
 bool TomahawkOutputReader::__viewRegion(void){
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
+	std::vector<std::string> extra;
+	extra.push_back("##tomahawk_viewCommand=" + helpers::program_string());
 	if(this->filters_.any_filter_user_set)
-		this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=YES";
+		extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=YES");
 
-	if(this->showHeader_ == true){
-		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
-	}
+	if(this->showHeader_ == true)
+		this->printHeader(std::cout, extra);
 
 	if(this->interval_tree == nullptr)
 		return false;
@@ -639,13 +649,12 @@ bool TomahawkOutputReader::__viewRegion(void){
 }
 
 bool TomahawkOutputReader::__viewFilter(void){
-	this->getHeader().getLiterals() += "\n##tomahawk_viewCommand=" + helpers::program_string();
-	this->getHeader().getLiterals() += "\n##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO";
+	std::vector<std::string> extra;
+	extra.push_back("##tomahawk_viewCommand=" + helpers::program_string());
+	extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO");
 
-	if(this->showHeader_ == true){
-		std::cout << this->getHeader().getLiterals() << '\n';
-		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
-	}
+	if(this->showHeader_ == true)
+		this->printHeader(std::cout, extra);
 
 	while(this->parseBlock()){
 		output_container_reference_type o(this->data_);

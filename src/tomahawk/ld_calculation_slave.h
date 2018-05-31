@@ -32,11 +32,10 @@
 namespace tomahawk{
 
 // Parameter thresholds for FLAGs
-#define LOW_MAF_THRESHOLD		0.01
-#define LOW_HWE_THRESHOLD		1e-6
-#define LONG_RANGE_THRESHOLD	500e3
-#define MINIMUM_ALLOWED_ALLELES	5		// Minimum number of alleles required for math to work out in the unphased case
-#define CHI_SQ_MAX_CV			1300
+#define LOW_MAF_THRESHOLD       0.01
+#define LOW_HWE_THRESHOLD       1e-6
+#define LONG_RANGE_THRESHOLD    500e3
+#define MINIMUM_ALLOWED_ALLELES 5		// Minimum number of alleles required for math to work out in the unphased case
 
 // SIMD trigger
 #if SIMD_AVAILABLE == 1
@@ -535,8 +534,7 @@ bool LDSlave<T>::ChooseF11Calculate(const double& target, const double& p, const
 	helper.setCompleteLD(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1);
 	helper.setPerfectLD(helper.R2 > 0.99);
 
-	helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
-	//helper.chiSqFisher = 0;
+	helper.chiSqFisher = (helper[0] + helper[1] + helper[4] + helper[5]) * helper.R2;
 
 	return true;
 }
