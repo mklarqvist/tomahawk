@@ -4,9 +4,19 @@
 namespace tomahawk{
 
 struct ImporterFilters{
-	ImporterFilters() : MAF(0), HWE_P(0), missingness(0.2){}
+	ImporterFilters() :
+		dropUnivariantRef(false),
+		dropUnivariantAlt(false),
+		flipMajorMinor(false),
+		MAF(0),
+		HWE_P(0),
+		missingness(0.2)
+	{}
 	~ImporterFilters(){}
 
+	bool dropUnivariantRef;
+	bool dropUnivariantAlt;
+	bool flipMajorMinor;
 	double MAF;
 	double HWE_P;
 	double missingness;

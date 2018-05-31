@@ -106,9 +106,9 @@ void ImportWriter::WriteFinal(index_type& index, footer_type& footer){
 	this->stream << footer;
 }
 
-void ImportWriter::setHeader(vcf::VCFHeader& header){
+void ImportWriter::setup(vcf::VCFHeader& header, const filter_type& filters){
 	this->vcf_header_ = &header;
-	this->rleController_ = new algorithm::GenotypeEncoder(header.samples);
+	this->rleController_ = new algorithm::GenotypeEncoder(header.samples, filters);
 	this->rleController_->DetermineBitWidth();
 }
 

@@ -16,6 +16,7 @@
 #include "import_filters.h"
 #include "meta_entry.h"
 #include "index/footer.h"
+#include "tomahawk/import_filters.h"
 
 namespace tomahawk {
 
@@ -38,7 +39,7 @@ public:
 	int WriteHeaders(void);
 	void WriteFinal(index_type& container, footer_type& footer);
 
-	void setHeader(vcf::VCFHeader& header);
+	void setup(vcf::VCFHeader& header, const filter_type& filters);
 	bool add(const vcf::VCFLine& line);
 	bool add(const bcf::BCFEntry& line);
 
