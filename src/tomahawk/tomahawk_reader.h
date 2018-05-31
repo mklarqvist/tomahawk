@@ -79,6 +79,7 @@ public:
 
 	bool open(const std::string input);
 	bool addRegions(const std::vector<std::string>& intervals);
+	bool printHeader(std::ostream& stream) const;
 
 	// Reader functions
 	bool getBlocks(void);

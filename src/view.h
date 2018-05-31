@@ -35,17 +35,17 @@ void view_usage(void){
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
-	"  -h/H      (twk/two) header only / no header [null]\n"
+	"  -h/H      (twk/two) header only / no header\n"
 	"  -O char   output type: b for TWO format, n for tab-delimited format\n"
-	"  -N        output in tab-delimited text format (see -O) [null]\n"
-	"  -B        output in binary TWO/TWK format (see -O, default)[null]\n"
+	"  -N        output in tab-delimited text format (see -O)\n"
+	"  -B        output in binary TWO/TWK format (see -O, default)\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
 	//"  -J        output JSON object\n"
-	"  -s        Hide all program messages [null]\n\n"
+	"  -s        Hide all program messages\n\n"
 
 	// Twk parameters
 	"Twk parameters\n"
-	"  -G       drop genotypes in output [null]\n\n"
+	"  -G       drop genotypes in output\n\n"
 
 	// Two parameters
 	"Two parameters\n"
@@ -117,6 +117,7 @@ int view(int argc, char** argv){
 	std::string input, output;
 	tomahawk::OutputFilter two_filter;
 	bool outputHeader = true;
+	bool outputHeaderOnly = false;
 	bool dropGenotypes = false;
 	std::vector<std::string> filter_regions;
 	//bool output_JSON = false;
@@ -153,6 +154,7 @@ int view(int argc, char** argv){
 		//	break;
 		case 'u':
 			two_filter.setFilterUpperTriangular(true);
+			two_filter.trigger();
 			--hits;
 			break;
 		case 'r':
@@ -317,7 +319,7 @@ int view(int argc, char** argv){
 			--hits;
 			break;
 		case 'h':
-			outputHeader = true;
+			outputHeaderOnly = true;
 			--hits;
 			break;
 		case 'H':
@@ -413,6 +415,11 @@ int view(int argc, char** argv){
 			return 1;
 		}
 
+		if(outputHeaderOnly){
+			tomahawk.printHeader(std::cout);
+			return(0);
+		}
+
 		if(!tomahawk.addRegions(filter_regions)){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;
 			return 1;
@@ -431,6 +438,11 @@ int view(int argc, char** argv){
 
 		if(!reader.open(input))
 			return 1;
+
+		if(outputHeaderOnly){
+			reader.printHeader(std::cout);
+			return(0);
+		}
 
 		if(!reader.addRegions(filter_regions)){
 			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Failed to add region!" << std::endl;

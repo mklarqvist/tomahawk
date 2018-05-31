@@ -28,11 +28,12 @@ DEALINGS IN THE SOFTWARE.
 void sort_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Sort TWO files: provides two basic subroutines. If the file is too big to\n"
-	"        be sorted in available memory, use the -L option to split the file into\n"
-	"        sorted chunks no larger than -L MB in size. Then rerun sort with the -M option\n"
-	"        to perform a k-way merge sort using the partially block-sorted data.\n"
-	"        Note that combining -L and -t incur O(L*t) memory!\n"
+	"About:  Sort TWO files: provides two basic subroutines. Uncompressed files are generally too big to\n"
+	"        be sorted in available memory. Because of this, sorting is split into two \n"
+	"        subroutines: parallel-partial sort and a merge-sort. First sort the file without -M\n"
+	"        triggered and then run sort on that output with -M flag to perform a k-way merge sort\n"
+	"        using the partially block-sorted data.\n"
+	"        Note that combining -L and -t incur at least O(L*t) memory!\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"

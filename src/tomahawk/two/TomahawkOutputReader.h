@@ -109,6 +109,9 @@ public:
 	 */
 	int parseBlock(std::ifstream& stream, buffer_type& inflate_buffer, buffer_type& data_buffer, tgzf_controller_type& compression_manager, const bool clear = true) const;
 
+	bool printHeader(std::ostream& stream) const;
+	bool printHeader(std::ostream& stream, std::vector<std::string>& extra);
+
 	// Access: no random access. All these functions
 	//         assumes that data is loaded linearly from disk
 	inline output_container_type getContainer(void){ return(output_container_type(this->data_)); }
