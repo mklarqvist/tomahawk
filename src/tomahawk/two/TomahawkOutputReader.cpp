@@ -1,12 +1,10 @@
-#include "tomahawk/two/TomahawkOutputReader.h"
-
-//#include <bits/move.h>
-#include <io/compression/gz_constants.h>
-#include <io/compression/gz_header.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 
+#include "tomahawk/two/TomahawkOutputReader.h"
+#include "io/compression/gz_constants.h"
+#include "io/compression/gz_header.h"
 #include "support/helpers.h"
 #include "tomahawk/two/TomahawkOutputStats.h"
 #include "io/output_writer.h"
