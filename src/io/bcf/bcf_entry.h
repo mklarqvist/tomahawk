@@ -228,7 +228,7 @@ public:
 			for(U32 i = ploidy; i < n_samples*ploidy; i+=ploidy, ++current_sample){
 				// retrieve ploidy primitives
 				for(U32 p = 0; p < ploidy; ++p){
-					const SBYTE& ref  = *reinterpret_cast<const BYTE* const>(&internal_data[internal_data_offset]);
+					const BYTE& ref  = *reinterpret_cast<const BYTE* const>(&internal_data[internal_data_offset]);
 					if((ref >> 1) == 0){
 						//std::cerr << "is missing" << std::endl;
 						this->gt_support.hasMissing = true;

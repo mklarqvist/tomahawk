@@ -330,6 +330,8 @@ bool TomahawkReader::statsIndividual(std::vector<temp>& stats, const char* const
 		//std::cerr << cumsum << "/" << this->getHeader().getMagic().n_samples << std::endl;
 		assert(cumsum == this->getHeader().getMagic().n_samples);
 	}
+
+	return true;
 }
 
 } /* namespace Tomahawk */

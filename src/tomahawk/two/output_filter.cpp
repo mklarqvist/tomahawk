@@ -107,17 +107,18 @@ bool OutputFilter::filterHF(const entry_type& target) const{
 
 bool OutputFilter::filterJointHF(const entry_type& target) const{
 	// find largest
-	const double* max = &target.p1;
-	if(target.p2 > *max) max = &target.p2;
-	if(target.q1 > *max) max = &target.q1;
-	if(target.q2 > *max) max = &target.q2;
+	double max = target.p1;
+	BYTE targetField = 0;
+	if(target.p2 > max){ max = target.p2; targetField = 1; }
+	if(target.q1 > max){ max = target.q1; targetField = 2; }
+	if(target.q2 > max){ max = target.q2; targetField = 3; }
 
 	// sum of cells excluding largest
 	double total = 0;
-	if(&target.p1 != max) total += target.p1;
-	if(&target.p2 != max) total += target.p2;
-	if(&target.q1 != max) total += target.q1;
-	if(&target.q2 != max) total += target.q2;
+	if(targetField != 0) total += target.p1;
+	if(targetField != 1) total += target.p2;
+	if(targetField != 2) total += target.q1;
+	if(targetField != 3) total += target.q2;
 
 	return(total > this->minMHF);
 }
