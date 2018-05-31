@@ -34,9 +34,9 @@ void view_usage(void){
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
-	"  -o FILE   output file (- for stdout; default: -)\n"
+	//"  -o FILE   output file (- for stdout; default: -)\n"
 	"  -h/H      (twk/two) header only / no header\n"
-	"  -O char   output type: b for TWO format, n for tab-delimited format\n"
+	//"  -O char   output type: b for TWO format, n for tab-delimited format\n"
 	"  -N        output in tab-delimited text format (see -O)\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
@@ -44,11 +44,11 @@ void view_usage(void){
 	"  -s        Hide all program messages\n\n"
 
 	// Twk parameters
-	"Twk parameters\n"
+	"TWK parameters\n"
 	"  -G       drop genotypes in output\n\n"
 
 	// Two parameters
-	"Two parameters\n"
+	"TWO parameters\n"
 	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value\n"
 	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value\n"
 	"  -z, --minR   FLOAT   Pearson's R minimum cut-off value\n"
@@ -65,9 +65,14 @@ void view_usage(void){
 	"  -A, --maxMHC FLOAT   maximum minor-haplotype count (default: inf)\n"
 	"  -m, --minMCV FLOAT   smallest Chi-squared CV of unphased model (default: 0)\n"
 	"  -M, --maxMCV FLOAT   largest Chi-squared CV of unphased model (default: inf)\n"
+	"  -1, --maxP1  FLOAT   maximum REF_REF count\n"
+	"  -2, --maxP2  FLOAT   maximum REF_ALT count\n"
+	"  -3, --maxQ1  FLOAT   maximum ALT_REF count\n"
+	"  -4, --maxQ2  FLOAT   maximum ALT_ALT count\n"
 	"  -f           INT     include FLAG value\n"
 	"  -F           INT     exclude FLAG value\n"
-	"  -u                   output only the upper triangular values\n";
+	"  -u                   output only the upper triangular values\n"
+	"  -l                   output only the lower triangular values\n";
 }
 
 int view(int argc, char** argv){
@@ -99,16 +104,16 @@ int view(int argc, char** argv){
 		{"flagInclude", optional_argument, 0, 'f' },
 		{"flagExclude", optional_argument, 0, 'F' },
 		{"upperTriangular", no_argument, 0, 'u' },
+		{"lowerTriangular", no_argument, 0, 'l' },
 		{"headerOnly",  no_argument, 0, 'H' },
 		{"noHeader",    no_argument, 0, 'h' },
 		{"dropGenotypes",optional_argument, 0, 'G' },
 		{"interval",    optional_argument, 0, 'I' },
 		{"silent",      no_argument, 0,  's' },
-
-		{"p1",  optional_argument, 0, '1' },
-		{"p2",  optional_argument, 0, '2' },
-		{"q1",  optional_argument, 0, '3' },
-		{"q2",  optional_argument, 0, '4' },
+		{"maxP1",  optional_argument, 0, '1' },
+		{"maxP2",  optional_argument, 0, '2' },
+		{"maxQ1",  optional_argument, 0, '3' },
+		{"maxQ2",  optional_argument, 0, '4' },
 
 		{0,0,0,0}
 	};
@@ -125,7 +130,7 @@ int view(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nuz:Z:1:2:3:4:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nulz:Z:1:2:3:4:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -154,6 +159,11 @@ int view(int argc, char** argv){
 		//	break;
 		case 'u':
 			two_filter.setFilterUpperTriangular(true);
+			two_filter.trigger();
+			--hits;
+			break;
+		case 'l':
+			two_filter.setFilterLowerTriangular(true);
 			two_filter.trigger();
 			--hits;
 			break;
@@ -307,11 +317,11 @@ int view(int argc, char** argv){
 			break;
 
 		case 'f':
-			two_filter.filterValueInclude = atoi(optarg);
+			two_filter.FLAGInclude = atoi(optarg);
 			two_filter.trigger();
 			break;
 		case 'F':
-			two_filter.filterValueExclude = atoi(optarg);
+			two_filter.FLAGExclude = atoi(optarg);
 			two_filter.trigger();
 			break;
 		case 's':
@@ -393,7 +403,6 @@ int view(int argc, char** argv){
 
 	if(input.length() == 0){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
-		std::cerr << input.size() << '\t' << input << std::endl;
 		return(1);
 	}
 

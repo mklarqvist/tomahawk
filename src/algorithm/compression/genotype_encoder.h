@@ -316,15 +316,19 @@ bool GenotypeEncoder::RunLengthEncodeBCF(const bcf::BCFEntry& line, meta_entry_t
 			this->helper.countsAlleles[bcf::BCF_UNPACK_GENOTYPE(fmt_type_value1)] += 1;
 		}
 
-		//std::cerr << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << "/" << 2*this->n_samples << std::endl;
+		// Univariate for reference allele
 		if(this->helper.countsAlleles[0] == this->helper.countsAlleles[0] + this->helper.countsAlleles[1]){
 			//std::cerr << "all reference: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
 			return false;
 		}
+
+		// Univariate for alternative allele
 		if(this->helper.countsAlleles[1] == this->helper.countsAlleles[0] + this->helper.countsAlleles[1]){
 			//std::cerr << "all alt: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
 			return false;
 		}
+
+		// Flip reference and alternative allele such that 0 is the major allele
 		if(this->helper.calculateAF() < 0.5){ // reference allele frequency
 			//std::cerr << "alt > ref: " << this->helper.countsAlleles[0] << "/" << this->helper.countsAlleles[1] << std::endl;
 			add = 3;

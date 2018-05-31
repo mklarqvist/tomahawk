@@ -7,6 +7,7 @@ namespace tomahawk {
 OutputFilter::OutputFilter() :
 	any_filter_user_set(false),
 	upper_triangular_only(false),
+	lower_triangular_only(false),
 	minP1(0),
 	minP2(0),
 	minQ1(0),
@@ -24,8 +25,8 @@ OutputFilter::OutputFilter() :
 	minP(0), maxP(100),
 	minChiSquaredTable(0), maxChiSquaredTable(std::numeric_limits<double>::max()),
 	minChiSquaredModel(0), maxChiSquaredModel(std::numeric_limits<double>::max()),
-	filterValueInclude(0),
-	filterValueExclude(0)
+	FLAGInclude(0),
+	FLAGExclude(0)
 {}
 
 OutputFilter::~OutputFilter(){}
@@ -33,36 +34,38 @@ OutputFilter::~OutputFilter(){}
 std::string OutputFilter::getInterpretedString(void) const{
 	if(this->any_filter_user_set){
 		return(std::string(
-				"upperTriangular=" + (this->upper_triangular_only ? std::string("TRUE") : std::string("FALSE")) +
-				"minP1=" + std::to_string(this->minP1) + " " +
-				"minP2=" + std::to_string(this->minP2) + " " +
-				"minQ1=" + std::to_string(this->minQ1) + " " +
-				"minQ2=" + std::to_string(this->minQ2) + " " +
-				"maxP1=" + (this->maxP1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP1)) + " " +
-				"maxP2=" + (this->maxP2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP2)) + " " +
-				"maxQ1=" + (this->maxQ1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ1)) + " " +
-				"maxQ2=" + (this->maxQ2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ2)) + " " +
-				"minMHF=" + std::to_string(this->minMHF) + " " +
-				"maxMHF=" + (this->maxMHF == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxMHF)) + " " +
-				"minD=" + std::to_string(this->minD) + " " +
-				"maxD=" + std::to_string(this->maxD) + " " +
-				"minDprime=" + std::to_string(this->minDprime) + " " +
-				"maxDprime=" + std::to_string(this->maxDprime) + " " +
-				"minR2=" + std::to_string(this->minR2) + " " +
-				"maxR2=" + std::to_string(this->maxR2) + " " +
-				"minR=" + std::to_string(this->minR) + " " +
-				"maxR=" + std::to_string(this->maxR) + " " +
-				"minP=" + std::to_string(this->minP) + " " +
-				"maxP=" + std::to_string(this->maxP) + " " +
-				"minChiSquaredTable=" + std::to_string(this->minChiSquaredTable) + " " +
-				"maxChiSquaredTable=" + (this->maxChiSquaredTable == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredTable)) + " " +
-				"minChiSquaredModel=" + std::to_string(this->minChiSquaredModel) + " " +
-				"maxChiSquaredModel=" + (this->maxChiSquaredModel == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredModel)) + " " +
-				"filterValueInclude=" + std::to_string(this->filterValueInclude) + " " +
-				"filterValueExclude=" + std::to_string(this->filterValueExclude)
+			"anyFilterSet=" + (this->any_filter_user_set ? std::string("TRUE ") : std::string("FALSE ")) +
+			"upperTriangular=" + (this->upper_triangular_only ? std::string("TRUE ") : std::string("FALSE ")) +
+			"lowerTriangular=" + (this->upper_triangular_only ? std::string("TRUE ") : std::string("FALSE ")) +
+			"minP1=" + std::to_string(this->minP1) + " " +
+			"minP2=" + std::to_string(this->minP2) + " " +
+			"minQ1=" + std::to_string(this->minQ1) + " " +
+			"minQ2=" + std::to_string(this->minQ2) + " " +
+			"maxP1=" + (this->maxP1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP1)) + " " +
+			"maxP2=" + (this->maxP2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxP2)) + " " +
+			"maxQ1=" + (this->maxQ1 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ1)) + " " +
+			"maxQ2=" + (this->maxQ2 == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxQ2)) + " " +
+			"minMHF=" + std::to_string(this->minMHF) + " " +
+			"maxMHF=" + (this->maxMHF == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxMHF)) + " " +
+			"minD=" + std::to_string(this->minD) + " " +
+			"maxD=" + std::to_string(this->maxD) + " " +
+			"minDprime=" + std::to_string(this->minDprime) + " " +
+			"maxDprime=" + std::to_string(this->maxDprime) + " " +
+			"minR2=" + std::to_string(this->minR2) + " " +
+			"maxR2=" + std::to_string(this->maxR2) + " " +
+			"minR=" + std::to_string(this->minR) + " " +
+			"maxR=" + std::to_string(this->maxR) + " " +
+			"minP=" + std::to_string(this->minP) + " " +
+			"maxP=" + std::to_string(this->maxP) + " " +
+			"minChiSquaredTable=" + std::to_string(this->minChiSquaredTable) + " " +
+			"maxChiSquaredTable=" + (this->maxChiSquaredTable == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredTable)) + " " +
+			"minChiSquaredModel=" + std::to_string(this->minChiSquaredModel) + " " +
+			"maxChiSquaredModel=" + (this->maxChiSquaredModel == std::numeric_limits<double>::max() ? "DOUBLE_MAX" : std::to_string(this->maxChiSquaredModel)) + " " +
+			"FLAGInclude=" + std::to_string(this->FLAGInclude) + " " +
+			"FLAGExclude=" + std::to_string(this->FLAGExclude)
 		));
 	} else {
-		return(std::string("no_filter"));
+		return(std::string("anyFilterSet=FALSE"));
 	}
 }
 
@@ -73,7 +76,13 @@ bool OutputFilter::filter(const entry_type& target) const{
 		}
 	}
 
-	if(((target.FLAGS & this->filterValueInclude) != this->filterValueInclude) || ((target.FLAGS & this->filterValueExclude) != 0))
+	if(this->lower_triangular_only){
+		if(target.AcontigID == target.BcontigID && target.Aposition < target.Bposition){
+			return false;
+		}
+	}
+
+	if(((target.FLAGS & this->FLAGInclude) != this->FLAGInclude) || ((target.FLAGS & this->FLAGExclude) != 0))
 		return false;
 
 	if(!this->filter(target.R, this->minR, this->maxR)) return false;
