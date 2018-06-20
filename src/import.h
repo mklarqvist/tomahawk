@@ -37,7 +37,7 @@ void import_usage(void){
 	"  -a       Filter out variant sites that are univariate ALT\n"
 	"  -h FLOAT Hardy-Weinberg P-value cutoff (default: 0)\n"
 	"  -m FLOAT Minor-allele frequency (MAF) cutoff (default: 0)\n"
-	"  -n FLOAT Missingness percentage cutoff (default: 0.2)\n"
+	"  -n FLOAT Missingness percentage cutoff (default: 0)\n"
 	"  -s       Hide all program messages [null]\n";
 }
 
@@ -70,7 +70,7 @@ int import(int argc, char** argv){
 	SILENT       = 0;
 	double hwe_p = 0;
 	double maf   = 0;
-	double missingness  = 0.2;
+	double missingness  = 0;
 	bool flipMajorMinor = false;
 	bool filterUniRef   = false;
 	bool filterUniAlt   = false;

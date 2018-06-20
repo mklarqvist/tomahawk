@@ -303,8 +303,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	// Assess missingness
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
-			//if(!SILENT)
-			//	std::cerr << helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
+			if(!SILENT)
+				std::cerr << helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->vcf_header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
 
 			goto next;
 		} else {
@@ -335,7 +335,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		this->sort_order_helper.previous_included = false;
 
 	next:
-	this->sort_order_helper.previous_position = line.body->POS + 1;
+	this->sort_order_helper.previous_position = line.body->POS;
 	this->sort_order_helper.prevcontigID      = line.body->CHROM;
 
 	return true;
