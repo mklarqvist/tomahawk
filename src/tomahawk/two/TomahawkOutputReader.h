@@ -141,6 +141,8 @@ public:
 
 	inline filter_type& getFilter(void){ return this->filters_; }
 
+	bool statistics(void);
+
 private:
 	bool ParseHeader(void);
 	bool ParseHeaderExtend(void);

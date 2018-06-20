@@ -1630,7 +1630,7 @@ bool LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 
 #elif SLAVE_DEBUG_MODE == 2
 	if(this->CalculateLDPhasedVectorizedNoMissing(block1, block2)){
-		this->output_writer.Add(block1, block2, helper);
+		this->output_writer.add(block1, block2, helper);
 	}
 #elif SLAVE_DEBUG_MODE == 3
 		this->CalculateLDPhased(block1, block2);
@@ -1735,7 +1735,7 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
 			//	continue;
 
 			if((this->*phase_function_across)(block1, block2)){
-				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
+				this->output_writer.add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
 			}
 			++block2;
 		}
@@ -1768,7 +1768,7 @@ bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
 			//	break;
 
 			if((this->*phase_function_across)(block1, block2)){
-				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
+				this->output_writer.add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
 			}
 			++block2;
 		}

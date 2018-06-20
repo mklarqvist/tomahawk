@@ -90,7 +90,7 @@ bool TomahawkImporter::BuildBCF(void){
 	// Get a line
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
-		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false){
 			entry.reset();
 			continue;
 		}
@@ -119,7 +119,7 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Parse lines
 	while(reader.nextVariant(entry)){
-		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false){
 			entry.reset();
 			continue;
 		}

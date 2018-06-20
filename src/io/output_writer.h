@@ -52,6 +52,8 @@ public:
 	inline const U64& sizeEntries(void) const{ return(this->n_entries); }
 	inline const U32& sizeBlocks(void) const{ return(this->n_blocks); }
 
+	inline const U64& totalBytesAdded(void) const{ return(this->bytes_added); }
+	inline const U64& totalBytesWritten(void) const{ return(this->bytes_written); }
 	// Setters
 	inline void setSorted(const bool yes){ this->writing_sorted_ = yes; }
 	inline void setPartialSorted(const bool yes){ this->writing_sorted_partial_ = yes; }
@@ -74,6 +76,9 @@ public:
 		this->n_blocks  += other.n_blocks;
 		if(other.l_largest_uncompressed > this->l_largest_uncompressed)
 			this->l_largest_uncompressed = other.l_largest_uncompressed;
+		this->bytes_written += other.bytes_written;
+		this->bytes_added   += other.bytes_added;
+
 
 		return(*this);
 	}
@@ -83,6 +88,8 @@ public:
 		this->n_entries = other.n_entries;
 		if(other.l_largest_uncompressed > this->l_largest_uncompressed)
 			this->l_largest_uncompressed = other.l_largest_uncompressed;
+		this->bytes_added   = other.bytes_added;
+		this->bytes_written = other.bytes_written;
 		return(*this);
 	}
 
@@ -95,7 +102,7 @@ public:
 	 * @param header_b Tomahawk index entry for the to container
 	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
 	 */
-	void Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
+	void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
 
 	/**<
 	 * Overloaded operator for adding a single `two` entry
@@ -160,6 +167,8 @@ private:
 	U32              n_blocks;         // number of index blocks writtenflush_limit
 	U32              l_flush_limit;
 	U32              l_largest_uncompressed;
+	U64              bytes_added;
+	U64              bytes_written;
 	index_entry_type index_entry;      // keep track of sort order
 	std::ofstream*   stream;
 	buffer_type      buffer;

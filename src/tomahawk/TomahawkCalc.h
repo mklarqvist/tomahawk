@@ -50,7 +50,6 @@ bool TomahawkCalc::Calculate(){
 	header.addLiteral("\n##tomahawk_calcCommand=" + helpers::program_string());
 	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
-
 	io::OutputWriter writer;
 	if(!writer.open(this->output_file)){
 		std::cerr << helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
@@ -58,7 +57,6 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	writer.writeHeaders(this->reader.getHeader());
-
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1
@@ -178,6 +176,7 @@ bool TomahawkCalc::Calculate(){
 		std::cerr << helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk/timer.Elapsed().count())) << " pairs of SNP/s, " << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
 		std::cerr << helpers::timestamp("LOG") << "Comparisons: " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " pairwise SNPs and " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
 		std::cerr << helpers::timestamp("LOG") << "Output: " << helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Data: " << helpers::ToPrettyString(writer.totalBytesAdded()) << " b compressed into " << helpers::ToPrettyString(writer.totalBytesWritten()) << " b (" << (double)writer.totalBytesAdded()/writer.totalBytesWritten() << "-fold)..." << std::endl;
 	}
 
 	// Cleanup
@@ -186,15 +185,6 @@ bool TomahawkCalc::Calculate(){
 	// Flush writer
 	writer.flush();
 	writer.writeFinal();
-
-	/*
-	if(!writer.finalise()){
-		std::cerr << helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
-		return false;
-	}
-
-	writer.close();
-	*/
 
 	return true;
 }

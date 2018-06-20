@@ -29,6 +29,7 @@ DEALINGS IN THE SOFTWARE.
 #include "view.h"
 #include "sort.h"
 #include "concat.h"
+#include "stats.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::helpers::isBigEndian()){
@@ -61,6 +62,9 @@ int main(int argc, char** argv){
 
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));
+
+	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
+		return(stats(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
 		programMessage(false);

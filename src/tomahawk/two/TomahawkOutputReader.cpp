@@ -8,6 +8,7 @@
 #include "support/helpers.h"
 #include "tomahawk/two/TomahawkOutputStats.h"
 #include "io/output_writer.h"
+#include "math/output_statistics.h"
 
 namespace tomahawk {
 
@@ -862,6 +863,149 @@ bool TomahawkOutputReader::concat(const std::string& file_list, const std::strin
 	}
 
 	return(this->__concat(files, output));
+}
+
+bool TomahawkOutputReader::statistics(void){
+	if(this->getIndex().getController().isSorted == false){
+		std::cerr << helpers::timestamp("LOG","STATS") << "File has to be sorted..." << std::endl;
+		return false;
+	}
+
+	if(this->parseBlock() == false){
+		std::cerr << "No valid data" << std::endl;
+		return false;
+	}
+
+	SummaryStatisticsObject statsContig;
+	SummaryStatisticsObject statsContigSelf;
+	SummaryStatisticsObject statsContigPosition;
+	SummaryStatisticsObject statsContigPositionContig;
+
+	std::vector<SummaryStatisticsObject> contig_data;
+	std::vector<SummaryStatisticsObject> contig_self_data;
+	std::vector<SummaryStatisticsObject> contig_position_data;
+	std::vector<SummaryStatisticsObject> contig_position_contig_data;
+
+	std::vector< std::vector< SummaryStatisticsObject > > pairwise_contigs(this->getHeader().magic_.n_contigs, std::vector< SummaryStatisticsObject >(this->getHeader().magic_.n_contigs));
+
+
+	const std::string CONTIG_ALL = "contig-all";
+	const std::string CONTIG_POS = "contig-pos";
+	const std::string CONTIG_POS_CONTIG = "contig-pos-contig";
+	const std::string CONTIG_SELF   = "contig-self";
+
+
+	// Now have first data
+	OutputContainerReference o = this->getContainerReference();
+	U32 ref_contigA   = o[0].AcontigID;
+	U32 ref_positionA = o[0].Aposition;
+	U32 ref_contigB   = o[0].BcontigID;
+
+	statsContig += o[0];
+	statsContigSelf += o[0];
+	statsContigPosition += o[0];
+	statsContigPositionContig += o[0];
+	pairwise_contigs[o[0].AcontigID][o[0].BcontigID] += o[0];
+
+	for(U32 i = 1; i < o.size(); ++i){
+		if(o[i].AcontigID != ref_contigA){
+			//statsContig.print(std::cout, CONTIG_ALL, this->getHeader().contigs_[ref_contigA].name, -1, ".");
+			contig_data.push_back(statsContig);
+			statsContig.reset();
+			//statsContigSelf.print(std::cout, CONTIG_SELF, this->getHeader().contigs_[ref_contigA].name, -1, this->getHeader().contigs_[ref_contigA].name);
+			contig_self_data.push_back(statsContigSelf);
+			statsContigSelf.reset();
+			//statsContigPosition.print(std::cout, CONTIG_POS, this->getHeader().contigs_[ref_contigA].name, ref_positionA, ".");
+			contig_position_data.push_back(statsContigPosition);
+			statsContigPosition.reset();
+			ref_positionA = o[i].Aposition;
+			ref_contigA   = o[i].AcontigID;
+			ref_contigB   = o[i].BcontigID;
+		}
+
+		if(o[i].AcontigID != ref_contigA || o[i].Aposition != ref_positionA){
+			//statsContigPosition.print(std::cout, CONTIG_POS, this->getHeader().contigs_[ref_contigA].name, ref_positionA, ".");
+			contig_position_data.push_back(statsContigPosition);
+			statsContigPosition.reset();
+			ref_positionA = o[i].Aposition;
+		}
+
+		if(o[i].AcontigID != ref_contigA || o[i].Aposition != ref_positionA || o[i].BcontigID != ref_contigB){
+			//statsContigPositionContig.print(std::cout, CONTIG_POS_CONTIG, this->getHeader().contigs_[ref_contigA].name, ref_positionA, this->getHeader().contigs_[ref_contigB].name);
+			contig_position_contig_data.push_back(statsContigPositionContig);
+			statsContigPositionContig.reset();
+			ref_contigB = o[i].BcontigID;
+		}
+
+		statsContig += o[i];
+		statsContigSelf += o[i];
+		statsContigPosition += o[i];
+		statsContigPositionContig += o[i];
+		pairwise_contigs[o[i].AcontigID][o[i].BcontigID] += o[i];
+	}
+
+	// For the remainder of the blocks
+	while(this->parseBlock()){
+		OutputContainerReference o = this->getContainerReference();
+
+		for(U32 i = 0; i < o.size(); ++i){
+			if(o[i].AcontigID != ref_contigA){
+				//statsContig.print(std::cout, CONTIG_ALL, this->getHeader().contigs_[ref_contigA].name, -1, ".");
+				contig_data.push_back(statsContig);
+				statsContig.reset();
+				//statsContigSelf.print(std::cout, CONTIG_SELF, this->getHeader().contigs_[ref_contigA].name, -1, this->getHeader().contigs_[ref_contigA].name);
+				contig_self_data.push_back(statsContigSelf);
+				statsContigSelf.reset();
+				//statsContigPosition.print(std::cout, CONTIG_POS, this->getHeader().contigs_[ref_contigA].name, ref_positionA, ".");
+				contig_position_data.push_back(statsContigPosition);
+				statsContigPosition.reset();
+				ref_positionA = o[i].Aposition;
+				ref_contigA   = o[i].AcontigID;
+				ref_contigB   = o[i].BcontigID;
+			}
+
+			if(o[i].AcontigID != ref_contigA || o[i].Aposition != ref_positionA){
+				//statsContigPosition.print(std::cout, CONTIG_POS, this->getHeader().contigs_[ref_contigA].name, ref_positionA, ".");
+				contig_position_data.push_back(statsContigPosition);
+				statsContigPosition.reset();
+				ref_positionA = o[i].Aposition;
+			}
+
+			if(o[i].AcontigID != ref_contigA || o[i].Aposition != ref_positionA || o[i].BcontigID != ref_contigB){
+				//statsContigPositionContig.print(std::cout, CONTIG_POS_CONTIG, this->getHeader().contigs_[ref_contigA].name, ref_positionA, this->getHeader().contigs_[ref_contigB].name);
+				contig_position_contig_data.push_back(statsContigPositionContig);
+				statsContigPositionContig.reset();
+				ref_contigB = o[i].BcontigID;
+			}
+
+			statsContig += o[i];
+			statsContigSelf += o[i];
+			statsContigPosition += o[i];
+			statsContigPositionContig += o[i];
+			pairwise_contigs[o[i].AcontigID][o[i].BcontigID] += o[i];
+		}
+	}
+	//statsContig.print(std::cout, CONTIG_ALL, this->getHeader().contigs_[ref_contigA].name, -1, ".");
+	//statsContigPosition.print(std::cout, CONTIG_POS, this->getHeader().contigs_[ref_contigA].name, ref_positionA, ".");
+	//statsContigPositionContig.print(std::cout, CONTIG_POS_CONTIG, this->getHeader().contigs_[ref_contigA].name, ref_positionA, this->getHeader().contigs_[ref_contigB].name);
+	//statsContigSelf.print(std::cout, CONTIG_SELF, this->getHeader().contigs_[ref_contigA].name, -1, this->getHeader().contigs_[ref_contigA].name);
+
+	contig_data.push_back(statsContig);
+	contig_position_data.push_back(statsContigPosition);
+	contig_position_contig_data.push_back(statsContigPositionContig);
+	contig_self_data.push_back(statsContigSelf);
+
+	/*
+	for(U32 i = 0; i < this->getHeader().magic_.n_contigs; ++i){
+		for(U32 j = i + 1; j < this->getHeader().magic_.n_contigs; ++j){
+			if(pairwise_contigs[i][j].R.n_total == 0) continue;
+			pairwise_contigs[i][j].print(std::cout, "contig-across", this->getHeader().contigs_[i].name, -1, this->getHeader().contigs_[j].name);
+		}
+	}
+	*/
+	std::cerr << contig_data.size() << ", " << contig_self_data.size() << ", " << contig_position_data.size() << ", " << contig_position_contig_data.size() << std::endl;
+
+	return true;
 }
 
 } /* namespace Tomahawk */

@@ -48,6 +48,8 @@ OutputWriter::OutputWriter(const self_type& other) :
 	n_blocks(other.n_blocks),
 	l_flush_limit(other.l_flush_limit),
 	l_largest_uncompressed(0),
+	bytes_added(0),
+	bytes_written(0),
 	stream(other.stream),
 	buffer(other.buffer.capacity()),
 	spin_lock(other.spin_lock),
@@ -111,6 +113,9 @@ void OutputWriter::flush(void){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 			exit(1);
 		}
+
+		this->bytes_added   += this->buffer.size();
+		this->bytes_written += this->compressor.buffer.size();
 
 		if(this->buffer.size() > l_largest_uncompressed)
 			this->l_largest_uncompressed = this->buffer.size();
@@ -209,7 +214,7 @@ void OutputWriter::CheckOutputNames(const std::string& input){
 	else this->baseName = paths[1];
 }
 
-void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+void OutputWriter::add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
 	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
 	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
 	this->buffer += helper.controller;
