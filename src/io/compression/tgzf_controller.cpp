@@ -17,7 +17,7 @@ TGZFController::TGZFController(const char* data, const U32 length){}
 
 TGZFController::TGZFController(const U32 largest_block_size) : buffer(largest_block_size){}
 
-TGZFController::~TGZFController(){ this->buffer.deleteAll(); }
+TGZFController::~TGZFController(){ }
 
 void TGZFController::Clear(){ this->buffer.reset(); }
 

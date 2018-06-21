@@ -91,10 +91,11 @@ public:
 	 * Parses TWO data that has been loaded into memory after invoking
 	 * either getBlock functions. This function also increments the internal
 	 * position of the file handler.
-	 * @param clear Boolean set to TRUE if raw data should be cleared after invoking this function
-	 * @return      Returns TRUE upon success or FALSE otherwis
+	 * @param clear     Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @param clear_raw Boolean set to TRUE if compressed raw data should be cleared after invoking this function
+	 * @return          Returns TRUE upon success or FALSE otherwis
 	 */
-	int parseBlock(const bool clear = true);
+	int parseBlock(const bool clear = true, const bool clear_raw = true);
 
 	/**<
 	 * Used in parallel programming:

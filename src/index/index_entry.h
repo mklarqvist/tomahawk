@@ -64,11 +64,6 @@ public:
 	}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.byte_offset << '\t' << entry.byte_offset_end << '\t' << entry.contigID << '\t' << entry.min_position << '-' << entry.max_position << '\t' << entry.n_variants << '\t' << entry.uncompressed_size;
-		return stream;
-	}
-
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset),       sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset_end),   sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.contigID),          sizeof(S32));

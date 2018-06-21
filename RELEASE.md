@@ -1,3 +1,15 @@
+# Release 0.6.0
+
+## Major Features And Improvements
+* Concat operation now supports special modes to concatenate large number of files in parallel when the downstream operation is passed to sort (reported by @ekg). This mode is ~30-fold faster / thread and is parallelizable.
+
+## Bug Fixes and Other Changes
+* Bug fixes
+  * Problem when importing variants within 1-base of each other (reported by @ekg)
+  * Memory requirement problems when parallel sort merging very large files (reported by @ekg)
+  * Removed default missingness filter (from 0.2 to 1.0) to support importing `bcf` with few samples
+
+
 # Release 0.5.3
 
 ## Minor Features And Improvements

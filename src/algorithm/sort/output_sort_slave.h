@@ -15,7 +15,7 @@ class OutputSortSlave {
 private:
 	typedef OutputSortSlave       self_type;
 	typedef io::OutputEntry       entry_type;
-	typedef io::OutputWriter      writer_type;
+	typedef io::OutputWriterFile  writer_type;
 	typedef TomahawkOutputReader  reader_type;
 	typedef io::TGZFController    tgzf_controller_type;
 	typedef io::BasicBuffer       buffer_type;
@@ -29,10 +29,7 @@ public:
 		writer_(writer)
 	{}
 
-	~OutputSortSlave(){
-		this->inflate_buffer_.deleteAll();
-		this->data_.deleteAll();
-	}
+	~OutputSortSlave(){}
 
 	bool open(const std::string& input){
 		this->stream_.open(input, std::ios::binary | std::ios::in);
@@ -60,7 +57,7 @@ private:
 
 		// iterator
 		const U64 n_entries_limit = this->n_memory_limit_ / sizeof(entry_type);
-		tgzf_iterator it(this->stream_, 65536, this->workload_.first, this->workload_.second);
+		tgzf_iterator it(this->stream_, n_entries_limit, this->workload_.first, this->workload_.second);
 		bool finished_ = false;
 
 		if(!this->stream_.good()){
@@ -69,7 +66,7 @@ private:
 		}
 
 		while(true){
-			OutputContainer container(this->n_memory_limit_ / sizeof(entry_type) + 1024);
+			OutputContainer container(n_entries_limit + 1);
 
 			const entry_type* e = nullptr;
 			for(U32 i = 0; i < n_entries_limit; ++i){
@@ -81,6 +78,7 @@ private:
 			}
 			std::sort(&container.front(), &container.back() + 1);
 
+			/*
 			const entry_type* prev = &container[0];
 			for(size_t j = 1; j < container.size(); ++j){
 				if(*prev >= container[j]){
@@ -92,11 +90,11 @@ private:
 				}
 				prev = &container[j];
 			}
+			*/
 
 			this->writer_ << container;
 
-			if(finished_)
-				break;
+			if(finished_) break;
 		}
 
 		return true;

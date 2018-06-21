@@ -15,11 +15,11 @@
 #include "meta_entry.h"
 #include "twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
-#include "TomahawkCalcParameters.h"
 #include "index/index.h"
 #include "genotype_container_reference.h"
 #include "index/tomahawk_header.h"
 #include "third_party/intervalTree.h"
+#include "tomahawk_calc_parameters.h"
 
 namespace tomahawk {
 

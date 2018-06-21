@@ -109,7 +109,7 @@ public:
 	std::pair<U32, U32> findOverlap(const S32& contigID, const U64& from_position, const U64& to_position) const;
 
 private:
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& container){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& container){
 		stream.write(reinterpret_cast<const char*>(&container.n_entries_), sizeof(size_type));
 		for(size_type i = 0; i < container.size(); ++i)
 			stream << container[i];

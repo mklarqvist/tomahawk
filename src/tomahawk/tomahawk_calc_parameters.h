@@ -1,5 +1,5 @@
-#ifndef TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_
-#define TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_
+#ifndef TOMAHAWK_TOMAHAWK_CALC_PARAMETERS_H_
+#define TOMAHAWK_TOMAHAWK_CALC_PARAMETERS_H_
 
 #include <thread>
 
@@ -23,6 +23,7 @@ public:
 	TomahawkCalcParameters() :
 		window_mode(false),
 		fast_mode(false),
+		upper_only(false),
 		n_threads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1),
 		n_chunks(1),
 		chunk_selected(0),
@@ -41,6 +42,7 @@ public:
 	TomahawkCalcParameters(const self_type& other):
 		window_mode(other.window_mode),
 		fast_mode(other.fast_mode),
+		upper_only(other.upper_only),
 		n_threads(other.n_threads),
 		n_chunks(other.n_chunks),
 		chunk_selected(other.chunk_selected),
@@ -137,6 +139,7 @@ public:
 public:
 	bool    window_mode;
 	bool    fast_mode;
+	bool    upper_only;
 	S32     n_threads;
 	S32     n_chunks;
 	S32     chunk_selected;
@@ -153,4 +156,4 @@ public:
 
 }
 
-#endif /* TOMAHAWK_TOMAHAWKCALCPARAMETERS_H_ */
+#endif /* TOMAHAWK_TOMAHAWK_CALC_PARAMETERS_H_ */

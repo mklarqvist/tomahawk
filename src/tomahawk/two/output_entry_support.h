@@ -55,6 +55,20 @@ public:
 	void printUnphasedCounts(void) const;
 	void printPhasedCounts(void) const;
 
+	void addReadble(buffer_type& buffer) const{
+		buffer.AddReadble(this->alleleCounts[0]); buffer += '\t';
+		buffer.AddReadble(this->alleleCounts[1]); buffer += '\t';
+		buffer.AddReadble(this->alleleCounts[4]); buffer += '\t';
+		buffer.AddReadble(this->alleleCounts[5]); buffer += '\t';
+		buffer.AddReadble(this->D);      buffer += '\t';
+		buffer.AddReadble(this->Dprime); buffer += '\t';
+		buffer.AddReadble(this->R);      buffer += '\t';
+		buffer.AddReadble(this->R2);     buffer += '\t';
+		buffer.AddReadble(this->P);      buffer += '\t';
+		buffer.AddReadble(this->chiSqFisher); buffer += '\t';
+		buffer.AddReadble(this->chiSqModel);  buffer += '\t';
+	}
+
 	friend io::BasicBuffer& operator<<(buffer_type& os, const self_type& entry){
 		// Notice that CONTROLLER is written separately
 		os += entry.alleleCounts[0];

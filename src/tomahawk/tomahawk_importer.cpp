@@ -316,6 +316,13 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
+		const double missingness = (double)line.gt_support.n_missing/(2*this->vcf_header_->samples);
+		if(missingness > this->filters.missingness){
+			//std::cerr << line.gt_support.n_missing << "\t" << 2*this->vcf_header_->samples << "\t" << (double)line.gt_support.n_missing/(2*this->vcf_header_->samples) << std::endl;
+			goto next;
+		}
+
+
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(line.body->CHROM); // update block count for this contigID

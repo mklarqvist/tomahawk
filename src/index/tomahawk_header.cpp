@@ -88,10 +88,6 @@ int TomahawkHeader::open(std::istream& stream){
 			return(-4);
 		}
 
-		// Buffer cleanup
-		buffer.deleteAll();
-		buffer_uncompressed.deleteAll();
-
 		return(1);
 }
 
@@ -139,9 +135,6 @@ int TomahawkHeader::write(std::ostream& stream){
 	stream.write(tgzf_controller.buffer.data(), tgzf_controller.buffer.size());
 
 	//std::cerr << helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
-
-	// Cleanup buffer
-	buffer.deleteAll();
 
 	return(1);
 }

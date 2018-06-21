@@ -1,18 +1,20 @@
-#include "output_writer.h"
+#include <io/output_writer.h>
 
 namespace tomahawk{
 namespace io{
 
-OutputWriter::OutputWriter(void) :
+OutputWriterInterface::OutputWriterInterface(void) :
 	owns_pointers(true),
 	writing_sorted_(false),
 	writing_sorted_partial_(false),
+	upper_only_(false),
 	n_entries(0),
 	n_progress_count(0),
 	n_blocks(0),
 	l_flush_limit(2000000),
 	l_largest_uncompressed(0),
-	stream(nullptr),
+	bytes_added(0),
+	bytes_written(0),
 	buffer(this->l_flush_limit*2),
 	spin_lock(new spin_lock_type),
 	index_(new index_type),
@@ -21,28 +23,11 @@ OutputWriter::OutputWriter(void) :
 
 }
 
-OutputWriter::OutputWriter(std::string input_file) :
-	owns_pointers(true),
-	writing_sorted_(false),
-	writing_sorted_partial_(false),
-	n_entries(0),
-	n_progress_count(0),
-	n_blocks(0),
-	l_flush_limit(2000000),
-	l_largest_uncompressed(0),
-	stream(new std::ofstream(input_file, std::ios::binary | std::ios::out)),
-	buffer(this->l_flush_limit*2),
-	spin_lock(new spin_lock_type),
-	index_(new index_type),
-	footer_(new footer_type)
-{
-
-}
-
-OutputWriter::OutputWriter(const self_type& other) :
+OutputWriterInterface::OutputWriterInterface(const self_type& other) :
 	owns_pointers(false),
 	writing_sorted_(other.writing_sorted_),
 	writing_sorted_partial_(other.writing_sorted_partial_),
+	upper_only_(other.upper_only_),
 	n_entries(other.n_entries),
 	n_progress_count(other.n_progress_count),
 	n_blocks(other.n_blocks),
@@ -50,7 +35,6 @@ OutputWriter::OutputWriter(const self_type& other) :
 	l_largest_uncompressed(0),
 	bytes_added(0),
 	bytes_written(0),
-	stream(other.stream),
 	buffer(other.buffer.capacity()),
 	spin_lock(other.spin_lock),
 	index_(other.index_),
@@ -59,18 +43,41 @@ OutputWriter::OutputWriter(const self_type& other) :
 
 }
 
-OutputWriter::~OutputWriter(void){
+OutputWriterInterface::~OutputWriterInterface(void){
 	if(this->owns_pointers){
-		this->stream->flush();
-		this->stream->close();
-		delete this->stream;
 		delete this->spin_lock;
 		delete this->index_;
 		delete this->footer_;
 	}
 }
 
-bool OutputWriter::open(const std::string& output_file){
+OutputWriterFile::OutputWriterFile(void) :
+	stream(nullptr)
+{
+
+}
+
+OutputWriterFile::OutputWriterFile(std::string input_file) :
+	stream(new std::ofstream(input_file, std::ios::binary | std::ios::out))
+{
+
+}
+
+OutputWriterFile::OutputWriterFile(const self_type& other) :
+	parent_type(other),
+	stream(other.stream)
+{
+
+}
+
+OutputWriterFile::~OutputWriterFile(void){
+	if(this->owns_pointers){
+		this->stream->flush();
+		delete this->stream;
+	}
+}
+
+bool OutputWriterFile::open(const std::string& output_file){
 	if(output_file.size() == 0)
 		return false;
 
@@ -86,7 +93,7 @@ bool OutputWriter::open(const std::string& output_file){
 	return true;
 }
 
-int OutputWriter::writeHeaders(twk_header_type& twk_header){
+int OutputWriterFile::writeHeaders(twk_header_type& twk_header){
 	const std::string command = "##tomahawk_calcCommand=" + helpers::program_string();
 	twk_header.getLiterals() += command;
 	// Set file type to TWO
@@ -95,7 +102,7 @@ int OutputWriter::writeHeaders(twk_header_type& twk_header){
 	return(twk_header.write(*this->stream));
 }
 
-void OutputWriter::writeFinal(void){
+void OutputWriterFile::writeFinal(void){
 	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
 	this->footer_->offset_end_of_data = this->stream->tellp();
 	this->index_->setSorted(this->isSorted());
@@ -107,7 +114,7 @@ void OutputWriter::writeFinal(void){
 	this->stream->flush();
 }
 
-void OutputWriter::flush(void){
+void OutputWriterFile::flush(void){
 	if(this->buffer.size() > 0){
 		if(!this->compressor.Deflate(this->buffer)){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -139,7 +146,7 @@ void OutputWriter::flush(void){
 	}
 }
 
-void OutputWriter::operator<<(const container_type& container){
+void OutputWriterFile::operator<<(const container_type& container){
 	for(size_type i = 0; i < container.size(); ++i)
 		this->buffer << container[i];
 
@@ -147,7 +154,7 @@ void OutputWriter::operator<<(const container_type& container){
 	*this << this->buffer;
 }
 
-void OutputWriter::operator<<(buffer_type& buffer){
+void OutputWriterFile::operator<<(buffer_type& buffer){
 	if(buffer.size() > 0){
 		if(!this->compressor.Deflate(buffer)){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -177,7 +184,7 @@ void OutputWriter::operator<<(buffer_type& buffer){
 	}
 }
 
-void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
+void OutputWriterFile::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
 	if(buffer.size() == 0) return;
 
 	assert(uncompressed_size % sizeof(entry_type) == 0);
@@ -203,7 +210,7 @@ void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncom
 	this->index_entry.reset();
 }
 
-void OutputWriter::CheckOutputNames(const std::string& input){
+void OutputWriterFile::CheckOutputNames(const std::string& input){
 	std::vector<std::string> paths = helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)
@@ -214,7 +221,7 @@ void OutputWriter::CheckOutputNames(const std::string& input){
 	else this->baseName = paths[1];
 }
 
-void OutputWriter::add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+void OutputWriterFile::add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
 	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
 	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
 	this->buffer += helper.controller;

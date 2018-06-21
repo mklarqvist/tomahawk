@@ -1,14 +1,14 @@
+#include <io/output_writer.h>
+#include <tomahawk/two/tomahawk_output_reader.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 
-#include "tomahawk/two/TomahawkOutputReader.h"
 #include "io/compression/gz_constants.h"
 #include "io/compression/gz_header.h"
 #include "support/helpers.h"
-#include "tomahawk/two/TomahawkOutputStats.h"
-#include "io/output_writer.h"
 #include "math/output_statistics.h"
+#include "tomahawk_output_stats.h"
 
 namespace tomahawk {
 
@@ -29,9 +29,6 @@ TomahawkOutputReader::TomahawkOutputReader() :
 
 TomahawkOutputReader::~TomahawkOutputReader(){
 	delete this->index_;
-	this->buffer_.deleteAll();
-	this->data_.deleteAll();
-	this->outputBuffer_.deleteAll();
 	delete [] this->interval_tree_entries;
 	if(this->interval_tree != nullptr){
 		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
@@ -72,7 +69,6 @@ bool TomahawkOutputReader::open(const std::string input){
 	this->stream_.read(index_buffer.data(), l_index_data);
 	index_buffer.n_chars = l_index_data;
 	this->index_ = new index_type(index_buffer.data(), index_buffer.size());
-	index_buffer.deleteAll();
 
 	// Resize buffers to accomodate the largest possible block
 	// without ever resizing
@@ -125,7 +121,7 @@ bool TomahawkOutputReader::printHeader(std::ostream& stream) const{
 	return true;
 }
 
-int TomahawkOutputReader::parseBlock(const bool clear){
+int TomahawkOutputReader::parseBlock(const bool clear, const bool clear_raw){
 	// Stream died
 	if(this->stream_.good() == false){
 		std::cerr << helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -137,6 +133,9 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 	// or it would've failed at good() check
 	if((U64)this->stream_.tellg() == this->offset_end_of_data_)
 		return 0;
+
+	// Reset compressed_buffer
+	if(clear_raw) this->buffer_.reset();
 
 	// Read TGZF header
 	this->buffer_.resize(sizeof(tgzf_header_type));
@@ -180,9 +179,6 @@ int TomahawkOutputReader::parseBlock(const bool clear){
 		std::cerr << helpers::timestamp("ERROR", "TWO") << "Empty data!" << std::endl;
 		return 0;
 	}
-
-	// Reset compressed_buffer
-	this->buffer_.reset();
 
 	// Reset iterator position and size
 	//this->iterator_position_block = 0;
@@ -792,15 +788,17 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	for(U32 i = 0; i < files.size(); ++i)
 		this->getHeader().getLiterals() += files[i] + ',';
 
-	io::OutputWriter writer;
+	io::OutputWriterFile writer;
 	if(!writer.open(output)){
 		std::cerr << helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
 		return false;
 	}
 	writer.writeHeaders(this->getHeader());
 
-	while(this->parseBlock())
-		writer << this->data_;
+	while(this->parseBlock()){
+		writer.writePrecompressedBlock(this->buffer_, this->data_.size());
+		//writer << this->data_;
+	}
 
 	for(U32 i = 1; i < files.size(); ++i){
 		if(!SILENT)
@@ -813,11 +811,14 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 		}
 
 		if(!(second_reader.getHeader() == this->getHeader())){
-			std::cerr << "header mismatch" << std::endl;
+			std::cerr << helpers::timestamp("ERROR","CONCAT") << "Header mismatch: these files appear to be originating from different TWK files..." << std::endl;
+			return false;
 		}
 
-		while(second_reader.parseBlock())
-			writer << second_reader.data_;
+		while(second_reader.parseBlock()){
+			//writer << second_reader.data_;
+			writer.writePrecompressedBlock(second_reader.buffer_, second_reader.data_.size());
+		}
 
 		writer.flush();
 	}
@@ -872,14 +873,14 @@ bool TomahawkOutputReader::statistics(void){
 	}
 
 	if(this->parseBlock() == false){
-		std::cerr << "No valid data" << std::endl;
+		std::cerr << helpers::timestamp("ERROR") << "No valid data!" << std::endl;
 		return false;
 	}
 
-	SummaryStatisticsObject statsContig;
-	SummaryStatisticsObject statsContigSelf;
-	SummaryStatisticsObject statsContigPosition;
-	SummaryStatisticsObject statsContigPositionContig;
+	SummaryStatisticsObject statsContig; // contig vs everything
+	SummaryStatisticsObject statsContigSelf; // contig vs self only
+	SummaryStatisticsObject statsContigPosition; // contig-pos vs everything
+	SummaryStatisticsObject statsContigPositionContig; // contig-pos-contig vs everything
 
 	std::vector<SummaryStatisticsObject> contig_data;
 	std::vector<SummaryStatisticsObject> contig_self_data;
@@ -888,12 +889,10 @@ bool TomahawkOutputReader::statistics(void){
 
 	std::vector< std::vector< SummaryStatisticsObject > > pairwise_contigs(this->getHeader().magic_.n_contigs, std::vector< SummaryStatisticsObject >(this->getHeader().magic_.n_contigs));
 
-
-	const std::string CONTIG_ALL = "contig-all";
-	const std::string CONTIG_POS = "contig-pos";
+	const std::string CONTIG_ALL  = "contig-all";
+	const std::string CONTIG_POS  = "contig-pos";
 	const std::string CONTIG_POS_CONTIG = "contig-pos-contig";
-	const std::string CONTIG_SELF   = "contig-self";
-
+	const std::string CONTIG_SELF = "contig-self";
 
 	// Now have first data
 	OutputContainerReference o = this->getContainerReference();

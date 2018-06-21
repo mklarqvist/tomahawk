@@ -48,14 +48,14 @@ public:
 	}
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& footer){
-		stream.write(reinterpret_cast<const char*>(&footer.offset_end_of_data), sizeof(U64));
+		stream.write(reinterpret_cast<const char*>(&footer.offset_end_of_data),     sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&footer.l_largest_uncompressed), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&footer.EOF_marker[0]), constants::eof_length);
 		return(stream);
 	}
 
 	friend std::istream& operator>>(std::istream& stream, self_type& footer){
-		stream.read(reinterpret_cast<char*>(&footer.offset_end_of_data), sizeof(U64));
+		stream.read(reinterpret_cast<char*>(&footer.offset_end_of_data),     sizeof(U64));
 		stream.read(reinterpret_cast<char*>(&footer.l_largest_uncompressed), sizeof(U32));
 		stream.read(reinterpret_cast<char*>(&footer.EOF_marker[0]), constants::eof_length);
 		return(stream);

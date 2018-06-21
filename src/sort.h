@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include "algorithm/sort/output_sorter.h"
 #include "tomahawk/tomahawk_reader.h"
-#include "tomahawk/two/TomahawkOutputReader.h"
+#include "tomahawk/two/tomahawk_output_reader.h"
 #include "utility.h"
 
 void sort_usage(void){
@@ -38,7 +38,7 @@ void sort_usage(void){
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (required)\n"
-	"  -L FLOAT  memory limit in MB (default: 100)\n"
+	"  -L FLOAT  memory limit in MB (default: 10)\n"
 	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
 	"  -b INT    block size in MB when merging (default: 10)\n"
@@ -57,15 +57,15 @@ int sort(int argc, char** argv){
 		{"memory",		optional_argument, 0, 'L' },
 		{"threads",		optional_argument, 0, 't' },
 		{"merge",		no_argument, 0, 'M' },
-		{"block-size",		optional_argument, 0, 'b' },
+		{"block-size",	optional_argument, 0, 'b' },
 		{"silent",		no_argument, 0,  's' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
 	std::string input, output;
-	double memory_limit = 100e6;
-	int block_size = 10e6;
+	double memory_limit = 10e6;
+	double block_size   = 10e6;
 	bool merge = false;
 	int threads = std::thread::hardware_concurrency();
 

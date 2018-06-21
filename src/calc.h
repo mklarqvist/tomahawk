@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #include <regex>
 
 #include "support/MagicConstants.h"
-#include "tomahawk/TomahawkCalc.h"
+#include "tomahawk/tomahawk_calc.h"
 
 void calc_usage(void){
 	programMessage();
@@ -49,6 +49,7 @@ void calc_usage(void){
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -U        write upper-triagonal associations only (valid only in stdout mode)\n"
 	"  -d        Show real-time progress update in cerr\n"
 	"  -s        Hide all program messages\n";
 }
@@ -97,7 +98,7 @@ int calc(int argc, char** argv){
 
 	double windowBases = -1, windowPosition = -1; // not implemented
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:I:sdc:C:f?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:I:sdc:C:fU?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -144,15 +145,15 @@ int calc(int argc, char** argv){
 			}
 			break;
 		case 'R':
-		parameters.R2_max = atof(optarg);
-		if(parameters.R2_max < 0){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
-		return(1);
-		} else if(parameters.R2_max > 1){
-			std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a maximum R-squared value > 1" << std::endl;
-		return(1);
-		}
-		break;
+			parameters.R2_max = atof(optarg);
+			if(parameters.R2_max < 0){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a negative maximum R-squared value" << std::endl;
+			return(1);
+			} else if(parameters.R2_max > 1){
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Cannot have a maximum R-squared value > 1" << std::endl;
+			return(1);
+			}
+			break;
 
 		case 'p':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::phasedFunction;
@@ -160,6 +161,10 @@ int calc(int argc, char** argv){
 
 		case 'u':
 		  parameters.force = tomahawk::TomahawkCalcParameters::force_method::unphasedFunction;
+		  break;
+
+		case 'U':
+		  parameters.upper_only = true;
 		  break;
 
 		case 'f':

@@ -19,16 +19,9 @@
 namespace tomahawk{
 namespace io{
 
-/**<
- * Writer class for `two` entries. This class supports parallel writing
- * with the use of a lock-free spin-lock (requires C++11 because of the use
- * of atomic values). In parallel computing, each slave constructs their own
- * OutputWriter by invoking the copy-ctor and borrowing pointers from the
- * main instance.
- */
-class OutputWriter{
-private:
-	typedef OutputWriter                    self_type;
+class OutputWriterInterface{
+protected:
+	typedef OutputWriterInterface           self_type;
 	typedef TGZFController                  compression_type;
 	typedef algorithm::SpinLock             spin_lock_type;
 	typedef BasicBuffer                     buffer_type;
@@ -44,10 +37,9 @@ private:
 	typedef OutputContainer                 container_type;
 
 public:
-	OutputWriter(void);
-	OutputWriter(std::string input_file);
-	OutputWriter(const self_type& other);
-	~OutputWriter(void);
+	OutputWriterInterface(void);
+	OutputWriterInterface(const self_type& other);
+	virtual ~OutputWriterInterface(void);
 
 	inline const U64& sizeEntries(void) const{ return(this->n_entries); }
 	inline const U32& sizeBlocks(void) const{ return(this->n_blocks); }
@@ -63,11 +55,10 @@ public:
 	inline const bool isSorted(void) const{ return(this->writing_sorted_); }
 	inline const bool isPartialSorted(void) const{ return(this->writing_sorted_partial_); }
 
-	bool open(const std::string& output_file);
-	int writeHeaders(twk_header_type& twk_header);
-	void writeFinal(void);
-	void flush(void);
+	// Get
+	inline index_type* getIndex(void){ return(this->index_); }
 
+	// Progress
 	inline void ResetProgress(void){ this->n_progress_count = 0; }
 	inline const U32& getProgressCounts(void) const{ return this->n_progress_count; }
 
@@ -93,6 +84,16 @@ public:
 		return(*this);
 	}
 
+	//
+	virtual bool open(void) =0;
+	virtual bool open(const std::string& output_file) =0;
+	virtual int writeHeaders(twk_header_type& twk_header) =0;
+	virtual void writeFinal(void) =0;
+	virtual void flush(void) =0;
+
+	inline void setUpperOnly(const bool set){ this->upper_only_ = set; }
+	inline const bool& hasUpperOnly(void) const{return(this->upper_only_); }
+
 	/**<
 	 * Primary function writing `two` entries to disk after being computed by a
 	 * slave.
@@ -102,6 +103,52 @@ public:
 	 * @param header_b Tomahawk index entry for the to container
 	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
 	 */
+	virtual void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper) =0;
+
+protected:
+	bool             owns_pointers;
+	bool             writing_sorted_;
+	bool             writing_sorted_partial_;
+	bool             upper_only_;
+	U64              n_entries;        // number of entries written
+	U32              n_progress_count; // lines added since last flush
+	U32              n_blocks;         // number of index blocks writtenflush_limit
+	U32              l_flush_limit;
+	U32              l_largest_uncompressed;
+	U64              bytes_added;
+	U64              bytes_written;
+	index_entry_type index_entry;      // keep track of sort order
+	buffer_type      buffer;
+	compression_type compressor;
+	spin_lock_type*  spin_lock;
+	index_type*      index_;
+	footer_type*     footer_;
+};
+
+/**<
+ * Writer class for `two` entries. This class supports parallel writing
+ * of atomic values). In parallel computing, each slave constructs their own
+ * OutputWriter by invoking the copy-ctor and borrowing pointers from the
+ * main instance.
+ */
+class OutputWriterFile : public OutputWriterInterface{
+private:
+	typedef OutputWriterInterface parent_type;
+	typedef OutputWriterFile      self_type;
+
+public:
+	OutputWriterFile(void);
+	OutputWriterFile(std::string input_file);
+	OutputWriterFile(const self_type& other);
+	~OutputWriterFile(void);
+
+	bool open(void){ return false; }
+	bool open(const std::string& output_file);
+	int writeHeaders(twk_header_type& twk_header);
+	void writeFinal(void);
+	void flush(void);
+
+
 	void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
 
 	/**<
@@ -150,8 +197,6 @@ public:
 
 	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
 
-	inline index_type* getIndex(void){ return(this->index_); }
-
 private:
 	void CheckOutputNames(const std::string& input);
 
@@ -159,23 +204,83 @@ private:
 	std::string      filename;
 	std::string      basePath;
 	std::string      baseName;
-	bool             owns_pointers;
-	bool             writing_sorted_;
-	bool             writing_sorted_partial_;
-	U64              n_entries;        // number of entries written
-	U32              n_progress_count; // lines added since last flush
-	U32              n_blocks;         // number of index blocks writtenflush_limit
-	U32              l_flush_limit;
-	U32              l_largest_uncompressed;
-	U64              bytes_added;
-	U64              bytes_written;
-	index_entry_type index_entry;      // keep track of sort order
 	std::ofstream*   stream;
-	buffer_type      buffer;
-	compression_type compressor;
-	spin_lock_type*  spin_lock;
-	index_type*      index_;
-	footer_type*     footer_;
+};
+
+class OutputWriterStdOut : public OutputWriterInterface{
+private:
+	typedef OutputWriterInterface parent_type;
+	typedef OutputWriterStdOut    self_type;
+
+public:
+	OutputWriterStdOut() = default;
+	~OutputWriterStdOut() = default;
+
+	bool open(void){ return true; }
+	bool open(const std::string& output_file){ return true; }
+
+	int writeHeaders(twk_header_type& twk_header){
+		// write static headers
+		std::cout << twk_header.getLiterals() << '\n';
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable";
+		std::cout << std::endl;
+		return(0);
+	}
+
+	void writeFinal(void){}
+
+	void flush(void){
+		if(this->buffer.size() > 0){
+			this->bytes_added   += this->buffer.size();
+			this->bytes_written += this->buffer.size();
+
+			this->spin_lock->lock();
+			std::cout.write(this->buffer.data(), this->buffer.size());
+			++this->n_blocks;
+
+			this->spin_lock->unlock();
+
+			this->buffer.reset();
+		}
+	}
+
+	/**<
+	 * Primary function writing `two` entries to stdout after being computed by a
+	 * slave.
+	 * @param meta_a   Meta information for the from container
+	 * @param meta_b   Meta information for the to container
+	 * @param header_a Tomahawk index entry for the from container
+	 * @param header_b Tomahawk index entry for the to container
+	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
+	 */
+	void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+		this->buffer.AddReadble(helper.controller); this->buffer += '\t';
+		this->buffer.AddReadble(header_a.contigID); this->buffer += '\t';
+		this->buffer.AddReadble(meta_a.position);   this->buffer += '\t';
+		this->buffer.AddReadble(header_b.contigID); this->buffer += '\t';
+		this->buffer.AddReadble(meta_b.position);   this->buffer += '\t';
+		helper.addReadble(this->buffer);            this->buffer += '\n';
+
+		if(this->upper_only_ == false){
+			this->buffer.AddReadble(helper.controller); this->buffer += '\t';
+			this->buffer.AddReadble(header_b.contigID); this->buffer += '\t';
+			this->buffer.AddReadble(meta_b.position);   this->buffer += '\t';
+			this->buffer.AddReadble(header_a.contigID); this->buffer += '\t';
+			this->buffer.AddReadble(meta_a.position);   this->buffer += '\t';
+			helper.addReadble(this->buffer);            this->buffer += '\n';
+
+			this->n_entries += 1;
+			this->n_progress_count += 1;
+			this->index_entry.n_variants += 1;
+		}
+
+		this->n_entries += 1;
+		this->n_progress_count += 1;
+		this->index_entry.n_variants += 1;
+
+		if(this->buffer.size() > this->l_flush_limit)
+			this->flush();
+	}
 };
 
 }

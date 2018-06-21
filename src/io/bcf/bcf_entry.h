@@ -196,7 +196,6 @@ public:
 
 	//
 	bool assessGenotypes(const U64 n_samples){
-		//std::cerr << "in assess: " << this->hasGenotypes << std::endl;
 		//if(this->hasGenotypes == false)
 		//	return false;
 

@@ -17,9 +17,6 @@ TomahawkReader::TomahawkReader() :
 {}
 
 TomahawkReader::~TomahawkReader(){
-	this->buffer_.deleteAll();
-	this->data_.deleteAll();
-	this->outputBuffer_.deleteAll();
 	delete this->writer;
 	delete this->index_;
 
@@ -61,7 +58,6 @@ bool TomahawkReader::open(const std::string input){
 	this->stream_.read(index_buffer.data(), l_index_data);
 	index_buffer.n_chars = l_index_data;
 	this->index_ = new index_type(index_buffer.data(), index_buffer.size());
-	index_buffer.deleteAll();
 
 	// Resize buffers to accomodate the largest possible block
 	// without ever resizing

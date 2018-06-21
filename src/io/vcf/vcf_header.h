@@ -65,7 +65,6 @@ public:
 		tgzf_controller.Deflate(temp);
 		stream.write(temp.data(), temp.size());
 		tgzf_controller.Clear();
-		temp.deleteAll();
 
 		return true;
 	}

@@ -26,7 +26,7 @@ public:
 	IndexController(const char* const data){ memcpy(this, data, sizeof(BYTE)); }
 
 private:
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& controller){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& controller){
 		stream.write((const char*)&controller, sizeof(BYTE));
 		return stream;
 	}
@@ -141,7 +141,7 @@ public:
 	}
 
 private:
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& index){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& index){
 		stream << index.getController();
 		stream << index.getMetaContainer();
 		stream << index.getContainer();

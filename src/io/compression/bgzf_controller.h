@@ -1,7 +1,7 @@
 #ifndef BGZF_CONTROLLER_H_
 #define BGZF_CONTROLLER_H_
 
-#include "../basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "gz_header.h"
 #include "support/helpers.h"
 #include "third_party/zlib/zconf.h"
