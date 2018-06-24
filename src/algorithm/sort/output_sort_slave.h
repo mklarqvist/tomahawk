@@ -57,7 +57,7 @@ private:
 
 		// iterator
 		const U64 n_entries_limit = this->n_memory_limit_ / sizeof(entry_type);
-		tgzf_iterator it(this->stream_, n_entries_limit, this->workload_.first, this->workload_.second);
+		tgzf_iterator it(this->stream_, 1024, this->workload_.first, this->workload_.second);
 		bool finished_ = false;
 
 		if(!this->stream_.good()){

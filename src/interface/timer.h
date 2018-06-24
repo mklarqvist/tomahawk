@@ -1,6 +1,8 @@
 #ifndef TIMER_H_
 #define TIMER_H_
 
+#include <string>
+#include <iostream>
 #include <chrono>
 
 namespace tomahawk{

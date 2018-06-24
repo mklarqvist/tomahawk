@@ -776,10 +776,10 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 	// open first one
 	if(!SILENT)
-		std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << "..." << std::endl;
+		std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[0] << " (" << 1 << "/" << files.size() << ")" << "..." << std::endl;
 
 	if(!this->open(files[0])){
-		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << "..." << std::endl;
+		std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[0] << " (" << 1 << "/" << files.size() << ")" << "..." << std::endl;
 		return false;
 	}
 
@@ -802,11 +802,11 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 
 	for(U32 i = 1; i < files.size(); ++i){
 		if(!SILENT)
-			std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << "..." << std::endl;
+			std::cerr << helpers::timestamp("LOG", "CONCAT") << "Opening input: " << files[i] << " (" << i+1 << "/" << files.size() << ")" << "..." << std::endl;
 
 		self_type second_reader;
 		if(!second_reader.open(files[i])){
-			std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << "..." << std::endl;
+			std::cerr << helpers::timestamp("ERROR","TWO") << "Failed to parse: " << files[i] << " (" << i+1 << "/" << files.size() << ")" << "..." << std::endl;
 			return false;
 		}
 

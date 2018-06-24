@@ -114,7 +114,7 @@ void OutputWriterFile::writeFinal(void){
 	this->stream->flush();
 }
 
-void OutputWriterFile::flush(void){
+void OutputWriterFile::flush(const bool lock){
 	if(this->buffer.size() > 0){
 		if(!this->compressor.Deflate(this->buffer)){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -127,7 +127,7 @@ void OutputWriterFile::flush(void){
 		if(this->buffer.size() > l_largest_uncompressed)
 			this->l_largest_uncompressed = this->buffer.size();
 
-		this->spin_lock->lock();
+		if(lock) this->spin_lock->lock();
 		this->index_entry.byte_offset = (U64)this->stream->tellp();
 		this->index_entry.uncompressed_size = this->buffer.size();
 		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
@@ -138,7 +138,7 @@ void OutputWriterFile::flush(void){
 		//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
 		++this->n_blocks;
 
-		this->spin_lock->unlock();
+		if(lock) this->spin_lock->unlock();
 
 		this->buffer.reset();
 		this->compressor.Clear();
@@ -147,11 +147,40 @@ void OutputWriterFile::flush(void){
 }
 
 void OutputWriterFile::operator<<(const container_type& container){
-	for(size_type i = 0; i < container.size(); ++i)
-		this->buffer << container[i];
+	// 1: container.size() == N
+	// 2: reserve memory for compressor == N
+	// 4: compressed output ~= N
 
-	this->n_entries += buffer.size() / sizeof(entry_type);
-	*this << this->buffer;
+	this->n_entries += container.size();
+	if(container.size() > 0){
+		if(!this->compressor.Deflate((void*)&container[0], container.size()*sizeof(entry_type))){
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			exit(1);
+		}
+
+		if(container.size()*sizeof(entry_type) > l_largest_uncompressed)
+			this->l_largest_uncompressed = container.size()*sizeof(entry_type);
+
+		// Lock
+		this->spin_lock->lock();
+
+		this->bytes_added   += container.size()*sizeof(entry_type);
+		this->bytes_written += this->compressor.buffer.size();
+
+		this->index_entry.byte_offset       = (U64)this->stream->tellp();
+		this->index_entry.uncompressed_size = container.size()*sizeof(entry_type);
+		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
+		this->index_entry.byte_offset_end   = (U64)this->stream->tellp();
+		this->index_entry.n_variants        = container.size();
+		this->index_->getContainer()       += this->index_entry;
+		++this->n_blocks;
+
+		// Unlock
+		this->spin_lock->unlock();
+
+		this->compressor.Clear();
+		this->index_entry.reset();
+	}
 }
 
 void OutputWriterFile::operator<<(buffer_type& buffer){

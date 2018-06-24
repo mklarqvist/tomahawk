@@ -89,7 +89,7 @@ public:
 	virtual bool open(const std::string& output_file) =0;
 	virtual int writeHeaders(twk_header_type& twk_header) =0;
 	virtual void writeFinal(void) =0;
-	virtual void flush(void) =0;
+	virtual void flush(const bool lock = true) =0;
 
 	inline void setUpperOnly(const bool set){ this->upper_only_ = set; }
 	inline const bool& hasUpperOnly(void) const{return(this->upper_only_); }
@@ -146,7 +146,7 @@ public:
 	bool open(const std::string& output_file);
 	int writeHeaders(twk_header_type& twk_header);
 	void writeFinal(void);
-	void flush(void);
+	void flush(const bool lock = true);
 
 
 	void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
@@ -229,16 +229,15 @@ public:
 
 	void writeFinal(void){}
 
-	void flush(void){
+	void flush(const bool lock = true){
 		if(this->buffer.size() > 0){
 			this->bytes_added   += this->buffer.size();
 			this->bytes_written += this->buffer.size();
 
-			this->spin_lock->lock();
+			if(lock) this->spin_lock->lock();
 			std::cout.write(this->buffer.data(), this->buffer.size());
 			++this->n_blocks;
-
-			this->spin_lock->unlock();
+			if(lock) this->spin_lock->unlock();
 
 			this->buffer.reset();
 		}
