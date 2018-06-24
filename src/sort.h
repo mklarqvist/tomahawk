@@ -38,10 +38,10 @@ void sort_usage(void){
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file (required)\n"
-	"  -L FLOAT  memory limit in MB (default: 10)\n"
+	"  -L FLOAT  memory limit in MB (default: 1e6)\n"
 	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
 	"  -M        merge [null]\n"
-	"  -b INT    block size in MB when merging (default: 10)\n"
+	"  -b INT    block size in MB when merging (default: 1e6)\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
@@ -64,8 +64,8 @@ int sort(int argc, char** argv){
 
 	// Parameter defaults
 	std::string input, output;
-	double memory_limit = 10e6;
-	double block_size   = 10e6;
+	double memory_limit = 1e6;
+	double block_size   = 1e6;
 	bool merge = false;
 	int threads = std::thread::hardware_concurrency();
 
@@ -91,14 +91,14 @@ int sort(int argc, char** argv){
 			output = std::string(optarg);
 			break;
 		case 'L':
-			memory_limit = atof(optarg) * 1e6;
+			memory_limit = atof(optarg);
 			if(memory_limit <= 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
 				return(1);
 			}
 			break;
 		case 'b':
-			block_size = atoi(optarg) * 1e6;
+			block_size = atoi(optarg);
 			if(block_size <= 0){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
 				return(1);
