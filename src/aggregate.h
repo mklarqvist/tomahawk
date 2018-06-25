@@ -45,6 +45,7 @@ void aggregate_usage(void){
 	"  -Y INT-INT    Y-axis data range (from, to)\n"
 	"  -d STRING     Data field to aggregate: May be one of {R, R2, D, DPrime, p1, p2, q1, q2, P}(required)\n"
 	"  -f STRING     Aggregation function: May be one of {count, min, max, mean, sd}(required)\n"
+	"  -T STRING     Transformation function: May be one of {linear, squared, sqrt}(required)\n"
 	"  -s            Hide all program messages [null]\n\n";
 }
 
@@ -56,12 +57,16 @@ int aggregate(int argc, char** argv){
 
 	static struct option long_options[] = {
 		{"input",  required_argument, 0, 'i' },
+		{"scene-x",  required_argument, 0, 'x' },
+		{"scene-y",  required_argument, 0, 'y' },
 		{"silent", no_argument,       0, 's' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
 	std::string input;
+	U32 scene_x_dimension = 1000;
+	U32 scene_y_dimension = 1000;
 
 	int c = 0;
 	int long_index = 0;
@@ -81,6 +86,14 @@ int aggregate(int argc, char** argv){
 		case 'i':
 			input = std::string(optarg);
 			break;
+
+		case 'x':
+			scene_x_dimension = atoi(optarg);
+			break;
+
+		case 'y':
+			scene_y_dimension = atoi(optarg);
+			break;
 		}
 	}
 
@@ -96,7 +109,7 @@ int aggregate(int argc, char** argv){
 
 	tomahawk::TomahawkOutputReader reader;
 	if(!reader.open(input))  return 1;
-	if(!reader.statistics()) return 1;
+	if(!reader.aggregate(scene_x_dimension, scene_y_dimension)) return 1;
 
 
 	return 0;

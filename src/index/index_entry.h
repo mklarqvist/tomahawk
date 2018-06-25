@@ -63,6 +63,13 @@ public:
 		return(*this);
 	}
 
+	void print(std::ostream& stream) const{
+		stream << this->byte_offset << "->" << this->byte_offset_end <<
+				" contig: " << this->contigID <<
+				" min-max: " << this->min_position << "->" << this->max_position <<
+				" variants: " << this->n_variants << " size: " << this->uncompressed_size;
+	}
+
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset),       sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset_end),   sizeof(U64));

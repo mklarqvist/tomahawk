@@ -305,6 +305,7 @@ int view(int argc, char** argv){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter a cannot be negative" << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 
 		case 'A':
@@ -373,6 +374,7 @@ int view(int argc, char** argv){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 1 has to be positive..." << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 
 		case '2':
@@ -381,6 +383,7 @@ int view(int argc, char** argv){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 2 has to be positive..." << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 
 		case '3':
@@ -389,6 +392,7 @@ int view(int argc, char** argv){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 3 has to be positive..." << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 
 		case '4':
@@ -397,6 +401,7 @@ int view(int argc, char** argv){
 				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter 4 has to be positive..." << std::endl;
 				return(1);
 			}
+			two_filter.trigger();
 			break;
 		}
 	}

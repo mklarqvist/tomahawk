@@ -2,6 +2,7 @@
 
 ## Major Features And Improvements
 * Concat operation now supports special modes to concatenate large number of files in parallel when the downstream operation is passed to sort (reported by @ekg). This mode is ~30-fold faster / thread and is parallelizable.
+* Introducing the `aggregation` subroutine. Modelled based on the Datashader pipeline Tomahawk can now construct aggregated datasets of billions of points into datasets of pixels that can be plotted using raster operations efficiently.
 
 ## Bug Fixes and Other Changes
 * Bug fixes

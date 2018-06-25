@@ -143,6 +143,7 @@ public:
 	inline filter_type& getFilter(void){ return this->filters_; }
 
 	bool statistics(void);
+	bool aggregate(const U32 scene_x_dimension, const U32 scene_y_dimension);
 
 private:
 	bool ParseHeader(void);

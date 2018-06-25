@@ -1007,4 +1007,107 @@ bool TomahawkOutputReader::statistics(void){
 	return true;
 }
 
+bool TomahawkOutputReader::aggregate(const U32 scene_x_dimension, const U32 scene_y_dimension){
+	assert(this->index_ != nullptr);
+
+	if(this->index_->isSorted() == false){
+		std::cerr << "data is not sorted" << std::endl;
+		return false;
+	}
+
+	if(this->index_->getMetaContainer().size() == 0){
+		std::cerr << "Has no meta index..." << std::endl;
+		return false;
+	}
+
+	typedef const double (entry_type::*value_accessor_function)(void) const;
+
+	// Todo: choose value accessor
+	value_accessor_function value_accessor = &entry_type::getR2;
+
+	SummaryStatistics** matrix = new SummaryStatistics*[scene_x_dimension];
+	for(U32 i = 0; i < scene_x_dimension; ++i) matrix[i] = new SummaryStatistics[scene_y_dimension];
+
+	this->filters_.maxP1 = 5000;
+	this->filters_.trigger();
+
+	U64 cumulative_position = 0;
+	U64* cumulative_offsets = new U64[this->getIndex().getMetaContainer().size()+1];
+	cumulative_offsets[0]   = 0;
+	U64 offset_min          = 0;
+	for(U32 i = 0; i < this->getHeader().magic_.n_contigs; ++i){
+		//const U64 range = this->index_->getMetaContainer().at(i).max_position - this->index_->getMetaContainer().at(i).min_position;
+		if(this->index_->getMetaContainer().at(i).max_position){
+			//cumulative_position += this->getHeader().contigs_[i].n_bases;
+			cumulative_position += this->index_->getMetaContainer().at(i).max_position + 1;
+		}
+		cumulative_offsets[i+1] = cumulative_position;
+		std::cerr << "Cumulative: " << cumulative_position << std::endl;
+	}
+
+	std::cerr << (U32)((double)cumulative_position/scene_x_dimension) << " bases/bin" << std::endl;
+
+	while(this->parseBlock()){
+		OutputContainerReference o = this->getContainerReference();
+
+		for(U32 i = 0; i < o.size(); ++i){
+			U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension);
+			U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension);
+
+			if(toBin >= scene_y_dimension){
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension) << std::endl;
+
+				std::cerr << "Y: " << fromBin << "->" << toBin << std::endl;
+				//exit(1);
+				toBin = scene_y_dimension - 1;
+			}
+
+			if(fromBin >= scene_x_dimension){
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension) << std::endl;
+
+				std::cerr << "X: " << fromBin << "->" << toBin << std::endl;
+				//exit(1);
+				fromBin = scene_x_dimension - 1;
+			}
+
+			//std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_length) << std::endl;
+			//std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_length) << std::endl;
+
+			//if(this->filters_.filter(o[i])) continue;
+			//const double val = (o[i].*value_accessor)();
+			matrix[fromBin][toBin] += (o[i].*value_accessor)();
+			//std::cerr << val << "\t" << pow(val,2) << std::endl;
+		}
+	}
+
+	for(U32 i = 0; i < scene_x_dimension; ++i){
+		//std::cout << i << "/" << 0 << ":" << matrix[i][0].R2 << std::endl;
+		matrix[i][0].calculate();
+		// Mask values with a total number of observations <= 5
+		//if(matrix[i][0].n_total > 1000)
+		//std::cout << matrix[i][0].mean;
+		//else std::cout << 0;
+		std::cout << matrix[i][0].n_total;
+
+		for(U32 j = 1; j < scene_y_dimension; ++j){
+			matrix[i][j].calculate();
+			// Mask values with a total number of observations <= 5
+			//if(matrix[i][j].n_total > 1000)
+			//std::cout << '\t' << matrix[i][j].mean;
+			//else std::cout << '\t' << 0;
+			std::cout << "\t" << matrix[i][j].n_total;
+			//std::cout << i << "/" << j << ":" << matrix[i][j].R2 << std::endl;
+		}
+		std::cout.put('\n');
+	}
+	std::cout << std::endl;
+
+	for(U32 i = 0; i < scene_x_dimension; ++i) delete [] matrix[i];
+	delete [] matrix;
+	delete [] cumulative_offsets;
+	return true;
+}
+
 } /* namespace Tomahawk */

@@ -47,7 +47,15 @@ public:
 	template <class T> void operator+=(const T& value){
 		this->total         += value;
 		this->total_squared += value*value;
-		++this->n_total;
+		this->n_total += 1;
+		if(value < this->min) this->min = value;
+		if(value > this->max) this->max = value;
+	}
+
+	template <class T> void add(const T& value, const double& weight = 1){
+		this->total         += value;
+		this->total_squared += value*value;
+		this->n_total       += weight;
 		if(value < this->min) this->min = value;
 		if(value > this->max) this->max = value;
 	}
@@ -71,7 +79,7 @@ public:
 public:
 	double total;
 	double total_squared;
-	U64    n_total;
+	double n_total;
 	double mean;
 	double standard_deviation;
 	double min;

@@ -38,10 +38,8 @@ bool Index::buildMetaIndex(const U32 n_contigs){
 
 	for(U32 i = 1; i < this->getContainer().size(); ++i){
 		if(this->getContainer()[i].contigID != reference_contig){
-			if(this->getContainer()[i].contigID < reference_contig)
-				continue;
-
 			temp_entries[reference_contig] = reference_entry;
+			reference_entry.reset();
 			reference_contig = this->getContainer()[i].contigID;
 			reference_entry.index_begin       = i;
 			reference_entry.index_end         = i + 1;
@@ -50,7 +48,7 @@ bool Index::buildMetaIndex(const U32 n_contigs){
 			reference_entry.n_variants        = this->getContainer()[i].n_variants;
 			reference_entry.uncompressed_size = this->getContainer()[i].uncompressed_size;
 
-		} else {
+		} else {  // Extend
 			++reference_entry.index_end;
 			reference_entry.max_position       = this->getContainer()[i].max_position;
 			reference_entry.n_variants        += this->getContainer()[i].n_variants;
@@ -59,10 +57,7 @@ bool Index::buildMetaIndex(const U32 n_contigs){
 	}
 	temp_entries[reference_contig] = reference_entry;
 
-	for(U32 i = 0; i < n_contigs; ++i){
-		//std::cerr << temp_entries[i] << std::endl;
-		this->meta_container_ += temp_entries[i];
-	}
+	for(U32 i = 0; i < n_contigs; ++i) this->meta_container_ += temp_entries[i];
 	delete [] temp_entries;
 
 	return(true);

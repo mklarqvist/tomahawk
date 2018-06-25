@@ -57,6 +57,17 @@ public:
 	bool operator<=(const self_type& other) const;
 	bool operator==(const self_type& other) const;
 
+	// Accessor functions for use in pointer functions
+	const double getD(void) const{ return(this->D); }
+	const double getDPrime(void) const{ return(this->Dprime); }
+	const double getR(void) const{ return(this->R); }
+	const double getR2(void) const{ return(this->R2); }
+	const double getP1(void) const{ return(this->p1); }
+	const double getP2(void) const{ return(this->p2); }
+	const double getQ1(void) const{ return(this->q1); }
+	const double getQ2(void) const{ return(this->q2); }
+
+
 	// Comparator function: inverse of lesser comparator
 	inline bool operator> (const self_type& other) const{ return(!((*this) <  other)); }
 	inline bool operator>=(const self_type& other) const{ return(!((*this) <= other)); }
