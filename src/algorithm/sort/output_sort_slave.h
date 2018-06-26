@@ -15,7 +15,7 @@ class OutputSortSlave {
 private:
 	typedef OutputSortSlave       self_type;
 	typedef io::OutputEntry       entry_type;
-	typedef io::OutputWriterFile  writer_type;
+	typedef io::OutputWriterBinaryFile  writer_type;
 	typedef TomahawkOutputReader  reader_type;
 	typedef io::TGZFController    tgzf_controller_type;
 	typedef io::BasicBuffer       buffer_type;

@@ -55,7 +55,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_sortCommand=" + helpers::program_string();
 
-	io::OutputWriterFile writer;
+	io::OutputWriterBinaryFile writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << helpers::timestamp("ERROR","SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
@@ -123,7 +123,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_mergeSortCommand=" + helpers::program_string();
 
-	io::OutputWriterFile writer;
+	io::OutputWriterBinaryFile writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << helpers::timestamp("ERROR", "SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;

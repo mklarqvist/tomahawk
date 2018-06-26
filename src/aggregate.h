@@ -35,7 +35,7 @@ void aggregate_usage(void){
 	"        subroutines: parallel-partial sort and a merge-sort. First sort the file without -M\n"
 	"        triggered and then run sort on that output with -M flag to perform a k-way merge sort\n"
 	"        using the partially block-sorted data.\n"
-	"        Note that combining -L and -t incur at least O(L*t) memory!\n"
+	"        Note that combining -L and -t incur at least O(L*t+L) memory!\n"
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE       input Tomahawk output file (TWO; required)\n"
@@ -44,7 +44,7 @@ void aggregate_usage(void){
 	"  -X INT-INT    X-axis data range (from, to)\n"
 	"  -Y INT-INT    Y-axis data range (from, to)\n"
 	"  -d STRING     Data field to aggregate: May be one of {R, R2, D, DPrime, p1, p2, q1, q2, P}(required)\n"
-	"  -f STRING     Aggregation function: May be one of {count, min, max, mean, sd}(required)\n"
+	"  -f STRING     Aggregation function: May be one of {count, min, max, mean, sd, sum, sum-squared}(required)\n"
 	"  -T STRING     Transformation function: May be one of {linear, squared, sqrt}(required)\n"
 	"  -s            Hide all program messages [null]\n\n";
 }
@@ -56,17 +56,23 @@ int aggregate(int argc, char** argv){
 	}
 
 	static struct option long_options[] = {
-		{"input",  required_argument, 0, 'i' },
-		{"scene-x",  required_argument, 0, 'x' },
-		{"scene-y",  required_argument, 0, 'y' },
-		{"silent", no_argument,       0, 's' },
+		{"input",           required_argument, 0, 'i' },
+		{"scene-x",         required_argument, 0, 'x' },
+		{"scene-y",         required_argument, 0, 'y' },
+		{"target-field",    required_argument, 0, 'd' },
+		{"reduction-field", required_argument, 0, 'f' },
+		{"silent",          no_argument,       0, 's' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
-	std::string input;
-	U32 scene_x_dimension = 1000;
-	U32 scene_y_dimension = 1000;
+	std::string input, temp;
+	tomahawk::support::aggregation_parameters parameters;
+
+	S32 scene_x_pixels     = -1;
+	S32 scene_y_pixels     = -1;
+	S32 aggregation_target = -1;
+	S32 reduction_target   = -1;
 
 	int c = 0;
 	int long_index = 0;
@@ -77,22 +83,74 @@ int aggregate(int argc, char** argv){
 					argv[0], optopt);
 			break;
 
-		case '?':
-		default:
-			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n",
-					argv[0], optopt);
-			break;
-
 		case 'i':
 			input = std::string(optarg);
 			break;
 
 		case 'x':
-			scene_x_dimension = atoi(optarg);
+			parameters.scene_x_pixels = atoi(optarg);
+			scene_x_pixels = atoi(optarg);
 			break;
 
 		case 'y':
-			scene_y_dimension = atoi(optarg);
+			parameters.scene_y_pixels = atoi(optarg);
+			scene_y_pixels = atoi(optarg);
+			break;
+
+		case 'd':
+			temp = std::string(optarg);
+			if(strncasecmp("R", temp.data(), 1) == 0 && temp.size() == 1){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_R;
+			} else if(strncasecmp("R2", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_R2;
+			} else if(strncasecmp("D", temp.data(), 1) == 0 && temp.size() == 1){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_D;
+			} else if(strncasecmp("Dprime", temp.data(), 6) == 0 && temp.size() == 6){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_DPrime;
+			} else if(strncasecmp("P", temp.data(), 1) == 0 && temp.size() == 1){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_P_VALUE;
+			} else if(strncasecmp("P1", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_P1;
+			} else if(strncasecmp("P2", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_P2;
+			} else if(strncasecmp("Q1", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_Q1;
+			} else if(strncasecmp("Q2", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_Q2;
+			} else if(strncasecmp("logP", temp.data(), 4) == 0 && temp.size() == 4){
+				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_LOG_P_VALUE;
+			} else {
+				return(1);
+			}
+			aggregation_target = parameters.aggregation_target;
+			break;
+
+		case 'f':
+			// count, min, max, mean, sd, sum, sum-squared
+			temp = std::string(optarg);
+			if(strncasecmp("count", temp.data(), 5) == 0 && temp.size() == 5){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_COUNT;
+			} else if(strncasecmp("min", temp.data(), 3) == 0 && temp.size() == 3){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_MIN;
+			} else if(strncasecmp("max", temp.data(), 3) == 0 && temp.size() == 3){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_MAX;
+			} else if(strncasecmp("sd", temp.data(), 2) == 0 && temp.size() == 2){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_SD;
+			} else if(strncasecmp("sum", temp.data(), 3) == 0 && temp.size() == 3){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_SUM;
+			} else if(strncasecmp("sum-squared", temp.data(), 11) == 0 && temp.size() == 11){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_SUM_SQUARED;
+			} else if(strncasecmp("mean", temp.data(), 4) == 0 && temp.size() == 4){
+				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_MEAN;
+			} else {
+				return(1);
+			}
+			reduction_target = parameters.reduction_target;
+			break;
+
+		case '?':
+		default:
+			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n", argv[0], optopt);
 			break;
 		}
 	}
@@ -102,14 +160,34 @@ int aggregate(int argc, char** argv){
 		return(1);
 	}
 
+	if(scene_x_pixels == -1){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Requires scene-X dimension..." << std::endl;
+		return(1);
+	}
+
+	if(scene_y_pixels == -1){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Requires scene-Y dimension..." << std::endl;
+		return(1);
+	}
+
+	if(reduction_target == -1){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Requires reduction target..." << std::endl;
+		return(1);
+	}
+
+	if(aggregation_target == -1){
+		std::cerr << tomahawk::helpers::timestamp("ERROR") << "Requires aggregation target..." << std::endl;
+		return(1);
+	}
+
 	if(!SILENT){
 		programMessage();
-		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling stats..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling aggregation..." << std::endl;
 	}
 
 	tomahawk::TomahawkOutputReader reader;
 	if(!reader.open(input))  return 1;
-	if(!reader.aggregate(scene_x_dimension, scene_y_dimension)) return 1;
+	if(!reader.aggregate(parameters)) return 1;
 
 
 	return 0;

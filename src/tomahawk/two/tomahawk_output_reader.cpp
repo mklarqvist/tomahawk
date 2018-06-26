@@ -9,20 +9,22 @@
 #include "support/helpers.h"
 #include "math/output_statistics.h"
 #include "tomahawk_output_stats.h"
+#include "aggregation_parameters.h"
 
 namespace tomahawk {
 
 TomahawkOutputReader::TomahawkOutputReader() :
-		filesize_(0),
-		offset_end_of_data_(0),
-		showHeader_(true),
-		output_json_(false),
-		index_(nullptr),
-		buffer_(3000000),
-		data_(3000000),
-		outputBuffer_(3000000),
-		interval_tree(nullptr),
-		interval_tree_entries(nullptr)
+	filesize_(0),
+	offset_end_of_data_(0),
+	showHeader_(true),
+	output_json_(false),
+	index_(nullptr),
+	buffer_(3000000),
+	data_(3000000),
+	outputBuffer_(3000000),
+	interval_tree(nullptr),
+	interval_tree_entries(nullptr),
+	writer_(nullptr)
 {
 
 }
@@ -36,6 +38,7 @@ TomahawkOutputReader::~TomahawkOutputReader(){
 		}
 		delete [] this->interval_tree;
 	}
+	delete this->writer_;
 }
 
 bool TomahawkOutputReader::open(const std::string input){
@@ -551,11 +554,13 @@ bool TomahawkOutputReader::__viewOnly(void){
 	extra.push_back("##tomahawk_viewCommand=" + helpers::program_string());
 	extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=NO regions=NO");
 
-	if(this->showHeader_ == true)
-		this->printHeader(std::cout, extra);
+	//if(this->showHeader_ == true)
+	//	this->printHeader(std::cout, extra);
 
 	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
 
+	this->writer_ = new writer_ld_stream_type;
+	this->writer_->writeHeaders(this->getHeader());
 
 	// Natural output required parsing
 	size_t n_total = 0;
@@ -575,11 +580,17 @@ bool TomahawkOutputReader::__viewOnly(void){
 			//if(o.size() == 0) break;
 
 			(o[0].*a)(std::cout, this->getHeader().contigs_);
+			//*this->writer_ << o[0];
 			for(U32 i = 1; i < o.size(); ++i){
 				//std::cout << ",\n";
+				//*this->writer_ << o[i];
 				(o[i].*a)(std::cout, this->getHeader().contigs_);
 			}
 		}
+
+	this->writer_->flush();
+	this->writer_->writeFinal();
+	this->writer_->flush();
 
 		//std::cout << "]\n}\n";
 		//std::cerr << "total: " << n_total << std::endl;
@@ -788,7 +799,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	for(U32 i = 0; i < files.size(); ++i)
 		this->getHeader().getLiterals() += files[i] + ',';
 
-	io::OutputWriterFile writer;
+	io::OutputWriterBinaryFile writer;
 	if(!writer.open(output)){
 		std::cerr << helpers::timestamp("ERROR","SORT") << "Failed to open: " << output << "..." << std::endl;
 		return false;
@@ -1007,7 +1018,7 @@ bool TomahawkOutputReader::statistics(void){
 	return true;
 }
 
-bool TomahawkOutputReader::aggregate(const U32 scene_x_dimension, const U32 scene_y_dimension){
+bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters){
 	assert(this->index_ != nullptr);
 
 	if(this->index_->isSorted() == false){
@@ -1020,16 +1031,39 @@ bool TomahawkOutputReader::aggregate(const U32 scene_x_dimension, const U32 scen
 		return false;
 	}
 
-	typedef const double (entry_type::*value_accessor_function)(void) const;
+	typedef double (entry_type::*value_accessor_function)(void) const;
+	typedef double (SummaryStatistics::*reduction_function)(void) const;
 
-	// Todo: choose value accessor
 	value_accessor_function value_accessor = &entry_type::getR2;
+	reduction_function reduction_accessor  = &SummaryStatistics::getMean;
 
-	SummaryStatistics** matrix = new SummaryStatistics*[scene_x_dimension];
-	for(U32 i = 0; i < scene_x_dimension; ++i) matrix[i] = new SummaryStatistics[scene_y_dimension];
+	switch(parameters.aggregation_target){
+	case(support::TWK_AGGREGATE_COUNT):   value_accessor = &entry_type::getR2; break;
+	case(support::TWK_AGGREGATE_D):       value_accessor = &entry_type::getD;  break;
+	case(support::TWK_AGGREGATE_DPrime):  value_accessor = &entry_type::getDPrime; break;
+	case(support::TWK_AGGREGATE_R):       value_accessor = &entry_type::getR;  break;
+	case(support::TWK_AGGREGATE_R2):      value_accessor = &entry_type::getR2; break;
+	case(support::TWK_AGGREGATE_P1):      value_accessor = &entry_type::getP1; break;
+	case(support::TWK_AGGREGATE_P2):      value_accessor = &entry_type::getP2; break;
+	case(support::TWK_AGGREGATE_Q1):      value_accessor = &entry_type::getQ1; break;
+	case(support::TWK_AGGREGATE_Q2):      value_accessor = &entry_type::getQ2; break;
+	case(support::TWK_AGGREGATE_P_VALUE): value_accessor = &entry_type::getP;  break;
+	case(support::TWK_AGGREGATE_LOG_P_VALUE): value_accessor = &entry_type::getLog10P;  break;
+	}
 
-	this->filters_.maxP1 = 5000;
-	this->filters_.trigger();
+
+	switch(parameters.reduction_target){
+	case(support::TWK_AGGREGATE_REDUCE_COUNT): reduction_accessor = &SummaryStatistics::getCount; break;
+	case(support::TWK_AGGREGATE_REDUCE_MEAN):  reduction_accessor = &SummaryStatistics::getMean;  break;
+	case(support::TWK_AGGREGATE_REDUCE_MIN):   reduction_accessor = &SummaryStatistics::getMin;   break;
+	case(support::TWK_AGGREGATE_REDUCE_MAX):   reduction_accessor = &SummaryStatistics::getMax;   break;
+	case(support::TWK_AGGREGATE_REDUCE_SD):    reduction_accessor = &SummaryStatistics::getStandardDeviation; break;
+	case(support::TWK_AGGREGATE_REDUCE_SUM):   reduction_accessor = &SummaryStatistics::getTotal; break;
+	case(support::TWK_AGGREGATE_REDUCE_SUM_SQUARED): reduction_accessor = &SummaryStatistics::getTotalSquared; break;
+	}
+
+	SummaryStatistics** matrix = new SummaryStatistics*[parameters.scene_x_pixels];
+	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) matrix[i] = new SummaryStatistics[parameters.scene_y_pixels];
 
 	U64 cumulative_position = 0;
 	U64* cumulative_offsets = new U64[this->getIndex().getMetaContainer().size()+1];
@@ -1042,34 +1076,34 @@ bool TomahawkOutputReader::aggregate(const U32 scene_x_dimension, const U32 scen
 			cumulative_position += this->index_->getMetaContainer().at(i).max_position + 1;
 		}
 		cumulative_offsets[i+1] = cumulative_position;
-		std::cerr << "Cumulative: " << cumulative_position << std::endl;
+		//std::cerr << "Cumulative: " << cumulative_position << std::endl;
 	}
 
-	std::cerr << (U32)((double)cumulative_position/scene_x_dimension) << " bases/bin" << std::endl;
+	std::cerr << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases/bin" << std::endl;
 
 	while(this->parseBlock()){
 		OutputContainerReference o = this->getContainerReference();
 
 		for(U32 i = 0; i < o.size(); ++i){
-			U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension);
-			U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension);
+			U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels);
+			U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels);
 
-			if(toBin >= scene_y_dimension){
-				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension) << std::endl;
-				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension) << std::endl;
+			if(toBin >= parameters.scene_y_pixels){
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels) << std::endl;
 
 				std::cerr << "Y: " << fromBin << "->" << toBin << std::endl;
 				//exit(1);
-				toBin = scene_y_dimension - 1;
+				toBin = parameters.scene_y_pixels - 1;
 			}
 
-			if(fromBin >= scene_x_dimension){
-				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_dimension) << std::endl;
-				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_dimension) << std::endl;
+			if(fromBin >= parameters.scene_x_pixels){
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels) << std::endl;
 
 				std::cerr << "X: " << fromBin << "->" << toBin << std::endl;
 				//exit(1);
-				fromBin = scene_x_dimension - 1;
+				fromBin = parameters.scene_x_pixels - 1;
 			}
 
 			//std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_length) << std::endl;
@@ -1082,31 +1116,32 @@ bool TomahawkOutputReader::aggregate(const U32 scene_x_dimension, const U32 scen
 		}
 	}
 
-	for(U32 i = 0; i < scene_x_dimension; ++i){
+	for(U32 i = 0; i < parameters.scene_x_pixels; ++i){
 		//std::cout << i << "/" << 0 << ":" << matrix[i][0].R2 << std::endl;
 		matrix[i][0].calculate();
 		// Mask values with a total number of observations <= 5
 		//if(matrix[i][0].n_total > 1000)
-		//std::cout << matrix[i][0].mean;
+		std::cout << (matrix[i][0].*reduction_accessor)();
 		//else std::cout << 0;
-		std::cout << matrix[i][0].n_total;
+		//std::cout << matrix[i][0].n_total;
 
-		for(U32 j = 1; j < scene_y_dimension; ++j){
+		for(U32 j = 1; j < parameters.scene_y_pixels; ++j){
 			matrix[i][j].calculate();
 			// Mask values with a total number of observations <= 5
 			//if(matrix[i][j].n_total > 1000)
-			//std::cout << '\t' << matrix[i][j].mean;
+			std::cout << '\t' << (matrix[i][j].*reduction_accessor)();
 			//else std::cout << '\t' << 0;
-			std::cout << "\t" << matrix[i][j].n_total;
+			//std::cout << "\t" << matrix[i][j].n_total;
 			//std::cout << i << "/" << j << ":" << matrix[i][j].R2 << std::endl;
 		}
 		std::cout.put('\n');
 	}
 	std::cout << std::endl;
 
-	for(U32 i = 0; i < scene_x_dimension; ++i) delete [] matrix[i];
+	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) delete [] matrix[i];
 	delete [] matrix;
 	delete [] cumulative_offsets;
+
 	return true;
 }
 

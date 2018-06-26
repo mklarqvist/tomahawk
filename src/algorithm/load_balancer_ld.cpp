@@ -583,11 +583,11 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 		for(U32 i = 0; i < cutSize; ++i){
 			for(U32 j = i; j < cutSize; ++j){
 				if(j + 1 == cutSize){
-					//std::cerr << "last one: " << rowLength*i << "->" << reader.getIndex().getContainer().size() << ", " << rowLength*j << "->" << reader.getIndex().getContainer().size() << std::endl;
-					this->blocks.push_back(value_type(rowLength*i, reader.getIndex().getContainer().size(), rowLength*j, reader.getIndex().getContainer().size()));
+					//std::cerr << this->blocks.size() << ": last one: " << rowLength*i << "->" << (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)) << ", " << rowLength*j << "->" << reader.getIndex().getContainer().size() << std::endl;
+					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, reader.getIndex().getContainer().size()));
 				} else {
-					//std::cerr << "normal: " << rowLength*i << "->" << rowLength*(i+1) << ", " << rowLength*j << "->" << rowLength*(j+1) << std::endl;
-					this->blocks.push_back(value_type(rowLength*i, rowLength*(i+1), rowLength*j, rowLength*(j+1)));
+					//std::cerr << this->blocks.size() << ": normal: " << rowLength*i << "->" << (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)) << ", " << rowLength*j << "->" << rowLength*(j+1) << std::endl;
+					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, rowLength*(j+1)));
 				}
 				++total;
 			}

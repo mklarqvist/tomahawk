@@ -54,7 +54,7 @@ public:
 	bool parse(reader& stream);
 	bool parse(const char* const data, const U32& length);
 
-	bool writeTGZFLiterals(std::ofstream& stream) const{
+	bool writeTGZFLiterals(std::ostream& stream) const{
 		buffer_type temp;
 		tgzf_type tgzf_controller;
 

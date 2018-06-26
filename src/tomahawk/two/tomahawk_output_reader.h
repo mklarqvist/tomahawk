@@ -16,10 +16,12 @@
 #include "tomahawk/output_container.h"
 #include "tomahawk/output_container_reference.h"
 #include "tomahawk/two/output_entry.h"
+#include "tomahawk/two/aggregation_parameters.h"
 #include "output_filter.h"
 #include "index/index.h"
 #include "index/footer.h"
 #include "index/tomahawk_header.h"
+#include "io/output_writer.h"
 
 namespace tomahawk {
 
@@ -40,6 +42,11 @@ private:
 	typedef totempole::Footer         footer_type;
 	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef hash::HashTable<std::string, U32> hash_table;
+
+	typedef io::OutputWriterInterface    writer_type;
+	typedef io::OutputWriterBinaryStream writer_binary_stream_type;
+	typedef io::OutputWriterBinaryFile   writer_binary_file_type;
+	typedef io::OutputWriterStdOut       writer_ld_stream_type;
 
 public:
 	TomahawkOutputReader();
@@ -143,7 +150,7 @@ public:
 	inline filter_type& getFilter(void){ return this->filters_; }
 
 	bool statistics(void);
-	bool aggregate(const U32 scene_x_dimension, const U32 scene_y_dimension);
+	bool aggregate(support::aggregation_parameters& parameters);
 
 private:
 	bool ParseHeader(void);
@@ -182,6 +189,7 @@ public:
 
 	tree_type** interval_tree; // actual interval trees
 	std::vector<interval_type>* interval_tree_entries; // entries for interval trees
+	writer_type* writer_;
 };
 
 } /* namespace Tomahawk */

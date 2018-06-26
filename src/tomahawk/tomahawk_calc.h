@@ -56,7 +56,7 @@ bool TomahawkCalc::Calculate(){
 	if(write_stdout)
 		writer = new io::OutputWriterStdOut;
 	else
-		writer = new io::OutputWriterFile;
+		writer = new io::OutputWriterBinaryFile;
 
 	if(!writer->open(this->output_file)){
 		std::cerr << helpers::timestamp("ERROR", "IO") << "Failed to open..." << std::endl;
@@ -139,7 +139,7 @@ bool TomahawkCalc::Calculate(){
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
 		if(write_stdout) thread_writers[i] = new io::OutputWriterStdOut(*reinterpret_cast<io::OutputWriterStdOut*>(writer));
-		else thread_writers[i] = new io::OutputWriterFile(*reinterpret_cast<io::OutputWriterFile*>(writer));
+		else thread_writers[i] = new io::OutputWriterBinaryFile(*reinterpret_cast<io::OutputWriterBinaryFile*>(writer));
 		slaves[i] = new LDSlave<T>(references, thread_writers[i], this->progress, this->parameters, this->balancer.thread_distribution[i]);
 		if(!SILENT) std::cerr << '.';
 	}
@@ -198,7 +198,7 @@ bool TomahawkCalc::Calculate(){
 		writer_file_instance->flush();
 		writer_file_instance->writeFinal();
 	} else {
-		io::OutputWriterFile* writer_file_instance = reinterpret_cast<io::OutputWriterFile*>(writer);
+		io::OutputWriterBinaryFile* writer_file_instance = reinterpret_cast<io::OutputWriterBinaryFile*>(writer);
 		writer_file_instance->flush();
 		writer_file_instance->writeFinal();
 	}

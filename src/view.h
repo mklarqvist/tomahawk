@@ -34,9 +34,7 @@ void view_usage(void){
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
-	//"  -o FILE   output file (- for stdout; default: -)\n"
 	"  -h/H      (twk/two) header only / no header\n"
-	//"  -O char   output type: b for TWO format, n for tab-delimited format\n"
 	"  -N        output in tab-delimited text format (see -O)\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
@@ -49,6 +47,8 @@ void view_usage(void){
 
 	// Two parameters
 	"TWO parameters\n"
+	"  -o FILE   output file (- for stdout; default: -)\n"
+	"  -O char   output type: b for TWO format, u for tab-delimited LD format\n"
 	"  -r, --minR2  FLOAT   Pearson's R-squared minimum cut-off value\n"
 	"  -R, --maxR2  FLOAT   Pearson's R-squared maximum cut-off value\n"
 	"  -z, --minR   FLOAT   Pearson's R minimum cut-off value\n"
@@ -121,9 +121,9 @@ int view(int argc, char** argv){
 	// Parameter defaults
 	std::string input, output;
 	tomahawk::OutputFilter two_filter;
-	bool outputHeader = true;
+	bool outputHeader     = true;
 	bool outputHeaderOnly = false;
-	bool dropGenotypes = false;
+	bool dropGenotypes    = false;
 	std::vector<std::string> filter_regions;
 	//bool output_JSON = false;
 

@@ -136,7 +136,7 @@ int TomahawkHeader::write(std::ostream& stream){
 
 	//std::cerr << helpers::timestamp("DEBUG") << this->magic_.l_header << "->" << this->magic_.l_header_uncompressed << '\t' << buffer.size() << "/" << buffer.capacity() << std::endl;
 
-	return(1);
+	return(tgzf_controller.buffer.size());
 }
 
 const bool TomahawkHeader::getSample(const std::string& sample_name, const std::string*& return_target) const{

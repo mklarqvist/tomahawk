@@ -84,6 +84,8 @@ public:
 		return(*this);
 	}
 
+	virtual void operator<<(const entry_type& entry) =0;
+
 	//
 	virtual bool open(void) =0;
 	virtual bool open(const std::string& output_file) =0;
@@ -104,6 +106,19 @@ public:
 	 * @param helper   Helper structure used in computing LD. Holds the allele/genotype counts and statistics
 	 */
 	virtual void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper) =0;
+
+	/**<
+	 * Overloaded operator for adding an entire container of `two` entries
+	 * @param container Target container of entries
+	 */
+	virtual void operator<<(const container_type& container) =0;
+
+	/**<
+	 * Overloaded operator for adding an entire buffer of `two` entries
+	 * @param buffer Target buffer of entries
+	 */
+	virtual void operator<<(buffer_type& buffer) =0;
+
 
 protected:
 	bool             owns_pointers;
@@ -131,16 +146,16 @@ protected:
  * OutputWriter by invoking the copy-ctor and borrowing pointers from the
  * main instance.
  */
-class OutputWriterFile : public OutputWriterInterface{
+class OutputWriterBinaryFile : public OutputWriterInterface{
 private:
 	typedef OutputWriterInterface parent_type;
-	typedef OutputWriterFile      self_type;
+	typedef OutputWriterBinaryFile      self_type;
 
 public:
-	OutputWriterFile(void);
-	OutputWriterFile(std::string input_file);
-	OutputWriterFile(const self_type& other);
-	~OutputWriterFile(void);
+	OutputWriterBinaryFile(void);
+	OutputWriterBinaryFile(std::string input_file);
+	OutputWriterBinaryFile(const self_type& other);
+	~OutputWriterBinaryFile(void);
 
 	bool open(void){ return false; }
 	bool open(const std::string& output_file);
@@ -205,6 +220,74 @@ private:
 	std::string      basePath;
 	std::string      baseName;
 	std::ofstream*   stream;
+};
+
+class OutputWriterBinaryStream : public OutputWriterInterface{
+private:
+	typedef OutputWriterInterface    parent_type;
+	typedef OutputWriterBinaryStream self_type;
+
+public:
+	OutputWriterBinaryStream(void) = default;
+	~OutputWriterBinaryStream(void) = default;
+
+	bool open(void){ return true; }
+	bool open(const std::string& output_file){ return false; }
+	int writeHeaders(twk_header_type& twk_header);
+	void writeFinal(void);
+	void flush(const bool lock = true);
+
+
+	void add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper);
+
+	/**<
+	 * Overloaded operator for adding a single `two` entry
+	 * @param entry Input `two` entry
+	 */
+	inline void operator<<(const entry_type& entry){
+		if(this->index_entry.n_variants == 0){
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		if(this->index_entry.contigID != entry.AcontigID){
+			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		// Check if the buffer has to be flushed after adding this entry
+		if(this->buffer.size() > this->l_flush_limit){
+			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		this->buffer << entry;
+		++this->n_entries;
+		++this->index_entry;
+		this->index_entry.max_position = entry.Aposition;
+	}
+
+	/**<
+	 * Overloaded operator for adding an entire container of `two` entries
+	 * @param container Target container of entries
+	 */
+	void operator<<(const container_type& container);
+
+	/**<
+	 * Overloaded operator for adding an entire buffer of `two` entries
+	 * @param buffer Target buffer of entries
+	 */
+	void operator<<(buffer_type& buffer);
+
+	void writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size);
+
+private:
+	//int64_t     virtual_file_offset_;
 };
 
 class OutputWriterStdOut : public OutputWriterInterface{
@@ -279,6 +362,44 @@ public:
 
 		if(this->buffer.size() > this->l_flush_limit)
 			this->flush();
+	}
+
+	inline void operator<<(const entry_type& entry){
+		if(this->index_entry.n_variants == 0){
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		if(this->index_entry.contigID != entry.AcontigID){
+			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		// Check if the buffer has to be flushed after adding this entry
+		if(this->buffer.size() > this->l_flush_limit){
+			this->flush();
+			this->index_entry.contigID     = entry.AcontigID;
+			this->index_entry.min_position = entry.Aposition;
+			this->index_entry.max_position = entry.Aposition;
+		}
+
+		this->buffer << entry;
+		++this->n_entries;
+		++this->index_entry;
+		this->index_entry.max_position = entry.Aposition;
+	}
+
+	void operator<<(const container_type& container){
+		std::cerr << "Cannot write processed binary block to cout..." << std::endl;
+		exit(1);
+	}
+
+	void operator<<(buffer_type& buffer){
+		std::cerr << "Cannot write processed binary block to cout..." << std::endl;
+		exit(1);
 	}
 };
 
