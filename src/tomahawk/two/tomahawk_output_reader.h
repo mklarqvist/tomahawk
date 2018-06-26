@@ -25,6 +25,32 @@
 
 namespace tomahawk {
 
+enum TOMAHAWK_OUTPUT_FAMILY{
+	TWK_OUTPUT_TWO,
+	TWK_OUTPUT_LD
+};
+
+struct TomahawkOutputReaderParameters{
+public:
+	TomahawkOutputReaderParameters() :
+		showHeader(true),
+		output_json(false),
+		output_type(TWK_OUTPUT_LD),
+		output_file("-")
+	{
+
+	}
+
+	~TomahawkOutputReaderParameters() = default;
+
+public:
+	bool showHeader;
+	bool output_json;
+	TOMAHAWK_OUTPUT_FAMILY output_type;
+	std::string input_file;
+	std::string output_file;
+};
+
 class TomahawkOutputReader {
 private:
 	typedef TomahawkOutputReader      self_type;
@@ -42,6 +68,7 @@ private:
 	typedef totempole::Footer         footer_type;
 	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef hash::HashTable<std::string, U32> hash_table;
+	typedef TomahawkOutputReaderParameters parameters_type;
 
 	typedef io::OutputWriterInterface    writer_type;
 	typedef io::OutputWriterBinaryStream writer_binary_stream_type;
@@ -134,14 +161,12 @@ public:
 	output_container_type getContainerBlock(const U32 blockID);
 	output_container_type getContainerBlock(std::vector<U32> blocks);
 
-	inline void setShowHeader(const bool yes){ this->showHeader_ = yes; }
-	inline const bool getShowHeader(void) const{ return(this->showHeader_); }
 	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
 
 	// Basic operations
 	bool view(void);
-	bool view(const interval_type& interval);
-	bool view(const std::vector<interval_type>& intervals);
+	//bool view(const interval_type& interval);
+	//bool view(const std::vector<interval_type>& intervals);
 
 	// Concatenate
 	bool concat(const std::string& file_list, const std::string& output);
@@ -153,6 +178,26 @@ public:
 	bool aggregate(support::aggregation_parameters& parameters);
 
 private:
+	inline bool openWriter(void){
+		if(this->parameters_.output_type == TWK_OUTPUT_TWO){
+			if(this->parameters_.output_file == "-" || this->parameters_.output_file.size() == 0){
+				this->writer_ = new writer_binary_stream_type;
+				return(true);
+			} else {
+				this->writer_ = new writer_binary_file_type;
+				if(!this->writer_->open(this->parameters_.output_file)){
+					std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open output file handle: " << this->parameters_.output_file << std::endl;
+					return false;
+				}
+				return(true);
+			}
+		} else {
+			this->writer_ = new writer_ld_stream_type;
+			return(true);
+		}
+		return(false);
+	}
+
 	bool ParseHeader(void);
 	bool ParseHeaderExtend(void);
 
@@ -172,10 +217,9 @@ private:
 public:
 	U64            filesize_;  // filesize
 	U64            offset_end_of_data_;
-	bool           showHeader_; // flag to output header or not
-	bool           output_json_;
 	std::ifstream  stream_;    // reader stream
 
+	parameters_type parameters_;
 	header_type    header_;
 	footer_type    footer_;
 	index_type*    index_;

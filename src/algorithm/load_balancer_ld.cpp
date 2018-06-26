@@ -658,8 +658,8 @@ bool LoadBalancerLD::BuildWindow(const reader_type& reader, const U32 threads, c
 		return false;
 	}
 
-	if(n_window_bases < 1000){
-		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Probably not useful to set window size < 1000 bp" << std::endl;
+	if(n_window_bases < 100){
+		std::cerr << helpers::timestamp("ERROR", "BALANCER") << "Probably not useful to set window size < 100 bp" << std::endl;
 		return false;
 	}
 

@@ -84,6 +84,9 @@ int view(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",       required_argument, 0, 'i' },
 		{"output",      optional_argument, 0, 'o' },
+
+		{"output-type", optional_argument, 0, 'O' },
+
 		{"minP",        optional_argument, 0, 'p' },
 		{"maxP",        optional_argument, 0, 'P' },
 		{"minR",        optional_argument, 0, 'z' },
@@ -121,16 +124,18 @@ int view(int argc, char** argv){
 	// Parameter defaults
 	std::string input, output;
 	tomahawk::OutputFilter two_filter;
+	tomahawk::TomahawkOutputReaderParameters two_parameters;
 	bool outputHeader     = true;
 	bool outputHeaderOnly = false;
 	bool dropGenotypes    = false;
 	std::vector<std::string> filter_regions;
 	//bool output_JSON = false;
+	std::string temp;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nulz:Z:1:2:3:4:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:O:r:R:p:P:d:D:x:X:a:A:m:M:f:F:I:HhGsb:B:Nulz:Z:1:2:3:4:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -146,9 +151,20 @@ int view(int argc, char** argv){
 
 		case 'i':
 			input = std::string(optarg);
+			two_parameters.input_file = input;
 			break;
 		case 'o':
 			output = std::string(optarg);
+			two_parameters.output_file = output;
+			break;
+		case 'O':
+			temp = std::string(optarg);
+			if(temp.size() == 1 && temp[0] == 'b')      two_parameters.output_type = tomahawk::TWK_OUTPUT_TWO;
+			else if(temp.size() == 1 && temp[0] == 'u') two_parameters.output_type = tomahawk::TWK_OUTPUT_LD;
+			else {
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unknown value " << temp << " for parameter -O..." << std::endl;
+				return(1);
+			}
 			break;
 		case 'I':
 			filter_regions.push_back(std::string(optarg));
@@ -444,11 +460,9 @@ int view(int argc, char** argv){
 
 	} else if(end == tomahawk::constants::OUTPUT_LD_SUFFIX){
 		tomahawk::TomahawkOutputReader reader;
-		reader.setShowHeader(outputHeader);
+		reader.parameters_ = two_parameters;
 		tomahawk::OutputFilter& filter = reader.getFilter();
 		filter = tomahawk::OutputFilter(two_filter); // use copy ctor to transfer data
-
-		//reader.output_json_ = output_JSON;
 
 		if(!reader.open(input))
 			return 1;

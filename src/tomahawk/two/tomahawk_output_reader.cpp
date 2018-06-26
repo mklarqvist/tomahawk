@@ -16,8 +16,6 @@ namespace tomahawk {
 TomahawkOutputReader::TomahawkOutputReader() :
 	filesize_(0),
 	offset_end_of_data_(0),
-	showHeader_(true),
-	output_json_(false),
 	index_(nullptr),
 	buffer_(3000000),
 	data_(3000000),
@@ -46,6 +44,7 @@ bool TomahawkOutputReader::open(const std::string input){
 		std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "No input filename..." << std::endl;
 		return false;
 	}
+	this->parameters_.input_file = input;
 
 	this->stream_.open(input, std::ios::in | std::ios::binary | std::ios::ate);
 	if(!this->stream_.good()){
@@ -116,7 +115,7 @@ bool TomahawkOutputReader::printHeader(std::ostream& stream, std::vector<std::st
 }
 
 bool TomahawkOutputReader::printHeader(std::ostream& stream) const{
-	if(this->showHeader_ == true){
+	if(this->parameters_.showHeader == true){
 		std::cout << this->getHeader().getLiterals() << '\n';
 		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDprime\tR\tR2\tP\tChiSqModel\tChiSqTable\n";
 	}
@@ -541,6 +540,8 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 }
 
 bool TomahawkOutputReader::view(void){
+	if(!this->openWriter()) return false;
+
 	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else if(this->filters_.any_filter_user_set)
@@ -559,52 +560,38 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	const std::string version_string = std::to_string(this->header_.magic_.major_version) + "." + std::to_string(this->header_.magic_.minor_version) + "." + std::to_string(this->header_.magic_.patch_version);
 
-	this->writer_ = new writer_ld_stream_type;
+	assert(this->writer_ != nullptr);
 	this->writer_->writeHeaders(this->getHeader());
 
 	// Natural output required parsing
-	size_t n_total = 0;
-	//if(this->writer_output_type == WRITER_TYPE::natural){
 	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
-	func a = &entry_type::write;
-	if(this->output_json_){
-		a = &entry_type::writeJSON;
-		std::cout << "{\n\"type\":\"tomahawk\",\n\"sorted\":" << (this->getIndex().getController().isSorted ? "true" : "false") << ",\n\"partial_sort\":" << (this->getIndex().getController().isPartialSorted ? "true" : "false");
-		std::cout <<  ",\n\"version\":\"" << version_string << "\",\n\"data\":[\n";
-	}
+
+	func ld_write_function = &entry_type::write;
 
 	//this->parseBlock();
+	if(this->parameters_.output_type == TWK_OUTPUT_LD){
 		while(this->parseBlock()){
 			OutputContainerReference o = this->getContainerReference();
-			n_total += o.size();
-			//if(o.size() == 0) break;
+			(o[0].*ld_write_function)(std::cout, this->getHeader().contigs_);
 
-			(o[0].*a)(std::cout, this->getHeader().contigs_);
-			//*this->writer_ << o[0];
-			for(U32 i = 1; i < o.size(); ++i){
-				//std::cout << ",\n";
-				//*this->writer_ << o[i];
-				(o[i].*a)(std::cout, this->getHeader().contigs_);
-			}
+			for(U32 i = 1; i < o.size(); ++i)
+				(o[i].*ld_write_function)(std::cout, this->getHeader().contigs_);
+
 		}
+	} else {
+		while(this->parseBlock()){
+			OutputContainerReference o = this->getContainerReference();
+			*this->writer_ << o[0];
+
+			for(U32 i = 1; i < o.size(); ++i)
+				*this->writer_ << o[i];
+		}
+	}
 
 	this->writer_->flush();
 	this->writer_->writeFinal();
 	this->writer_->flush();
 
-		//std::cout << "]\n}\n";
-		//std::cerr << "total: " << n_total << std::endl;
-	//}
-	// Binary output without filtering simply writes it back out
-/*
-	else if(this->writer_output_type == WRITER_TYPE::binary){
-		while(this->parseBlock()){
-			OutputContainerReference o(this->compressed_buffer);
-			//this->writer->write(this->data_);
-			std::cout << o[0] << std::endl;
-		}
-	}
-*/
 	return true;
 }
 
@@ -614,11 +601,14 @@ bool TomahawkOutputReader::__viewRegion(void){
 	if(this->filters_.any_filter_user_set)
 		extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=YES");
 
-	if(this->showHeader_ == true)
-		this->printHeader(std::cout, extra);
+	//if(this->parameters_.showHeader == true)
+	//	this->printHeader(std::cout, extra);
 
 	if(this->interval_tree == nullptr)
 		return false;
+
+	assert(this->writer_ != nullptr);
+	this->writer_->writeHeaders(this->getHeader());
 
 	typedef bool (TomahawkOutputReader::*func_slice)(const entry_type& entry);
 	func_slice region_function = &TomahawkOutputReader::__checkRegionUnsorted;
@@ -653,6 +643,10 @@ bool TomahawkOutputReader::__viewRegion(void){
 		}
 	}
 
+	this->writer_->flush();
+	this->writer_->writeFinal();
+	this->writer_->flush();
+
 	return true;
 }
 
@@ -661,8 +655,11 @@ bool TomahawkOutputReader::__viewFilter(void){
 	extra.push_back("##tomahawk_viewCommand=" + helpers::program_string());
 	extra.push_back("##tomahawk_viewFilters=" + this->filters_.getInterpretedString() + " filter=YES regions=NO");
 
-	if(this->showHeader_ == true)
-		this->printHeader(std::cout, extra);
+	//if(this->parameters_.showHeader == true)
+	//	this->printHeader(std::cout, extra);
+
+	assert(this->writer_ != nullptr);
+	this->writer_->writeHeaders(this->getHeader());
 
 	while(this->parseBlock()){
 		output_container_reference_type o(this->data_);
@@ -672,12 +669,17 @@ bool TomahawkOutputReader::__viewFilter(void){
 			}
 		}
 	} // end while next block
+
+	this->writer_->flush();
+	this->writer_->writeFinal();
+	this->writer_->flush();
+
 	return true;
 }
 
 bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
-	func a = &entry_type::write;
+	func ld_output_function = &entry_type::write;
 
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
@@ -691,7 +693,8 @@ bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							(entry.*a)(std::cout, this->getHeader().contigs_);
+							if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+							else *this->writer_ << entry;
 						}
 
 						return true;
@@ -700,7 +703,8 @@ bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						(entry.*a)(std::cout, this->getHeader().contigs_);
+						if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+						else *this->writer_ << entry;
 					}
 
 					return true;
@@ -715,7 +719,7 @@ bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 
 bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 	typedef std::ostream& (entry_type::*func)(std::ostream& os, const contig_type* const contigs) const;
-	func a = &entry_type::write;
+	func ld_output_function = &entry_type::write;
 
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
@@ -729,7 +733,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							(entry.*a)(std::cout, this->getHeader().contigs_);
+							if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+							else *this->writer_ << entry;
 						}
 
 						return true;
@@ -738,7 +743,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						(entry.*a)(std::cout, this->getHeader().contigs_);
+						if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+						else *this->writer_ << entry;
 					}
 
 					return true;
@@ -759,7 +765,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
-							(entry.*a)(std::cout, this->getHeader().contigs_);
+							if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+							else *this->writer_ << entry;
 						}
 						return true;
 					} // end match
@@ -767,7 +774,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 					if(this->filters_.filter(entry)){
 						//entry.write(std::cout, this->contigs);
 						//*this->writer << entry;
-						(entry.*a)(std::cout, this->getHeader().contigs_);
+						if(this->parameters_.output_type == TWK_OUTPUT_LD) (entry.*ld_output_function)(std::cout, this->getHeader().contigs_);
+						else *this->writer_ << entry;
 					}
 
 					return true;
@@ -1136,7 +1144,7 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 		}
 		std::cout.put('\n');
 	}
-	std::cout << std::endl;
+	std::cout.flush();
 
 	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) delete [] matrix[i];
 	delete [] matrix;

@@ -41,11 +41,11 @@ void aggregate_usage(void){
 	"  -i FILE       input Tomahawk output file (TWO; required)\n"
 	"  -x INT        X-axis scene dimension in pixels (required)\n"
 	"  -y INT        Y-axis scene dimension in pixels (required)\n"
-	"  -X INT-INT    X-axis data range (from, to)\n"
-	"  -Y INT-INT    Y-axis data range (from, to)\n"
+	//"  -X INT-INT    X-axis data range (from, to)\n"
+	//"  -Y INT-INT    Y-axis data range (from, to)\n"
 	"  -d STRING     Data field to aggregate: May be one of {R, R2, D, DPrime, p1, p2, q1, q2, P}(required)\n"
 	"  -f STRING     Aggregation function: May be one of {count, min, max, mean, sd, sum, sum-squared}(required)\n"
-	"  -T STRING     Transformation function: May be one of {linear, squared, sqrt}(required)\n"
+	//"  -T STRING     Transformation function: May be one of {linear, squared, sqrt}(required)\n"
 	"  -s            Hide all program messages [null]\n\n";
 }
 
