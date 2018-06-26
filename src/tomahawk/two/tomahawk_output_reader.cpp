@@ -589,6 +589,9 @@ bool TomahawkOutputReader::__viewOnly(void){
 	}
 
 	this->writer_->flush();
+	if(this->writer_->isSorted())
+		this->writer_->getIndex()->buildMetaIndex(this->getHeader().magic_.n_contigs);
+
 	this->writer_->writeFinal();
 	this->writer_->flush();
 
@@ -644,6 +647,8 @@ bool TomahawkOutputReader::__viewRegion(void){
 	}
 
 	this->writer_->flush();
+	if(this->writer_->isSorted())
+		this->writer_->getIndex()->buildMetaIndex(this->getHeader().magic_.n_contigs);
 	this->writer_->writeFinal();
 	this->writer_->flush();
 
@@ -671,6 +676,8 @@ bool TomahawkOutputReader::__viewFilter(void){
 	} // end while next block
 
 	this->writer_->flush();
+	if(this->writer_->isSorted())
+		this->writer_->getIndex()->buildMetaIndex(this->getHeader().magic_.n_contigs);
 	this->writer_->writeFinal();
 	this->writer_->flush();
 

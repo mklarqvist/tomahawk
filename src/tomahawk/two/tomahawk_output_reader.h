@@ -182,26 +182,25 @@ private:
 		if(this->parameters_.output_type == TWK_OUTPUT_TWO){
 			if(this->parameters_.output_file == "-" || this->parameters_.output_file.size() == 0){
 				this->writer_ = new writer_binary_stream_type;
-				return(true);
+
 			} else {
 				this->writer_ = new writer_binary_file_type;
 				if(!this->writer_->open(this->parameters_.output_file)){
 					std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open output file handle: " << this->parameters_.output_file << std::endl;
-					return false;
+					return(false);
 				}
-				return(true);
 			}
 		} else {
 			this->writer_ = new writer_ld_stream_type;
-			return(true);
 		}
 
 		// If the file is sorted then the output slice is sorted as well
 		if(this->getIndex().getController().isSorted){
-			this->writer_->getIndex()->setSorted(true);
+			this->writer_->setSorted(true);
+			this->writer_->getIndex()->getController().isSorted = true;
 		}
 
-		return(false);
+		return(true);
 	}
 
 	bool ParseHeader(void);
