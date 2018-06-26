@@ -195,6 +195,12 @@ private:
 			this->writer_ = new writer_ld_stream_type;
 			return(true);
 		}
+
+		// If the file is sorted then the output slice is sorted as well
+		if(this->getIndex().getController().isSorted){
+			this->writer_->getIndex()->setSorted(true);
+		}
+
 		return(false);
 	}
 
