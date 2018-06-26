@@ -15,14 +15,6 @@ struct LoadBalancerBlock{
 		staggered(false)
 	{}
 
-	LoadBalancerBlock(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn) :
-		fromRow(fromRow),
-		toRow(toRow),
-		fromColumn(fromColumn),
-		toColumn(toColumn),
-		staggered(false)
-	{}
-
 	LoadBalancerBlock(const U32 fromRow, const U32 toRow, const U32 fromColumn, const U32 toColumn, bool staggered) :
 		fromRow(fromRow),
 		toRow(toRow),
@@ -50,9 +42,7 @@ struct LoadBalancerBlock{
 		return(*this);
 	}
 
-	inline bool isDiagonal(void) const{
-		return(this->fromRow == this->fromColumn && this->toRow == this->toColumn);
-	}
+	inline bool isDiagonal(void) const{ return(this->staggered); }
 
 	friend std::ostream& operator<<(std::ostream& os, const LoadBalancerBlock& block){
 		os << "[" << block.fromRow << '-' << block.toRow << ", " << block.fromColumn << '-' << block.toColumn << "] staggered: " << (int)block.staggered;

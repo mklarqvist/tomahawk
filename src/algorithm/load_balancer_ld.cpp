@@ -280,6 +280,10 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 					this->n_comparisons_chunk += reader.getIndex().getContainer().at(i).n_variants * reader.getIndex().getContainer().at(j).n_variants;
 			}
 		}
+
+		U32 diff = (selected.toColumn - selected.fromColumn) - (selected.toRow - selected.fromRow);
+		assert(diff == 0);
+
 		//std::cerr << "total variants chunk: " << this->n_comparisons_chunk << std::endl;
 		//std::cerr << "parition size: " << this->n_comparisons_chunk / threads << std::endl;
 		U64 n_variants_partition = this->n_comparisons_chunk / threads;
@@ -302,7 +306,13 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 					current.second = j + 1; // not inclusive range [A, B)
 					if(current.second > selected.toColumn) current.second = selected.toColumn;
 					//std::cerr << "break counter: " << current.first << "->" << current.second << " with " << n_variants_counter << "/" << n_variants_partition << " of " << this->n_comparisons_chunk << std::endl;
-					this->thread_distribution[currentThread].push_back(LoadBalancerThread(i - selected.fromRow, current.first - selected.fromRow, current.second - selected.fromRow));
+					this->thread_distribution[currentThread].push_back(
+							LoadBalancerThread(
+									i - selected.fromRow,
+									current.first - selected.fromRow,
+									current.second - selected.fromRow
+							)
+					);
 
 					current.first  = j + 1;
 					current.second = j;
@@ -315,7 +325,14 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 			if(current.second != selected.toRow){
 				current.second = selected.toRow;
 				//std::cerr << "break new line: " << current.first << "->" << current.second << " with " << n_variants_counter <<"/" << n_variants_partition << std::endl;
-				this->thread_distribution[currentThread].push_back(LoadBalancerThread(i - selected.fromRow, current.first - selected.fromRow, current.second - selected.fromRow));
+				this->thread_distribution[currentThread].push_back(
+						LoadBalancerThread(
+								i - selected.fromRow,
+								current.first - selected.fromRow,
+								current.second - selected.fromRow
+						)
+				);
+
 				//parts.push_back(current);
 				if(n_variants_counter >= n_variants_partition){
 					//std::cerr << "break here" << std::endl;
@@ -336,17 +353,16 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 
 	} else {
 		//std::cerr << "square" << std::endl;
-		const value_type& selectedRow = this->blocks[this->selected_chunk];
-		const value_type& selectedCol = this->blocks[this->selected_chunk];
+		const value_type& selectedChunk = this->blocks[this->selected_chunk];
 
 		this->n_comparisons_chunk = 0;
-		for(U32 i = selectedRow.fromRow; i < selectedRow.toRow; ++i){
-			for(U32 j = selectedCol.fromColumn; j < selectedCol.toColumn; ++j){
+		for(U32 i = selectedChunk.fromRow; i < selectedChunk.toRow; ++i){
+			for(U32 j = selectedChunk.fromColumn; j < selectedChunk.toColumn; ++j){
 				this->n_comparisons_chunk += reader.getIndex().getContainer().at(i).n_variants * reader.getIndex().getContainer().at(j).n_variants;
 			}
 		}
-		//std::cerr << "total variants chunk: " << this->n_comparisons_chunk << std::endl;
-		//std::cerr << "parition size: " << this->n_comparisons_chunk / threads << std::endl;
+		//std::cerr << "total comparisons/chunk: " << this->n_comparisons_chunk << std::endl;
+		//std::cerr << "comparisons/chunk/thread size: " << this->n_comparisons_chunk / threads << std::endl;
 		U64 n_variants_partition = this->n_comparisons_chunk / threads;
 		if(threads == 1) n_variants_partition = std::numeric_limits<U64>::max();
 
@@ -354,19 +370,33 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 		U64 n_variants_counter = 0;
 		std::pair<U32, U32> current;
 		U32 currentThread = 0;
+		U32 diff = (selected.toColumn - selected.fromColumn) - (selected.toRow - selected.fromRow);
+		if(diff) diff += 1;
 
-		for(U32 i = selectedRow.fromRow; i < selectedRow.toRow; ++i){
-			current.first  = selectedCol.fromColumn;
-			current.second = selectedCol.fromColumn;
+		//std::cerr << "row: " << selectedChunk.fromRow << "->" << selectedChunk.toRow << std::endl;
+		//std::cerr << "col: " << selectedChunk.fromColumn << "->" << selectedChunk.toColumn << std::endl;
 
-			for(U32 j = selectedCol.fromColumn; j < selectedCol.toColumn; ++j){
+		for(U32 i = selectedChunk.fromRow; i < selectedChunk.toRow; ++i){
+			current.first  = selectedChunk.fromColumn;
+			current.second = selectedChunk.fromColumn;
+
+			for(U32 j = selectedChunk.fromColumn; j < selectedChunk.toColumn; ++j){
 				n_variants_counter += reader.getIndex().getContainer().at(i).n_variants * reader.getIndex().getContainer().at(j).n_variants;
 
 				if(n_variants_counter >= n_variants_partition){
 					current.second = j + 1; // not inclusive range [A, B)
 					if(current.second > selected.toColumn) current.second = selected.toColumn;
 					//std::cerr << "break counter: " << current.first << "->" << current.second << " with " << n_variants_counter << "/" << n_variants_partition << std::endl;
-					this->thread_distribution[currentThread].push_back(LoadBalancerThread(i - selectedRow.fromRow, (selectedRow.toColumn - selectedRow.fromColumn) + current.first - selectedCol.fromColumn, (selectedRow.toColumn - selectedRow.fromColumn) + current.second - selectedCol.fromColumn));
+					//std::cerr << i - selectedChunk.fromRow << "\t" << (selectedChunk.toColumn - selectedChunk.fromColumn) + current.first - selectedChunk.fromColumn << "\t" << (selectedChunk.toColumn - selectedChunk.fromColumn) + current.second - selectedChunk.fromColumn << std::endl;
+					//std::cerr << "diff: " << diff << std::endl;
+					// Row, fromColumn, toColumn
+					this->thread_distribution[currentThread].push_back(
+							LoadBalancerThread(
+									i - selectedChunk.fromRow,
+									(selectedChunk.toColumn - selectedChunk.fromColumn) + current.first  - selectedChunk.fromColumn - diff,
+									(selectedChunk.toColumn - selectedChunk.fromColumn) + current.second - selectedChunk.fromColumn - diff
+							)
+					);
 
 					current.first = j + 1;
 					current.second = j;
@@ -379,7 +409,16 @@ bool LoadBalancerLD::getSelectedLoadThreads(const reader_type& reader, const U32
 			if(current.second != selected.toColumn){
 				current.second = selected.toColumn;
 				//std::cerr << "break new line: " << current.first << "->" << current.second << std::endl;
-				this->thread_distribution[currentThread].push_back(LoadBalancerThread(i - selectedRow.fromRow, (selectedRow.toColumn - selectedRow.fromColumn) + current.first - selectedCol.fromColumn, (selectedRow.toColumn - selectedRow.fromColumn) + current.second - selectedCol.fromColumn));
+				//std::cerr << i - selectedChunk.fromRow << "\t" << (selectedChunk.toColumn - selectedChunk.fromColumn) + current.first - selectedChunk.fromColumn << "\t" << (selectedChunk.toColumn - selectedChunk.fromColumn) + current.second - selectedChunk.fromColumn << std::endl;
+				//std::cerr << "diff: " << diff << std::endl;
+
+				this->thread_distribution[currentThread].push_back(
+						LoadBalancerThread(
+								i - selectedChunk.fromRow,
+								(selectedChunk.toColumn - selectedChunk.fromColumn) + current.first  - selectedChunk.fromColumn - diff,
+								(selectedChunk.toColumn - selectedChunk.fromColumn) + current.second - selectedChunk.fromColumn - diff
+						)
+				);
 				//parts.push_back(current);
 				if(n_variants_counter >= n_variants_partition){
 					n_variants_counter = 0;
@@ -506,14 +545,14 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 				if(j + 1 == cutSize){
 					if(i + 1 == cutSize){
 						//std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << n_total_blocks << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
-						this->blocks.push_back(value_type(blocks_per_partition*i, n_total_blocks, blocks_per_partition*j, n_total_blocks));
+						this->blocks.push_back(value_type(blocks_per_partition*i, n_total_blocks, blocks_per_partition*j, n_total_blocks, j == i));
 					} else {
 						//std::cerr << this->blocks.size() << ", last one: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << n_total_blocks << std::endl;
-						this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, n_total_blocks));
+						this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, n_total_blocks, j == i));
 					}
 				} else {
 					//std::cerr << this->blocks.size() << ", normal: " << blocks_per_partition*i << "->" << blocks_per_partition*(i+1) << ", " << blocks_per_partition*j << "->" << blocks_per_partition*(j+1) << std::endl;
-					this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, blocks_per_partition*(j+1)));
+					this->blocks.push_back(value_type(blocks_per_partition*i, blocks_per_partition*(i+1), blocks_per_partition*j, blocks_per_partition*(j+1), j == i));
 				}
 				++total;
 			}
@@ -526,7 +565,7 @@ bool LoadBalancerLD::BuildInterval(const reader_type& reader, const U32 threads)
 			return(false);
 		}
 	} else {
-		this->blocks.push_back(value_type(0, n_total_blocks, 0, n_total_blocks));
+		this->blocks.push_back(value_type(0, n_total_blocks, 0, n_total_blocks, true));
 	}
 
 
@@ -584,10 +623,10 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 			for(U32 j = i; j < cutSize; ++j){
 				if(j + 1 == cutSize){
 					//std::cerr << this->blocks.size() << ": last one: " << rowLength*i << "->" << (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)) << ", " << rowLength*j << "->" << reader.getIndex().getContainer().size() << std::endl;
-					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, reader.getIndex().getContainer().size()));
+					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, reader.getIndex().getContainer().size(), j == i));
 				} else {
 					//std::cerr << this->blocks.size() << ": normal: " << rowLength*i << "->" << (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)) << ", " << rowLength*j << "->" << rowLength*(j+1) << std::endl;
-					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, rowLength*(j+1)));
+					this->blocks.push_back(value_type(rowLength*i, (i + 1 == cutSize ? reader.getIndex().getContainer().size() : rowLength*(i+1)), rowLength*j, rowLength*(j+1), j == i));
 				}
 				++total;
 			}
@@ -600,7 +639,7 @@ bool LoadBalancerLD::Build(const reader_type& reader, const U32 threads){
 
 	} else {
 		// All blocks
-		this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size()));
+		this->blocks.push_back(value_type(0, reader.getIndex().getContainer().size(), 0, reader.getIndex().getContainer().size(), true));
 	}
 
 	// Data to load
