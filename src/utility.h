@@ -18,7 +18,7 @@ void programMessage(const bool separator = true){
 
 void programHelp(void){
 	std::cerr << "Usage: " << tomahawk::constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, concat" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, concat, aggregate" << std::endl;
 }
 
 void programHelpDetailed(void){
@@ -29,7 +29,8 @@ void programHelpDetailed(void){
 	"calc         calculate linkage disequilibrium\n"
 	"import       import VCF/BCF to TWK\n"
 	"sort         sort TWO file\n"
-    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
+    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
+	"aggregate    data rasterization framework for TWO files\n"<< std::endl;
 }
 
 #endif /* TOMAHAWK_UTILITY_H_ */

@@ -141,7 +141,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	if(!SILENT)
 		std::cerr << helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
 
-	U64 n_total_memory_allocated = 0;
+	//U64 n_total_memory_allocated = 0;
 	for(U32 i = 0; i < n_toi_entries; ++i){
 		//std::cerr << i << "/" << n_toi_entries << " -> " << this->reader.getIndex().getContainer()[i].byte_offset << "-" << this->reader.getIndex().getContainer()[i].byte_offset_end << std::endl;
 
@@ -156,14 +156,14 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 		                                 this->reader.getIndex().getContainer()[i].byte_offset,
 		                                 this->reader.getIndex().getContainer()[i].byte_offset_end);
 
-		n_total_memory_allocated += 100*sizeof(entry_type) + iterators[i]->buffer.capacity();
+		//n_total_memory_allocated += 100*sizeof(entry_type) + iterators[i]->buffer.capacity();
 	}
 
 	if(!SILENT)
 		std::cerr << " Done!" << std::endl;
 
-	if(!SILENT)
-		std::cerr << "Allocated " << n_total_memory_allocated << "b" << std::endl;
+	//if(!SILENT)
+	//	std::cerr << "Allocated " << n_total_memory_allocated << "b" << std::endl;
 
 	// queue
 	queue_type outQueue;

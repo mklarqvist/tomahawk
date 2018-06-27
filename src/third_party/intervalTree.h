@@ -67,27 +67,28 @@ public:
     ~Interval(){}
 
     Interval(const self_type& other) :
-    	start(other.start),
+		start(other.start),
 		stop(other.stop),
 		value(other.value)
-    {
-    }
+	{
+	}
 
-    self_type& operator= (const self_type& other){
-    	self_type tmp(other);       // re-use copy-constructor
-		*this = std::move(tmp); 	// re-use move-assignment
+	 self_type& operator=(const self_type& other){
+		this->start    = other.start;
+		this->stop     = other.stop;
+		this->value    = other.value;
 		return *this;
 	}
 
-    self_type& operator= (self_type&& other) noexcept{
-		this->start = other.start;
-		this->stop = other.stop;
-		this->value = other.value;
+	self_type& operator=(self_type&& other) noexcept{
+		this->start    = other.start;
+		this->stop     = other.stop;
+		this->value    = other.value;
 		return *this;
 	}
 
-    Interval(self_type&& other) noexcept :
-    	start(other.start),
+	Interval(self_type&& other) noexcept :
+		start(other.start),
 		stop(other.stop),
 		value(other.value)
 	{
@@ -101,13 +102,14 @@ public:
 
 class ContigInterval : public Interval<ContigInterval*, S32> {
 	typedef ContigInterval self_type;
+	typedef Interval<ContigInterval*, S32> parent_type;
 
 public:
 	enum INTERVAL_TYPE {INTERVAL_CONTIG_ONLY, INTERVAL_POSITION, INTERVAL_FULL};
 
 public:
 	ContigInterval() :
-		Interval<self_type*, S32>(-1, -1, nullptr),
+		parent_type(-1, -1, nullptr),
 		contigID(-1),
 		state(INTERVAL_TYPE::INTERVAL_FULL)
 	{}
@@ -115,53 +117,56 @@ public:
 	~ContigInterval() noexcept{}
 
 	ContigInterval(const self_type& other) :
-		Interval<self_type*, S32>(other),
+		parent_type(other),
 		contigID(other.contigID),
 		state(other.state)
 	{
 	}
 
-	 self_type& operator= (const self_type& other){
-		self_type tmp(other);       // re-use copy-constructor
-		*this = std::move(tmp); 	// re-use move-assignment
+	 self_type& operator=(const self_type& other){
+		this->start    = other.start;
+		this->stop     = other.stop;
+		this->value    = other.value;
+		this->contigID = other.contigID;
+		this->state    = other.state;
 		return *this;
 	}
 
-	self_type& operator= (self_type&& other) noexcept{
-		this->start = other.start;
-		this->stop = other.stop;
-		this->value = other.value;
+	self_type& operator=(self_type&& other) noexcept{
+		this->start    = other.start;
+		this->stop     = other.stop;
+		this->value    = other.value;
 		this->contigID = other.contigID;
-		this->state = other.state;
+		this->state    = other.state;
 		return *this;
 	}
 
 	ContigInterval(self_type&& other) noexcept :
-		Interval<self_type*, S32>(std::move(other)),
+		parent_type(other),
 		contigID(other.contigID),
 		state(other.state)
 	{
 	}
 
 	void operator()(S32 id){
-		this->start = 0;
-		this->stop  = std::numeric_limits<S32>::max(); // arbitrary large value
+		this->start    = 0;
+		this->stop     = std::numeric_limits<S32>::max(); // arbitrary large value
 		this->contigID = id;
-		this->state = INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
+		this->state    = INTERVAL_TYPE::INTERVAL_CONTIG_ONLY;
 	}
 
 	void operator()(S32 id, S32 position){
-		this->start = position;
-		this->stop  = position;
+		this->start    = position;
+		this->stop     = position;
 		this->contigID = id;
-		this->state = INTERVAL_TYPE::INTERVAL_POSITION;
+		this->state    = INTERVAL_TYPE::INTERVAL_POSITION;
 	}
 
     void operator()(S32 id, S32 s, S32 e){
-    	this->start = s;
-    	this->stop  = e;
+    	this->start    = s;
+    	this->stop     = e;
     	this->contigID = id;
-    	this->state = INTERVAL_TYPE::INTERVAL_FULL;
+    	this->state    = INTERVAL_TYPE::INTERVAL_FULL;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const self_type& i){

@@ -413,8 +413,14 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 		return false;
 
 	// Construct interval tree and interval vector if not set
-	if(this->interval_tree_entries == nullptr)
+	if(this->interval_tree_entries == nullptr){
 		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
+
+		// Reserve some memory
+		// Linked reads require that he pointers between entries do not change
+		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
+			this->interval_tree_entries[i].reserve(1000);
+	}
 
 	if(this->interval_tree == nullptr){
 		this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
@@ -448,13 +454,26 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 			} else if(ret.size() == 2){
 				// parse left
 				interval_type intervalLeft;
-				if(this->__ParseRegion(ret[0], intervalLeft))
-					this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
+				interval_type intervalRight;
+
+				if(this->__ParseRegion(ret[0], intervalLeft) == false){
+					std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Failed interpret left interval in pair!" << std::endl;
+					return false;
+				}
 
 				// parse right
-				interval_type intervalRight;
-				if(this->__ParseRegion(ret[1], intervalRight))
-					this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+				if(this->__ParseRegion(ret[1], intervalRight) == false){
+					std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Failed interpret right interval in pair!" << std::endl;
+					return false;
+				}
+
+				// Link intervals together
+				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+				interval_type& right_pointer = this->interval_tree_entries[intervalRight.contigID].back();
+				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
+				interval_type& left_pointer = this->interval_tree_entries[intervalLeft.contigID].back();
+				right_pointer.value = &left_pointer;
+				left_pointer.value  = &right_pointer;
 
 			} else {
 				std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Illegal interval: " << positions[i] << "!" << std::endl;
@@ -615,6 +634,8 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 	typedef bool (TomahawkOutputReader::*func_slice)(const entry_type& entry);
 	func_slice region_function = &TomahawkOutputReader::__checkRegionUnsorted;
+	if(this->getIndex().isSorted()) region_function = &TomahawkOutputReader::__checkRegionSorted;
+
 	if(this->getIndex().getController().isSorted){
 		if(!SILENT)
 			std::cerr << helpers::timestamp("LOG") << "Using sorted query..." << std::endl;
@@ -690,13 +711,14 @@ bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
-		std::vector<interval_type> rets = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
-		if(rets.size() > 0){
-			for(U32 i = 0; i < rets.size(); ++i){
-				if(rets[i].value != nullptr){ // if linked
-					if((entry.BcontigID == rets[i].value->contigID) &&
-					   (entry.Bposition >= rets[i].value->start &&
-					    entry.Bposition <= rets[i].value->stop)){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
+		if(overlaps_in_tree.size() > 0){
+			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
+				if(overlaps_in_tree[i].value != nullptr){ // if linked
+					if((entry.BcontigID == overlaps_in_tree[i].value->contigID) &&
+					   (entry.Bposition >= overlaps_in_tree[i].value->start &&
+						entry.Bposition <= overlaps_in_tree[i].value->stop))
+					{
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
@@ -730,13 +752,14 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 
 	// If iTree for contigA exists
 	if(this->interval_tree[entry.AcontigID] != nullptr){
-		std::vector<interval_type> rets = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
-		if(rets.size() > 0){
-			for(U32 i = 0; i < rets.size(); ++i){
-				if(rets[i].value != nullptr){ // if linked
-					if((entry.BcontigID == rets[i].value->contigID) &&
-					   (entry.Bposition >= rets[i].value->start &&
-					    entry.Bposition <= rets[i].value->stop)){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
+		if(overlaps_in_tree.size() > 0){
+			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
+				if(overlaps_in_tree[i].value != nullptr){ // if linked
+					if((entry.BcontigID == overlaps_in_tree[i].value->contigID) &&
+					   (entry.Bposition >= overlaps_in_tree[i].value->start &&
+					    entry.Bposition <= overlaps_in_tree[i].value->stop))
+					{
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
@@ -762,13 +785,13 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 
 	// If iTree for contigB exists
 	if(this->interval_tree[entry.BcontigID] != nullptr){
-		std::vector<interval_type> rets = this->interval_tree[entry.BcontigID]->findOverlapping(entry.Bposition, entry.Bposition);
-		if(rets.size() > 0){
-			for(U32 i = 0; i < rets.size(); ++i){
-				if(rets[i].value != nullptr){ // if linked
-					if((entry.AcontigID == rets[i].value->contigID) &&
-					   (entry.Aposition >= rets[i].value->start &&
-						entry.Aposition <= rets[i].value->stop)){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.BcontigID]->findOverlapping(entry.Bposition, entry.Bposition);
+		if(overlaps_in_tree.size() > 0){
+			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
+				if(overlaps_in_tree[i].value != nullptr){ // if linked
+					if((entry.AcontigID == overlaps_in_tree[i].value->contigID) &&
+					   (entry.Aposition >= overlaps_in_tree[i].value->start &&
+						entry.Aposition <= overlaps_in_tree[i].value->stop)){
 						if(this->filters_.filter(entry)){
 							//entry.write(std::cout, this->contigs);
 							//*this->writer << entry;
