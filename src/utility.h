@@ -25,12 +25,12 @@ void programHelpDetailed(void){
 	programHelp();
 	std::cerr <<
     "\n"
-	"concat       concatenate TWO files from the same set of samples\n"
 	"calc         calculate linkage disequilibrium\n"
+	"concat       concatenate TWO files from the same set of samples\n"
 	"import       import VCF/BCF to TWK\n"
 	"sort         sort TWO file\n"
     "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
-	"aggregate    data rasterization framework for TWO files\n"<< std::endl;
+    "aggregate    data rasterization framework for TWO files\n"<< std::endl;
 }
 
 #endif /* TOMAHAWK_UTILITY_H_ */

@@ -12,7 +12,6 @@
   * Removed default missingness filter (from 0.2 to 1.0) to support importing `bcf` with few samples
   * Fixed problem with linked intervals during slicing. Now correctly selects targetted associations based on both mates (reported by @ekg)
 
-
 # Release 0.5.3
 
 ## Minor Features And Improvements

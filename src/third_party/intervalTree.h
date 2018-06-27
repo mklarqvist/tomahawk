@@ -175,8 +175,12 @@ public:
     }
 
     bool operator<(const self_type& other) const{
-    	if(this->start < other.start) return true;
-    	if(other.start < this->start) return false;
+    	if(this->contigID < other.contigID) return true;
+		if(other.contigID < this->contigID) return false;
+    	if(this->start   < other.start)     return true;
+    	if(other.start   < this->start)     return false;
+    	if(this->stop    < other.stop)      return true;
+		if(other.stop    < this->stop)      return false;
 
     	return true;
      }

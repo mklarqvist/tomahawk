@@ -467,11 +467,16 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 					return false;
 				}
 
+				// Assert that left is smaller than right
+				if(intervalRight < intervalLeft)
+					std::swap(intervalRight, intervalLeft);
+
+
 				// Link intervals together
-				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
-				interval_type& right_pointer = this->interval_tree_entries[intervalRight.contigID].back();
 				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
 				interval_type& left_pointer = this->interval_tree_entries[intervalLeft.contigID].back();
+				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
+				interval_type& right_pointer = this->interval_tree_entries[intervalRight.contigID].back();
 				right_pointer.value = &left_pointer;
 				left_pointer.value  = &right_pointer;
 
@@ -1071,6 +1076,7 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 
 	typedef double (entry_type::*value_accessor_function)(void) const;
 	typedef double (SummaryStatistics::*reduction_function)(void) const;
+	typedef SummaryStatistics summary_statistics_type;
 
 	value_accessor_function value_accessor = &entry_type::getR2;
 	reduction_function reduction_accessor  = &SummaryStatistics::getMean;
@@ -1091,17 +1097,19 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 
 
 	switch(parameters.reduction_target){
-	case(support::TWK_AGGREGATE_REDUCE_COUNT): reduction_accessor = &SummaryStatistics::getCount; break;
-	case(support::TWK_AGGREGATE_REDUCE_MEAN):  reduction_accessor = &SummaryStatistics::getMean;  break;
-	case(support::TWK_AGGREGATE_REDUCE_MIN):   reduction_accessor = &SummaryStatistics::getMin;   break;
-	case(support::TWK_AGGREGATE_REDUCE_MAX):   reduction_accessor = &SummaryStatistics::getMax;   break;
-	case(support::TWK_AGGREGATE_REDUCE_SD):    reduction_accessor = &SummaryStatistics::getStandardDeviation; break;
-	case(support::TWK_AGGREGATE_REDUCE_SUM):   reduction_accessor = &SummaryStatistics::getTotal; break;
-	case(support::TWK_AGGREGATE_REDUCE_SUM_SQUARED): reduction_accessor = &SummaryStatistics::getTotalSquared; break;
+	case(support::TWK_AGGREGATE_REDUCE_COUNT): reduction_accessor = &summary_statistics_type::getCount; break;
+	case(support::TWK_AGGREGATE_REDUCE_MEAN):  reduction_accessor = &summary_statistics_type::getMean;  break;
+	case(support::TWK_AGGREGATE_REDUCE_MIN):   reduction_accessor = &summary_statistics_type::getMin;   break;
+	case(support::TWK_AGGREGATE_REDUCE_MAX):   reduction_accessor = &summary_statistics_type::getMax;   break;
+	case(support::TWK_AGGREGATE_REDUCE_SD):    reduction_accessor = &summary_statistics_type::getStandardDeviation; break;
+	case(support::TWK_AGGREGATE_REDUCE_SUM):   reduction_accessor = &summary_statistics_type::getTotal; break;
+	case(support::TWK_AGGREGATE_REDUCE_SUM_SQUARED): reduction_accessor = &summary_statistics_type::getTotalSquared; break;
 	}
 
-	SummaryStatistics** matrix = new SummaryStatistics*[parameters.scene_x_pixels];
-	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) matrix[i] = new SummaryStatistics[parameters.scene_y_pixels];
+	// Projection
+	// Setup matrix of summary statistics
+	summary_statistics_type** matrix = new summary_statistics_type*[parameters.scene_x_pixels];
+	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) matrix[i] = new summary_statistics_type[parameters.scene_y_pixels];
 
 	U64 cumulative_position = 0;
 	U64* cumulative_offsets = new U64[this->getIndex().getMetaContainer().size()+1];
@@ -1119,6 +1127,7 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 
 	std::cerr << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases/bin" << std::endl;
 
+	// While there is blocks available
 	while(this->parseBlock()){
 		OutputContainerReference o = this->getContainerReference();
 
