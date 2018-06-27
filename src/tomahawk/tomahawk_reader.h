@@ -7,10 +7,10 @@
 #include <bitset>
 #include <regex>
 
+#include "../support/magic_constants.h"
 #include "io/compression/gz_constants.h"
 #include "io/compression/tgzf_controller.h"
 #include "interface/progressbar.h"
-#include "support/MagicConstants.h"
 #include "interface/timer.h"
 #include "meta_entry.h"
 #include "twk_reader_implementation.h"

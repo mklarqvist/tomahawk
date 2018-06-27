@@ -1146,7 +1146,7 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 			//cumulative_position += this->index_->getMetaContainer().at(i).max_position + 1;
 			cumulative_position += range;
 
-			std::cerr << range << ": " << this->index_->getMetaContainer().at(i).min_position << "->" << this->index_->getMetaContainer().at(i).max_position << std::endl;
+			//std::cerr << range << ": " << this->index_->getMetaContainer().at(i).min_position << "->" << this->index_->getMetaContainer().at(i).max_position << std::endl;
 		}
 
 		cumulative_offsets[i].range = range;
@@ -1155,12 +1155,12 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 		cumulative_offsets[i].range;
 		cumulative_offsets[i+1].cumulative = cumulative_position;
 
-		std::cerr << "Cumulative: " << cumulative_position << std::endl;
+		//std::cerr << "Cumulative: " << cumulative_position << std::endl;
 	}
 
 	//exit(1);
 
-	std::cerr << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases/bin" << std::endl;
+	std::cerr << helpers::timestamp("LOG") << "Pixel size: " << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases..." << std::endl;
 
 	// While there is blocks available
 	while(this->parseBlock()){

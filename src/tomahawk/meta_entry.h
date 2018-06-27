@@ -1,7 +1,7 @@
 #ifndef TOMAHAWKENTRYMETA_H_
 #define TOMAHAWKENTRYMETA_H_
 
-#include "support/MagicConstants.h"
+#include "../support/magic_constants.h"
 
 namespace tomahawk{
 

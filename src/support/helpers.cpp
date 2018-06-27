@@ -1,3 +1,4 @@
+#include <support/magic_constants.h>
 #include <ctime>
 #include <string>
 #include <sstream>
@@ -8,7 +9,6 @@
 
 #include "helpers.h"
 #include "simd_definitions.h"
-#include "MagicConstants.h"
 #include "type_definitions.h"
 
 namespace tomahawk{

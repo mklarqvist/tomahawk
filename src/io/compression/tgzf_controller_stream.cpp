@@ -1,8 +1,8 @@
+#include <support/magic_constants.h> // for SILENT
 #include "tgzf_controller_stream.h"
 
 #include <cassert>
 
-#include "support/MagicConstants.h" // for SILENT
 
 namespace tomahawk{
 namespace io{

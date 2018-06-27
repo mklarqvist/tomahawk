@@ -37,7 +37,7 @@ void view_usage(void){
 	"  -h/H      (twk/two) header only / no header\n"
 	"  -N        output in tab-delimited text format (see -O)\n"
 	"  -B        output in binary TWO/TWK format (see -O, default)\n"
-	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
+	"  -I STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos (TWO only)\n"
 	//"  -J        output JSON object\n"
 	"  -s        Hide all program messages\n\n"
 
@@ -84,9 +84,7 @@ int view(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",       required_argument, 0, 'i' },
 		{"output",      optional_argument, 0, 'o' },
-
 		{"output-type", optional_argument, 0, 'O' },
-
 		{"minP",        optional_argument, 0, 'p' },
 		{"maxP",        optional_argument, 0, 'P' },
 		{"minR",        optional_argument, 0, 'z' },

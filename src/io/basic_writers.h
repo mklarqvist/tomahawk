@@ -5,10 +5,10 @@
 #include <iostream>
 #include <string>
 
+#include "../support/magic_constants.h"
 #include "support/helpers.h"
 #include "algorithm/spinlock.h"
 #include "basic_buffer.h"
-#include "support/MagicConstants.h"
 
 namespace tomahawk {
 namespace io{

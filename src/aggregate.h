@@ -30,12 +30,9 @@ DEALINGS IN THE SOFTWARE.
 void aggregate_usage(void){
 	programMessage();
 	std::cerr <<
-	"About:  Sort TWO files: provides two basic subroutines. Uncompressed files are generally too big to\n"
-	"        be sorted in available memory. Because of this, sorting is split into two \n"
-	"        subroutines: parallel-partial sort and a merge-sort. First sort the file without -M\n"
-	"        triggered and then run sort on that output with -M flag to perform a k-way merge sort\n"
-	"        using the partially block-sorted data.\n"
-	"        Note that combining -L and -t incur at least O(L*t+L) memory!\n"
+	"About:  Aggregate terrabytes of TWO data into rasterized objects of size [x,y] for\n"
+	"        plotting. Data has to be sorted and pre-sliced to the correct interval-of-interest\n"
+	"        prior to running."
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE       input Tomahawk output file (TWO; required)\n"
@@ -120,6 +117,7 @@ int aggregate(int argc, char** argv){
 			} else if(strncasecmp("logP", temp.data(), 4) == 0 && temp.size() == 4){
 				parameters.aggregation_target = tomahawk::support::TWK_AGGREGATE_LOG_P_VALUE;
 			} else {
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unknown aggregation target: " << temp << "..." << std::endl;
 				return(1);
 			}
 			aggregation_target = parameters.aggregation_target;
@@ -143,6 +141,7 @@ int aggregate(int argc, char** argv){
 			} else if(strncasecmp("mean", temp.data(), 4) == 0 && temp.size() == 4){
 				parameters.reduction_target = tomahawk::support::TWK_AGGREGATE_REDUCE_MEAN;
 			} else {
+				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Unknown reduction function: " << temp << "..." << std::endl;
 				return(1);
 			}
 			reduction_target = parameters.reduction_target;

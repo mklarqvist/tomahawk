@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #include <getopt.h>
 #include <regex>
 
-#include "support/MagicConstants.h"
+#include "support/magic_constants.h"
 #include "tomahawk/tomahawk_calc.h"
 
 void calc_usage(void){

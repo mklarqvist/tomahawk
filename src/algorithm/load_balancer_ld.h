@@ -1,8 +1,8 @@
 #ifndef ALGORITHM_LOAD_BALANCER_LD_H_
 #define ALGORITHM_LOAD_BALANCER_LD_H_
 
+#include "../support/magic_constants.h"
 #include "tomahawk/tomahawk_reader.h"
-#include "support/MagicConstants.h"
 #include "support/helpers.h"
 #include "load_balancer_block.h"
 

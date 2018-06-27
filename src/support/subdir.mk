@@ -1,14 +1,14 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-src/support/MagicConstants.cpp \
+src/support/magic_constants.cpp \
 src/support/helpers.cpp 
 
 OBJS += \
-src/support/MagicConstants.o \
+src/support/magic_constants.o \
 src/support/helpers.o 
 
 CPP_DEPS += \
-src/support/MagicConstants.d \
+src/support/magic_constants.d \
 src/support/helpers.d 
 
 

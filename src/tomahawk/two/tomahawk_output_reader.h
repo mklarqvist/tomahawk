@@ -7,9 +7,9 @@
 #include <stddef.h>
 #include <regex>
 
+#include "../../support/magic_constants.h"
 #include "io/basic_buffer.h"
 #include "io/compression/tgzf_controller.h"
-#include "support/MagicConstants.h"
 #include "algorithm/open_hashtable.h"
 #include "support/type_definitions.h"
 #include "third_party/intervalTree.h"

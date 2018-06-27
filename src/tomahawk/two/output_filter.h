@@ -5,8 +5,8 @@
 #include <iomanip>
 #include <vector>
 
+#include "../../support/magic_constants.h"
 #include "support/type_definitions.h"
-#include "support/MagicConstants.h"
 #include "output_entry.h"
 
 namespace tomahawk {

@@ -2,7 +2,8 @@
 #define TOMAHAWK_UTILITY_H_
 
 #include <iostream>
-#include "support/MagicConstants.h"
+
+#include "support/magic_constants.h"
 
 // Declare extern
 std::string tomahawk::constants::LITERAL_COMMAND_LINE;
