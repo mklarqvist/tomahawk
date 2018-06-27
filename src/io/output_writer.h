@@ -8,8 +8,8 @@
 #include "compression/tgzf_controller.h"
 #include "index/tomahawk_header.h"
 #include "index/index_entry.h"
-#include "tomahawk/output_container.h"
-#include "tomahawk/two/output_entry_support.h"
+#include "containers/output_container.h"
+#include "tomahawk/output_entry_support.h"
 #include "tomahawk/meta_entry.h"
 #include "index/index_entry.h"
 #include "index/index_container.h"
@@ -34,7 +34,7 @@ protected:
 	typedef Index                           index_type;
 	typedef totempole::Footer               footer_type;
 	typedef size_t                          size_type;
-	typedef OutputContainer                 container_type;
+	typedef containers::OutputContainer     container_type;
 
 public:
 	OutputWriterInterface(void);

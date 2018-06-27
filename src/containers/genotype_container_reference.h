@@ -7,10 +7,10 @@
 #include "support/type_definitions.h"
 #include "index/index_entry.h"
 #include "genotype_container_bitvector.h"
-#include "haplotype_bitvector.h"
+#include "tomahawk/haplotype_bitvector.h"
 
 namespace tomahawk{
-namespace base{
+namespace containers{
 
 template <class T>
 struct GenotypeRefEntry{

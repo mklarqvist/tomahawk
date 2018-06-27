@@ -23,8 +23,8 @@ DEALINGS IN THE SOFTWARE.
 #include <getopt.h>
 
 #include "tomahawk/tomahawk_reader.h"
-#include "tomahawk/two/output_filter.h"
-#include "tomahawk/two/tomahawk_output_reader.h"
+#include "tomahawk/output_filter.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void view_usage(void){

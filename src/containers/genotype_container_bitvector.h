@@ -2,12 +2,12 @@
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_BITVECTOR_H_
 
 #include "algorithm/genotype_bitpacker.h"
-#include "genotype_bitvector.h"
-#include "genotype_container_runlength.h"
-#include "genotype_objects.h"
+#include "tomahawk/genotype_bitvector.h"
+#include "containers/genotype_container_runlength.h"
+#include "tomahawk/genotype_objects.h"
 
 namespace tomahawk{
-namespace base{
+namespace containers{
 
 /**<
  * Meta container for bit-packed blocks of genotypes

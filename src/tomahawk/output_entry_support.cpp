@@ -1,4 +1,4 @@
-#include "tomahawk/two/output_entry_support.h"
+#include "tomahawk/output_entry_support.h"
 
 namespace tomahawk {
 namespace support {

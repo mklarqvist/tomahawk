@@ -13,10 +13,10 @@
 #include "algorithm/open_hashtable.h"
 #include "support/type_definitions.h"
 #include "third_party/intervalTree.h"
-#include "tomahawk/output_container.h"
-#include "tomahawk/output_container_reference.h"
-#include "tomahawk/two/output_entry.h"
-#include "tomahawk/two/aggregation_parameters.h"
+#include "containers/output_container.h"
+#include "containers/output_container_reference.h"
+#include "tomahawk/output_entry.h"
+#include "tomahawk/aggregation_parameters.h"
 #include "output_filter.h"
 #include "index/index.h"
 #include "index/footer.h"
@@ -25,6 +25,7 @@
 
 namespace tomahawk {
 
+// Todo: make me pretty
 enum TOMAHAWK_OUTPUT_FAMILY{
 	TWK_OUTPUT_TWO,
 	TWK_OUTPUT_LD
@@ -56,8 +57,8 @@ private:
 	typedef TomahawkOutputReader      self_type;
 	typedef io::OutputEntry           entry_type;
 	typedef OutputFilter              filter_type;
-	typedef OutputContainer           output_container_type;
-	typedef OutputContainerReference  output_container_reference_type;
+	typedef containers::OutputContainer           output_container_type;
+	typedef containers::OutputContainerReference  output_container_reference_type;
 	typedef totempole::HeaderContig   contig_type;
 	typedef io::TGZFHeader            tgzf_header_type;
 	typedef algorithm::ContigInterval interval_type;
@@ -129,7 +130,7 @@ public:
 	 * @param clear_raw Boolean set to TRUE if compressed raw data should be cleared after invoking this function
 	 * @return          Returns TRUE upon success or FALSE otherwis
 	 */
-	int parseBlock(const bool clear = true, const bool clear_raw = true);
+	int nextBlock(const bool clear = true, const bool clear_raw = true);
 
 	/**<
 	 * Used in parallel programming:

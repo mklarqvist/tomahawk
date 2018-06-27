@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include "algorithm/sort/output_sorter.h"
 #include "tomahawk/tomahawk_reader.h"
-#include "tomahawk/two/tomahawk_output_reader.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void sort_usage(void){

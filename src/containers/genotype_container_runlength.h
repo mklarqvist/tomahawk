@@ -4,11 +4,11 @@
 #include <cassert>
 
 #include "genotype_container_runlength_objects.h"
-#include "genotype_objects.h"
-#include "meta_entry.h"
+#include "tomahawk/genotype_objects.h"
+#include "tomahawk/meta_entry.h"
 
 namespace tomahawk{
-namespace base{
+namespace containers{
 
 template <class T>
 class GenotypeContainerRunlength{

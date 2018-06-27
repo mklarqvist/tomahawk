@@ -3,7 +3,7 @@
 
 #include "io/output_writer.h"
 #include "twk_reader_implementation.h"
-#include "genotype_meta_container_reference.h"
+#include "containers/genotype_meta_container_reference.h"
 #include "index/index.h"
 #include "algorithm/load_balancer_ld.h"
 #include "tomahawk_reader.h"
@@ -81,7 +81,7 @@ bool TomahawkCalc::Calculate(){
 	//std::cerr << "not implemented" << std::endl;
 	//exit(1);
 
-	GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
+	containers::GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){

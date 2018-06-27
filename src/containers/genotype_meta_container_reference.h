@@ -8,12 +8,13 @@
 #include "genotype_container_reference.h"
 
 namespace tomahawk{
+namespace containers{
 
 template <class T>
 class GenotypeMetaContainerReference{
 private:
 	typedef GenotypeMetaContainerReference      self_type;
-	typedef base::GenotypeContainerReference<T> value_type;
+	typedef GenotypeContainerReference<T>       value_type;
     typedef value_type&                         reference;
     typedef const value_type&                   const_reference;
     typedef value_type*                         pointer;
@@ -136,6 +137,7 @@ private:
 	pointer   __entries;
 };
 
+}
 }
 
 #endif /* TOMAHAWK_BASE_GENOTYPE_META_CONTAINER_REFERENCE_H_ */

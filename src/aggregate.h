@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #define AGGREGATE_H_
 
 
-#include "tomahawk/two/tomahawk_output_reader.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void aggregate_usage(void){

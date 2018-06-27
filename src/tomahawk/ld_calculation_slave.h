@@ -14,9 +14,9 @@
 #include "algorithm/load_balancer_block.h"
 #include "algorithm/genotype_bitpacker.h"
 #include "math/fisher_math.h"
-#include "genotype_meta_container_reference.h"
+#include "containers/genotype_meta_container_reference.h"
 #include "ld_calculation_simd_helper.h"
-#include "two/output_entry_support.h"
+#include "output_entry_support.h"
 #include "haplotype_bitvector.h"
 #include "tomahawk_calc_parameters.h"
 
@@ -153,10 +153,10 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 template <class T>
 class LDSlave{
 	typedef LDSlave<T>                                 self_type;
-	typedef GenotypeMetaContainerReference<T>          manager_type;
-	typedef base::GenotypeContainerReference<T>        block_type;
+	typedef containers::GenotypeMetaContainerReference<T>          manager_type;
+	typedef containers::GenotypeContainerReference<T>        block_type;
 	typedef const support::GenotypeDiploidRun<T>       run_type;
-	typedef base::GenotypeContainerRunlengthObjects<T> rle_type;
+	typedef containers::GenotypeContainerRunlengthObjects<T> rle_type;
 
 	typedef const MetaEntry                      meta_type;
 	typedef totempole::IndexEntry                totempole_entry_type;

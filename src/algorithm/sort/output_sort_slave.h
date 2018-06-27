@@ -66,7 +66,7 @@ private:
 		}
 
 		while(true){
-			OutputContainer container(n_entries_limit + 1);
+			containers::OutputContainer container(n_entries_limit + 1);
 
 			const entry_type* e = nullptr;
 			for(U32 i = 0; i < n_entries_limit; ++i){

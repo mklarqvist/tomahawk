@@ -1,9 +1,9 @@
-#include <io/output_writer.h>
-#include <tomahawk/two/tomahawk_output_reader.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 
+#include "io/output_writer.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "io/compression/gz_constants.h"
 #include "io/compression/gz_header.h"
 #include "support/helpers.h"
@@ -123,7 +123,7 @@ bool TomahawkOutputReader::printHeader(std::ostream& stream) const{
 	return true;
 }
 
-int TomahawkOutputReader::parseBlock(const bool clear, const bool clear_raw){
+int TomahawkOutputReader::nextBlock(const bool clear, const bool clear_raw){
 	// Stream died
 	if(this->stream_.good() == false){
 		std::cerr << helpers::timestamp("ERROR", "TWO") << "Stream died!" << std::endl;
@@ -272,12 +272,12 @@ int TomahawkOutputReader::parseBlock(std::ifstream& stream,
 	return 1;
 }
 
-OutputContainer TomahawkOutputReader::getContainerVariants(const U64 n_variants){
+containers::OutputContainer TomahawkOutputReader::getContainerVariants(const U64 n_variants){
 	size_t n_variants_loaded = 0;
 	this->data_.reset();
 	this->data_.resize(n_variants*sizeof(entry_type) + 65536); // make room for data
 	while(true){
-		if(!this->parseBlock(false))
+		if(!this->nextBlock(false))
 			break;
 
 		n_variants_loaded = this->data_.size() / sizeof(entry_type);
@@ -286,16 +286,16 @@ OutputContainer TomahawkOutputReader::getContainerVariants(const U64 n_variants)
 			break;
 	}
 
-	return(OutputContainer(this->data_));
+	return(containers::OutputContainer(this->data_));
 }
 
-OutputContainer TomahawkOutputReader::getContainerBytes(const size_t l_data){
+containers::OutputContainer TomahawkOutputReader::getContainerBytes(const size_t l_data){
 	const U64 start_position = this->stream_.tellg();
 	this->data_.reset();
 	this->data_.resize(l_data + 65536); // make room for data
 	U64 data_loaded = 0;
 	while(true){
-		if(!this->parseBlock(false))
+		if(!this->nextBlock(false))
 			break;
 
 		data_loaded = (U64)this->stream_.tellg() - start_position;
@@ -304,17 +304,17 @@ OutputContainer TomahawkOutputReader::getContainerBytes(const size_t l_data){
 
 	}
 
-	return(OutputContainer(this->data_));
+	return(containers::OutputContainer(this->data_));
 }
 
-OutputContainer TomahawkOutputReader::getContainerBlocks(const U32 n_blocks){
+containers::OutputContainer TomahawkOutputReader::getContainerBlocks(const U32 n_blocks){
 	this->data_.reset();
 	for(U32 i = 0; i < n_blocks; ++i){
-		if(!this->parseBlock(false))
+		if(!this->nextBlock(false))
 			break;
 	}
 
-	return(OutputContainer(this->data_));
+	return(containers::OutputContainer(this->data_));
 }
 
 bool TomahawkOutputReader::seekBlock(const U32 blockID){
@@ -358,49 +358,49 @@ bool TomahawkOutputReader::seekBlock(std::ifstream& stream, const U32 blockID) c
 }
 
 
-OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(const U32 blockID){
+containers::OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(const U32 blockID){
 	if(!this->seekBlock(blockID)){
-		this->parseBlock();
-		return(OutputContainerReference());
+		this->nextBlock();
+		return(containers::OutputContainerReference());
 	} else {
-		this->parseBlock();
-		return(OutputContainerReference(this->data_));
+		this->nextBlock();
+		return(containers::OutputContainerReference(this->data_));
 	}
 }
 
-OutputContainer TomahawkOutputReader::getContainerBlock(const U32 blockID){
+containers::OutputContainer TomahawkOutputReader::getContainerBlock(const U32 blockID){
 	if(!this->seekBlock(blockID)){
-		this->parseBlock();
-		return(OutputContainer());
+		this->nextBlock();
+		return(containers::OutputContainer());
 	} else {
-		this->parseBlock();
-		return(OutputContainer(this->data_));
+		this->nextBlock();
+		return(containers::OutputContainer(this->data_));
 	}
 }
 
-OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(std::vector<U32> blocks){
+containers::OutputContainerReference TomahawkOutputReader::getContainerReferenceBlock(std::vector<U32> blocks){
 	if(!this->seekBlock(blocks[0])){
-		this->parseBlock();
-		return(OutputContainerReference());
+		this->nextBlock();
+		return(containers::OutputContainerReference());
 	} else {
 		for(U32 i = 0; i < blocks.size(); ++i){
-			if(!this->parseBlock(false))
+			if(!this->nextBlock(false))
 				break;
 		}
-		return(OutputContainerReference(this->data_));
+		return(containers::OutputContainerReference(this->data_));
 	}
 }
 
-OutputContainer TomahawkOutputReader::getContainerBlock(std::vector<U32> blocks){
+containers::OutputContainer TomahawkOutputReader::getContainerBlock(std::vector<U32> blocks){
 	if(!this->seekBlock(blocks[0])){
-		this->parseBlock();
-		return(OutputContainer());
+		this->nextBlock();
+		return(containers::OutputContainer());
 	} else {
 		for(U32 i = 0; i < blocks.size(); ++i){
-			if(!this->parseBlock(false))
+			if(!this->nextBlock(false))
 				break;
 		}
-		return(OutputContainer(this->data_));
+		return(containers::OutputContainer(this->data_));
 	}
 }
 
@@ -594,8 +594,8 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 	//this->parseBlock();
 	if(this->parameters_.output_type == TWK_OUTPUT_LD){
-		while(this->parseBlock()){
-			OutputContainerReference o = this->getContainerReference();
+		while(this->nextBlock()){
+			containers::OutputContainerReference o = this->getContainerReference();
 			(o[0].*ld_write_function)(std::cout, this->getHeader().contigs_);
 
 			for(U32 i = 1; i < o.size(); ++i)
@@ -603,8 +603,8 @@ bool TomahawkOutputReader::__viewOnly(void){
 
 		}
 	} else {
-		while(this->parseBlock()){
-			OutputContainerReference o = this->getContainerReference();
+		while(this->nextBlock()){
+			containers::OutputContainerReference o = this->getContainerReference();
 			*this->writer_ << o[0];
 
 			for(U32 i = 1; i < o.size(); ++i)
@@ -665,7 +665,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 		if(!SILENT)
 			std::cerr << helpers::timestamp("LOG") << "Using unsorted query..." << std::endl;
 
-		while(this->parseBlock()){
+		while(this->nextBlock()){
 			output_container_reference_type o(this->data_);
 			for(U32 i = 0; i < o.size(); ++i)
 				(this->*region_function)(o[i]);
@@ -692,7 +692,7 @@ bool TomahawkOutputReader::__viewFilter(void){
 	assert(this->writer_ != nullptr);
 	this->writer_->writeHeaders(this->getHeader());
 
-	while(this->parseBlock()){
+	while(this->nextBlock()){
 		output_container_reference_type o(this->data_);
 		for(U32 i = 0; i < o.size(); ++i){
 			if(this->filters_.filter(o[i])){
@@ -849,7 +849,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 	}
 	writer.writeHeaders(this->getHeader());
 
-	while(this->parseBlock()){
+	while(this->nextBlock()){
 		writer.writePrecompressedBlock(this->buffer_, this->data_.size());
 		//writer << this->data_;
 	}
@@ -869,7 +869,7 @@ bool TomahawkOutputReader::__concat(const std::vector<std::string>& files, const
 			return false;
 		}
 
-		while(second_reader.parseBlock()){
+		while(second_reader.nextBlock()){
 			//writer << second_reader.data_;
 			writer.writePrecompressedBlock(second_reader.buffer_, second_reader.data_.size());
 		}
@@ -926,7 +926,7 @@ bool TomahawkOutputReader::statistics(void){
 		return false;
 	}
 
-	if(this->parseBlock() == false){
+	if(this->nextBlock() == false){
 		std::cerr << helpers::timestamp("ERROR") << "No valid data!" << std::endl;
 		return false;
 	}
@@ -949,7 +949,7 @@ bool TomahawkOutputReader::statistics(void){
 	const std::string CONTIG_SELF = "contig-self";
 
 	// Now have first data
-	OutputContainerReference o = this->getContainerReference();
+	containers::OutputContainerReference o = this->getContainerReference();
 	U32 ref_contigA   = o[0].AcontigID;
 	U32 ref_positionA = o[0].Aposition;
 	U32 ref_contigB   = o[0].BcontigID;
@@ -998,8 +998,8 @@ bool TomahawkOutputReader::statistics(void){
 	}
 
 	// For the remainder of the blocks
-	while(this->parseBlock()){
-		OutputContainerReference o = this->getContainerReference();
+	while(this->nextBlock()){
+		containers::OutputContainerReference o = this->getContainerReference();
 
 		for(U32 i = 0; i < o.size(); ++i){
 			if(o[i].AcontigID != ref_contigA){
@@ -1163,8 +1163,8 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 	std::cerr << helpers::timestamp("LOG") << "Pixel size: " << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases..." << std::endl;
 
 	// While there is blocks available
-	while(this->parseBlock()){
-		OutputContainerReference o = this->getContainerReference();
+	while(this->nextBlock()){
+		containers::OutputContainerReference o = this->getContainerReference();
 
 		for(U32 i = 0; i < o.size(); ++i){
 			//U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition) / cumulative_position * parameters.scene_x_pixels);

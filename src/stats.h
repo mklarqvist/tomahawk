@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #ifndef STATS_H_
 #define STATS_H_
 
-#include "tomahawk/two/tomahawk_output_reader.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void stats_usage(void){

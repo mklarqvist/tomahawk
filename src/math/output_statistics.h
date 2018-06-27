@@ -4,7 +4,7 @@
 #include <limits>
 
 #include "support/type_definitions.h"
-#include "tomahawk/two/output_entry.h"
+#include "tomahawk/output_entry.h"
 
 namespace tomahawk{
 

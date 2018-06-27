@@ -3,9 +3,10 @@
 
 #include <cassert>
 
-#include "two/output_entry.h"
+#include "tomahawk/output_entry.h"
 
 namespace tomahawk{
+namespace containers{
 
 class OutputContainerReference{
 private:
@@ -106,6 +107,7 @@ protected:
 	size_type  n_entries;
 	pointer    __entries;
 };
+}
 
 }
 

@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <vector>
 
-#include "tomahawk/two/tomahawk_output_reader.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void concat_usage(void){

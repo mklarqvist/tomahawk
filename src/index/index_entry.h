@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "tomahawk/two/output_entry.h"
+#include "tomahawk/output_entry.h"
 
 namespace tomahawk{
 namespace totempole{
