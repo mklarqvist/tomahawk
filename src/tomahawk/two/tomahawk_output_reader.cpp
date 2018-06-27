@@ -1109,21 +1109,56 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 	// Projection
 	// Setup matrix of summary statistics
 	summary_statistics_type** matrix = new summary_statistics_type*[parameters.scene_x_pixels];
-	for(U32 i = 0; i < parameters.scene_x_pixels; ++i) matrix[i] = new summary_statistics_type[parameters.scene_y_pixels];
+	for(U32 i = 0; i < parameters.scene_x_pixels; ++i)
+		matrix[i] = new summary_statistics_type[parameters.scene_y_pixels];
+
+
+	struct OffsetSupport{
+	public:
+		OffsetSupport() : range(0), min(0), max(0), cumulative(0){}
+		OffsetSupport(const U64 range, const U64 min, const U64 max, const U64 cumulative):
+			range(range),
+			min(min),
+			max(max),
+			cumulative(cumulative)
+		{
+
+		}
+
+		~OffsetSupport() = default;
+
+	public:
+		U64 range;
+		U64 min;
+		U64 max;
+		U64 cumulative;
+	};
 
 	U64 cumulative_position = 0;
-	U64* cumulative_offsets = new U64[this->getIndex().getMetaContainer().size()+1];
-	cumulative_offsets[0]   = 0;
-	U64 offset_min          = 0;
+	OffsetSupport* cumulative_offsets = new OffsetSupport[this->getIndex().getMetaContainer().size()+1];
+	cumulative_offsets[0]   = OffsetSupport(0,0,0,0);
 	for(U32 i = 0; i < this->getHeader().magic_.n_contigs; ++i){
-		//const U64 range = this->index_->getMetaContainer().at(i).max_position - this->index_->getMetaContainer().at(i).min_position;
+		U64 range = this->index_->getMetaContainer().at(i).max_position - this->index_->getMetaContainer().at(i).min_position;
 		if(this->index_->getMetaContainer().at(i).max_position){
+			++range;
+
 			//cumulative_position += this->getHeader().contigs_[i].n_bases;
-			cumulative_position += this->index_->getMetaContainer().at(i).max_position + 1;
+			//cumulative_position += this->index_->getMetaContainer().at(i).max_position + 1;
+			cumulative_position += range;
+
+			std::cerr << range << ": " << this->index_->getMetaContainer().at(i).min_position << "->" << this->index_->getMetaContainer().at(i).max_position << std::endl;
 		}
-		cumulative_offsets[i+1] = cumulative_position;
-		//std::cerr << "Cumulative: " << cumulative_position << std::endl;
+
+		cumulative_offsets[i].range = range;
+		cumulative_offsets[i].min   = this->index_->getMetaContainer().at(i).min_position;
+		cumulative_offsets[i].max   = this->index_->getMetaContainer().at(i).max_position;
+		cumulative_offsets[i].range;
+		cumulative_offsets[i+1].cumulative = cumulative_position;
+
+		std::cerr << "Cumulative: " << cumulative_position << std::endl;
 	}
+
+	//exit(1);
 
 	std::cerr << (U32)((double)cumulative_position/parameters.scene_x_pixels) << " bases/bin" << std::endl;
 
@@ -1132,26 +1167,44 @@ bool TomahawkOutputReader::aggregate(support::aggregation_parameters& parameters
 		OutputContainerReference o = this->getContainerReference();
 
 		for(U32 i = 0; i < o.size(); ++i){
-			U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels);
-			U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels);
+			//U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition) / cumulative_position * parameters.scene_x_pixels);
+			//U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition) / cumulative_position * parameters.scene_y_pixels);
+
+			U32 fromBin = (U32)((double)(cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition - cumulative_offsets[o[i].AcontigID].min)  / cumulative_position * parameters.scene_x_pixels);
+			U32 toBin   = (U32)((double)(cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition - cumulative_offsets[o[i].BcontigID].min) / cumulative_position * parameters.scene_y_pixels);
+
+			/*
+			std::cerr << fromBin << "," << toBin << std::endl;
+			std::cerr << cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition - cumulative_offsets[o[i].AcontigID].min << std::endl;
+			std::cerr << cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition - cumulative_offsets[o[i].BcontigID].min << std::endl;
+			std::cerr << "Min: " << cumulative_offsets[o[i].AcontigID].min << "," << cumulative_offsets[o[i].BcontigID].min << std::endl;
+			std::cerr << "Cumsum: " << cumulative_offsets[o[i].AcontigID].cumulative << std::endl;
+			*/
+
+			// Target pixel : cumulative offset up to previous contig + current position / total cumulative offset
+
+
+			//cumulative_offsets[o[i].AcontigID].min
+
 
 			if(toBin >= parameters.scene_y_pixels){
-				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels) << std::endl;
-				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels) << std::endl;
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition) / cumulative_position * parameters.scene_x_pixels) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition) / cumulative_position * parameters.scene_y_pixels) << std::endl;
 
 				std::cerr << "Y: " << fromBin << "->" << toBin << std::endl;
-				//exit(1);
+				exit(1);
 				toBin = parameters.scene_y_pixels - 1;
 			}
 
 			if(fromBin >= parameters.scene_x_pixels){
-				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * parameters.scene_x_pixels) << std::endl;
-				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * parameters.scene_y_pixels) << std::endl;
+				std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID].cumulative + o[i].Aposition) / cumulative_position * parameters.scene_x_pixels) << std::endl;
+				std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID].cumulative + o[i].Bposition) / cumulative_position * parameters.scene_y_pixels) << std::endl;
 
 				std::cerr << "X: " << fromBin << "->" << toBin << std::endl;
-				//exit(1);
+				exit(1);
 				fromBin = parameters.scene_x_pixels - 1;
 			}
+
 
 			//std::cerr << o[i].Aposition << "->" << cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].AcontigID] + o[i].Aposition - offset_min) / cumulative_position * scene_x_length) << std::endl;
 			//std::cerr << o[i].Bposition << "->" << cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min << "/" << cumulative_position << "->" << (U64)((double)(cumulative_offsets[o[i].BcontigID] + o[i].Bposition - offset_min) / cumulative_position * scene_y_length) << std::endl;
