@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <vector>
 
-#include "../../support/magic_constants.h"
+#include "support/magic_constants.h"
 #include "support/type_definitions.h"
 #include "output_entry.h"
 

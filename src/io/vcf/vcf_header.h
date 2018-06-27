@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "../basic_buffer.h"
-#include "../compression/tgzf_controller.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
 #include "support/helpers.h"
 #include "io/reader.h"
 #include "algorithm/open_hashtable.h"

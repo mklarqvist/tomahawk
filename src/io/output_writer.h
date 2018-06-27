@@ -1,7 +1,7 @@
 #ifndef IO_OUTPUT_WRITER_H_
 #define IO_OUTPUT_WRITER_H_
 
-#include "../support/magic_constants.h"
+#include "support/magic_constants.h"
 #include "support/simd_definitions.h"
 #include "support/helpers.h"
 #include "algorithm/spinlock.h"

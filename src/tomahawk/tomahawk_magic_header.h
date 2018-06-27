@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWK_MAGIC_HEADER_H_
 #define TOMAHAWK_TOMAHAWK_MAGIC_HEADER_H_
 
-#include "../support/magic_constants.h"
+#include "support/magic_constants.h"
 
 namespace tomahawk{
 namespace base{

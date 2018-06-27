@@ -3,7 +3,7 @@
 
 #include <bitset>
 
-#include "../support/magic_constants.h"
+#include "support/magic_constants.h"
 
 namespace tomahawk {
 namespace totempole {

@@ -8,8 +8,8 @@
 #include <vector>
 #include <algorithm>
 
-#include "../../support/helpers.h"
-#include "../../support/magic_constants.h"
+#include "support/helpers.h"
+#include "support/magic_constants.h"
 
 namespace Tomahawk{
 namespace VCF{
