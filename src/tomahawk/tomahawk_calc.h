@@ -1,9 +1,9 @@
-#ifndef TOMAHAWK_TOMAHAWKCALC_H_
-#define TOMAHAWK_TOMAHAWKCALC_H_
+#ifndef TOMAHAWK_TOMAHAWK_CALC_H_
+#define TOMAHAWK_TOMAHAWK_CALC_H_
 
-#include "twk_reader_implementation.h"
-#include "genotype_meta_container_reference.h"
 #include "io/output_writer.h"
+#include "twk_reader_implementation.h"
+#include "containers/genotype_meta_container_reference.h"
 #include "index/index.h"
 #include "algorithm/load_balancer_ld.h"
 #include "tomahawk_reader.h"
@@ -50,15 +50,21 @@ bool TomahawkCalc::Calculate(){
 	header.addLiteral("\n##tomahawk_calcCommand=" + helpers::program_string());
 	header.addLiteral("\n##tomahawk_calcInterpretedCommand=" + this->parameters.getInterpretedString());
 
+	bool write_stdout = (this->output_file == "-");
 
-	io::OutputWriter writer;
-	if(!writer.open(this->output_file)){
-		std::cerr << helpers::timestamp("ERROR", "TWI") << "Failed to open..." << std::endl;
+	io::OutputWriterInterface* writer;
+	if(write_stdout)
+		writer = new io::OutputWriterStdOut;
+	else
+		writer = new io::OutputWriterBinaryFile;
+
+	if(!writer->open(this->output_file)){
+		std::cerr << helpers::timestamp("ERROR", "IO") << "Failed to open..." << std::endl;
 		return false;
 	}
 
-	writer.writeHeaders(this->reader.getHeader());
-
+	writer->setUpperOnly(this->parameters.upper_only);
+	writer->writeHeaders(this->reader.getHeader());
 
 	if(!SILENT){
 	#if SIMD_AVAILABLE == 1
@@ -75,7 +81,7 @@ bool TomahawkCalc::Calculate(){
 	//std::cerr << "not implemented" << std::endl;
 	//exit(1);
 
-	GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
+	containers::GenotypeMetaContainerReference<T> references(header.magic_.getNumberSamples(), this->reader.DataOffsetSize()+1);
 
 	U64 n_variants = 0;
 	for(U32 i = 0; i < this->reader.DataOffsetSize(); ++i){
@@ -115,6 +121,7 @@ bool TomahawkCalc::Calculate(){
 	// Setup slaves
 	LDSlave<T>** slaves = new LDSlave<T>*[this->parameters.n_threads];
 	std::vector<std::thread*> thread_pool;
+	io::OutputWriterInterface** thread_writers = new io::OutputWriterInterface*[this->parameters.n_threads];
 
 	if(!SILENT){
 		if(this->parameters.fast_mode){
@@ -122,7 +129,6 @@ bool TomahawkCalc::Calculate(){
 		} else {
 			std::cerr << helpers::timestamp("LOG") << "Running in complete mode! 2x2/3x3/4x4 matrices will be built..." << std::endl;
 		}
-
 	}
 
 	// Setup workers
@@ -132,17 +138,16 @@ bool TomahawkCalc::Calculate(){
 	}
 
 	for(U32 i = 0; i < this->parameters.n_threads; ++i){
-		slaves[i] = new LDSlave<T>(references, writer, this->progress, this->parameters, this->balancer.thread_distribution[i]);
-		if(!SILENT)
-			std::cerr << '.';
+		if(write_stdout) thread_writers[i] = new io::OutputWriterStdOut(*reinterpret_cast<io::OutputWriterStdOut*>(writer));
+		else thread_writers[i] = new io::OutputWriterBinaryFile(*reinterpret_cast<io::OutputWriterBinaryFile*>(writer));
+		slaves[i] = new LDSlave<T>(references, thread_writers[i], this->progress, this->parameters, this->balancer.thread_distribution[i]);
+		if(!SILENT) std::cerr << '.';
 	}
 
-	if(!SILENT)
-		std::cerr << std::endl;
+	if(!SILENT) std::cerr << std::endl;
 
 	// Start progress tracker
-	if(!SILENT)
-		this->progress.Start();
+	if(!SILENT) this->progress.Start();
 
 	// Setup front-end interface
 	interface::Timer timer;
@@ -172,33 +177,37 @@ bool TomahawkCalc::Calculate(){
 	for(U32 i = 1; i < this->parameters.n_threads; ++i)
 		*slaves[0] += *slaves[i];
 
-	writer = slaves[0]->getWriter();
+	*writer += slaves[0]->getWriter();
 
 	if(!SILENT){
 		std::cerr << helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk/timer.Elapsed().count())) << " pairs of SNP/s, " << helpers::ToPrettyString((U64)ceil((double)this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()/timer.Elapsed().count())) << " genotypes/s)..." << std::endl;
 		std::cerr << helpers::timestamp("LOG") << "Comparisons: " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk) << " pairwise SNPs and " << helpers::ToPrettyString(this->balancer.n_comparisons_chunk*header.magic_.getNumberSamples()) << " pairwise genotypes..." << std::endl;
-		std::cerr << helpers::timestamp("LOG") << "Output: " << helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Output: " << helpers::ToPrettyString(writer->sizeEntries()) << " entries into " << helpers::ToPrettyString(writer->sizeBlocks()) << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Data: " << helpers::ToPrettyString(writer->totalBytesAdded()) << " b compressed into " << helpers::ToPrettyString(writer->totalBytesWritten()) << " b (" << (double)writer->totalBytesAdded()/writer->totalBytesWritten() << "-fold)..." << std::endl;
 	}
 
 	// Cleanup
 	delete [] slaves;
 
-	// Flush writer
-	writer.flush();
-	writer.writeFinal();
+	for(U32 i = 0; i < this->parameters.n_threads; ++i) delete thread_writers[i];
+	delete [] thread_writers;
 
-	/*
-	if(!writer.finalise()){
-		std::cerr << helpers::timestamp("ERROR", "INDEX") << "Failed to finalize..." << std::endl;
-		return false;
+	// Flush writer
+	if(write_stdout){
+		io::OutputWriterStdOut* writer_file_instance = reinterpret_cast<io::OutputWriterStdOut*>(writer);
+		writer_file_instance->flush();
+		writer_file_instance->writeFinal();
+	} else {
+		io::OutputWriterBinaryFile* writer_file_instance = reinterpret_cast<io::OutputWriterBinaryFile*>(writer);
+		writer_file_instance->flush();
+		writer_file_instance->writeFinal();
 	}
 
-	writer.close();
-	*/
+	delete writer;
 
 	return true;
 }
 
 } /* namespace Tomahawk */
 
-#endif /* TOMAHAWK_TOMAHAWKCALC_H_ */
+#endif /* TOMAHAWK_TOMAHAWK_CALC_H_ */

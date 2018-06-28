@@ -38,9 +38,9 @@ src/tomahawk \
 src/tomahawk/two \
 
 # Version numbers slices from the source header
-LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
-LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
-LIBVER_PATCH_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/MagicConstants.h`
+LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/magic_constants.h`
+LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/magic_constants.h`
+LIBVER_PATCH_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/magic_constants.h`
 LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
 LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
 LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
@@ -76,10 +76,10 @@ endif
 # see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
 ifneq ($(shell uname), Darwin)
 SHARED_EXT = so
-LD_LIB_FLAGS := -shared -Wl,-rpath,"./",-soname,ltomahawk.$(SHARED_EXT)
+LD_LIB_FLAGS := -shared -Wl,-rpath,"./",-soname,libtomahawk.$(SHARED_EXT)
 else
 SHARED_EXT = dylib
-LD_LIB_FLAGS := -dynamiclib -install_name ltomahawk.$(SHARED_EXT)
+LD_LIB_FLAGS := -dynamiclib -install_name libtomahawk.$(SHARED_EXT)
 endif
 
 CXXFLAGS := -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
@@ -118,12 +118,13 @@ tomahawk: $(OBJS) $(USER_OBJS)
 
 library: $(OBJS) $(USER_OBJS)
 	@echo 'Building with positional independence...'
-	g++ $(LD_LIB_FLAGS) -pthread -o ltomahawk.$(SHARED_EXT).$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ $(LD_LIB_FLAGS) -pthread -o libtomahawk.$(SHARED_EXT).$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Symlinking library...'
-	ln -sf ltomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
+	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
+	ln -sf libtomahawk.$(SHARED_EXT) ltomahawk.$(SHARED_EXT)
 
 cleanmost:
 	rm -f $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS)
 
 clean: cleanmost
-	rm -f tomahawk ltomahawk.so ltomahawk.so.*
+	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so

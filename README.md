@@ -325,6 +325,8 @@ Wellcome Trust Sanger Institute
 [John A Todd](https://www.ndm.ox.ac.uk/principal-investigators/researcher/john-todd), Nuffield Department of Medicine, University of Oxford  
 [Chris Wallace](https://github.com/chr1swallace), MRC Biostatistics Unit, University of Cambridge  
 [Richard Durbin](https://github.com/richarddurbin), Wellcome Trust Sanger Institute, and Department of Genetics, University of Cambridge  
+[Erik Garrison](https://github.com/ekg)
+Wellcome Trust Sanger Institute, and Department of Genetics, University of Cambridge  
 
 ### License
 [MIT](LICENSE)

@@ -1,5 +1,5 @@
 
-#include "TomahawkCalc.h"
+#include <tomahawk/tomahawk_calc.h>
 
 namespace tomahawk {
 

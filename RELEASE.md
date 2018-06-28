@@ -1,3 +1,17 @@
+# Release 0.6.0
+
+## Major Features And Improvements
+* Concat operation now supports special modes to concatenate large number of files in parallel when the downstream operation is passed to sort (reported by @ekg). This mode is ~30-fold faster / thread and is parallelizable.
+* Introducing the experimental `aggregation` subroutine. Modelled based on the Datashader pipeline, Tomahawk can now natively construct aggregated datasets of billions of points into datasets of pixels that can be plotted using raster operations efficiently.
+* Slicing operator for `two` files has been re-instated. Use `-O` for output type (`two` or `ld`) when invoking the `view` subroutine
+
+## Bug Fixes and Other Changes
+* Bug fixes
+  * Problem when importing variants within 1-base of each other (reported by @ekg)
+  * Memory requirement problems when parallel sort merging very large files (reported by @ekg)
+  * Removed default missingness filter (from 0.2 to 1.0) to support importing `bcf` with few samples
+  * Fixed problem with linked intervals during slicing. Now correctly selects targetted associations based on both mates (reported by @ekg)
+
 # Release 0.5.3
 
 ## Minor Features And Improvements

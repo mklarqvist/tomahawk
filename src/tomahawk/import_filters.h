@@ -10,9 +10,10 @@ struct ImporterFilters{
 		flipMajorMinor(false),
 		MAF(0),
 		HWE_P(0),
-		missingness(0.2)
+		missingness(1)
 	{}
-	~ImporterFilters(){}
+
+	~ImporterFilters() = default;
 
 	bool dropUnivariantRef;
 	bool dropUnivariantAlt;

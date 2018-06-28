@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <vector>
 
-#include "tomahawk/two/TomahawkOutputReader.h"
+#include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
 void concat_usage(void){
@@ -32,11 +32,13 @@ void concat_usage(void){
 	"        information in the same order as described in the header. This program is used\n"
 	"        primarily to concatenate output TWO files from calc in chunk mode.\n"
 	"        The input files does not have to be sorted.\n"
-	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " concat [options] <in.two>\n\n"
+	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " concat [options] -o <out.two>\n\n"
 	"Options:\n"
 	"  -i FILE  input files (required)\n"
 	"  -F LIST  list of files to concatenate (required)\n"
 	"  -o FILE  output file (required)\n"
+	"  -P       ignore ordering of internal blocks\n"
+	"  -t INT   number of parallel concat threads when ignoring internal ordering (-P)\n"
 	"  -s       Hide all program messages [null]\n";
 }
 

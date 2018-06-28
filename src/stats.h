@@ -20,12 +20,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-#include "algorithm/sort/output_sorter.h"
-#include "tomahawk/tomahawk_reader.h"
+#ifndef STATS_H_
+#define STATS_H_
+
 #include "tomahawk/tomahawk_output_reader.h"
 #include "utility.h"
 
-void sort_usage(void){
+void stats_usage(void){
 	programMessage();
 	std::cerr <<
 	"About:  Sort TWO files: provides two basic subroutines. Uncompressed files are generally too big to\n"
@@ -37,41 +38,27 @@ void sort_usage(void){
 	"Usage:  " << tomahawk::constants::PROGRAM_NAME << " sort [options] <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
-	"  -o FILE   output file (required)\n"
-	"  -L FLOAT  memory limit in MB (default: 10)\n"
-	"  -t INT    threads (default: " + std::to_string(std::thread::hardware_concurrency()) + ")\n"
-	"  -M        merge [null]\n"
-	"  -b INT    block size in MB when merging (default: 10)\n"
 	"  -s        Hide all program messages [null]\n";
 }
 
-int sort(int argc, char** argv){
+int stats(int argc, char** argv){
 	if(argc < 3){
-		sort_usage();
+		stats_usage();
 		return(1);
 	}
 
 	static struct option long_options[] = {
-		{"input",		required_argument, 0, 'i' },
-		{"output",		required_argument, 0, 'o' },
-		{"memory",		optional_argument, 0, 'L' },
-		{"threads",		optional_argument, 0, 't' },
-		{"merge",		no_argument, 0, 'M' },
-		{"block-size",	optional_argument, 0, 'b' },
-		{"silent",		no_argument, 0,  's' },
+		{"input",  required_argument, 0, 'i' },
+		{"silent", no_argument,       0, 's' },
 		{0,0,0,0}
 	};
 
 	// Parameter defaults
-	std::string input, output;
-	double memory_limit = 10e6;
-	double block_size   = 10e6;
-	bool merge = false;
-	int threads = std::thread::hardware_concurrency();
+	std::string input;
 
 	int c = 0;
 	int long_index = 0;
-	while ((c = getopt_long(argc, argv, "i:o:L:t:b:dDMs", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:s", long_options, &long_index)) != -1){
 		switch (c){
 		case ':':   /* missing option argument */
 			fprintf(stderr, "%s: option `-%c' requires an argument\n",
@@ -87,68 +74,26 @@ int sort(int argc, char** argv){
 		case 'i':
 			input = std::string(optarg);
 			break;
-		case 'o':
-			output = std::string(optarg);
-			break;
-		case 'L':
-			memory_limit = atof(optarg) * 1e6;
-			if(memory_limit <= 0){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter L cannot be negative" << std::endl;
-				return(1);
-			}
-			break;
-		case 'b':
-			block_size = atoi(optarg) * 1e6;
-			if(block_size <= 0){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter b cannot be negative" << std::endl;
-				return(1);
-			}
-			break;
-		case 't':
-			threads = atoi(optarg);
-			if(threads <= 0){
-				std::cerr << tomahawk::helpers::timestamp("ERROR") << "Parameter t cannot be <= 0" << std::endl;
-				return(1);
-			}
-			break;
-
-		case 'M':
-			merge = true;
-			break;
 		}
 	}
 
 	if(input.length() == 0){
 		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No input file specified..." << std::endl;
-		std::cerr << input.size() << '\t' << input << std::endl;
-		return(1);
-	}
-
-	if(output.length() == 0){
-		std::cerr << tomahawk::helpers::timestamp("ERROR") << "No output file specified..." << std::endl;
-		std::cerr << output.size() << '\t' << input << std::endl;
 		return(1);
 	}
 
 	if(!SILENT){
 		programMessage();
-		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling sort..." << std::endl;
+		std::cerr << tomahawk::helpers::timestamp("LOG") << "Calling stats..." << std::endl;
 	}
 
-	tomahawk::algorithm::OutputSorter reader;
-	reader.n_threads = threads;
+	tomahawk::TomahawkOutputReader reader;
+	if(!reader.open(input))  return 1;
+	if(!reader.statistics()) return 1;
 
-	if(merge == false){
-		if(!reader.sort(input, output, memory_limit)){
-			std::cerr << tomahawk::helpers::timestamp("ERROR", "SORT") << "Failed to sort file!" << std::endl;
-			return 1;
-		}
-	} else {
-		if(!reader.sortMerge(input, output, block_size)){
-			std::cerr << tomahawk::helpers::timestamp("ERROR", "SORT") << "Failed merge" << std::endl;
-			return 1;
-		}
-	}
 
 	return 0;
 }
+
+
+#endif /* STATS_H_ */

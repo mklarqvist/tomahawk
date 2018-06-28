@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "../basic_buffer.h"
-#include "../compression/tgzf_controller.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
 #include "support/helpers.h"
 #include "io/reader.h"
 #include "algorithm/open_hashtable.h"
@@ -54,7 +54,7 @@ public:
 	bool parse(reader& stream);
 	bool parse(const char* const data, const U32& length);
 
-	bool writeTGZFLiterals(std::ofstream& stream) const{
+	bool writeTGZFLiterals(std::ostream& stream) const{
 		buffer_type temp;
 		tgzf_type tgzf_controller;
 
@@ -65,7 +65,6 @@ public:
 		tgzf_controller.Deflate(temp);
 		stream.write(temp.data(), temp.size());
 		tgzf_controller.Clear();
-		temp.deleteAll();
 
 		return true;
 	}

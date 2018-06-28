@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "tomahawk/two/output_entry.h"
+#include "tomahawk/output_entry.h"
 
 namespace tomahawk{
 namespace totempole{
@@ -63,12 +63,14 @@ public:
 		return(*this);
 	}
 
-	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.byte_offset << '\t' << entry.byte_offset_end << '\t' << entry.contigID << '\t' << entry.min_position << '-' << entry.max_position << '\t' << entry.n_variants << '\t' << entry.uncompressed_size;
-		return stream;
+	void print(std::ostream& stream) const{
+		stream << this->byte_offset << "->" << this->byte_offset_end <<
+				" contig: " << this->contigID <<
+				" min-max: " << this->min_position << "->" << this->max_position <<
+				" variants: " << this->n_variants << " size: " << this->uncompressed_size;
 	}
 
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& entry){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset),       sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.byte_offset_end),   sizeof(U64));
 		stream.write(reinterpret_cast<const char*>(&entry.contigID),          sizeof(S32));

@@ -7,29 +7,66 @@
 #include <stddef.h>
 #include <regex>
 
+#include "support/magic_constants.h"
 #include "io/basic_buffer.h"
 #include "io/compression/tgzf_controller.h"
-#include "support/MagicConstants.h"
 #include "algorithm/open_hashtable.h"
 #include "support/type_definitions.h"
 #include "third_party/intervalTree.h"
-#include "tomahawk/output_container.h"
-#include "tomahawk/output_container_reference.h"
-#include "tomahawk/two/output_entry.h"
+#include "containers/output_container.h"
+#include "containers/output_container_reference.h"
+#include "tomahawk/output_entry.h"
+#include "tomahawk/aggregation_parameters.h"
 #include "output_filter.h"
 #include "index/index.h"
 #include "index/footer.h"
 #include "index/tomahawk_header.h"
+#include "io/output_writer.h"
 
 namespace tomahawk {
+
+// Todo: make me pretty
+enum TOMAHAWK_OUTPUT_FAMILY{
+	TWK_OUTPUT_TWO,
+	TWK_OUTPUT_LD
+};
+
+struct TomahawkOutputReaderParameters{
+public:
+	TomahawkOutputReaderParameters() :
+		showHeader(true),
+		output_json(false),
+		output_type(TWK_OUTPUT_LD),
+		output_file("-")
+	{
+
+	}
+
+	~TomahawkOutputReaderParameters() = default;
+
+public:
+	bool showHeader;
+	bool output_json;
+	TOMAHAWK_OUTPUT_FAMILY output_type;
+	std::string input_file;
+	std::string output_file;
+};
+
+template <typename T>
+inline T normal_pdf(const T& x, const T& mean, const T& sigma)
+{
+    static const T inv_sqrt_2pi = 0.3989422804014327;
+    const T a = (x - mean) / sigma;
+    return(inv_sqrt_2pi / sigma * std::exp(-T(0.5) * a * a));
+}
 
 class TomahawkOutputReader {
 private:
 	typedef TomahawkOutputReader      self_type;
 	typedef io::OutputEntry           entry_type;
 	typedef OutputFilter              filter_type;
-	typedef OutputContainer           output_container_type;
-	typedef OutputContainerReference  output_container_reference_type;
+	typedef containers::OutputContainer           output_container_type;
+	typedef containers::OutputContainerReference  output_container_reference_type;
 	typedef totempole::HeaderContig   contig_type;
 	typedef io::TGZFHeader            tgzf_header_type;
 	typedef algorithm::ContigInterval interval_type;
@@ -40,6 +77,11 @@ private:
 	typedef totempole::Footer         footer_type;
 	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef hash::HashTable<std::string, U32> hash_table;
+	typedef TomahawkOutputReaderParameters    parameters_type;
+	typedef io::OutputWriterInterface         writer_type;
+	typedef io::OutputWriterBinaryStream      writer_binary_stream_type;
+	typedef io::OutputWriterBinaryFile        writer_binary_file_type;
+	typedef io::OutputWriterStdOut            writer_ld_stream_type;
 
 public:
 	TomahawkOutputReader();
@@ -91,10 +133,11 @@ public:
 	 * Parses TWO data that has been loaded into memory after invoking
 	 * either getBlock functions. This function also increments the internal
 	 * position of the file handler.
-	 * @param clear Boolean set to TRUE if raw data should be cleared after invoking this function
-	 * @return      Returns TRUE upon success or FALSE otherwis
+	 * @param clear     Boolean set to TRUE if raw data should be cleared after invoking this function
+	 * @param clear_raw Boolean set to TRUE if compressed raw data should be cleared after invoking this function
+	 * @return          Returns TRUE upon success or FALSE otherwis
 	 */
-	int parseBlock(const bool clear = true);
+	int nextBlock(const bool clear = true, const bool clear_raw = true);
 
 	/**<
 	 * Used in parallel programming:
@@ -126,14 +169,13 @@ public:
 	output_container_type getContainerBlock(const U32 blockID);
 	output_container_type getContainerBlock(std::vector<U32> blocks);
 
-	inline void setShowHeader(const bool yes){ this->showHeader_ = yes; }
-	inline const bool getShowHeader(void) const{ return(this->showHeader_); }
 	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
+	inline const bool isPartiallySorted(void) const{ return(this->index_->getController().isPartialSorted == true); }
 
 	// Basic operations
 	bool view(void);
-	bool view(const interval_type& interval);
-	bool view(const std::vector<interval_type>& intervals);
+	//bool view(const interval_type& interval);
+	//bool view(const std::vector<interval_type>& intervals);
 
 	// Concatenate
 	bool concat(const std::string& file_list, const std::string& output);
@@ -141,43 +183,60 @@ public:
 
 	inline filter_type& getFilter(void){ return this->filters_; }
 
+	bool statistics(void);
+	bool aggregate(support::aggregation_parameters& parameters);
+
 private:
-	bool ParseHeader(void);
-	bool ParseHeaderExtend(void);
+	inline bool openWriter(void){
+		if(this->parameters_.output_type == TWK_OUTPUT_TWO){
+			if(this->parameters_.output_file == "-" || this->parameters_.output_file.size() == 0){
+				this->writer_ = new writer_binary_stream_type;
+
+			} else {
+				this->writer_ = new writer_binary_file_type;
+				if(!this->writer_->open(this->parameters_.output_file)){
+					std::cerr << helpers::timestamp("ERROR", "TOMAHAWK") << "Failed to open output file handle: " << this->parameters_.output_file << std::endl;
+					return(false);
+				}
+			}
+		} else {
+			this->writer_ = new writer_ld_stream_type;
+		}
+
+		// If the file is sorted then the output slice is sorted as well
+		if(this->getIndex().getController().isSorted){
+			this->writer_->setSorted(true);
+			this->writer_->getIndex()->getController().isSorted = true;
+		}
+
+		return(true);
+	}
 
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
-
 	bool __checkRegionUnsorted(const entry_type& entry);
 	bool __checkRegionSorted(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
-
 	bool __addRegions(std::vector<std::string>& positions);
-	//bool __ParseRegion(const std::string& region, interval_type& interval);
-	bool __ParseRegion(const std::string& region, interval_type& interval) const;
-	//bool __ParseRegionIndexedBlocks(void);
+	bool __parseRegion(const std::string& region, interval_type& interval) const;
 
 public:
-	U64            filesize_;  // filesize
-	U64            offset_end_of_data_;
-	bool           showHeader_; // flag to output header or not
-	bool           output_json_;
-	std::ifstream  stream_;    // reader stream
-
-	header_type    header_;
-	footer_type    footer_;
-	index_type*    index_;
-
-	buffer_type          buffer_;          // input buffer
-	buffer_type          data_;            // inflate buffer
-	buffer_type          outputBuffer_;    // output buffer
+	U64             filesize_;  // filesize
+	U64             offset_end_of_data_;
+	std::ifstream   stream_;    // reader stream
+	parameters_type parameters_;
+	header_type     header_;
+	footer_type     footer_;
+	index_type*     index_;
+	buffer_type     buffer_;          // input buffer
+	buffer_type     data_;            // inflate buffer
+	buffer_type     outputBuffer_;    // output buffer
 	tgzf_controller_type tgzf_controller_; // compression controller
-
 	filter_type filters_;	// filter parameters
-
-	tree_type** interval_tree; // actual interval trees
-	std::vector<interval_type>* interval_tree_entries; // entries for interval trees
+	tree_type** interval_tree_; // actual interval trees
+	std::vector<interval_type>* interval_tree_entries_; // entries for interval trees
+	writer_type* writer_;
 };
 
 } /* namespace Tomahawk */

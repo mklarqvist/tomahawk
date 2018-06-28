@@ -90,7 +90,7 @@ bool TomahawkImporter::BuildBCF(void){
 	// Get a line
 	bcf_entry_type entry;
 	while(reader.nextVariant(entry)){
-		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false){
 			entry.reset();
 			continue;
 		}
@@ -119,7 +119,7 @@ bool TomahawkImporter::BuildBCF(void){
 
 	// Parse lines
 	while(reader.nextVariant(entry)){
-		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false || entry.gt_support.n_missing > 3){
+		if(entry.gt_support.hasEOV || entry.isBiallelicSimple() == false){
 			entry.reset();
 			continue;
 		}
@@ -303,8 +303,8 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 	// Assess missingness
 	if(line.body->POS == this->sort_order_helper.previous_position && line.body->CHROM == this->sort_order_helper.prevcontigID){
 		if(this->sort_order_helper.previous_included){
-			//if(!SILENT)
-			//	std::cerr << helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
+			if(!SILENT)
+				std::cerr << helpers::timestamp("WARNING", "BCF") << "Duplicate position (" << (*this->vcf_header_)[line.body->CHROM].name << ":" << line.body->POS+1 << "): Dropping..." << std::endl;
 
 			goto next;
 		} else {
@@ -316,6 +316,13 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 
 	// Execute only if the line is simple (biallelic and SNP)
 	if(line.isSimple()){
+		const double missingness = (double)line.gt_support.n_missing/(2*this->vcf_header_->samples);
+		if(missingness > this->filters.missingness){
+			//std::cerr << line.gt_support.n_missing << "\t" << 2*this->vcf_header_->samples << "\t" << (double)line.gt_support.n_missing/(2*this->vcf_header_->samples) << std::endl;
+			goto next;
+		}
+
+
 		// Flush if output block is over some size
 		if(this->writer_.checkSize()){
 			++this->vcf_header_->getContig(line.body->CHROM); // update block count for this contigID
@@ -335,7 +342,7 @@ bool TomahawkImporter::parseBCFLine(bcf_entry_type& line){
 		this->sort_order_helper.previous_included = false;
 
 	next:
-	this->sort_order_helper.previous_position = line.body->POS + 1;
+	this->sort_order_helper.previous_position = line.body->POS;
 	this->sort_order_helper.prevcontigID      = line.body->CHROM;
 
 	return true;

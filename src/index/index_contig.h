@@ -56,12 +56,7 @@ public:
 		return true;
 	}
 
-	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.n_bases << '\t' << entry.n_char << '\t' << entry.name;
-		return stream;
-	}
-
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& base){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& base){
 		stream.write(reinterpret_cast<const char*>(&base.n_bases), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&base.n_char), sizeof(U32));
 		stream.write(reinterpret_cast<const char*>(&base.name[0]), base.name.size());
@@ -98,12 +93,7 @@ public:
 	IndexContig() : min_position(0), max_position(0), blocks_start(0), blocks_end(0){}
 	~IndexContig(){}
 
-	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
-		stream << entry.name << '\t' << entry.n_bases << '\t' << entry.min_position << "-" << entry.max_position << '\t' << entry.blocks_start << "->" << entry.blocks_end;
-		return stream;
-	}
-
-	friend std::ofstream& operator<<(std::ofstream& stream, const self_type& base){
+	friend std::ostream& operator<<(std::ostream& stream, const self_type& base){
 		const parent_type* const parent = reinterpret_cast<const parent_type* const>(&base);
 		stream << *parent;
 

@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <cstring>
 
-#include "support/MagicConstants.h" // for SILENT
+#include "support/magic_constants.h" // for SILENT
 
 namespace tomahawk{
 

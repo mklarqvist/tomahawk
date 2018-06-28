@@ -18,8 +18,6 @@ ImportWriter::ImportWriter(const filter_type& filter) :
 
 ImportWriter::~ImportWriter(){
 	delete this->rleController_;
-	this->buffer_rle_.deleteAll();
-	this->buffer_meta_.deleteAll();
 }
 
 bool ImportWriter::Open(const std::string output){

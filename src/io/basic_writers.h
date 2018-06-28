@@ -5,10 +5,10 @@
 #include <iostream>
 #include <string>
 
+#include "support/magic_constants.h"
 #include "support/helpers.h"
 #include "algorithm/spinlock.h"
 #include "basic_buffer.h"
-#include "support/MagicConstants.h"
 
 namespace tomahawk {
 namespace io{
@@ -108,15 +108,12 @@ public:
 	}
 
 	bool open(const std::string output){
-		std::cerr << "here in open: " << output << std::endl;
 		if(output.length() == 0){
 			std::cerr << helpers::timestamp("ERROR", "WRITER") << "No output name provided..." << std::endl;
 			return false;
 		}
 
-		std::cerr << "after test" << std::endl;
 		this->stream.open(output, std::ios::binary | std::ios::out);
-		std::cerr << "after first open" << std::endl;
 		if(!this->stream.good()){
 			std::cerr << helpers::timestamp("ERROR", "WRITER") << "Could not open output file: " << output << "..." << std::endl;
 			return false;
@@ -125,8 +122,6 @@ public:
 		if(!SILENT)
 			std::cerr << helpers::timestamp("LOG", "WRITER") << "Opening output file: " << output << "..." << std::endl;
 
-		std::cerr << "returnign open" << std::endl;
-		std::cerr << this->stream.good() << std::endl;
 		return true;
 	}
 

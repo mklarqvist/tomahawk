@@ -6,19 +6,19 @@
 #include <cassert>
 #include <cmath>
 
+#include "io/output_writer.h"
 #include "io/basic_writers.h"
 #include "support/simd_definitions.h"
 #include "algorithm/spinlock.h"
 #include "interface/progressbar.h"
-#include "TomahawkCalcParameters.h"
 #include "algorithm/load_balancer_block.h"
 #include "algorithm/genotype_bitpacker.h"
 #include "math/fisher_math.h"
-#include "genotype_meta_container_reference.h"
+#include "containers/genotype_meta_container_reference.h"
 #include "ld_calculation_simd_helper.h"
-#include "two/output_entry_support.h"
-#include "io/output_writer.h"
+#include "output_entry_support.h"
 #include "haplotype_bitvector.h"
+#include "tomahawk_calc_parameters.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -152,18 +152,16 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 
 template <class T>
 class LDSlave{
-	typedef LDSlave<T>                                 self_type;
-	typedef GenotypeMetaContainerReference<T>          manager_type;
-	typedef base::GenotypeContainerReference<T>        block_type;
-	typedef const support::GenotypeDiploidRun<T>       run_type;
-	typedef base::GenotypeContainerRunlengthObjects<T> rle_type;
-
+	typedef LDSlave<T>                                       self_type;
+	typedef containers::GenotypeMetaContainerReference<T>    manager_type;
+	typedef containers::GenotypeContainerReference<T>        block_type;
+	typedef const support::GenotypeDiploidRun<T>             run_type;
+	typedef containers::GenotypeContainerRunlengthObjects<T> rle_type;
 	typedef const MetaEntry                      meta_type;
 	typedef totempole::IndexEntry                totempole_entry_type;
-	typedef io::OutputWriter                     output_writer_type;
+	typedef io::OutputWriterInterface            output_writer_type;
 	typedef support::OutputEntrySupport          helper_type;
 	typedef base::GenotypeBitvector<>            simd_pair;
-
 	typedef interface::ProgressBar               progress_bar_type;
 	typedef support::LDCalculationSIMDHelper<>   simd_helper_type;
 	typedef TomahawkCalcParameters               parameter_type;
@@ -177,7 +175,7 @@ class LDSlave{
 
 public:
 	LDSlave(const manager_type& manager,
-			output_writer_type& writer,
+			output_writer_type* writer,
         interface::ProgressBar& progress,
   const TomahawkCalcParameters& parameters,
               const work_order& orders);
@@ -202,7 +200,7 @@ public:
 	//inline const U64& getNoHets(void) const{ return this->no_uncertainty; }
 	//inline const U64& getInsufficientData(void) const{ return this->insufficent_alleles; }
 	//inline U64 getComparisons(void) const{ return(this->impossible + this->possible + this->insufficent_alleles); }
-	inline output_writer_type& getWriter(void){ return(this->output_writer); }
+	inline output_writer_type& getWriter(void){ return(*this->output_writer); }
 	inline const output_writer_type& getWriter(void) const{ return(this->output_writer); }
 
 private:
@@ -285,7 +283,7 @@ private:
 	std::thread thread;
 
 	// writer manager
-	output_writer_type output_writer; // each thread has their own output manager with its own buffer
+	output_writer_type* output_writer; // each thread has their own output manager with its own buffer
 
 	// progress
 	progress_bar_type& progress;
@@ -308,7 +306,7 @@ private:
 
 template <class T>
 LDSlave<T>::LDSlave(const manager_type& manager,
-		output_writer_type& writer,
+		output_writer_type* writer,
 		progress_bar_type& progress,
 		const parameter_type& parameters,
 		const work_order& orders) :
@@ -358,7 +356,7 @@ LDSlave<T>& LDSlave<T>::operator+=(const LDSlave<T>& other){
 	//this->insufficent_alleles += other.insufficent_alleles;
 	//this->false_positive    += other.false_positive;
 	//this->false_negative    += other.false_negative;
-	this->output_writer       += other.output_writer;
+	*this->output_writer      += *other.output_writer;
 	return(*this);
 }
 
@@ -1606,7 +1604,7 @@ bool LDSlave<T>::Calculate(void){
 	}
 
 	// Finish the output manager
-	this->output_writer.flush();
+	this->output_writer->flush();
 
 	return true;
 }
@@ -1630,7 +1628,7 @@ bool LDSlave<T>::CompareBlocksFunction(const block_type& block1, const block_typ
 
 #elif SLAVE_DEBUG_MODE == 2
 	if(this->CalculateLDPhasedVectorizedNoMissing(block1, block2)){
-		this->output_writer.Add(block1, block2, helper);
+		this->output_writer->add(block1, block2, helper);
 	}
 #elif SLAVE_DEBUG_MODE == 3
 		this->CalculateLDPhased(block1, block2);
@@ -1735,14 +1733,14 @@ bool LDSlave<T>::CompareBlocks(block_type& block1){
 			//	continue;
 
 			if((this->*phase_function_across)(block1, block2)){
-				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
+				this->output_writer->add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
 			}
 			++block2;
 		}
 
 		// Update progress
-		this->progress(block1.size() - (i + 1), this->output_writer.getProgressCounts());
-		this->output_writer.ResetProgress();
+		this->progress(block1.size() - (i + 1), this->output_writer->getProgressCounts());
+		this->output_writer->ResetProgress();
 		++block1;
 	}
 	return true;
@@ -1768,14 +1766,14 @@ bool LDSlave<T>::CompareBlocks(block_type& block1, block_type& block2){
 			//	break;
 
 			if((this->*phase_function_across)(block1, block2)){
-				this->output_writer.Add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
+				this->output_writer->add(block1.currentMeta(), block2.currentMeta(), block1.getTotempole(), block2.getTotempole(), helper);
 			}
 			++block2;
 		}
 
 		// Update progress
-		this->progress(block2.size(), this->output_writer.getProgressCounts());
-		this->output_writer.ResetProgress();
+		this->progress(block2.size(), this->output_writer->getProgressCounts());
+		this->output_writer->ResetProgress();
 
 		// Reset position in block2 and increment position in block1
 		block2.resetIterator();

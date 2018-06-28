@@ -10,7 +10,7 @@
 #include "genotype_container_runlength.h"
 
 namespace tomahawk{
-namespace base{
+namespace containers{
 
 template <class T>
 class GenotypeContainer{

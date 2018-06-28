@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_BASE_TWK_READER_IMPLEMENTATION_H_
 #define TOMAHAWK_BASE_TWK_READER_IMPLEMENTATION_H_
 
-#include "genotype_container.h"
+#include "containers/genotype_container.h"
 
 namespace tomahawk{
 
@@ -9,7 +9,7 @@ template <class T>
 class TomahawkReaderImpl{
 private:
 	typedef TomahawkReaderImpl         self_type;
-	typedef base::GenotypeContainer<T> value_type;
+	typedef containers::GenotypeContainer<T> value_type;
     typedef value_type&                reference;
     typedef const value_type&          const_reference;
     typedef value_type*                pointer;

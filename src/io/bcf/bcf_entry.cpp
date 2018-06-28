@@ -1,11 +1,11 @@
 #ifndef BCFENTRY_CPP_
 #define BCFENTRY_CPP_
 
+#include <support/magic_constants.h>
 #include "bcf_entry.h"
 
 #include <cassert>
 
-#include "support/MagicConstants.h"
 
 namespace tomahawk {
 namespace bcf {

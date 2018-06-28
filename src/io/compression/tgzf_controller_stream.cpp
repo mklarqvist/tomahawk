@@ -1,8 +1,8 @@
+#include <support/magic_constants.h> // for SILENT
 #include "tgzf_controller_stream.h"
 
 #include <cassert>
 
-#include "support/MagicConstants.h" // for SILENT
 
 namespace tomahawk{
 namespace io{
@@ -15,10 +15,15 @@ bool TGZFControllerStream::InflateOpen(std::ifstream& stream){
 	this->buffer.resize(this->chunk_size);
 	this->bytes_read = 0;
 	stream.read(this->buffer.data(), constants::TGZF_BLOCK_HEADER_LENGTH);
+	if(stream.good() == false){
+		std::cerr << helpers::timestamp("ERROR", "TGZF") << "Failed to read data in InflateOpen!" << std::endl;
+		return false;
+	}
+
 	const header_type* h = reinterpret_cast<const header_type*>(this->buffer.data());
 
 	if(!h->Validate()){
-		std::cerr << helpers::timestamp("ERROR", "TGZF") << "Failed to validate!" << std::endl;
+		std::cerr << helpers::timestamp("ERROR", "TGZF") << "Failed to validate in InflateOpen!" << std::endl;
 		std::cerr << *h << std::endl;
 		exit(1);
 	}

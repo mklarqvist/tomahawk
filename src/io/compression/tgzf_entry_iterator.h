@@ -55,10 +55,13 @@ TGZFEntryIterator<T>::TGZFEntryIterator(std::ifstream& stream, const U32 n_entri
 	IO_end_offset(to),
 	stream(stream),
 	output_buffer(n_entries*sizeof(T)),
-	entries(nullptr){}
+	entries(nullptr)
+{
+	//std::cerr << "init to: " << n_entries*sizeof(T) << std::endl;
+}
 
 template <class T>
-TGZFEntryIterator<T>::~TGZFEntryIterator(){ this->output_buffer.deleteAll(); }
+TGZFEntryIterator<T>::~TGZFEntryIterator(){ }
 
 template <class T>
 bool TGZFEntryIterator<T>::nextEntry(const T*& entry){

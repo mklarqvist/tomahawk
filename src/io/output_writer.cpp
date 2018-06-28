@@ -1,18 +1,20 @@
-#include "output_writer.h"
+#include <io/output_writer.h>
 
 namespace tomahawk{
 namespace io{
 
-OutputWriter::OutputWriter(void) :
+OutputWriterInterface::OutputWriterInterface(void) :
 	owns_pointers(true),
 	writing_sorted_(false),
 	writing_sorted_partial_(false),
+	upper_only_(false),
 	n_entries(0),
 	n_progress_count(0),
 	n_blocks(0),
 	l_flush_limit(2000000),
 	l_largest_uncompressed(0),
-	stream(nullptr),
+	bytes_added(0),
+	bytes_written(0),
 	buffer(this->l_flush_limit*2),
 	spin_lock(new spin_lock_type),
 	index_(new index_type),
@@ -21,34 +23,18 @@ OutputWriter::OutputWriter(void) :
 
 }
 
-OutputWriter::OutputWriter(std::string input_file) :
-	owns_pointers(true),
-	writing_sorted_(false),
-	writing_sorted_partial_(false),
-	n_entries(0),
-	n_progress_count(0),
-	n_blocks(0),
-	l_flush_limit(2000000),
-	l_largest_uncompressed(0),
-	stream(new std::ofstream(input_file, std::ios::binary | std::ios::out)),
-	buffer(this->l_flush_limit*2),
-	spin_lock(new spin_lock_type),
-	index_(new index_type),
-	footer_(new footer_type)
-{
-
-}
-
-OutputWriter::OutputWriter(const self_type& other) :
+OutputWriterInterface::OutputWriterInterface(const self_type& other) :
 	owns_pointers(false),
 	writing_sorted_(other.writing_sorted_),
 	writing_sorted_partial_(other.writing_sorted_partial_),
+	upper_only_(other.upper_only_),
 	n_entries(other.n_entries),
 	n_progress_count(other.n_progress_count),
 	n_blocks(other.n_blocks),
 	l_flush_limit(other.l_flush_limit),
 	l_largest_uncompressed(0),
-	stream(other.stream),
+	bytes_added(0),
+	bytes_written(0),
 	buffer(other.buffer.capacity()),
 	spin_lock(other.spin_lock),
 	index_(other.index_),
@@ -57,18 +43,41 @@ OutputWriter::OutputWriter(const self_type& other) :
 
 }
 
-OutputWriter::~OutputWriter(void){
+OutputWriterInterface::~OutputWriterInterface(void){
 	if(this->owns_pointers){
-		this->stream->flush();
-		this->stream->close();
-		delete this->stream;
 		delete this->spin_lock;
 		delete this->index_;
 		delete this->footer_;
 	}
 }
 
-bool OutputWriter::open(const std::string& output_file){
+OutputWriterBinaryFile::OutputWriterBinaryFile(void) :
+	stream(nullptr)
+{
+
+}
+
+OutputWriterBinaryFile::OutputWriterBinaryFile(std::string input_file) :
+	stream(new std::ofstream(input_file, std::ios::binary | std::ios::out))
+{
+
+}
+
+OutputWriterBinaryFile::OutputWriterBinaryFile(const self_type& other) :
+	parent_type(other),
+	stream(other.stream)
+{
+
+}
+
+OutputWriterBinaryFile::~OutputWriterBinaryFile(void){
+	if(this->owns_pointers){
+		this->stream->flush();
+		delete this->stream;
+	}
+}
+
+bool OutputWriterBinaryFile::open(const std::string& output_file){
 	if(output_file.size() == 0)
 		return false;
 
@@ -84,7 +93,7 @@ bool OutputWriter::open(const std::string& output_file){
 	return true;
 }
 
-int OutputWriter::writeHeaders(twk_header_type& twk_header){
+int OutputWriterBinaryFile::writeHeaders(twk_header_type& twk_header){
 	const std::string command = "##tomahawk_calcCommand=" + helpers::program_string();
 	twk_header.getLiterals() += command;
 	// Set file type to TWO
@@ -93,7 +102,7 @@ int OutputWriter::writeHeaders(twk_header_type& twk_header){
 	return(twk_header.write(*this->stream));
 }
 
-void OutputWriter::writeFinal(void){
+void OutputWriterBinaryFile::writeFinal(void){
 	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
 	this->footer_->offset_end_of_data = this->stream->tellp();
 	this->index_->setSorted(this->isSorted());
@@ -105,17 +114,20 @@ void OutputWriter::writeFinal(void){
 	this->stream->flush();
 }
 
-void OutputWriter::flush(void){
+void OutputWriterBinaryFile::flush(const bool lock){
 	if(this->buffer.size() > 0){
 		if(!this->compressor.Deflate(this->buffer)){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
 			exit(1);
 		}
 
+		this->bytes_added   += this->buffer.size();
+		this->bytes_written += this->compressor.buffer.size();
+
 		if(this->buffer.size() > l_largest_uncompressed)
 			this->l_largest_uncompressed = this->buffer.size();
 
-		this->spin_lock->lock();
+		if(lock) this->spin_lock->lock();
 		this->index_entry.byte_offset = (U64)this->stream->tellp();
 		this->index_entry.uncompressed_size = this->buffer.size();
 		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
@@ -126,7 +138,7 @@ void OutputWriter::flush(void){
 		//std::cerr << this->index_entry.byte_offset_from << "->" << this->index_entry.byte_offset_to << " for " << this->index_entry.n_entries << " of " << this->index_entry.uncompressed_size << std::endl;
 		++this->n_blocks;
 
-		this->spin_lock->unlock();
+		if(lock) this->spin_lock->unlock();
 
 		this->buffer.reset();
 		this->compressor.Clear();
@@ -134,15 +146,44 @@ void OutputWriter::flush(void){
 	}
 }
 
-void OutputWriter::operator<<(const container_type& container){
-	for(size_type i = 0; i < container.size(); ++i)
-		this->buffer << container[i];
+void OutputWriterBinaryFile::operator<<(const container_type& container){
+	// 1: container.size() == N
+	// 2: reserve memory for compressor == N
+	// 4: compressed output ~= N
 
-	this->n_entries += buffer.size() / sizeof(entry_type);
-	*this << this->buffer;
+	this->n_entries += container.size();
+	if(container.size() > 0){
+		if(!this->compressor.Deflate((void*)&container[0], container.size()*sizeof(entry_type))){
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			exit(1);
+		}
+
+		if(container.size()*sizeof(entry_type) > l_largest_uncompressed)
+			this->l_largest_uncompressed = container.size()*sizeof(entry_type);
+
+		// Lock
+		this->spin_lock->lock();
+
+		this->bytes_added   += container.size()*sizeof(entry_type);
+		this->bytes_written += this->compressor.buffer.size();
+
+		this->index_entry.byte_offset       = (U64)this->stream->tellp();
+		this->index_entry.uncompressed_size = container.size()*sizeof(entry_type);
+		this->stream->write(this->compressor.buffer.data(), this->compressor.buffer.size());
+		this->index_entry.byte_offset_end   = (U64)this->stream->tellp();
+		this->index_entry.n_variants        = container.size();
+		this->index_->getContainer()       += this->index_entry;
+		++this->n_blocks;
+
+		// Unlock
+		this->spin_lock->unlock();
+
+		this->compressor.Clear();
+		this->index_entry.reset();
+	}
 }
 
-void OutputWriter::operator<<(buffer_type& buffer){
+void OutputWriterBinaryFile::operator<<(buffer_type& buffer){
 	if(buffer.size() > 0){
 		if(!this->compressor.Deflate(buffer)){
 			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
@@ -172,7 +213,7 @@ void OutputWriter::operator<<(buffer_type& buffer){
 	}
 }
 
-void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
+void OutputWriterBinaryFile::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
 	if(buffer.size() == 0) return;
 
 	assert(uncompressed_size % sizeof(entry_type) == 0);
@@ -198,7 +239,7 @@ void OutputWriter::writePrecompressedBlock(buffer_type& buffer, const U64& uncom
 	this->index_entry.reset();
 }
 
-void OutputWriter::CheckOutputNames(const std::string& input){
+void OutputWriterBinaryFile::CheckOutputNames(const std::string& input){
 	std::vector<std::string> paths = helpers::filePathBaseExtension(input);
 	this->basePath = paths[0];
 	if(this->basePath.size() > 0)
@@ -209,7 +250,184 @@ void OutputWriter::CheckOutputNames(const std::string& input){
 	else this->baseName = paths[1];
 }
 
-void OutputWriter::Add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+void OutputWriterBinaryFile::add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
+	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
+	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
+	this->buffer += helper.controller;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer << helper;
+
+	// Todo: toggleable
+	// Add reverse
+	this->buffer += helper.controller;
+	this->buffer += header_b.contigID;
+	this->buffer += writePosB;
+	this->buffer += header_a.contigID;
+	this->buffer += writePosA;
+	this->buffer << helper;
+
+	this->n_entries += 2;
+	this->n_progress_count += 2;
+	this->index_entry.n_variants += 2;
+
+	if(this->buffer.size() > this->l_flush_limit)
+		this->flush();
+}
+
+
+
+
+int OutputWriterBinaryStream::writeHeaders(twk_header_type& twk_header){
+	const std::string command = "##tomahawk_calcCommand=" + helpers::program_string();
+	twk_header.getLiterals() += command;
+	// Set file type to TWO
+	twk_header.magic_.file_type = 1;
+
+	int header_written_bytes = twk_header.write(std::cout);
+	if(header_written_bytes == false) return(0);
+
+	return(header_written_bytes);
+}
+
+void OutputWriterBinaryStream::writeFinal(void){
+	this->footer_->l_largest_uncompressed = this->l_largest_uncompressed;
+	this->footer_->offset_end_of_data = std::cout.tellp();
+	this->index_->setSorted(this->isSorted());
+	this->index_->setPartialSorted(this->isPartialSorted());
+
+	std::cout.flush();
+	std::cout << *this->index_;
+	std::cout << *this->footer_;
+	std::cout.flush();
+}
+
+void OutputWriterBinaryStream::flush(const bool lock){
+	if(this->buffer.size() > 0){
+		if(!this->compressor.Deflate(this->buffer)){
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			exit(1);
+		}
+
+		this->bytes_added   += this->buffer.size();
+		this->bytes_written += this->compressor.buffer.size();
+
+		if(this->buffer.size() > l_largest_uncompressed)
+			this->l_largest_uncompressed = this->buffer.size();
+
+		if(lock) this->spin_lock->lock();
+		this->index_entry.byte_offset       = (U64)std::cout.tellp();
+		this->index_entry.uncompressed_size = this->buffer.size();
+		std::cout.write(this->compressor.buffer.data(), this->compressor.buffer.size());;
+		this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
+		this->index_entry.n_variants        = this->buffer.size() / sizeof(entry_type);
+		this->index_->getContainer()       += this->index_entry;
+		++this->n_blocks;
+
+		if(lock) this->spin_lock->unlock();
+
+		this->buffer.reset();
+		this->compressor.Clear();
+		this->index_entry.reset();
+	}
+}
+
+void OutputWriterBinaryStream::operator<<(const container_type& container){
+	// 1: container.size() == N
+	// 2: reserve memory for compressor == N
+	// 4: compressed output ~= N
+
+	this->n_entries += container.size();
+	if(container.size() > 0){
+		if(!this->compressor.Deflate((void*)&container[0], container.size()*sizeof(entry_type))){
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			exit(1);
+		}
+
+		if(container.size()*sizeof(entry_type) > l_largest_uncompressed)
+			this->l_largest_uncompressed = container.size()*sizeof(entry_type);
+
+		// Lock
+		this->spin_lock->lock();
+
+		this->bytes_added   += container.size()*sizeof(entry_type);
+		this->bytes_written += this->compressor.buffer.size();
+
+		this->index_entry.byte_offset       = (U64)std::cout.tellp();
+		this->index_entry.uncompressed_size = container.size()*sizeof(entry_type);
+		std::cout.write(this->compressor.buffer.data(), this->compressor.buffer.size());
+		this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
+		this->index_entry.n_variants        = container.size();
+		this->index_->getContainer()       += this->index_entry;
+		++this->n_blocks;
+
+		// Unlock
+		this->spin_lock->unlock();
+
+		this->compressor.Clear();
+		this->index_entry.reset();
+	}
+}
+
+void OutputWriterBinaryStream::operator<<(buffer_type& buffer){
+	if(buffer.size() > 0){
+		if(!this->compressor.Deflate(buffer)){
+			std::cerr << helpers::timestamp("ERROR","TGZF") << "Failed deflate DATA..." << std::endl;
+			exit(1);
+		}
+
+		if(buffer.size() > l_largest_uncompressed)
+			this->l_largest_uncompressed = buffer.size();
+
+		// Lock
+		this->spin_lock->lock();
+
+		this->index_entry.byte_offset       = (U64)std::cout.tellp();
+		this->index_entry.uncompressed_size = buffer.size();
+		std::cout.write(this->compressor.buffer.data(), this->compressor.buffer.size());
+		this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
+		this->index_entry.n_variants        = buffer.size() / sizeof(entry_type);
+		this->index_->getContainer()       += this->index_entry;
+		++this->n_blocks;
+
+		// Unlock
+		this->spin_lock->unlock();
+
+		buffer.reset();
+		this->compressor.Clear();
+		this->index_entry.reset();
+	}
+}
+
+void OutputWriterBinaryStream::writePrecompressedBlock(buffer_type& buffer, const U64& uncompressed_size){
+	if(buffer.size() == 0) return;
+
+	assert(uncompressed_size % sizeof(entry_type) == 0);
+
+	if(uncompressed_size > l_largest_uncompressed)
+		this->l_largest_uncompressed = uncompressed_size;
+
+	// Lock
+	this->spin_lock->lock();
+
+	this->index_entry.byte_offset       = (U64)std::cout.tellp();
+	this->index_entry.uncompressed_size = uncompressed_size;
+	std::cout.write(buffer.data(), buffer.size());
+	this->index_entry.byte_offset_end   = (U64)std::cout.tellp();
+	this->index_entry.n_variants        = uncompressed_size / sizeof(entry_type);
+	this->index_->getContainer()       += this->index_entry;
+	++this->n_blocks;
+
+	// Unlock
+	this->spin_lock->unlock();
+
+	buffer.reset();
+	this->index_entry.reset();
+}
+
+void OutputWriterBinaryStream::add(const MetaEntry& meta_a, const MetaEntry& meta_b, const header_entry_type& header_a, const header_entry_type& header_b, const entry_support_type& helper){
 	const U32 writePosA = meta_a.position << 2 | meta_a.all_phased << 1 | meta_a.has_missing;
 	const U32 writePosB = meta_b.position << 2 | meta_b.all_phased << 1 | meta_b.has_missing;
 	this->buffer += helper.controller;

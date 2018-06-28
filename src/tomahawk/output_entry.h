@@ -16,9 +16,9 @@ namespace io{
 #pragma pack(push, 1)
 struct __attribute__((packed, aligned(1))) OutputEntry{
 public:
-	typedef OutputEntry                    self_type;
-	typedef totempole::HeaderContig        contig_type;
-	typedef io::BasicBuffer                buffer_type;
+	typedef OutputEntry             self_type;
+	typedef totempole::HeaderContig contig_type;
+	typedef io::BasicBuffer         buffer_type;
 
 public:
 	// if interpreted directly from buffer stream
@@ -56,6 +56,19 @@ public:
 	bool operator< (const self_type& other) const;
 	bool operator<=(const self_type& other) const;
 	bool operator==(const self_type& other) const;
+
+	// Accessor functions for use in pointer functions
+	inline double getD(void) const{ return(this->D); }
+	inline double getDPrime(void) const{ return(this->Dprime); }
+	inline double getR(void) const{ return(this->R); }
+	inline double getR2(void) const{ return(this->R2); }
+	inline double getP1(void) const{ return(this->p1); }
+	inline double getP2(void) const{ return(this->p2); }
+	inline double getQ1(void) const{ return(this->q1); }
+	inline double getQ2(void) const{ return(this->q2); }
+	inline double getP(void) const{ return(this->P); }
+	inline double getLog10P(void) const{ return(this->P < 1e-300 ? 300 : -log10(this->P)); }
+
 
 	// Comparator function: inverse of lesser comparator
 	inline bool operator> (const self_type& other) const{ return(!((*this) <  other)); }

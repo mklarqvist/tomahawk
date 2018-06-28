@@ -1,7 +1,7 @@
 #ifndef TOMAHAWK_TOMAHAWKSUPPORT_H_
 #define TOMAHAWK_TOMAHAWKSUPPORT_H_
 
-#include "support/MagicConstants.h"
+#include "support/magic_constants.h"
 
 namespace tomahawk{
 namespace support{

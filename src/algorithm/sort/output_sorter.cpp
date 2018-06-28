@@ -1,6 +1,7 @@
 #include <cassert>
 
 #include "output_sorter.h"
+#include "interface/timer.h"
 
 namespace tomahawk{
 namespace algorithm{
@@ -54,7 +55,7 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_sortCommand=" + helpers::program_string();
 
-	io::OutputWriter writer;
+	io::OutputWriterBinaryFile writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << helpers::timestamp("ERROR","SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
@@ -65,7 +66,11 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		std::cerr << helpers::timestamp("LOG","SORT") << "Spawning: " << active_threads << " workers..." << std::endl;
 
 	OutputSortSlave** slaves = new OutputSortSlave*[active_threads];
-	std::thread** threads = new std::thread*[active_threads];
+	std::thread** threads    = new std::thread*[active_threads];
+
+	// Setup front-end interface
+	interface::Timer timer;
+	timer.Start();
 
 	for(U32 i = 0; i < active_threads; ++i){
 		slaves[i] = new OutputSortSlave(this->reader, writer, thread_distribution[i], memory_limit);
@@ -76,22 +81,21 @@ bool OutputSorter::sort(const std::string& input, const std::string& destination
 		threads[i] = slaves[i]->start();
 	}
 
-	for(U32 i = 0; i < active_threads; ++i)
-		threads[i]->join();
-
-	for(U32 i = 0; i < active_threads; ++i)
-		writer += slaves[i]->getWriter();
+	for(U32 i = 0; i < active_threads; ++i) threads[i]->join();
+	for(U32 i = 0; i < active_threads; ++i) writer += slaves[i]->getWriter();
 
 	writer.setSorted(false);
 	writer.setPartialSorted(true);
 	writer.flush();
 	writer.writeFinal();
 
-	if(!SILENT)
+	if(!SILENT){
+		std::cerr << helpers::timestamp("LOG") << "Throughput: " << timer.ElapsedString() << " (" << helpers::ToPrettyString((U64)ceil((double)writer.totalBytesAdded()/timer.Elapsed().count())) << " b/s, " << helpers::ToPrettyString((U64)((double)writer.sizeEntries()/timer.Elapsed().count())) << " entries/s)..." << std::endl;
 		std::cerr << helpers::timestamp("LOG") << "Output: " << helpers::ToPrettyString(writer.sizeEntries()) << " entries into " << helpers::ToPrettyString(writer.sizeBlocks()) << " blocks..." << std::endl;
+		std::cerr << helpers::timestamp("LOG") << "Data: " << helpers::ToPrettyString(writer.totalBytesAdded()) << " b compressed into " << helpers::ToPrettyString(writer.totalBytesWritten()) << " b (" << (double)writer.totalBytesAdded()/writer.totalBytesWritten() << "-fold)..." << std::endl;
+	}
 
-	for(U32 i = 0; i < active_threads; ++i)
-		delete slaves[i];
+	for(U32 i = 0; i < active_threads; ++i) delete slaves[i];
 
 	delete [] slaves;
 	delete [] threads;
@@ -119,7 +123,7 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	// Append executed command to literals
 	this->reader.getHeader().getLiterals() += "\n##tomahawk_mergeSortCommand=" + helpers::program_string();
 
-	io::OutputWriter writer;
+	io::OutputWriterBinaryFile writer;
 	if(!writer.open(destinationPrefix)){
 		std::cerr << helpers::timestamp("ERROR", "SORT") << "Failed to open: " << destinationPrefix << "..." << std::endl;
 		return false;
@@ -130,21 +134,36 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 	// New index
 	Index index_updated;
 
-	const U32 n_toi_entries = this->reader.getIndex().size();
-	std::ifstream* streams = new std::ifstream[n_toi_entries];
+	const U32 n_toi_entries   = this->reader.getIndex().size();
+	std::ifstream* streams    = new std::ifstream[n_toi_entries];
 	tgzf_iterator** iterators = new tgzf_iterator*[n_toi_entries];
 
 	if(!SILENT)
 		std::cerr << helpers::timestamp("LOG", "SORT") << "Opening " << n_toi_entries << " file handles...";
 
+	//U64 n_total_memory_allocated = 0;
 	for(U32 i = 0; i < n_toi_entries; ++i){
+		//std::cerr << i << "/" << n_toi_entries << " -> " << this->reader.getIndex().getContainer()[i].byte_offset << "-" << this->reader.getIndex().getContainer()[i].byte_offset_end << std::endl;
+
 		streams[i].open(inputFile);
 		streams[i].seekg(this->reader.getIndex().getContainer()[i].byte_offset);
-		iterators[i] = new tgzf_iterator(streams[i], 65536, this->reader.getIndex().getContainer()[i].byte_offset, this->reader.getIndex().getContainer()[i].byte_offset_end);
+		if(streams[i].good() == false){
+			std::cerr << helpers::timestamp("ERROR","IO") << "Failed to open and seek in file..." << std::endl;
+			return false;
+		}
+		iterators[i] = new tgzf_iterator(streams[i],
+		                                 100,
+		                                 this->reader.getIndex().getContainer()[i].byte_offset,
+		                                 this->reader.getIndex().getContainer()[i].byte_offset_end);
+
+		//n_total_memory_allocated += 100*sizeof(entry_type) + iterators[i]->buffer.capacity();
 	}
 
 	if(!SILENT)
 		std::cerr << " Done!" << std::endl;
+
+	//if(!SILENT)
+	//	std::cerr << "Allocated " << n_total_memory_allocated << "b" << std::endl;
 
 	// queue
 	queue_type outQueue;
@@ -187,7 +206,6 @@ bool OutputSorter::sortMerge(const std::string& inputFile, const std::string& de
 			}
 			writer << *e;
 		}
-
 	}
 
 	writer.setPartialSorted(false);

@@ -10,6 +10,22 @@
 
 namespace tomahawk {
 
+struct TomahawkImporterStats{
+	TomahawkImporterStats() :
+		n_filtered_eov(0),
+		n_filtered_missingness(0),
+		n_filtered_not_biallelic(0)
+	{
+
+	}
+
+	~TomahawkImporterStats() = default;
+
+	U64 n_filtered_eov;
+	U64 n_filtered_missingness;
+	U64 n_filtered_not_biallelic;
+};
+
 /**<
  * This class handles importing `bcf`/`vcf` into the `twk` file format.
  */

@@ -3,14 +3,14 @@
 
 #include <algorithm>
 
-#include "../../support/helpers.h"
+#include "support/helpers.h"
 #include "VCFHeaderConstants.h"
 #include "VCFHeaderContig.h"
 #include "VCFHeaderLine.h"
-#include "../reader.h"
-#include "../../algorithm/open_hashtable.h"
-#include "../BasicBuffer.h"
-#include "../compression/tgzf_controller.h"
+#include "io/reader.h"
+#include "algorithm/open_hashtable.h"
+#include "io/basic_buffer.h"
+#include "io/compression/tgzf_controller.h"
 
 namespace Tomahawk {
 namespace VCF{

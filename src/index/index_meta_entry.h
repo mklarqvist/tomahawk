@@ -24,7 +24,7 @@ public:
 	IndexMetaEntry(const char* const data) :
 		index_begin(*reinterpret_cast<const U64* const>(data)),
 		index_end(*reinterpret_cast<const U64* const>(&data[sizeof(U32)])),
-		min_position(*reinterpret_cast<const U64* const>(&data[sizeof(U32)*2+sizeof(U64)])),
+		min_position(*reinterpret_cast<const U64* const>(&data[sizeof(U32)*2])),
 		max_position(*reinterpret_cast<const U64* const>(&data[sizeof(U32)*2+sizeof(U64)])),
 		n_variants(*reinterpret_cast<const U64* const>(&data[sizeof(U32)*2+sizeof(U64)*2])),
 		uncompressed_size(*reinterpret_cast<const U64* const>(&data[sizeof(U32)*2+sizeof(U64)*3]))

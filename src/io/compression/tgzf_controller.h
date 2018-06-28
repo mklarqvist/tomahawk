@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "../basic_buffer.h"
+#include "io/basic_buffer.h"
 #include "gz_header.h"
 #include "support/helpers.h"
 #include "third_party/zlib/zconf.h"
@@ -33,6 +33,7 @@ public:
 
 	bool Deflate(const buffer_type& buffer);
 	bool Deflate(buffer_type& meta, buffer_type& rle);
+	bool Deflate(void* data, const U64& length);
 
 	friend std::ostream& operator<<(std::ostream& stream, const self_type& entry){
 		stream.write(entry.buffer.data(), entry.buffer.size());

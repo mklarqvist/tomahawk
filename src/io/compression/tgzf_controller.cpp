@@ -17,7 +17,7 @@ TGZFController::TGZFController(const char* data, const U32 length){}
 
 TGZFController::TGZFController(const U32 largest_block_size) : buffer(largest_block_size){}
 
-TGZFController::~TGZFController(){ this->buffer.deleteAll(); }
+TGZFController::~TGZFController(){ }
 
 void TGZFController::Clear(){ this->buffer.reset(); }
 
@@ -228,6 +228,103 @@ bool TGZFController::InflateBlock(std::istream& stream, buffer_type& input){
 	// TGZF EOF marker
 	if(this->buffer.size() == 0)
 		return false;
+
+	return true;
+}
+
+bool TGZFController::Deflate(void* data, const U64& length){
+	this->buffer.resize(length);
+
+	memset(this->buffer.data(), 0, constants::TGZF_BLOCK_HEADER_LENGTH);
+
+	this->buffer[0]  = constants::GZIP_ID1;
+	this->buffer[1]  = constants::GZIP_ID2;
+	this->buffer[2]  = constants::CM_DEFLATE;
+	this->buffer[3]  = constants::FLG_FEXTRA;
+	this->buffer[9]  = constants::OS_UNKNOWN;
+	this->buffer[10] = constants::TGZF_XLEN;
+	this->buffer[12] = constants::TGZF_ID1;
+	this->buffer[13] = constants::TGZF_ID2;
+	this->buffer[14] = constants::TGZF_LEN;
+	//buffer 16->20 is set below
+
+	// set compression level
+	const int compressionLevel = Z_DEFAULT_COMPRESSION;
+	//const int compressionLevel = 9;
+
+	// initialize zstream values
+    z_stream zs;
+    zs.zalloc    = NULL;
+    zs.zfree     = NULL;
+    zs.next_in   = (Bytef*)data;
+    zs.avail_in  = length;
+    zs.next_out  = (Bytef*)&this->buffer[constants::TGZF_BLOCK_HEADER_LENGTH];
+    zs.avail_out = this->buffer.width -
+                   constants::TGZF_BLOCK_HEADER_LENGTH -
+                   constants::TGZF_BLOCK_FOOTER_LENGTH;
+
+	// Initialise the zlib compression algorithm
+	int status = deflateInit2(&zs,
+							  compressionLevel,
+							  Z_DEFLATED,
+							  constants::GZIP_WINDOW_BITS,
+							  constants::Z_DEFAULT_MEM_LEVEL,
+							  Z_DEFAULT_STRATEGY);
+
+	if ( status != Z_OK ){
+		std::cerr << helpers::timestamp("ERROR", "ZLIB") << "DeflateBlock: zlib deflateInit2 failed" << std::endl;
+		return false;
+	}
+
+	// compress the data
+	status = deflate(&zs, Z_FINISH);
+
+	// if not at stream end
+	if ( status != Z_STREAM_END ) {
+		deflateEnd(&zs);
+
+		// there was not enough space available in buffer
+		std::cerr << helpers::timestamp("ERROR", "ZLIB") << "DeflateBlock: zlib deflate failed (insufficient space)" << std::endl;
+		return false;
+	}
+
+	// finalize the compression routine
+	status = deflateEnd(&zs);
+	if ( status != Z_OK ){
+		std::cerr << helpers::timestamp("ERROR", "ZLIB") << "DeflateBlock: zlib deflateEnd failed (not ok)" << std::endl;
+		return false;
+	}
+
+	// update compressedLength
+	const U32 compressedLength = zs.total_out +
+					       	     constants::TGZF_BLOCK_HEADER_LENGTH +
+								 constants::TGZF_BLOCK_FOOTER_LENGTH;
+
+	// store the compressed length
+	U32* test = reinterpret_cast<U32*>(&this->buffer[16]);
+	*test = compressedLength;
+	//std::cerr << helpers::timestamp("DEBUG") << data.pointer << "->" << compressedLength-1 << " stored: " << *test << std::endl;
+
+	std::time_t result = std::time(nullptr);
+	std::asctime(std::localtime(&result));
+	U32* time = reinterpret_cast<U32*>(&this->buffer[4]);
+	*time = result;
+	//std::cerr << helpers::timestamp("DEBUG") << "Time: " << *time << std::endl;
+
+
+	memset(&buffer.buffer[compressedLength - constants::TGZF_BLOCK_FOOTER_LENGTH], 0, constants::TGZF_BLOCK_FOOTER_LENGTH);
+
+	// store the CRC32 checksum
+	U32 crc = crc32(0, NULL, 0);
+	crc = crc32(crc, (Bytef*)buffer.data(), buffer.size());
+	U32* c = reinterpret_cast<U32*>(&this->buffer[compressedLength - constants::TGZF_BLOCK_FOOTER_LENGTH]);
+	*c = crc;
+	U32 convert = buffer.size(); // avoid potential problems when casting from U64 to U32 by interpretation
+	U32* uncompressed = reinterpret_cast<U32*>(&this->buffer[compressedLength - sizeof(U32)]);
+	*uncompressed = convert; // Store uncompressed length
+
+	this->buffer.n_chars = compressedLength;
+	//std::cerr << "Writing: " << convert << '/' << *uncompressed << '\t' << compressedLength << '\t' << *test << '\t' << buffer.size() << '\t' << "At pos: " << (compressedLength - sizeof(U32)) << '\t' << buffer.pointer << '\t' << *c << '\t' << convert << std::endl;
 
 	return true;
 }

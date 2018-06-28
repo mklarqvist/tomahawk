@@ -1,10 +1,10 @@
 #ifndef TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
 #define TOMAHAWK_BASE_GENOTYPE_CONTAINER_RUNLENGTH_OBJECTS_H_
 
-#include "genotype_objects.h"
+#include "tomahawk/genotype_objects.h"
 
 namespace tomahawk{
-namespace base{
+namespace containers{
 
 /**<
  * Primary run-length encoded genotype objects used in Tomahawk.

@@ -7,19 +7,20 @@
 #include <bitset>
 #include <regex>
 
+#include "support/magic_constants.h"
+#include "support/helpers.h"
 #include "io/compression/gz_constants.h"
 #include "io/compression/tgzf_controller.h"
 #include "interface/progressbar.h"
-#include "support/MagicConstants.h"
 #include "interface/timer.h"
 #include "meta_entry.h"
 #include "twk_reader_implementation.h"
 #include "ld_calculation_slave.h"
-#include "TomahawkCalcParameters.h"
 #include "index/index.h"
-#include "genotype_container_reference.h"
+#include "containers/genotype_container_reference.h"
 #include "index/tomahawk_header.h"
 #include "third_party/intervalTree.h"
+#include "tomahawk_calc_parameters.h"
 
 namespace tomahawk {
 
@@ -168,7 +169,7 @@ bool TomahawkReader::outputBlockFilter(const U32 blockID){
 
 template <class T>
 bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID){
-	base::GenotypeContainerReference<T> o(data,
+	containers::GenotypeContainerReference<T> o(data,
                                           this->index_->getContainer()[blockID].uncompressed_size,
                                           this->index_->getContainer()[blockID],
                                           this->header_.magic_.getNumberSamples(),
@@ -244,7 +245,7 @@ bool TomahawkReader::WriteBlockFilter(const char* const data, const U32 blockID)
 
 template <class T>
 bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
-	base::GenotypeContainerReference<T> o(data,
+	containers::GenotypeContainerReference<T> o(data,
                                           this->index_->getContainer()[blockID].uncompressed_size,
                                           this->index_->getContainer()[blockID],
                                           this->header_.magic_.getNumberSamples(),
@@ -306,7 +307,7 @@ bool TomahawkReader::WriteBlock(const char* const data, const U32 blockID){
 
 template <class T>
 bool TomahawkReader::statsIndividual(std::vector<temp>& stats, const char* const data, const U32 blockID){
-	base::GenotypeContainerReference<T> o(data,
+	containers::GenotypeContainerReference<T> o(data,
                                           this->index_->getContainer()[blockID].uncompressed_size,
                                           this->index_->getContainer()[blockID],
                                           this->header_.magic_.getNumberSamples(),

@@ -2,7 +2,8 @@
 #define TOMAHAWK_UTILITY_H_
 
 #include <iostream>
-#include "support/MagicConstants.h"
+
+#include "support/magic_constants.h"
 
 // Declare extern
 std::string tomahawk::constants::LITERAL_COMMAND_LINE;
@@ -18,18 +19,19 @@ void programMessage(const bool separator = true){
 
 void programHelp(void){
 	std::cerr << "Usage: " << tomahawk::constants::PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, concat" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, concat, aggregate" << std::endl;
 }
 
 void programHelpDetailed(void){
 	programHelp();
 	std::cerr <<
     "\n"
-	"concat       concatenate TWO files from the same set of samples\n"
 	"calc         calculate linkage disequilibrium\n"
+	"concat       concatenate TWO files from the same set of samples\n"
 	"import       import VCF/BCF to TWK\n"
 	"sort         sort TWO file\n"
-    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter" << std::endl;
+    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
+    "aggregate    data rasterization framework for TWO files\n"<< std::endl;
 }
 
 #endif /* TOMAHAWK_UTILITY_H_ */
