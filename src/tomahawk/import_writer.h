@@ -22,12 +22,15 @@ namespace tomahawk {
 
 class ImportWriter {
 private:
-	typedef ImportWriter              self_type;
-	typedef io::BasicBuffer           buffer_type;
-	typedef ImporterFilters           filter_type;
-	typedef totempole::IndexEntry     index_entry_type;
-	typedef Index                     index_type;
-	typedef totempole::Footer         footer_type;
+	typedef ImportWriter               self_type;
+	typedef io::BasicBuffer            buffer_type;
+	typedef io::TGZFController         tgzf_controller_type;
+	typedef ImporterFilters            filter_type;
+	typedef totempole::IndexEntry      index_entry_type;
+	typedef Index                      index_type;
+	typedef totempole::Footer          footer_type;
+	typedef algorithm::GenotypeEncoder gt_encoder_type;
+	typedef vcf::VCFHeader             vcf_header_type;
 
 public:
 	ImportWriter(const filter_type& filter);
@@ -87,13 +90,14 @@ public:
 	U32 largest_uncompressed_block_;// size of largest block in b
 	const filter_type& filter;		// filters
 
-	index_entry_type totempole_entry;
-	io::TGZFController gzip_controller_;
-	algorithm::GenotypeEncoder* rleController_;
+	index_entry_type     totempole_entry;
+	tgzf_controller_type gzip_controller_;
+	gt_encoder_type*     rleController_;
+
 	buffer_type buffer_rle_;	// run lengths
 	buffer_type buffer_meta_;	// meta data for run lengths (chromosome, position, ref/alt)
 
-	vcf::VCFHeader* vcf_header_;
+	vcf_header_type* vcf_header_;
 
 	std::string filename;
 	std::string basePath;

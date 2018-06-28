@@ -152,18 +152,16 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 
 template <class T>
 class LDSlave{
-	typedef LDSlave<T>                                 self_type;
-	typedef containers::GenotypeMetaContainerReference<T>          manager_type;
+	typedef LDSlave<T>                                       self_type;
+	typedef containers::GenotypeMetaContainerReference<T>    manager_type;
 	typedef containers::GenotypeContainerReference<T>        block_type;
-	typedef const support::GenotypeDiploidRun<T>       run_type;
+	typedef const support::GenotypeDiploidRun<T>             run_type;
 	typedef containers::GenotypeContainerRunlengthObjects<T> rle_type;
-
 	typedef const MetaEntry                      meta_type;
 	typedef totempole::IndexEntry                totempole_entry_type;
 	typedef io::OutputWriterInterface            output_writer_type;
 	typedef support::OutputEntrySupport          helper_type;
 	typedef base::GenotypeBitvector<>            simd_pair;
-
 	typedef interface::ProgressBar               progress_bar_type;
 	typedef support::LDCalculationSIMDHelper<>   simd_helper_type;
 	typedef TomahawkCalcParameters               parameter_type;

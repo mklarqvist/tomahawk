@@ -64,8 +64,8 @@ int main(int argc, char** argv){
 	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));
 
-	//} else if(strncmp(&argv[1][0], "stats", 5) == 0){
-	//	return(stats(argc, argv));
+	} else if(strncmp(&argv[1][0], "stats", 5) == 0){
+		return(stats(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "aggregate", 8) == 0){
 		return(aggregate(argc, argv));

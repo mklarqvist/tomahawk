@@ -76,10 +76,10 @@ endif
 # see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
 ifneq ($(shell uname), Darwin)
 SHARED_EXT = so
-LD_LIB_FLAGS := -shared -Wl,-rpath,"./",-soname,ltomahawk.$(SHARED_EXT)
+LD_LIB_FLAGS := -shared -Wl,-rpath,"./",-soname,libtomahawk.$(SHARED_EXT)
 else
 SHARED_EXT = dylib
-LD_LIB_FLAGS := -dynamiclib -install_name ltomahawk.$(SHARED_EXT)
+LD_LIB_FLAGS := -dynamiclib -install_name libtomahawk.$(SHARED_EXT)
 endif
 
 CXXFLAGS := -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)

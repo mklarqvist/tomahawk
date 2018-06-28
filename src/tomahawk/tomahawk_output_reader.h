@@ -52,6 +52,14 @@ public:
 	std::string output_file;
 };
 
+template <typename T>
+inline T normal_pdf(const T& x, const T& mean, const T& sigma)
+{
+    static const T inv_sqrt_2pi = 0.3989422804014327;
+    const T a = (x - mean) / sigma;
+    return(inv_sqrt_2pi / sigma * std::exp(-T(0.5) * a * a));
+}
+
 class TomahawkOutputReader {
 private:
 	typedef TomahawkOutputReader      self_type;
@@ -69,12 +77,11 @@ private:
 	typedef totempole::Footer         footer_type;
 	typedef algorithm::IntervalTree<interval_type, U32> tree_type;
 	typedef hash::HashTable<std::string, U32> hash_table;
-	typedef TomahawkOutputReaderParameters parameters_type;
-
-	typedef io::OutputWriterInterface    writer_type;
-	typedef io::OutputWriterBinaryStream writer_binary_stream_type;
-	typedef io::OutputWriterBinaryFile   writer_binary_file_type;
-	typedef io::OutputWriterStdOut       writer_ld_stream_type;
+	typedef TomahawkOutputReaderParameters    parameters_type;
+	typedef io::OutputWriterInterface         writer_type;
+	typedef io::OutputWriterBinaryStream      writer_binary_stream_type;
+	typedef io::OutputWriterBinaryFile        writer_binary_file_type;
+	typedef io::OutputWriterStdOut            writer_ld_stream_type;
 
 public:
 	TomahawkOutputReader();
@@ -163,6 +170,7 @@ public:
 	output_container_type getContainerBlock(std::vector<U32> blocks);
 
 	inline const bool isSorted(void) const{ return(this->index_->getController().isSorted == true); }
+	inline const bool isPartiallySorted(void) const{ return(this->index_->getController().isPartialSorted == true); }
 
 	// Basic operations
 	bool view(void);
@@ -204,41 +212,30 @@ private:
 		return(true);
 	}
 
-	bool ParseHeader(void);
-	bool ParseHeaderExtend(void);
-
 	bool __viewOnly(void);
 	bool __viewFilter(void);
 	bool __viewRegion(void);
-
 	bool __checkRegionUnsorted(const entry_type& entry);
 	bool __checkRegionSorted(const entry_type& entry);
 	bool __concat(const std::vector<std::string>& files, const std::string& output);
-
 	bool __addRegions(std::vector<std::string>& positions);
-	//bool __ParseRegion(const std::string& region, interval_type& interval);
-	bool __ParseRegion(const std::string& region, interval_type& interval) const;
-	//bool __ParseRegionIndexedBlocks(void);
+	bool __parseRegion(const std::string& region, interval_type& interval) const;
 
 public:
-	U64            filesize_;  // filesize
-	U64            offset_end_of_data_;
-	std::ifstream  stream_;    // reader stream
-
+	U64             filesize_;  // filesize
+	U64             offset_end_of_data_;
+	std::ifstream   stream_;    // reader stream
 	parameters_type parameters_;
-	header_type    header_;
-	footer_type    footer_;
-	index_type*    index_;
-
-	buffer_type          buffer_;          // input buffer
-	buffer_type          data_;            // inflate buffer
-	buffer_type          outputBuffer_;    // output buffer
+	header_type     header_;
+	footer_type     footer_;
+	index_type*     index_;
+	buffer_type     buffer_;          // input buffer
+	buffer_type     data_;            // inflate buffer
+	buffer_type     outputBuffer_;    // output buffer
 	tgzf_controller_type tgzf_controller_; // compression controller
-
 	filter_type filters_;	// filter parameters
-
-	tree_type** interval_tree; // actual interval trees
-	std::vector<interval_type>* interval_tree_entries; // entries for interval trees
+	tree_type** interval_tree_; // actual interval trees
+	std::vector<interval_type>* interval_tree_entries_; // entries for interval trees
 	writer_type* writer_;
 };
 

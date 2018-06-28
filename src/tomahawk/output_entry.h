@@ -16,9 +16,9 @@ namespace io{
 #pragma pack(push, 1)
 struct __attribute__((packed, aligned(1))) OutputEntry{
 public:
-	typedef OutputEntry                    self_type;
-	typedef totempole::HeaderContig        contig_type;
-	typedef io::BasicBuffer                buffer_type;
+	typedef OutputEntry             self_type;
+	typedef totempole::HeaderContig contig_type;
+	typedef io::BasicBuffer         buffer_type;
 
 public:
 	// if interpreted directly from buffer stream

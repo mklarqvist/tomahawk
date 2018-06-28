@@ -20,8 +20,8 @@ TomahawkOutputReader::TomahawkOutputReader() :
 	buffer_(3000000),
 	data_(3000000),
 	outputBuffer_(3000000),
-	interval_tree(nullptr),
-	interval_tree_entries(nullptr),
+	interval_tree_(nullptr),
+	interval_tree_entries_(nullptr),
 	writer_(nullptr)
 {
 
@@ -29,12 +29,12 @@ TomahawkOutputReader::TomahawkOutputReader() :
 
 TomahawkOutputReader::~TomahawkOutputReader(){
 	delete this->index_;
-	delete [] this->interval_tree_entries;
-	if(this->interval_tree != nullptr){
+	delete [] this->interval_tree_entries_;
+	if(this->interval_tree_ != nullptr){
 		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
-			delete this->interval_tree[i];
+			delete this->interval_tree_[i];
 		}
-		delete [] this->interval_tree;
+		delete [] this->interval_tree_;
 	}
 	delete this->writer_;
 }
@@ -413,19 +413,19 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 		return false;
 
 	// Construct interval tree and interval vector if not set
-	if(this->interval_tree_entries == nullptr){
-		this->interval_tree_entries = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
+	if(this->interval_tree_entries_ == nullptr){
+		this->interval_tree_entries_ = new std::vector<interval_type>[this->getHeader().getMagic().getNumberContigs()];
 
 		// Reserve some memory
 		// Linked reads require that he pointers between entries do not change
 		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
-			this->interval_tree_entries[i].reserve(1000);
+			this->interval_tree_entries_[i].reserve(1000);
 	}
 
-	if(this->interval_tree == nullptr){
-		this->interval_tree = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
+	if(this->interval_tree_ == nullptr){
+		this->interval_tree_ = new tree_type*[this->getHeader().getMagic().getNumberContigs()];
 		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i)
-			this->interval_tree[i] = nullptr;
+			this->interval_tree_[i] = nullptr;
 	}
 
 	// Parse and add region
@@ -433,10 +433,10 @@ bool TomahawkOutputReader::addRegions(std::vector<std::string>& positions){
 		return false;
 
 	for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){
-		if(this->interval_tree_entries[i].size() != 0){
-			this->interval_tree[i] = new tree_type(this->interval_tree_entries[i]);
+		if(this->interval_tree_entries_[i].size() != 0){
+			this->interval_tree_[i] = new tree_type(this->interval_tree_entries_[i]);
 		} else
-			this->interval_tree[i] = nullptr;
+			this->interval_tree_[i] = nullptr;
 	}
 
 	return true;
@@ -456,13 +456,13 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 				interval_type intervalLeft;
 				interval_type intervalRight;
 
-				if(this->__ParseRegion(ret[0], intervalLeft) == false){
+				if(this->__parseRegion(ret[0], intervalLeft) == false){
 					std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Failed interpret left interval in pair!" << std::endl;
 					return false;
 				}
 
 				// parse right
-				if(this->__ParseRegion(ret[1], intervalRight) == false){
+				if(this->__parseRegion(ret[1], intervalRight) == false){
 					std::cerr << helpers::timestamp("ERROR", "INTERVAL") << "Failed interpret right interval in pair!" << std::endl;
 					return false;
 				}
@@ -473,10 +473,10 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 
 
 				// Link intervals together
-				this->interval_tree_entries[intervalLeft.contigID].push_back(interval_type(intervalLeft));
-				interval_type& left_pointer = this->interval_tree_entries[intervalLeft.contigID].back();
-				this->interval_tree_entries[intervalRight.contigID].push_back(interval_type(intervalRight));
-				interval_type& right_pointer = this->interval_tree_entries[intervalRight.contigID].back();
+				this->interval_tree_entries_[intervalLeft.contigID].push_back(interval_type(intervalLeft));
+				interval_type& left_pointer = this->interval_tree_entries_[intervalLeft.contigID].back();
+				this->interval_tree_entries_[intervalRight.contigID].push_back(interval_type(intervalRight));
+				interval_type& right_pointer = this->interval_tree_entries_[intervalRight.contigID].back();
 				right_pointer.value = &left_pointer;
 				left_pointer.value  = &right_pointer;
 
@@ -488,15 +488,15 @@ bool TomahawkOutputReader::__addRegions(std::vector<std::string>& positions){
 		// Has no comma in string
 		else {
 			interval_type interval;
-			if(this->__ParseRegion(positions[i], interval))
-				this->interval_tree_entries[interval.contigID].push_back(interval_type(interval));
+			if(this->__parseRegion(positions[i], interval))
+				this->interval_tree_entries_[interval.contigID].push_back(interval_type(interval));
 		}
 	}
 
 	return true;
 }
 
-bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_type& interval) const{
+bool TomahawkOutputReader::__parseRegion(const std::string& region, interval_type& interval) const{
 	if(region.size() == 0)
 		return false;
 
@@ -566,7 +566,7 @@ bool TomahawkOutputReader::__ParseRegion(const std::string& region, interval_typ
 bool TomahawkOutputReader::view(void){
 	if(!this->openWriter()) return false;
 
-	if(this->interval_tree != nullptr) // If regions have been set: use region-filter function
+	if(this->interval_tree_ != nullptr) // If regions have been set: use region-filter function
 		return(this->__viewRegion());
 	else if(this->filters_.any_filter_user_set)
 		return(this->__viewFilter()); // Otherwise normal filter function
@@ -631,7 +631,7 @@ bool TomahawkOutputReader::__viewRegion(void){
 	//if(this->parameters_.showHeader == true)
 	//	this->printHeader(std::cout, extra);
 
-	if(this->interval_tree == nullptr)
+	if(this->interval_tree_ == nullptr)
 		return false;
 
 	assert(this->writer_ != nullptr);
@@ -649,9 +649,9 @@ bool TomahawkOutputReader::__viewRegion(void){
 
 		for(U32 i = 0; i < this->getHeader().getMagic().getNumberContigs(); ++i){ // foreach contig
 			//std::cerr << "i: " << this->interval_tree_entries[i].size() << std::endl;
-			for(U32 j = 0; j < this->interval_tree_entries[i].size(); ++j){
+			for(U32 j = 0; j < this->interval_tree_entries_[i].size(); ++j){
 				//std::cerr << this->interval_tree_entries[i][j] << std::endl;
-				std::vector<U32> blocks = this->index_->findOverlaps(this->interval_tree_entries[i][j].contigID, this->interval_tree_entries[i][j].start, this->interval_tree_entries[i][j].stop);
+				std::vector<U32> blocks = this->index_->findOverlaps(this->interval_tree_entries_[i][j].contigID, this->interval_tree_entries_[i][j].start, this->interval_tree_entries_[i][j].stop);
 				for(U32 b = 0; b < blocks.size(); ++b){
 					output_container_reference_type o = this->getContainerReferenceBlock(blocks[b]);
 					for(U32 i = 0; i < o.size(); ++i)
@@ -715,8 +715,8 @@ bool TomahawkOutputReader::__checkRegionSorted(const entry_type& entry){
 	func ld_output_function = &entry_type::write;
 
 	// If iTree for contigA exists
-	if(this->interval_tree[entry.AcontigID] != nullptr){
-		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
+	if(this->interval_tree_[entry.AcontigID] != nullptr){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree_[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
 		if(overlaps_in_tree.size() > 0){
 			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
 				if(overlaps_in_tree[i].value != nullptr){ // if linked
@@ -756,8 +756,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 	func ld_output_function = &entry_type::write;
 
 	// If iTree for contigA exists
-	if(this->interval_tree[entry.AcontigID] != nullptr){
-		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
+	if(this->interval_tree_[entry.AcontigID] != nullptr){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree_[entry.AcontigID]->findOverlapping(entry.Aposition, entry.Aposition);
 		if(overlaps_in_tree.size() > 0){
 			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
 				if(overlaps_in_tree[i].value != nullptr){ // if linked
@@ -789,8 +789,8 @@ bool TomahawkOutputReader::__checkRegionUnsorted(const entry_type& entry){
 	}
 
 	// If iTree for contigB exists
-	if(this->interval_tree[entry.BcontigID] != nullptr){
-		std::vector<interval_type> overlaps_in_tree = this->interval_tree[entry.BcontigID]->findOverlapping(entry.Bposition, entry.Bposition);
+	if(this->interval_tree_[entry.BcontigID] != nullptr){
+		std::vector<interval_type> overlaps_in_tree = this->interval_tree_[entry.BcontigID]->findOverlapping(entry.Bposition, entry.Bposition);
 		if(overlaps_in_tree.size() > 0){
 			for(U32 i = 0; i < overlaps_in_tree.size(); ++i){
 				if(overlaps_in_tree[i].value != nullptr){ // if linked
@@ -1056,6 +1056,33 @@ bool TomahawkOutputReader::statistics(void){
 		}
 	}
 	*/
+
+	SummaryStatistics pos_stats;
+	SummaryStatistics pos_count_stats;
+	for(U32 i = 0; i < contig_position_data.size(); ++i){
+		contig_position_data[i].calculate();
+		//std::cerr << contig_position_data[i].R2.getCount() << std::endl;
+		pos_stats.n_total       += contig_position_data[i].R2.getCount();
+		pos_stats.total         += contig_position_data[i].R2.getTotal();
+		pos_stats.total_squared += contig_position_data[i].R2.getTotalSquared();
+		pos_count_stats.total   += contig_position_data[i].R2.getCount();
+		pos_count_stats.total_squared += contig_position_data[i].R2.getCount() * contig_position_data[i].R2.getCount();
+		pos_count_stats.n_total += 1;
+	}
+	pos_stats.calculate();
+	pos_count_stats.calculate();
+
+	for(U32 i = 0; i < contig_position_data.size(); ++i){
+		std::cout <<
+				i << "\t" <<
+				contig_position_data[i].R2.getCount() << "\t" <<
+				normal_pdf(contig_position_data[i].R2.getCount(), pos_count_stats.getMean(), pos_count_stats.getStandardDeviation()) << "\t" <<
+				contig_position_data[i].R2.getMean() << "\t" <<
+				normal_pdf(contig_position_data[i].R2.getMean(), pos_stats.getMean(), pos_stats.getStandardDeviation()) << std::endl;
+	}
+
+	std::cerr << "counts mean=" << pos_count_stats.getMean() << " sd=" << pos_count_stats.getStandardDeviation() << std::endl;
+	std::cerr << "r2 mean="     << pos_stats.getMean()       << " sd=" << pos_stats.getStandardDeviation() << std::endl;
 	std::cerr << contig_data.size() << ", " << contig_self_data.size() << ", " << contig_position_data.size() << ", " << contig_position_contig_data.size() << std::endl;
 
 	return true;
