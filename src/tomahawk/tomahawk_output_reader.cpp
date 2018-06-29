@@ -692,14 +692,22 @@ bool TomahawkOutputReader::__viewFilter(void){
 	assert(this->writer_ != nullptr);
 	this->writer_->writeHeaders(this->getHeader());
 
-	while(this->nextBlock()){
-		output_container_reference_type o(this->data_);
-		for(U32 i = 0; i < o.size(); ++i){
-			if(this->filters_.filter(o[i])){
+	if(this->parameters_.output_type == TWK_OUTPUT_LD){
+		while(this->nextBlock()){
+			containers::OutputContainerReference o = this->getContainerReference();
+			for(U32 i = 1; i < o.size(); ++i)
 				o[i].write(std::cout, this->getHeader().contigs_);
-			}
+
 		}
-	} // end while next block
+	} else {
+		while(this->nextBlock()){
+			containers::OutputContainerReference o = this->getContainerReference();
+			*this->writer_ << o[0];
+
+			for(U32 i = 1; i < o.size(); ++i)
+				*this->writer_ << o[i];
+		}
+	}
 
 	this->writer_->flush();
 	if(this->writer_->isSorted())
