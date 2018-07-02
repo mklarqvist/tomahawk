@@ -16,7 +16,7 @@ extern std::string INTERPRETED_COMMAND;
 // Versioning
 const int PROGRAM_VERSION_MAJOR = 0; // major
 const int PROGRAM_VERSION_MINOR = 6;
-const int PROGRAM_VERSION_PATCH = 0;
+const int PROGRAM_VERSION_PATCH = 1;
 
 const double ALLOWED_ROUNDING_ERROR = 0.001;
 
