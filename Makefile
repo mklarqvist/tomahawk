@@ -21,22 +21,6 @@
 # DEALINGS IN THE SOFTWARE.
 # ################################################################
 
-SUBDIRS := \
-src/algorithm \
-src/algorithm/sort \
-src/index \
-src/io \
-src/io/bcf \
-src/io/compression \
-src/io/vcf \
-src \
-src/math \
-src/support \
-src/third_party/xxhash \
-src/third_party/zlib \
-src/tomahawk \
-src/tomahawk/two \
-
 # Version numbers slices from the source header
 LIBVER_MAJOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MAJOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/magic_constants.h`
 LIBVER_MINOR_SCRIPT:=`sed -n '/const int PROGRAM_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < src/support/magic_constants.h`
@@ -48,7 +32,9 @@ LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
 LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
 LIBVER := $(shell echo $(LIBVER_SCRIPT))
 
-.PHONY: all clean cleanmost library dependents
+PREFIX := /usr/local
+
+.PHONY: all clean cleanmost library dependents install
 
 # If you want to build in debug mode then add DEBUG=true to your build command
 # make DEBUG=true
@@ -83,7 +69,7 @@ LD_LIB_FLAGS := -dynamiclib -install_name libtomahawk.$(SHARED_EXT)
 endif
 
 CXXFLAGS := -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
-CFLAGS := -std=c99 $(OPTFLAGS) $(DEBUG_FLAGS)
+CFLAGS   := -std=c99 $(OPTFLAGS) $(DEBUG_FLAGS)
 
 # Inject git information
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
@@ -93,38 +79,82 @@ else
 GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
 endif
 
-# Inject subdirs
--include src/tomahawk/two/subdir.mk
--include src/tomahawk/subdir.mk
--include src/third_party/subdir.mk
--include src/support/subdir.mk
--include src/math/subdir.mk
--include src/io/vcf/subdir.mk
--include src/io/compression/subdir.mk
--include src/io/bcf/subdir.mk
--include src/io/subdir.mk
--include src/index/subdir.mk
--include src/algorithm/sort/subdir.mk
--include src/algorithm/subdir.mk
--include src/subdir.mk
+CXX_SOURCE = \
+$(wildcard src/algorithm/*.cpp) \
+$(wildcard src/algorithm/sort/*.cpp) \
+$(wildcard src/index/*.cpp) \
+$(wildcard src/io/*.cpp) \
+$(wildcard src/io/bcf/*.cpp) \
+$(wildcard src/io/compression/*.cpp) \
+$(wildcard src/io/vcf/*.cpp) \
+$(wildcard src/*.cpp) \
+$(wildcard src/math/*.cpp) \
+$(wildcard src/support/*.cpp) \
+$(wildcard src/tomahawk/*.cpp) \
+$(wildcard src/tomahawk/two/*.cpp)
+
+C_SOURCE = \
+src/third_party/xxhash/xxhash.c \
+src/third_party/zlib/adler32.c \
+src/third_party/zlib/compress.c \
+src/third_party/zlib/crc32.c \
+src/third_party/zlib/deflate.c \
+src/third_party/zlib/gzclose.c \
+src/third_party/zlib/gzlib.c \
+src/third_party/zlib/gzread.c \
+src/third_party/zlib/gzwrite.c \
+src/third_party/zlib/infback.c \
+src/third_party/zlib/inffast.c \
+src/third_party/zlib/inflate.c \
+src/third_party/zlib/inftrees.c \
+src/third_party/zlib/trees.c \
+src/third_party/zlib/uncompr.c \
+src/third_party/zlib/zutil.c 
+
+OBJECTS = $(CXX_SOURCE:.cpp=.o) $(C_SOURCE:.c=.o)
+CPP_DEPS = $(CXX_SOURCE:.cpp=.d)
 
 # All Target
 all: tomahawk
 
-tomahawk: $(OBJS) $(USER_OBJS)
-	g++ -pthread -o "tomahawk" $(OBJS) $(USER_OBJS) $(LIBS)
+# Third party rules
+src/third_party/xxhash/%.o: src/third_party/xxhash/%.c
+	gcc $(CFLAGS) -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+
+src/third_party/zlib/%.o: src/third_party/zlib/%.c
+	gcc $(CFLAGS) -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+
+# Generic rules
+%.o: %.cpp
+	g++ $(CXXFLAGS) $(INCLUDE_PATH) -c -fmessage-length=0  -DVERSION=\"$(GIT_VERSION)\" -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+
+
+tomahawk: $(OBJECTS)
+	g++ -pthread -o "tomahawk" $(OBJECTS) $(LIBS)
 	$(MAKE) cleanmost
 	$(MAKE) library library=true
+	
 
-library: $(OBJS) $(USER_OBJS)
+library: $(OBJECTS)
 	@echo 'Building with positional independence...'
-	g++ $(LD_LIB_FLAGS) -pthread -o libtomahawk.$(SHARED_EXT).$(LIBVER) $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ $(LD_LIB_FLAGS) -pthread -o libtomahawk.$(SHARED_EXT).$(LIBVER) $(OBJECTS) $(LIBS)
 	@echo 'Symlinking library...'
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
 	ln -sf libtomahawk.$(SHARED_EXT) ltomahawk.$(SHARED_EXT)
+	
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp tomahawk $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/lib
+	cp tomahawk libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(PREFIX)/lib
+	cp tomahawk libtomahawk.$(SHARED_EXT) $(DESTDIR)$(PREFIX)/lib
+	cp tomahawk ltomahawk.$(SHARED_EXT) $(DESTDIR)$(PREFIX)/lib
+	#mkdir -p $(DESTDIR)$(PREFIX)/include/tomahawk
+	#cp src/tomahawk/tomahawk_output_reader.h $(DESTDIR)$(PREFIX)/include/tomahawk
+	#cp src/tomahawk/tomahawk_reader.h $(DESTDIR)$(PREFIX)/include/tomahawk
 
 cleanmost:
-	rm -f $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(OBJS)$(C_UPPER_DEPS)$(CXX_DEPS)$(C_DEPS)$(CPP_DEPS)
+	rm -f $(OBJECTS) $(CPP_DEPS)
 
 clean: cleanmost
 	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so
