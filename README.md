@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.5.3-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.6.1-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)

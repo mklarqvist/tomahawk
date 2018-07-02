@@ -20,8 +20,40 @@ image(as.matrix(mat),breaks = c(0, col_breaks, 1), col = colors,useRaster = T)
 
 # For associative count matrix
 mat<-read.delim("~/Downloads/1kgp3/1kgp3_chr20_matrix.txt",h=F)
-mat2<-mat/1000 # Truncate at 1000
-mat2[mat2>1]<-1 # Everything over 1 squash to 1
-image(as.matrix(mat2),useRaster = T,axes=F)
+
+jet.colors <-
+  colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
+                     "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+
+# 
+setwd("~/Desktop/1kgp3_aggregates/")
+for(i in 10){
+  tryCatch({
+  mat<-read.delim(paste0("~/Downloads/1kgp3/chr",i,"_aggregate.out"),h=F,nrows = 4000)
+  mat2<-mat/round(mean(mat[mat>5])*3,-2) # Truncate at a count of 1000
+  mat2[mat2>1]<-1 # Everything over 1 squash to 1
+  
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col1.jpeg"),width = 4000, height=4000)
+  par(mar=c(0,0,0,0)) # set all margins to 0
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=colorRampPalette(c("white","lightblue","blue","red"))(11))
+  dev.off()
+  
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col2.jpeg"),width = 4000, height=4000)
+  par(mar=c(0,0,0,0)) # set all margins to 0
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=colorRampPalette(c("white","red"))(11))
+  dev.off()
+  
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col3.jpeg"),width = 4000, height=4000)
+  par(mar=c(0,0,0,0)) # set all margins to 0
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=jet.colors(11))
+  dev.off()
+  
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col4.jpeg"),width = 4000, height=4000)
+  par(mar=c(0,0,0,0)) # set all margins to 0
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=heat.colors(11))
+  dev.off()
+  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n"); })
+}
+
 axis(1, at = seq(0, 62943450, by = 10e6)/62943450, labels = seq(0, 62943450, by = 10e6)/1e6, las=2)
 axis(2, at = seq(0, 62943450, by = 10e6)/62943450, labels = seq(0, 62943450, by = 10e6)/1e6, las=2)
