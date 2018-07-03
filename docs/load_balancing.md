@@ -1,7 +1,7 @@
 # Job loading in Tomahawk
 
 ## Motivation
-Without losing generality, consider the situation where you have a set of three blocks {1, 2, 3} that you want to compare pairwise. We describe the steps of a simple iterative algorihm to compare them below:
+Without losing generality, consider the situation where you have a set of three blocks {1, 2, 3} that you want to compare pairwise. We describe the steps of a simple iterative algorithm to compare them below:
 * Load blocks 1 and 2 into memory and compare {1, 2}
 * Release block 2 from memory
 * Load block 3 and compare {1, 3}
@@ -17,9 +17,9 @@ For example, using standard import parameters, chromosome 20 for the 1000 Genome
 
 ## Memory-sparing job-loading
 [Tomahawk](https://github.com/mklarqvist/tomahawk) splits large problems into multiple psuedo-balanced sub-problems in a memory-aware fashion using a tiling approach. 
-Without losing generality, consider the situation where you want to calculate LD for all variants pairwise. As a consequence, any given locus `v`
+Without losing generality, consider the situation where you want to calculate linkage disequilibrium (LD) for all variants pairwise. As a consequence, any given locus `v`
 will be compared to every other loci, `V`. The simplest, naïve, way to parallelize this involves giving subproblem `j` out of `J` a list 
-of loci from `[i*j, (i+1)*j]` for all subproblems. This approach would invariantly require all data in memory irrespective of the slice-size. We can examplify this by drawing a square of four loci and divide the problem into two. Highlighted in bold are the sites addressed in subproblem 1 out of 3. Note that the lower triangular is not actually computed in practice and only shown here for visual clarity.
+of loci from `[i*j, (i+1)*j]` for all subproblems, where `i = V/J`. This approach would invariantly require all data in memory irrespective of the slice-size. We can examplify this by drawing a square of four loci and divide the problem into three: {1, 2, 3 and 4}. Highlighted in bold are the sites addressed in subproblem 1 out of 3. Note that the lower triangular is not actually computed in practice and only shown here for visual clarity.
 
 | Loci   | 1   | 2   | 3   | 4   |
 |---|-----|-----|-----|-----|
@@ -58,7 +58,7 @@ We can demonstrate the efficiency of our grid-partitioning method even on small 
 
 | Approach   | Memory  |
 |------------|---------|
-| Naive      | 5 GB    |
+| Naïve      | 5 GB    |
 | Tiling-10  | 1312 MB |
 | Tiling-45  | 608 MB  |
 | Tiling-105 | 398 MB  |
