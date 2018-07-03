@@ -1,7 +1,7 @@
-# Job loading in Tomahawk
+# Job balancing in Tomahawk
 
 ## Motivation
-[Tomahawk](https://github.com/mklarqvist/tomahawk) stores variants in non-overlapping blocks. These blocks has to be compared either to themselves or against each other in order to compute linkage disequilibrium (LD) for a set of variants. First we describe the rationale for pre-loading data into memory and then how to partition this subset in the most efficient way.
+[Tomahawk](https://github.com/mklarqvist/tomahawk) stores variants in non-overlapping blocks. These blocks has to be compared either to themselves (diagonal) or against each other (square) in order to compute linkage disequilibrium (LD) for a set of variants. First we describe the rationale for pre-loading data into memory and then how to partition this subset in the most efficient way.
 
 ## Pre-loading data
 Without losing generality, consider the situation where you have a set of three blocks {1, 2, 3} that you want to compare pairwise. We describe the steps of a simple iterative algorithm to compare them below:
