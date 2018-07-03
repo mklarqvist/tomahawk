@@ -27,7 +27,7 @@ jet.colors <-
 
 # 
 setwd("~/Desktop/1kgp3_aggregates/")
-for(i in 10){
+for(i in 1:22){
   tryCatch({
   mat<-read.delim(paste0("~/Downloads/1kgp3/chr",i,"_aggregate.out"),h=F,nrows = 4000)
   mat2<-mat/round(mean(mat[mat>5])*3,-2) # Truncate at a count of 1000
@@ -50,7 +50,7 @@ for(i in 10){
   
   jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col4.jpeg"),width = 4000, height=4000)
   par(mar=c(0,0,0,0)) # set all margins to 0
-  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=heat.colors(11))
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11))
   dev.off()
   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n"); })
 }
