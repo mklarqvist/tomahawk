@@ -1,8 +1,9 @@
 # Job loading in Tomahawk
 
 ## Motivation
-[Tomahawk](https://github.com/mklarqvist/tomahawk) stores variants in non-overlapping blocks. These blocks has to be compared either to themselves or against each other in order to compute linkage disequilibrium (LD) for a set of variants. First we describe the rationale for pre-loading data into memory and then how to partition this data in the most efficient way.
+[Tomahawk](https://github.com/mklarqvist/tomahawk) stores variants in non-overlapping blocks. These blocks has to be compared either to themselves or against each other in order to compute linkage disequilibrium (LD) for a set of variants. First we describe the rationale for pre-loading data into memory and then how to partition this subset in the most efficient way.
 
+## Pre-loading data
 Without losing generality, consider the situation where you have a set of three blocks {1, 2, 3} that you want to compare pairwise. We describe the steps of a simple iterative algorithm to compare them below:
 * Load blocks 1 and 2 into memory and compare {1, 2}
 * Release block 2 from memory
@@ -16,6 +17,8 @@ Notice that we have now released and loaded the data for block 2 twice. This und
 * If you have 1000 blocks, there will be 999 overhead loads for each block for a total of 998,001 excess loads
 
 For example, using standard import parameters, chromosome 20 for the 1000 Genomes Project data has 1,696 blocks. Without addressing this problem, we would have an excess of 2,873,025 overhead loads. Because of this exorbant cost it is very desirable to load all the data of interest into memory just once. However, if done without careful effort to partition data of interest into subproblems then memory will become limiting very quickly. We describe how we address this problem in Tomahawk below.
+
+As an additional footnote, it is worthwile to mention that pre-loading data will spare the file-system on computer farms. This is generally always the most rate-limiting resource available.
 
 ## Memory-sparing job-loading
 [Tomahawk](https://github.com/mklarqvist/tomahawk) splits large problems into multiple psuedo-balanced sub-problems in a memory-aware fashion using a tiling approach. 
