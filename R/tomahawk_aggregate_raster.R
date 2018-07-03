@@ -30,28 +30,79 @@ setwd("~/Desktop/1kgp3_aggregates/")
 for(i in 1:22){
   tryCatch({
   mat<-read.delim(paste0("~/Downloads/1kgp3/chr",i,"_aggregate.out"),h=F,nrows = 4000)
-  mat2<-mat/round(mean(mat[mat>5])*3,-2) # Truncate at a count of 1000
+  #mat2<-mat/round(mean(mat[mat>5])*5,-2) # Truncate at a count of 1000
+  mat2<-mat/2000
   mat2[mat2>1]<-1 # Everything over 1 squash to 1
   
-  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col1.jpeg"),width = 4000, height=4000)
-  par(mar=c(0,0,0,0)) # set all margins to 0
-  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=colorRampPalette(c("white","lightblue","blue","red"))(11))
-  dev.off()
   
-  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col2.jpeg"),width = 4000, height=4000)
-  par(mar=c(0,0,0,0)) # set all margins to 0
-  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=colorRampPalette(c("white","red"))(11))
-  dev.off()
+  dist<-table(cut(mat2[mat2>0],breaks=seq(0,max(mat2[mat2>0]),length.out = 101),include.lowest = T))
+  #plot(cumsum(dist/sum(dist)),type="o",pch=20)
+  col_breaks<-rep(0,color_range-1)
+  for(j in 1:(color_range-1)){
+    #abline(v=which.max(cumsum(dist/sum(dist)) > 1 - 1/j))
+    # Compute 10-percentile bins using the nearest-rank method
+    col_breaks[j] = which.max(cumsum(dist/sum(dist)) > 1 - 1/j) / 100
+  }
   
-  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col3.jpeg"),width = 4000, height=4000)
+  
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col4_linear_quantile_transform.jpeg"),width = 4000, height=4000)
   par(mar=c(0,0,0,0)) # set all margins to 0
-  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=jet.colors(11))
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11),breaks=c(0,col_breaks,1))
   dev.off()
   
   jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col4.jpeg"),width = 4000, height=4000)
   par(mar=c(0,0,0,0)) # set all margins to 0
   image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11))
   dev.off()
+  
+  mat2<-mat/round(mean(mat[mat>5])*5,-2) # Truncate at a count of 1000
+  mat2[mat2>1]<-1 # Everything over 1 squash to 1
+  jpeg(paste0("1kgp3_chr",i,"_4k_aggregate_col4_scaled_local.jpeg"),width = 4000, height=4000)
+  par(mar=c(0,0,0,0)) # set all margins to 0
+  image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11))
+  dev.off()
+  
+  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n"); })
+}
+
+setwd("~/Desktop/1kgp3_aggregates/subpopulations/")
+files<-list.files("~/Downloads/1kgp3/subpopulations/",full.names = T)
+pops<-strsplit("ACB,ASW,BEB,CDX,CEU,CHB,CHS,CLM,ESN,FIN,GBR,GIH,GWD,IBS,ITU,JPT,KHV,LWK,MSL,MXL,PEL,PJL,PUR,STU,TSI,YRI",",")[[1]]
+for(i in 1:length(pops)){
+  tryCatch({
+    mat<-read.delim(files[i],h=F,nrows = 4000)
+    #mat2<-mat/round(mean(mat[mat>5])*5,-2) # Truncate at a count of 1000
+    mat2<-mat/2000
+    mat2[mat2>1]<-1 # Everything over 1 squash to 1
+    
+    
+    dist<-table(cut(mat2[mat2>0],breaks=seq(0,max(mat2[mat2>0]),length.out = 101),include.lowest = T))
+    #plot(cumsum(dist/sum(dist)),type="o",pch=20)
+    col_breaks<-rep(0,color_range-1)
+    for(j in 1:(color_range-1)){
+      #abline(v=which.max(cumsum(dist/sum(dist)) > 1 - 1/j))
+      # Compute 10-percentile bins using the nearest-rank method
+      col_breaks[j] = which.max(cumsum(dist/sum(dist)) > 1 - 1/j) / 100
+    }
+    
+    
+    jpeg(paste0("1kgp3_chr11_",pops[i],"_4k_aggregate_col4_linear_quantile_transform.jpeg"),width = 4000, height=4000)
+    par(mar=c(0,0,0,0)) # set all margins to 0
+    image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11),breaks=c(0,col_breaks,1))
+    dev.off()
+    
+    jpeg(paste0("1kgp3_chr11_",pops[i],"_4k_aggregate_col4.jpeg"),width = 4000, height=4000)
+    par(mar=c(0,0,0,0)) # set all margins to 0
+    image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11))
+    dev.off()
+    
+    mat2<-mat/round(mean(mat[mat>5])*5,-2) # Truncate at a count of 1000
+    mat2[mat2>1]<-1 # Everything over 1 squash to 1
+    jpeg(paste0("1kgp3_chr11_",pops[i],"_4k_aggregate_col4_scaled_local.jpeg"),width = 4000, height=4000)
+    par(mar=c(0,0,0,0)) # set all margins to 0
+    image(as.matrix(mat2),useRaster = T,axes=F, xaxt='n', yaxt='n',ann=FALSE, bty="n",col=viridis(11))
+    dev.off()
+    
   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n"); })
 }
 

@@ -1,23 +1,26 @@
 # Aggregation in Tomahawk
 ## Motivation
-[Tomahawk](https://github.com/mklarqvist/tomahawk) generally output many millions to many hundreds of millions to billions of output linkage disequilibrium (LD) associations generated from many millions of input SNVs. It is technically very challenging to visualize such large datasets&mdash;not only in terms of  
+[Tomahawk](https://github.com/mklarqvist/tomahawk) generally output many millions to many hundreds of millions to billions of output linkage disequilibrium (LD) associations generated from many millions of input SNVs. It is technically very challenging to visualize such large datasets.  
 
-In order to get a scope at the scale of this problem, take for example a small chromosome like `chr20` using data from the 1000 Genomes Project Phase 3 (1KGP3). This data comprises of 2,504 samples with 1,733,484 diploid SNVs. Assuming we can plot the LD data for a pair of SNVs in a single pixel, a monitor would have to have the dimensions 400 x 400 meters to display this data*! Not only would the monitor have to be huge, the memory requirement for plotting this image would be around 400 GB! Here we describe methods to overcome these obstacles.
+In order to get a scope of the scale this problem presents, take for example a small chromosome like `chr20` with data from the 1000 Genomes Project Phase 3 (1KGP3). This data comprises of 1,733,484 diploid SNVs. Assuming we can plot the LD data for a pair of SNVs in a single pixel, a monitor would have to have the dimensions 400 x 400 meters to display this data*! Not only would the monitor have to be huge, the memory requirement for plotting this image would be around 400 GB! Here we describe methods to overcome these obstacles.
 
 \* Assuming a 1920 x 1080 pixel resolution and 20" monitor as reference
 
 ## Existing solutions
-There are several excellent solutions for rasterizing large datasets, including [Datashader](http://datashader.org/index.html). But packages like this requires us to leave the highly compressed binary representation in Tomahawk in order to transform `two` entries into a form understandable by these solutions. We have tried most of the popular applications that aggregate datasets and have found none that works in tiny memory and efficiently on our specific data.
+There are several excellent solutions for aggregating large datasets, such as [Datashader](http://datashader.org/). But packages like this requires us to leave the highly compressed binary representation internal to Tomahawk in order to transform `two` entries into a form understandable by these solutions. We have tried most of the popular applications that aggregate datasets and have found none that works in tiny memory and is sufficiently efficient when applied to our specific use-case.
 
 ## Aggregation
-Aggregation, or rasterization, is the process of reducing larger datasets to smaller ones for the purposes of displaying more data than can fit on the screen at once. Tomahawk performs aggregation into regular grids by invoking some summary statistics function on your data in the given bins. At the moment, Tomahawk supports aggregation by
-* summation
-* mean
-* minimum
-* maximum
-* standard deviation
-* summation squared
-* count
+Aggregation is the process of reducing larger datasets to smaller ones for the purposes of displaying more data than can fit on the screen at once. Tomahawk performs aggregation into regular grids by applying some summary statistics function on your data in the given grids. At the moment, Tomahawk supports aggregation by
+
+| Function           |  Action                                                              |
+|--------------------|----------------------------------------------------------------------|
+| Summation          | Sum total of the desired property                                    |
+| Summation squared  | Sum total of squares of the desired property                         |
+| Mean               | Mean of the desired property                                         |
+| Standard deviation | Standard deviation of the desired property                           |
+| Minimum            | Smallest value observed of the desired property                                                       |
+| Maximum            | Largest value oserved of the desired property                                                        |
+| Count              | Number of times a non-zero value is observed of the desired property |
 
 Without losing generality, imagine we start out with this 4x4 matrix of observations and we want to plot 4 pixels (2 x 2).
 
