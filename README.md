@@ -26,6 +26,7 @@ The current format specifications (v.0) for `TWK`,`TWO`, `LD`, and `TGZF` are av
   - [`LD` format description](#ld-format-description)
   - [Subsetting output](#subsetting-output)
   - [Sort a `TWO` file](#sort-a-two-file)
+  - [Aggregation](#aggregation)
 - [Plotting in `R`](#plotting-in-r)
 - [Algorithmic overview](#algorithmic-overview)
 - [Author](#author)
@@ -78,7 +79,7 @@ bcftools view file.vcf -O b -o file.bcf
 In this example we force computations to use phased math (`-p`) and show a live progressbar
 (`-d`). Generated data is filtered for minimum genotype frequency (`-a`), squared Pearson correlation
 coefficient (`-r`) and by test statistics P-value (`-p`). Total computation is partitioned into 990 psuedo-balanced blocks (`-c`)
-and select the first partition (`-C`) to compute using 28 threads (`-t`). When computing genome-wide LD the balancing requires that number of sub-problems (`-c`) is in the set `c choose 2 + c` which is equivalent to the upper-triangular of a square (`c`-by-`c`) matrix plus the diagonal.
+and select the first partition (`-C`) to compute using 28 threads (`-t`). When computing genome-wide LD the balancing requires that number of sub-problems (`-c`) is in the set `c choose 2 + c` which is equivalent to the upper-triangular of a square (`c`-by-`c`) matrix plus the diagonal. Read more about [load partitioning](docs/load_balancing.md) in Tomahawk. 
 ```bash
 tomahawk calc -pdi file.twk -o output_prefix -a 5 -r 0.1 -P 0.1 -c 990 -C 1 -t 28
 ```
@@ -220,6 +221,9 @@ Perform k-way merge of partially sorted blocks
 ```bash
 tomahawk sort -i partial.two -o sorted.two -M
 ```
+
+## Aggregation
+Tomahawk generally output many millions to many hundreds of millions to billions of output linkage disequilibrium (LD) associations generated from many millions of input SNVs. It is technically very challenging to visualize such large datasets. Read more about [aggregation](docs/aggregation.md) in Tomahawk.
 
 ## Plotting in `R`
 Plotting `two` data converted into `ld` format using the supplied `R` scripts (in the `R` directory).
