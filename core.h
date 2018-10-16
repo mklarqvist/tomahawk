@@ -1,0 +1,633 @@
+/*
+Copyright (C) 2016-current Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+==============================================================================*/
+#ifndef TWK_CORE_H_
+#define TWK_CORE_H_
+
+#include <cstdint>
+
+#include "tomahawk.h"
+#include "buffer.h"
+#include "genotype_bitpacker.h"
+
+namespace tomahawk {
+
+const uint8_t TWK_BASE_MAP[256] =
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,3,0,0,0,2,0,0,0,0,0,0,4,0,0,0,0,0,1,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0};
+
+const char TWK_BASE_MAP_INV[4] = {'A','T','G','C'};
+
+#if defined(_MSC_VER)
+     /* Microsoft C/C++-compatible compiler */
+     #include <intrin.h>
+#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+     /* GCC-compatible compiler, targeting x86/x86-64 */
+     #include <x86intrin.h>
+#elif defined(__GNUC__) && defined(__ARM_NEON__)
+     /* GCC-compatible compiler, targeting ARM with NEON */
+     #include <arm_neon.h>
+#elif defined(__GNUC__) && defined(__IWMMXT__)
+     /* GCC-compatible compiler, targeting ARM with WMMX */
+     #include <mmintrin.h>
+#elif (defined(__GNUC__) || defined(__xlC__)) && (defined(__VEC__) || defined(__ALTIVEC__))
+     /* XLC or GCC-compatible compiler, targeting PowerPC with VMX/VSX */
+     #include <altivec.h>
+#elif defined(__GNUC__) && defined(__SPE__)
+     /* GCC-compatible compiler, targeting PowerPC with SPE */
+     #include <spe.h>
+#endif
+
+const std::vector<std::string> TWK_SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
+
+#if defined(__AVX512F__) && __AVX512F__ == 1
+#define SIMD_AVAILABLE	1
+#define SIMD_VERSION	6
+#define SIMD_ALIGNMENT	64
+#define GENOTYPE_TRIP_COUNT	256
+#elif defined(__AVX2__) && __AVX2__ == 1
+#define SIMD_AVAILABLE	1
+#define SIMD_VERSION	5
+#define SIMD_ALIGNMENT	32
+#define GENOTYPE_TRIP_COUNT	128
+#elif defined(__AVX__) && __AVX__ == 1
+#define SIMD_AVAILABLE	1
+#define SIMD_VERSION	4
+#define SIMD_ALIGNMENT	16
+#define GENOTYPE_TRIP_COUNT	64
+#elif defined(__SSE4_1__) && __SSE4_1__ == 1
+#define SIMD_AVAILABLE	1
+#define SIMD_VERSION	3
+#define SIMD_ALIGNMENT	16
+#define GENOTYPE_TRIP_COUNT	64
+#elif defined(__SSE2__) && __SSE2__ == 1
+#define SIMD_AVAILABLE	1
+#define SIMD_VERSION	2
+#define SIMD_ALIGNMENT	16
+#define GENOTYPE_TRIP_COUNT	64
+#elif defined(__SSE__) && __SSE__ == 1
+#define SIMD_AVAILABLE	0 // unsupported version
+#define SIMD_VERSION	1
+#define SIMD_ALIGNMENT	16
+#define GENOTYPE_TRIP_COUNT	64
+#else
+#define SIMD_AVAILABLE	0
+#define SIMD_VERSION	0
+#define SIMD_ALIGNMENT	16
+#define GENOTYPE_TRIP_COUNT	64
+#endif
+
+/****************************
+*  Core genotype
+****************************/
+struct twk1_gt_t {
+	twk1_gt_t() : n(0), miss(0){}
+	virtual ~twk1_gt_t(){}
+	virtual void print() =0;
+	virtual void clear() =0;
+
+	virtual uint32_t GetLength(const uint32_t p) const =0;
+	virtual uint8_t GetRefByte(const uint32_t p) const =0;
+	virtual uint8_t GetRefA(const uint32_t p) const =0;
+	virtual uint8_t GetRefB(const uint32_t p) const =0;
+
+	virtual twk1_gt_t* Clone() =0;
+	virtual void Move(twk1_gt_t* other) =0;
+	virtual twk_buffer_t& AddBuffer(twk_buffer_t& buffer) const =0;
+	virtual twk_buffer_t& ReadBuffer(twk_buffer_t& buffer) =0;
+
+	friend inline twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_gt_t& self){
+		return(self.AddBuffer(buffer));
+	}
+
+	friend inline twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_gt_t& self){
+		return(self.ReadBuffer(buffer));
+	}
+
+	uint32_t n: 31, miss: 1;
+};
+
+// internal genotype structure
+template <class int_t>
+struct twk1_igt_t : public twk1_gt_t {
+	static const uint8_t psize = sizeof(int_t);
+
+	twk1_igt_t() : data(nullptr){}
+	~twk1_igt_t(){ delete[] data; }
+
+	inline uint32_t GetLength(const uint32_t p) const{ return(data[p] >> (2 + 2*miss)); }
+	inline uint8_t GetRefByte(const uint32_t p) const{ return(data[p] & ((1 << (2 + 2*miss)) - 1)); }
+	inline uint8_t GetRefA(const uint32_t p) const{ return((data[p] >> (1 + miss)) & ((1 << (1 + miss)) - 1)); }
+	inline uint8_t GetRefB(const uint32_t p) const{ return(data[p] & ((1 << (1 + miss)) - 1)); }
+
+	twk_buffer_t& AddBuffer(twk_buffer_t& buffer) const{
+		uint32_t n_write = this->n << 1 | this->miss;
+		SerializePrimitive(n_write, buffer);
+		for(int i = 0; i < this->n; ++i) SerializePrimitive<int_t>(this->data[i], buffer);
+		return(buffer);
+	}
+
+	twk_buffer_t& ReadBuffer(twk_buffer_t& buffer){
+		uint32_t n_write = 0;
+		DeserializePrimitive(n_write, buffer);
+		this->n = n_write >> 1;
+		this->miss = n_write & 1;
+		delete[] data; data = new int_t[n];
+		for(int i = 0; i < this->n; ++i) DeserializePrimitive<int_t>(this->data[i], buffer);
+		return(buffer);
+	}
+
+	/**<
+	 * Clone operator for copying an inherited (virtual) class.
+	 * @return
+	 */
+	twk1_gt_t* Clone(){
+		twk1_igt_t* copied = new twk1_igt_t;
+		copied->n = n;
+		copied->miss = miss;
+		copied->data = new int_t[n];
+		memcpy(copied->data, data, sizeof(int_t)*n);
+		return(copied);
+	}
+
+	/**<
+	 * Move operator for moving an inherited (virtual) class.
+	 * @param other
+	 */
+	void Move(twk1_gt_t* other){
+		if(other == nullptr) other = new twk1_igt_t;
+		twk1_igt_t<int_t>* temp = reinterpret_cast<twk1_igt_t<int_t>*>(other);
+		other->n = n; n = 0;
+		other->miss = miss;
+		std::swap(data, temp->data);
+		data = nullptr;
+	}
+
+	void clear(void){ delete[] data; data = nullptr; n = 0; }
+
+	void print(){
+		std::cerr << "print=" << n << std::endl;
+		for(int i = 0; i < n; ++i){
+			std::cerr << " <" << (data[i] & 3) << "," << (data[i] >> 2) << ">";
+		}
+		std::cerr << std::endl;
+	}
+
+	int_t* data;
+};
+
+/****************************
+*  Core record
+****************************/
+struct twk1_t {
+	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), gt(nullptr){}
+	~twk1_t(){ delete gt; }
+
+	twk1_t& operator=(const twk1_t& other){
+		gt_ptype = other.gt_ptype;
+		gt_phase = other.gt_phase;
+		gt_missing = other.gt_missing;
+		alleles = other.alleles;
+		pos = other.pos;
+		ac = other.ac;
+		an = other.an;
+		delete[] gt; gt = nullptr;
+		gt = other.gt->Clone();
+		return(*this);
+	}
+
+	twk1_t& operator=(twk1_t&& other) noexcept{
+		gt_ptype = other.gt_ptype;
+		gt_phase = other.gt_phase;
+		gt_missing = other.gt_missing;
+		alleles = other.alleles;
+		pos = other.pos;
+		ac = other.ac;
+		an = other.an;
+		delete[] gt; gt = nullptr;
+		other.gt->Move(gt);
+		return(*this);
+	}
+
+	inline void EncodeAlleles(const char A, const char B){ this->alleles = (TWK_BASE_MAP[A] << 4) | TWK_BASE_MAP[B]; }
+	inline char GetAlleleA() const{ return(TWK_BASE_MAP_INV[this->alleles >> 4]); }
+	inline char GetAlleleB() const{ return(TWK_BASE_MAP_INV[this->alleles & 15]); }
+
+	void clear(){
+		gt_ptype = 0, gt_phase = 0, gt_missing = 0; alleles = 0; pos = 0; ac = 0; an = 0;
+		if(gt != nullptr) gt->clear();
+	}
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_t& self){
+		assert(self.gt != nullptr);
+		uint8_t pack = self.gt_ptype << 2 | self.gt_phase << 1 | self.gt_missing;
+		SerializePrimitive(pack, buffer);
+		SerializePrimitive(self.alleles, buffer);
+		SerializePrimitive(self.pos, buffer);
+		SerializePrimitive(self.ac, buffer);
+		SerializePrimitive(self.an, buffer);
+		buffer << *self.gt;
+		return(buffer);
+	}
+
+	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_t& self){
+		delete self.gt; self.gt = nullptr;
+		uint8_t pack = 0;
+		DeserializePrimitive(pack, buffer);
+		self.gt_ptype   = pack >> 2;
+		self.gt_phase   = (pack >> 1) & 1;
+		self.gt_missing = pack & 1;
+		DeserializePrimitive(self.alleles, buffer);
+		DeserializePrimitive(self.pos, buffer);
+		DeserializePrimitive(self.ac, buffer);
+		DeserializePrimitive(self.an, buffer);
+		switch(self.gt_ptype){
+		case(1): self.gt = new twk1_igt_t<uint8_t>; break;
+		case(2): self.gt = new twk1_igt_t<uint16_t>; break;
+		case(4): self.gt = new twk1_igt_t<uint32_t>; break;
+		default: std::cerr << "illegal gt primtiive type" << std::endl; exit(1);
+		}
+
+		buffer >> *self.gt;
+
+		return(buffer);
+	}
+
+    uint8_t  gt_ptype: 6, gt_phase: 1, gt_missing: 1;
+    uint8_t  alleles;
+    uint32_t pos, ac, an;
+    twk1_gt_t* gt;
+};
+
+/****************************
+*  Core container
+****************************/
+struct twk1_block_t {
+	typedef twk1_block_t       self_type;
+	typedef twk1_t             value_type;
+	typedef value_type&        reference;
+	typedef const value_type&  const_reference;
+	typedef value_type*        pointer;
+	typedef const value_type*  const_pointer;
+	typedef std::ptrdiff_t     difference_type;
+	typedef std::size_t        size_type;
+
+    typedef yonRawIterator<value_type>       iterator;
+   	typedef yonRawIterator<const value_type> const_iterator;
+
+	twk1_block_t() : n(0), m(0), rid(0), minpos(0), maxpos(0), rcds(nullptr){}
+	twk1_block_t(const uint32_t p): n(0), m(p), rid(0), minpos(0), maxpos(0), rcds(new twk1_t[p]){}
+	~twk1_block_t(){ delete[] rcds; }
+
+	inline void operator+=(const twk1_t& rec){ this->Add(rec); }
+
+	void Add(const twk1_t& rec){
+		if(this->n == this->m) this->resize(); // will also trigger when n=0 and m=0
+		this->maxpos = rec.pos + 1; // right non-inclusive
+		this->rcds[this->n++] = rec;
+	}
+
+	void resize(void){
+		if(this->rcds == nullptr){
+			this->rcds = new twk1_t[500];
+			this->n = 0;
+			this->m = 500;
+			return;
+		}
+
+		twk1_t* temp = rcds;
+		rcds = new twk1_t[m*2];
+		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
+		delete[] temp;
+		m*=2;
+	}
+	void resize(const uint32_t p);
+	void reserve(const uint32_t p);
+
+	inline const uint32_t& size(void) const{ return(this->n); }
+
+	inline reference front(void){ return(this->rcds[0]); }
+	inline const_reference front(void) const{ return(this->rcds[0]); }
+	inline reference back(void){ return(this->rcds[this->size() == 0 ? 0 : this->size() - 1]); }
+	inline const_reference back(void) const{ return(this->rcds[this->size() == 0 ? 0 : this->size() - 1]); }
+
+	inline reference operator[](const uint32_t position){ return(this->rcds[position]); }
+	inline const_reference operator[](const uint32_t position) const{ return(this->rcds[position]); }
+	inline reference at(const uint32_t position){ return(this->rcds[position]); }
+	inline const_reference at(const uint32_t position) const{ return(this->rcds[position]); }
+
+	inline pointer end(void){ return(&this->rcds[this->n]); }
+	inline const_pointer end(void) const{ return(&this->rcds[this->n]); }
+
+	void clear(){
+		delete[] rcds; rcds = nullptr;
+		n = 0; m = 0; rid = 0; minpos = 0; maxpos = 0;
+	}
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_block_t& self){
+		SerializePrimitive(self.n, buffer);
+		SerializePrimitive(self.m, buffer);
+		SerializePrimitive(self.rid, buffer);
+		for(int i = 0; i < self.n; ++i) buffer << self.rcds[i];
+		return(buffer);
+	}
+
+	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_block_t& self){
+		delete[] self.rcds; self.rcds = nullptr;
+		DeserializePrimitive(self.n, buffer);
+		DeserializePrimitive(self.m, buffer);
+		DeserializePrimitive(self.rid, buffer);
+		self.rcds = new twk1_t[self.m];
+		for(int i = 0; i < self.n; ++i) buffer >> self.rcds[i];
+		return(buffer);
+	}
+
+	uint32_t n, m, rid;
+	uint32_t minpos, maxpos;
+	twk1_t* rcds;
+};
+
+struct twk_oblock_t {
+	twk_oblock_t() : n(0), nc(0){}
+
+	void Write(std::ostream& stream, const uint32_t n, const uint32_t nc, const twk_buffer_t& buffer){
+		uint8_t marker = 1;
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(n, stream);
+		SerializePrimitive(nc, stream);
+		stream.write(buffer.data(), buffer.size());
+	}
+
+	friend std::ostream& operator<<(std::ostream& stream, const twk_oblock_t& self){
+		uint8_t marker = 1;
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(self.n, stream);
+		SerializePrimitive(self.nc, stream);
+		assert(self.nc == self.bytes.size());
+		stream.write(self.bytes.data(), self.bytes.size());
+		return(stream);
+	}
+
+	friend std::istream& operator>>(std::istream& stream, twk_oblock_t& self){
+		// marker has to be read outside
+		self.bytes.reset();
+		DeserializePrimitive(self.n,  stream);
+		DeserializePrimitive(self.nc, stream);
+		self.bytes.reset(); self.bytes.resize(self.nc);
+		stream.read(self.bytes.data(), self.nc);
+		self.bytes.n_chars_ = self.nc;
+		return(stream);
+	}
+
+	uint32_t n, nc;
+	twk_buffer_t bytes;
+};
+
+/****************************
+*  Genotype specializations
+****************************/
+
+struct twk_igt_list {
+public:
+	twk_igt_list() :
+		n(0), m(0), l_list(0),
+		list(nullptr), bv(nullptr)
+	{
+
+	}
+
+	/**<
+	 *
+	 * @param twk
+	 * @param n_samples
+	 * @return
+	 */
+	bool Build(const twk1_t& twk, const uint32_t n_samples){
+		n = ceil((double)(n_samples*2)/32);
+		m = twk.ac;
+		l_list = 0;
+		delete[] list; list = new uint32_t[m];
+		delete[] bv; bv = new uint32_t[n];
+
+		memset(bv, 0, n*sizeof(uint32_t));
+		uint32_t cumpos = 0;
+		for(int i = 0; i < twk.gt->n; ++i){
+			const uint32_t len  = twk.gt->GetLength(i);
+			const uint8_t  refA = twk.gt->GetRefA(i);
+			const uint8_t  refB = twk.gt->GetRefB(i);
+
+			if(refA == 0 && refB == 0){
+				cumpos += 2*len;
+				continue;
+			}
+
+			for(int j = 0; j < 2*len; j+=2){
+				if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
+				if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
+			}
+			cumpos += 2*len;
+		}
+		assert(cumpos == n_samples*2);
+		assert(l_list == m);
+
+		return true;
+	}
+
+	~twk_igt_list(){
+		delete [] this->list;
+		delete [] this->bv;
+	}
+
+	inline void reset(void){ memset(this->bv, 0, this->n); delete[] list; l_list = 0; }
+	inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 32))); }
+	inline const bool get(const uint32_t p) const{ return(this->bv[p/32] & (1L << (p % 32)));}
+	inline void set(const uint32_t p){ this->bv[p/32] |= (1L << (p % 32)); }
+	inline void set(const uint32_t p, const bool val){ this->bv[p/32] |= ((uint64_t)val << (p % 32)); }
+
+public:
+	uint32_t  n, m; // n bytes, m allocated list entries
+	uint32_t  l_list; // number of odd items
+	uint32_t* list; // list entries
+	uint32_t* bv; // bit-vector
+};
+
+/**<
+ * Data structure to representing a 1-bit allele representation of genotypes.
+ * This data structure has to be aligned to `SIMD_ALIGNMENT` as specified
+ * by the user CPU architecture. If no SIMD is available on the device then
+ * use regular memory alignment.
+ *
+ * Special techniques to accelerate pairwise comparisons:
+ * 1) Front and tail number of SIMD _elements_ (e.g. 128 bits / 16 bytes)
+ *    that are either all 0 or 1. This allows the algorithm to either
+ *    completely skip these stretches or resort to cheaper comparison functors.
+ * 2) Counts of missingness needs to be maintained for these tail and head
+ *    elements to function correctly.
+ */
+// INVERSE mask is cheaper in terms of instructions used.
+// Lookup tables:
+// 1 bit    2-bit
+// 0|0 = 0  0|0 = 0
+// 0|1 = 1  0|1 = 1
+// 1|0 = 2  1|0 = 0100b = 4
+// 1|1 = 3  1|1 = 0101b = 5
+//          0|2 = 0010b = 2
+//          1|2 = 0110b = 6
+//          2|2 = 1010b = 12
+//          2|0 = 1000b = 8
+//          2|1 = 1001b = 9
+const static uint8_t TWK_GT_BV_MASK_LOOKUP[16]      = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+const static uint8_t TWK_GT_BV_MASK_MISS_LOOKUP[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+const static uint8_t TWK_GT_BV_DATA_LOOKUP[16]      = {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+const static uint8_t TWK_GT_BV_DATA_MISS_LOOKUP[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+struct twk_igt_vec {
+public:
+	twk_igt_vec():
+		front_zero(0),
+		tail_zero(0),
+		data(nullptr),
+		mask(nullptr)
+	{
+	}
+
+	~twk_igt_vec(){
+	#if SIMD_AVAILABLE == 1
+		_mm_free(this->data);
+		_mm_free(this->mask);
+	#else
+		delete [] this->data.data;
+		delete [] this->mask.data;
+	#endif
+	}
+
+	/**<
+	 *
+	 * @param rec
+	 * @param n_samples
+	 * @param alignment
+	 * @return
+	 */
+	bool Build(const twk1_t& rec,
+	           const uint32_t& n_samples)
+	{
+		const uint32_t bytes = ceil((double)n_samples/4);
+
+		#if SIMD_AVAILABLE == 1
+			data = (uint8_t*)_mm_malloc(bytes, 16);
+			mask = (uint8_t*)_mm_malloc(bytes, 16);
+		#else
+			data = new uint8_t[bytes];
+			mask = new uint8_t[bytes];
+		#endif
+		memset(this->data, 0, bytes);
+		memset(this->mask, 0, bytes);
+
+		const uint8_t* lookup_d = rec.gt->miss ? &TWK_GT_BV_DATA_MISS_LOOKUP[0] : &TWK_GT_BV_DATA_LOOKUP[0];
+		const uint8_t* lookup_m = rec.gt->miss ? &TWK_GT_BV_MASK_MISS_LOOKUP[0] : &TWK_GT_BV_MASK_LOOKUP[0];
+
+		GenotypeBitPacker packerA(this->data, 2);
+		GenotypeBitPacker packerB(this->mask, 2);
+
+		// Cycle over runs in container
+		for(uint32_t j = 0; j < rec.gt->n; ++j){
+			const uint32_t len = rec.gt->GetLength(j);
+			const uint8_t ref  = rec.gt->GetRefByte(j);
+			packerA.Add(lookup_d[ref], len);
+			packerB.Add(lookup_m[ref], len);
+		}
+
+		const uint32_t byteAlignedEnd  = bytes / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
+
+		int j = 0;
+		// Search from left->right
+		for(; j < byteAlignedEnd; ++j){
+			if(this->data[j] != 0 || this->mask[j] != 0)
+				break;
+		}
+
+		// Front of zeroes
+		this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
+		if(j != byteAlignedEnd){
+			j = byteAlignedEnd - 1;
+			for(; j > 0; --j){
+				if(this->data[j] != 0 || this->mask[j] != 0)
+					break;
+			}
+		}
+
+		// Tail of zeroes
+		this->tail_zero = byteAlignedEnd == j ? 0 : ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
+
+		return(true);
+	}
+
+public:
+	uint16_t front_zero; // leading zeros in aligned vector width
+	uint16_t tail_zero; // trailing zeros in aligned vector width
+	__attribute__((aligned(16))) uint8_t* data;
+	__attribute__((aligned(16))) uint8_t* mask;
+} __attribute__((aligned(16)));
+
+// gtocc
+struct twk_gtocc {
+	twk_gtocc(): n(0), cumpos(nullptr){}
+	twk_gtocc(const uint32_t n_s): n(n_s+1), cumpos(new uint32_t*[n]){
+		for(int i = 0; i < n; ++i){
+			cumpos[i] = new uint32_t[16];
+			memset(cumpos[i], 0, sizeof(uint32_t)*16);
+		}
+	}
+	~twk_gtocc(){
+		for(int i = 0; i < n; ++i) delete [] cumpos[i];
+		delete[] cumpos;
+	}
+
+	void operator=(const twk1_gt_t* gt){
+		assert(n != 0);
+		for(int i = 0; i < n; ++i) memset(cumpos[i], 0, sizeof(uint32_t)*16);
+		uint32_t cum = 0;
+		for(int i = 0; i < gt->n; ++i){
+			const uint32_t l = gt->GetLength(i);
+			const uint8_t ref = gt->GetRefByte(i);
+			for(int j = 0; j < l; ++j){
+
+			}
+		}
+	}
+
+	uint32_t n;
+	// <0,0> <0,1> <0,2> <1,0> <1,1> <1,2> <2,0> <2,1> <2,2>
+	uint32_t** cumpos;
+};
+
+
+}
+
+#endif /* TWK_CORE_H_ */
