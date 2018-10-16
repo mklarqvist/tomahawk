@@ -39,7 +39,7 @@ public:
 		// Retrieve a unique VcfReader.
 		std::string filename = "/home/mk21/Downloads/1kgp3_chr20.bcf";
 		//filename = "/home/mk21/Downloads/fish_callset_filtered.bcf";
-		//filename = "/home/mk21/Downloads/randomized.1k-50k.bcf";
+		filename = "/home/mk21/Downloads/randomized.100k-50k.bcf";
 		std::unique_ptr<tomahawk::io::VcfReader> vcf = tomahawk::io::VcfReader::FromFile(filename, 8);
 		if(vcf == nullptr){
 			std::cerr << "failed to get vcfreader" << std::endl;
@@ -68,11 +68,11 @@ public:
 		std::cerr << "header buf size =" << buf.size() << std::endl;
 		assert(zcodec.Compress(buf, obuf, 10));
 		std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
-		buf.reset();
 
 		outstream->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
 		outstream->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
 		outstream->write(obuf.data(),obuf.size());
+		buf.reset();
 
 		// start
 		outstream->flush();
@@ -247,14 +247,14 @@ public:
 		delete stream;
 
 		//*//////////////// Repoen and compute
-		std::ifstream is; is.open("/home/mk21/Downloads/debug.twk");
-		if(is.good() == false){
-			std::cerr << "failed to reopen" << std::endl;
+		twk_reader reader;
+		if(reader.Open("/home/mk21/Downloads/debug.twk") == false){
+			std::cerr << "failed" << std::endl;
+			return false;
 		}
-		is.seekg(start_pos);
-		std::cerr << "seek to " << start_pos << std::endl;
 
-		twk1_blk_iterator bit;  bit.stream = &is;
+		twk1_blk_iterator bit;
+		bit.stream = reader.rstream;
 		LDEngine engine; engine.SetSamples(vcf->vcf_header_.GetNumberSamples());
 
 		std::cerr << "index entries=" << index.n << std::endl;

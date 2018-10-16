@@ -82,6 +82,7 @@ struct IndexEntryEntry : public IndexEntry {
 
 class Index {
 public:
+	Index(void) : n(0), m(0), m_ent(0), ent(nullptr), ent_meta(nullptr){}
 	Index(const uint32_t n_contigs) : n(0), m(0), m_ent(n_contigs), ent(nullptr), ent_meta(new IndexEntryEntry[n_contigs]){}
 	~Index(){ delete[] ent; delete[] ent_meta; }
 
