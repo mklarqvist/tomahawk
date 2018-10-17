@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include "core.h"
+#include "twk_reader.h"
 
 // Method 1: None: Input-specified (default)
 // Method 2: Phased Vectorized No-Missing
@@ -14,6 +15,11 @@
 #define SLAVE_DEBUG_MODE 1
 
 namespace tomahawk{
+
+#define TWK_LD_REFREF 0
+#define TWK_LD_ALTREF 1
+#define TWK_LD_REFALT 2
+#define TWK_LD_ALTALT 3
 
 // Parameter thresholds for FLAGs
 #define LOW_MAF_THRESHOLD       0.01
@@ -149,10 +155,14 @@ struct twk_ld_count {
 	~twk_ld_count(){}
 
 	void resetPhased(void){
-		this->alleleCounts[0] = 0;
-		this->alleleCounts[1] = 0;
-		this->alleleCounts[4] = 0;
-		this->alleleCounts[5] = 0;
+		this->alleleCounts[0]  = 0;
+		this->alleleCounts[1]  = 0;
+		this->alleleCounts[4]  = 0;
+		this->alleleCounts[5]  = 0;
+		haplotypeCounts[0] = 0;
+		haplotypeCounts[1] = 0;
+		haplotypeCounts[2] = 0;
+		haplotypeCounts[3] = 0;
 		// All other values can legally overflow
 		// They are not used
 	}
@@ -179,133 +189,106 @@ struct twk_ld_count {
 	}
 
 	// Counters
-	double alleleCounts[171];
-	double haplotypeCounts[4];
+	uint64_t alleleCounts[171];
+	uint64_t haplotypeCounts[4];
+};
+
+struct ld_perf {
+	uint64_t* cycles;
+	uint64_t* freq;
 };
 
 class LDEngine {
 public:
+	typedef bool (LDEngine::*func)(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
+	typedef bool (LDEngine::*ep[9])(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
 
-void SetSamples(const uint32_t samples){
-	n_samples  = samples;
-	byte_width = ceil((double)samples/4);
-	byte_aligned_end = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
-	vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
-	phased_unbalanced_adjustment   = (samples*2)%8;
-	unphased_unbalanced_adjustment = samples%4;
-}
-
-bool CalculateLDPhasedSimple(const twk_igt_list& ref, const twk_igt_list& tgt){
-	helper.resetPhased();
-
-	const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
-	const uint32_t n_total  = ref.l_list + tgt.l_list;
-	uint32_t n_same = 0;
-
-	if(ref.l_list >= tgt.l_list){
-		for(uint32_t i = 0; i < n_cycles; ++i) n_same += ref.get(tgt.list[i]);
-	} else {
-		for(uint32_t i = 0; i < n_cycles; ++i) n_same += tgt.get(ref.list[i]);
+public:
+	void SetSamples(const uint32_t samples){
+		n_samples  = samples;
+		byte_width = ceil((double)samples/4);
+		byte_aligned_end = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
+		vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
+		phased_unbalanced_adjustment   = (samples*2)%8;
+		unphased_unbalanced_adjustment = samples%4;
 	}
 
-	helper.haplotypeCounts[0] = 2*n_samples - (n_total - n_same);
-	//std::cerr << 2*this->n_samples - (n_total - n_same) << '\n';
-	//assert(2*n_samples - (n_total - n_same) < 2*n_samples);
-	//std::cerr << helper.haplotypeCounts[0] << " ";
+	// Phased functions
+	bool Runlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 
-	//return(this->CalculateLDPhasedMathSimple(block1, block2));
-	return true;
-}
+	/**<
+	 * Unphased functions for calculating linkage-disequilibrium. These functions
+	 * are all prefixed with Unphased_.
+	 * @param b1
+	 * @param p1
+	 * @param b2
+	 * @param p2
+	 * @param perf
+	 * @return
+	 */
+	bool Unphased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 
-bool PhasedVectorizedNoMissingNoTable(const twk_igt_vec& block1, const twk_igt_vec& block2){
-	helper.resetPhased();
-	helper_simd.counters[0] = 0;
-
-	const uint8_t* const arrayA = block1.data;
-	const uint8_t* const arrayB = block2.data;
-
-#if SIMD_AVAILABLE == 1
-	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
-	const uint32_t tailSmallest  = block1.tail_zero  < block2.tail_zero  ? block1.tail_zero  : block2.tail_zero;
-	const uint32_t frontBonus    = block1.front_zero != frontSmallest ? block1.front_zero : block2.front_zero;
-	const uint32_t tailBonus     = block1.tail_zero  != tailSmallest  ? block1.tail_zero  : block2.tail_zero;
-
-	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
-	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
-	VECTOR_TYPE __intermediate;
-
-#define ITER_SHORT {											\
-	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);	\
-	POPCOUNT(helper_simd.counters[0], __intermediate);			\
-	i += 1;														\
-}
-
-	uint32_t i = frontSmallest;
-	for( ; i < frontBonus; )                         ITER_SHORT
-	for( ; i < this->vector_cycles - tailBonus; )    ITER_SHORT
-	for( ; i < this->vector_cycles - tailSmallest; ) ITER_SHORT
-
-#undef ITER_SHORT
-	uint32_t k = this->byte_aligned_end;
-#else
-	uint32_t k = 0;
-#endif
-
-	//std::cerr << "k=" << k << "/" << this->byte_width << std::endl;
-	for(; k+8 < this->byte_width; k += 8){
-		for(uint32_t l = 0; l < 8; ++l)
-			helper_simd.scalarB[l] = arrayA[k+l] & arrayB[k+l];
-		helper_simd.counters[0] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarA));
+	// Hybrid functions
+	inline bool HybridPhased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
+		//const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
+		if(std::min(b1.list[p1].l_list, b2.list[p2].l_list) < 1000)
+			return(PhasedSimple(b1,p1,b2,p2,perf));
+		else return(PhasedVectorizedNoMissingNoTable(b1,p1,b2,p2,perf));
 	}
 
-	for(; k < this->byte_width; ++k){
-		helper_simd.counters[0] += POPCOUNT_ITER(((arrayA[k] & arrayB[k]) & 255));
+	inline bool HybridUnphased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
+		//const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
+		if(b1.blk->rcds[p1].gt->n + b2.blk->rcds[p2].gt->n < 500)
+			return(Runlength(b1,p1,b2,p2,perf));
+		else return(UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf));
 	}
-	//helper.haplotypeCounts[0] = (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 + helper_simd.counters[0] - this->phased_unbalanced_adjustment;
-	//std::cerr << helper.haplotypeCounts[0] << std::endl;
 
-	//this->setFLAGs(block1, block2);
-	//return(this->CalculateLDPhasedMathSimple(block1, block2));
-	//exit(1);
-	return true;
-}
 
-/*
-bool MathPhasedSimple(const block_type& block1, const block_type& block2){
-	//++this->possible;
+	bool MathPhasedSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
+		//++this->possible;
 
-	// If haplotype count for (0,0) >
-	//if(helper[0] > 2*n_samples - this->parameters.minimum_sum_alternative_haplotype_count)
-	//	return false;
+		// If haplotype count for (0,0) >
+		//if(helper[0] > 2*n_samples - this->parameters.minimum_sum_alternative_haplotype_count)
+		//	return false;
 
-	// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
-	const double divisor = block1.currentMeta().AF * (1 - block1.currentMeta().AF) * block2.currentMeta().AF * (1 - block2.currentMeta().AF);
-	if(divisor == 0) return false;
+		// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
 
-	double D, Dprime, R2, R;
+		const double af1 = b1.blk->rcds[p1].ac / (2.0f*n_samples);
+		const double af2 = b2.blk->rcds[p2].ac / (2.0f*n_samples);
+		const double divisor = af1 * (1 - af1) * af2 * (1 - af2);
+		if(divisor == 0) return false; // occurs if either has an allele count of 1
 
-	D  = helper.haplotypeCounts[0]/(2*n_samples) - block1.currentMeta().AF*block2.currentMeta().AF;
-	R2 = D*D / divisor ;
-	R  = sqrt(R2);
+		double D, Dprime, R2, R;
 
-	if(D < 0){
-		if( block1.currentMeta().AF * block2.currentMeta().AF < (1 - block1.currentMeta().AF) * (1 - block2.currentMeta().AF)){
-			Dprime = D / (block1.currentMeta().AF * block2.currentMeta().AF);
-		} else {
-			Dprime = D / ( (1 - block1.currentMeta().AF) * (1 - block2.currentMeta().AF) );
+		D  = helper.haplotypeCounts[0]/(2*n_samples) - af1*af2;
+		R2 = D*D / divisor;
+		R  = sqrt(R2);
+
+		if(D < 0){
+			if( af1 * af2 < (1 - af1) * (1 - af2)){
+				Dprime = D / (af1 * af2);
+			} else {
+				Dprime = D / ( (1 - af1) * (1 - af2) );
+			}
+		} else { // D >= 0
+			if((1-af1) * af2 < af1 * (1 - af2)){
+				Dprime = D / ((1 - af1) * af2);
+			} else {
+				Dprime = D / (af1 * (1 - af2));
+			}
 		}
-	} else { // D >= 0
-		if((1-block1.currentMeta().AF) * block2.currentMeta().AF < block1.currentMeta().AF * (1 - block2.currentMeta().AF)){
-			Dprime = D / ((1 - block1.currentMeta().AF) * block2.currentMeta().AF);
-		} else {
-			Dprime = D / (block1.currentMeta().AF * (1 - block2.currentMeta().AF));
-		}
+
+		//std::cerr << "D=" << D << ",Dp=" << Dprime << ",R=" << R << ",R2=" << R2 << std::endl;
+
+		return true;
+
 	}
-
-	return true;
-
-}
-*/
 
 public:
 	uint32_t n_samples;

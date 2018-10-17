@@ -429,11 +429,23 @@ public:
 	 * @return
 	 */
 	bool Build(const twk1_t& twk, const uint32_t n_samples){
-		n = ceil((double)(n_samples*2)/32);
-		m = twk.ac;
+		//std::cerr << "build=" << n << "," << m << "," << l_list << std::endl;
+		if(n == 0){
+			//std::cerr << "n is 0" << std::endl;
+			n = ceil((double)(n_samples*2)/32);
+			//m = twk.ac;
+			m = n_samples*2;
+			delete[] list; list = new uint32_t[m];
+			delete[] bv; bv = new uint32_t[n];
+			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
+		}
+
+		if(twk.ac > m){
+			//std::cerr << "resize=" << twk.ac << ">" << m << std::endl;
+			m = twk.ac;
+			delete[] list; list = new uint32_t[m];
+		}
 		l_list = 0;
-		delete[] list; list = new uint32_t[m];
-		delete[] bv; bv = new uint32_t[n];
 
 		memset(bv, 0, n*sizeof(uint32_t));
 		uint32_t cumpos = 0;
@@ -454,14 +466,14 @@ public:
 			cumpos += 2*len;
 		}
 		assert(cumpos == n_samples*2);
-		assert(l_list == m);
+		assert(l_list <= m);
 
 		return true;
 	}
 
 	~twk_igt_list(){
-		delete [] this->list;
-		delete [] this->bv;
+		delete[] this->list;
+		delete[] this->bv;
 	}
 
 	inline void reset(void){ memset(this->bv, 0, this->n); delete[] list; l_list = 0; }
@@ -539,13 +551,15 @@ public:
 	{
 		const uint32_t bytes = ceil((double)n_samples/4);
 
-		#if SIMD_AVAILABLE == 1
-			data = (uint8_t*)_mm_malloc(bytes, 16);
-			mask = (uint8_t*)_mm_malloc(bytes, 16);
-		#else
-			data = new uint8_t[bytes];
-			mask = new uint8_t[bytes];
-		#endif
+		if(data == nullptr){
+			#if SIMD_AVAILABLE == 1
+				data = (uint8_t*)_mm_malloc(bytes, SIMD_ALIGNMENT);
+				mask = (uint8_t*)_mm_malloc(bytes, SIMD_ALIGNMENT);
+			#else
+				data = new uint8_t[bytes];
+				mask = new uint8_t[bytes];
+			#endif
+		}
 		memset(this->data, 0, bytes);
 		memset(this->mask, 0, bytes);
 
@@ -591,9 +605,9 @@ public:
 public:
 	uint16_t front_zero; // leading zeros in aligned vector width
 	uint16_t tail_zero; // trailing zeros in aligned vector width
-	__attribute__((aligned(16))) uint8_t* data;
-	__attribute__((aligned(16))) uint8_t* mask;
-} __attribute__((aligned(16)));
+	uint8_t* data;
+	uint8_t* mask;
+};
 
 // gtocc
 struct twk_gtocc {

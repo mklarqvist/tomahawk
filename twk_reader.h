@@ -1,6 +1,8 @@
 #ifndef TWK_READER_H_
 #define TWK_READER_H_
 
+#include <fstream>
+
 #include "vcf_utils.h"
 #include "index.h"
 #include "zstd_codec.h"
@@ -63,11 +65,17 @@ public:
 	std::istream* stream; // stream pointer
 };
 
+#define TWK_LDD_NONE 0
+#define TWK_LDD_VEC  1
+#define TWK_LDD_LIST 2
+#define TWK_LDD_ALL  ((TWK_LDD_VEC) | (TWK_LDD_LIST))
+
 struct twk1_ldd_blk {
-	twk1_ldd_blk() : owns_block(0), n_rec(0), blk(nullptr), vec(nullptr), list(nullptr){}
+	twk1_ldd_blk() : owns_block(false), n_rec(0), m_vec(0), m_list(0), blk(nullptr), vec(nullptr), list(nullptr){}
 	twk1_ldd_blk(twk1_blk_iterator& it, const uint32_t n_samples) :
 		owns_block(false),
 		n_rec(it.blk.n),
+		m_vec(0), m_list(0),
 		blk(&it.blk),
 		vec(new twk_igt_vec[it.blk.n]),
 		list(new twk_igt_list[it.blk.n])
@@ -84,6 +92,16 @@ struct twk1_ldd_blk {
 		delete[] list;
 	}
 
+	twk1_ldd_blk& operator=(const twk1_ldd_blk& other){
+		if(owns_block) delete blk;
+		owns_block = false; n_rec = 0; // do not change m
+		blk = other.blk;
+		if(blk != nullptr){
+			n_rec = other.blk->n;
+		}
+		return(*this);
+	}
+
 	void Set(twk1_blk_iterator& it, const uint32_t n_samples){
 		if(owns_block) delete blk;
 		delete[] vec;
@@ -92,13 +110,6 @@ struct twk1_ldd_blk {
 		owns_block = false;
 		n_rec = it.blk.n;
 		blk = &it.blk;
-		vec = new twk_igt_vec[it.blk.n];
-		list = new twk_igt_list[it.blk.n];
-
-		for(int i = 0; i < it.blk.n; ++i){
-			vec[i].Build(it.blk.rcds[i], n_samples);
-			list[i].Build(it.blk.rcds[i], n_samples);
-		}
 	}
 
 	void SetOwn(twk1_blk_iterator& it, const uint32_t n_samples){
@@ -113,16 +124,6 @@ struct twk1_ldd_blk {
 		it.buf >> *blk;
 		it.buf.reset();
 		n_rec = blk->n;
-
-		/*
-		vec  = new twk_igt_vec[blk->n];
-		list = new twk_igt_list[blk->n];
-
-		for(int i = 0; i < blk->n; ++i){
-			vec[i].Build(blk->rcds[i], n_samples);
-			list[i].Build(blk->rcds[i], n_samples);
-		}
-		*/
 	}
 
 	void Clear(){
@@ -130,13 +131,29 @@ struct twk1_ldd_blk {
 		delete[] list;
 	}
 
-	void Inflate(const uint32_t n_samples){
-		vec  = new twk_igt_vec[blk->n];
-		list = new twk_igt_list[blk->n];
+	void Inflate(const uint32_t n_samples, const uint8_t unpack = TWK_LDD_ALL){
+		if(unpack & TWK_LDD_VEC){
+			if(blk->n > m_vec){
+				delete[] vec;
+				vec  = new twk_igt_vec[blk->n];
+				m_vec = blk->n;
+			}
+		}
+		if(unpack & TWK_LDD_LIST){
+			if(blk->n > m_list){
+				list = new twk_igt_list[blk->n];
+				m_list = blk->n;
+			}
+		}
 
-		for(int i = 0; i < blk->n; ++i){
-			vec[i].Build(blk->rcds[i], n_samples);
-			list[i].Build(blk->rcds[i], n_samples);
+		if(unpack & TWK_LDD_VEC){
+			for(int i = 0; i < blk->n; ++i)
+				vec[i].Build(blk->rcds[i], n_samples);
+		}
+
+		if(unpack & TWK_LDD_LIST){
+			for(int i = 0; i < blk->n; ++i)
+				list[i].Build(blk->rcds[i], n_samples);
 		}
 	}
 
@@ -145,7 +162,7 @@ struct twk1_ldd_blk {
 	inline const twk1_t& operator[](const uint32_t p) const{ return(blk->rcds[p]); }
 
 	bool owns_block;
-	uint32_t n_rec;
+	uint32_t n_rec, m_vec, m_list;
 	twk1_block_t* blk; // data block
 	twk_igt_vec* vec; // vectorized (bitvector)
 	twk_igt_list* list; // list
