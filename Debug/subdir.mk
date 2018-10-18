@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../buffer.cpp \
+../fisher_math.cpp \
 ../ld.cpp \
 ../main.cpp \
 ../support_vcf.cpp \
@@ -14,6 +15,7 @@ CPP_SRCS += \
 
 OBJS += \
 ./buffer.o \
+./fisher_math.o \
 ./ld.o \
 ./main.o \
 ./support_vcf.o \
@@ -23,6 +25,7 @@ OBJS += \
 
 CPP_DEPS += \
 ./buffer.d \
+./fisher_math.d \
 ./ld.d \
 ./main.d \
 ./support_vcf.d \

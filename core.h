@@ -206,7 +206,7 @@ struct twk1_igt_t : public twk1_gt_t {
 *  Core record
 ****************************/
 struct twk1_t {
-	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), gt(nullptr){}
+	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), het(0), gt(nullptr){}
 	~twk1_t(){ delete gt; }
 
 	twk1_t& operator=(const twk1_t& other){
@@ -217,6 +217,7 @@ struct twk1_t {
 		pos = other.pos;
 		ac = other.ac;
 		an = other.an;
+		het = other.het;
 		delete[] gt; gt = nullptr;
 		gt = other.gt->Clone();
 		return(*this);
@@ -230,6 +231,7 @@ struct twk1_t {
 		pos = other.pos;
 		ac = other.ac;
 		an = other.an;
+		het = other.het;
 		delete[] gt; gt = nullptr;
 		other.gt->Move(gt);
 		return(*this);
@@ -252,6 +254,7 @@ struct twk1_t {
 		SerializePrimitive(self.pos, buffer);
 		SerializePrimitive(self.ac, buffer);
 		SerializePrimitive(self.an, buffer);
+		SerializePrimitive(self.het, buffer);
 		buffer << *self.gt;
 		return(buffer);
 	}
@@ -267,6 +270,7 @@ struct twk1_t {
 		DeserializePrimitive(self.pos, buffer);
 		DeserializePrimitive(self.ac, buffer);
 		DeserializePrimitive(self.an, buffer);
+		DeserializePrimitive(self.het, buffer);
 		switch(self.gt_ptype){
 		case(1): self.gt = new twk1_igt_t<uint8_t>; break;
 		case(2): self.gt = new twk1_igt_t<uint16_t>; break;
@@ -281,7 +285,7 @@ struct twk1_t {
 
     uint8_t  gt_ptype: 6, gt_phase: 1, gt_missing: 1;
     uint8_t  alleles;
-    uint32_t pos, ac, an;
+    uint32_t pos, ac, an, het;
     twk1_gt_t* gt;
 };
 

@@ -39,7 +39,7 @@ public:
 		// Retrieve a unique VcfReader.
 		std::string filename = "/home/mk21/Downloads/1kgp3_chr20.bcf";
 		//filename = "/home/mk21/Downloads/fish_callset_filtered.bcf";
-		filename = "/home/mk21/Downloads/randomized.100k-50k.bcf";
+		//filename = "/home/mk21/Downloads/randomized.100k-50k.bcf";
 		std::unique_ptr<tomahawk::io::VcfReader> vcf = tomahawk::io::VcfReader::FromFile(filename, 8);
 		if(vcf == nullptr){
 			std::cerr << "failed to get vcfreader" << std::endl;
@@ -85,8 +85,8 @@ public:
 		while(vcf->next(BCF_UN_ALL)){
 			tomahawk::twk1_t entry;
 			entry.pos = vcf->bcf1_->pos;
-			if(n_total == 15000){
-				std::cerr << "break at 15k" << std::endl;
+			if(n_total == 20000){
+				std::cerr << "break at 20k" << std::endl;
 				break;
 			}
 
@@ -286,29 +286,32 @@ public:
 		f[2] = &LDEngine::PhasedVectorizedNoMissingNoTable;
 		f[3] = &LDEngine::UnphasedVectorized;
 		f[4] = &LDEngine::UnphasedVectorizedNoMissing;
-		f[5] = &LDEngine::Runlength;
-		f[6] = &LDEngine::PhasedSimple;
-		f[7] = &LDEngine::HybridPhased;
-		f[8] = &LDEngine::HybridUnphased;
+		f[5] = &LDEngine::PhasedRunlength;
+		f[6] = &LDEngine::PhasedList;
+		f[7] = &LDEngine::UnphasedRunlength;
+		f[8] = &LDEngine::HybridPhased;
+		f[9] = &LDEngine::HybridUnphased;
 
-		uint8_t unpack_list[9];
-		memset(unpack_list, TWK_LDD_VEC, 9);
+		uint8_t unpack_list[10];
+		memset(unpack_list, TWK_LDD_VEC, 10);
 		unpack_list[5] = TWK_LDD_NONE;
 		unpack_list[6] = TWK_LDD_LIST;
-		unpack_list[7] = TWK_LDD_ALL;
+		unpack_list[7] = TWK_LDD_NONE;
 		unpack_list[8] = TWK_LDD_ALL;
+		unpack_list[9] = TWK_LDD_ALL;
 
-		ld_perf perfs[9];
+		unpack_list[0] = TWK_LDD_ALL;
+
+		ld_perf perfs[10];
 		uint32_t perf_size = vcf->vcf_header_.GetNumberSamples()*4 + 2;
-		for(int i = 0; i < 9; ++i){
+		for(int i = 0; i < 10; ++i){
 			perfs[i].cycles = new uint64_t[perf_size];
 			perfs[i].freq   = new uint64_t[perf_size];
 			memset(perfs[i].cycles, 0, perf_size*sizeof(uint64_t));
 			memset(perfs[i].freq, 0, perf_size*sizeof(uint64_t));
-			std::cerr << "perf-"<<i << "=" << perf_size << std::endl;
 		}
 
-		for(int method = 0; method < 9; ++method){
+		for(int method = 0; method < 10; ++method){
 			timer.Start();
 			uint64_t n_total = 0; uint32_t fl_lim = 0;
 			for(int b1 = 0; b1 < index.n; ++b1){
@@ -322,14 +325,6 @@ public:
 							continue;
 						}
 						/*
-						if( std::max(blocks[0].blk->rcds[i].ac, blocks[0].blk->rcds[j].ac) > 1000 ){
-							engine.PhasedVectorizedNoMissingNoTable(blocks[0].vec[i], blocks[0].vec[j]);
-						}
-						else
-						*/
-						//engine.CalculateLDPhasedSimple(blocks[0].list[i], blocks[0].list[j]);
-						//(engine.*f[method])(blocks[0], i, blocks[0], j, &perfs[method]);
-						/*
 						engine.PhasedVectorized(blocks[0], i, blocks[1], j);
 						engine.PhasedVectorizedNoMissing(blocks[0], i, blocks[1], j);
 						engine.PhasedVectorizedNoMissingNoTable(blocks[0], i, blocks[1], j);
@@ -337,7 +332,8 @@ public:
 						engine.UnphasedVectorizedNoMissing(blocks[0], i, blocks[1], j);
 						engine.Runlength(blocks[0], i, blocks[1], j);
 						*/
-						(engine.*f[method])(blocks[0], i, blocks[0], j, &perfs[method]);
+						engine.AllAlgorithms(blocks[0],i,blocks[0],j,&perfs[method]);
+						//(engine.*f[method])(blocks[0], i, blocks[0], j, &perfs[method]);
 					}
 
 				}
@@ -354,14 +350,6 @@ public:
 								continue;
 							}
 							/*
-							if( std::max(blocks[0].blk->rcds[i].ac, blocks[0].blk->rcds[j].ac) > 1000 ){
-								engine.PhasedVectorizedNoMissingNoTable(blocks[0].vec[i], blocks[0].vec[j]);
-							}
-							else
-							*/
-							//engine.CalculateLDPhasedSimple(blocks[0].list[i], blocks[0].list[j]);
-							//(engine.*f[method])(blocks[0], i, blocks[0], j, &perfs[method]);
-							/*
 							engine.PhasedVectorized(blocks[0], i, blocks[1], j);
 							engine.PhasedVectorizedNoMissing(blocks[0], i, blocks[1], j);
 							engine.PhasedVectorizedNoMissingNoTable(blocks[0], i, blocks[1], j);
@@ -369,8 +357,8 @@ public:
 							engine.UnphasedVectorizedNoMissing(blocks[0], i, blocks[1], j);
 							engine.Runlength(blocks[0], i, blocks[1], j);
 							*/
-							//engine.PhasedVectorized(blocks[0], i, blocks[1], j, &perfs[method]);
-							(engine.*f[method])(blocks[0], i, blocks[1], j, &perfs[method]);
+							//(engine.*f[method])(blocks[0], i, blocks[1], j, &perfs[method]);
+							engine.AllAlgorithms(blocks[0],i,blocks[1],j,&perfs[method]);
 						}
 					}
 					n_total += blocks[0].n_rec * blocks[1].n_rec;
@@ -391,8 +379,8 @@ public:
 
 		//std::cerr << "done=" << bit.blk.n*bit2.blk.n << std::endl;
 
-		for(int i = 0; i < 9; ++i){
-			for(int j = 0; j < vcf->vcf_header_.GetNumberSamples()*4 + 2; ++j){
+		for(int i = 0; i < 10; ++i){
+			for(int j = 0; j < perf_size; ++j){
 				std::cout << i<<"\t"<<j<<"\t"<< (double)perfs[i].cycles[j]/perfs[i].freq[j] << "\t" << perfs[i].freq[j] << "\t" << perfs[i].cycles[j] << '\n';
 			}
 			delete[] perfs[i].cycles;

@@ -4,17 +4,15 @@
 #include <cassert>
 #include "core.h"
 #include "twk_reader.h"
+#include "fisher_math.h"
 
-// Method 1: None: Input-specified (default)
-// Method 2: Phased Vectorized No-Missing
-// Method 3: Count comparisons for A1
-// Method 4: Unphased A1 and unphased A2
-// Method 5: Phased A1 and Phased A2
-// Method 6: All algorithms comparison (debug)
-// Method 7: All algorithms run-time output (debug)
-#define SLAVE_DEBUG_MODE 1
+// Method 0: None
+// Method 1: Performance
+// Method 2: Debug correctness
+// Method 3: Print LD difference Phased and Unphased
+#define SLAVE_DEBUG_MODE 3
 
-namespace tomahawk{
+namespace tomahawk {
 
 #define TWK_LD_REFREF 0
 #define TWK_LD_ALTREF 1
@@ -26,6 +24,25 @@ namespace tomahawk{
 #define LOW_HWE_THRESHOLD       1e-6
 #define LONG_RANGE_THRESHOLD    500e3
 #define MINIMUM_ALLOWED_ALLELES 5		// Minimum number of alleles required for math to work out in the unphased case
+#define ALLOWED_ROUNDING_ERROR  0.001
+
+#define TWK_HAP_FREQ(A,POS) ((double)(A).alleleCounts[POS] / (A).totalHaplotypeCounts)
+
+static uint32_t twk_debug_pos1 = 0;
+static uint32_t twk_debug_pos1_2 = 0;
+static uint32_t twk_debug_pos2 = 0;
+static uint32_t twk_debug_pos2_2 = 0;
+
+struct temp_t {
+	double R, R2, D, Dprime;
+	friend std::ostream& operator<<(std::ostream& stream, const temp_t& self){
+		stream << twk_debug_pos1 << "\t" << twk_debug_pos2 << "\t" << self.R2 << "\t" << self.R2 << "\t" << self.D << "\t" << self.Dprime << "\n";
+		return(stream);
+	}
+};
+
+static temp_t twk_debug1;
+static temp_t twk_debug2;
 
 // SIMD trigger
 #if SIMD_AVAILABLE == 1
@@ -189,8 +206,14 @@ struct twk_ld_count {
 	}
 
 	// Counters
+	double R, R2;             // Correlation coefficients
+	double D, Dprime, Dmax;   // D values
+	double P;                 // Fisher or Chi-Squared P value for 2x2 contingency table
+	double chiSqModel;        // Chi-Squared critical value for 3x3 contingency table
 	uint64_t alleleCounts[171];
 	uint64_t haplotypeCounts[4];
+	uint64_t totalHaplotypeCounts; // Total number of alleles
+
 };
 
 struct ld_perf {
@@ -201,7 +224,7 @@ struct ld_perf {
 class LDEngine {
 public:
 	typedef bool (LDEngine::*func)(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
-	typedef bool (LDEngine::*ep[9])(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
+	typedef bool (LDEngine::*ep[10])(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
 
 public:
 	void SetSamples(const uint32_t samples){
@@ -214,8 +237,8 @@ public:
 	}
 
 	// Phased functions
-	bool Runlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
-	bool PhasedSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
@@ -230,27 +253,148 @@ public:
 	 * @param perf
 	 * @return
 	 */
-	bool Unphased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	bool UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 
 	// Hybrid functions
+	__attribute__((always_inline))
 	inline bool HybridPhased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
-		//const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
-		if(std::min(b1.list[p1].l_list, b2.list[p2].l_list) < 1000)
-			return(PhasedSimple(b1,p1,b2,p2,perf));
+		const uint32_t n_cycles = b1.list[p1].l_list < b2.list[p2].l_list ? b1.list[p1].l_list : b2.list[p2].l_list;
+		if(n_cycles < 60)
+			return(PhasedList(b1,p1,b2,p2,perf));
 		else return(PhasedVectorizedNoMissingNoTable(b1,p1,b2,p2,perf));
 	}
 
+	__attribute__((always_inline))
 	inline bool HybridUnphased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
-		//const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
-		if(b1.blk->rcds[p1].gt->n + b2.blk->rcds[p2].gt->n < 500)
-			return(Runlength(b1,p1,b2,p2,perf));
+		if(b1.blk->rcds[p1].gt->n + b2.blk->rcds[p2].gt->n < 40)
+			return(UnphasedRunlength(b1,p1,b2,p2,perf));
 		else return(UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf));
 	}
 
+	inline bool AllAlgorithms(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
+		//this->PhasedVectorized(b1,p1,b2,p2,perf);
+		this->PhasedVectorizedNoMissing(b1,p1,b2,p2,perf);
+		//this->PhasedVectorizedNoMissingNoTable(b1,p1,b2,p2,perf);
+		//this->UnphasedVectorized(b1,p1,b2,p2,perf);
+		this->UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf);
+		//this->PhasedRunlength(b1,p1,b2,p2,perf);
+		//this->PhasedList(b1,p1,b2,p2,perf);
+		//this->UnphasedRunlength(b1,p1,b2,p2,perf);
+		return true;
+	}
 
-	bool MathPhasedSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
+	bool PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
+		// Trigger phased flag
+		//helper.setUsedPhasedMath();
+
+		// Total amount of non-missing alleles
+		helper.totalHaplotypeCounts = helper.alleleCounts[0] + helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[5];
+
+		// All values are missing
+		//if(helper.totalHaplotypeCounts < MINIMUM_ALLOWED_ALLELES){
+			//++this->insufficent_alleles;
+		//	return false;
+		//}
+		//++this->possible;
+
+		// Filter by total minor haplotype frequency
+		//if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_sum_alternative_haplotype_count){
+		//	//std::cerr << "FILTER: " << helper.getTotalAltHaplotypeCount() << std::endl;
+		//	return false;
+		//}
+
+
+		// Frequencies
+		//const double p = (2.0*helper.alleleCounts[0] + helper.alleleCounts[1] + helper.alleleCounts[4]) / (2.0*helper.totalHaplotypeCounts);
+		//const double q = (2.0*helper.alleleCounts[5] + helper.alleleCounts[1] + helper.alleleCounts[4]) / (2.0*helper.totalHaplotypeCounts);
+
+		// Haplotype frequencies
+		double pA = TWK_HAP_FREQ(helper,0); // pA
+		double qA = TWK_HAP_FREQ(helper,1); // qA
+		double pB = TWK_HAP_FREQ(helper,4); // pB
+		double qB = TWK_HAP_FREQ(helper,5); // qB
+
+		//std::cerr << pA << "," << pB << "," << qA << "," << qB << std::endl;
+		//assert(abs((pA+qA+pB+qB)-1) < 0.01);
+
+		if(pA*qB - qA*pB == 0){
+			//std::cerr << "is zero return -> " << (pA*qB) << "-" << (qA*pB) << " with " << pA << "," << pB << "," << qA << "," << qB << std::endl;
+			//std::cerr << "cnts=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
+
+			return false;
+		}
+
+		// Allelic frequencies
+		const double g0 = ((double)helper.alleleCounts[0] + helper.alleleCounts[1]) / (helper.totalHaplotypeCounts);
+		const double g1 = ((double)helper.alleleCounts[4] + helper.alleleCounts[5]) / (helper.totalHaplotypeCounts);
+		const double h0 = ((double)helper.alleleCounts[0] + helper.alleleCounts[4]) / (helper.totalHaplotypeCounts);
+		const double h1 = ((double)helper.alleleCounts[1] + helper.alleleCounts[5]) / (helper.totalHaplotypeCounts);
+
+		helper.D  = pA*qB - qA*pB;
+		helper.R2 = helper.D*helper.D / (g0*g1*h0*h1);
+		helper.R  = sqrt(helper.R2);
+
+		if(helper.D >= 0) helper.Dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
+		else helper.Dmax = g0*g1 < h0*h1 ? -g0*g1 : -h0*h1;
+
+		helper.Dprime = helper.D / helper.Dmax;
+
+		//assert(helper.Dprime >= 0 && helper.Dprime <= 1.01);
+		assert(helper.R2 >= 0 && helper.R2 <= 1.01);
+
+		//if(helper.R2 >= 0.5 && helper.R2 <= 1){
+#if SLAVE_DEBUG_MODE == 3
+		if(helper.R2 > 0.1){
+			twk_debug1.D = helper.D;
+			twk_debug1.Dprime = helper.Dprime;
+			twk_debug1.R = helper.R;
+			twk_debug1.R2 = helper.R2;
+			twk_debug_pos1 = b1.blk->rcds[p1].pos;
+			twk_debug_pos1_2 = b2.blk->rcds[p2].pos;
+	//std::cout << "P\t" << b1.blk->rcds[p1].pos << "\t" << b2.blk->rcds[p2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
+		}
+#endif
+
+	/*
+			std::cerr << "cnts=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
+			std::cerr << "math=" << pA << "," << qA << "," << pB << "," << qA << std::endl;
+			std::cerr << "more=" << g0 << "," << g1 << "," << h0 << "," << h1 << std::endl;
+			std::cerr << "D=" << helper.D << ",R2=" << helper.R2 << ",R=" << helper.R << ",Dmax=" << helper.Dmax << ",Dprime=" << helper.Dprime << std::endl;
+*/
+
+			// Calculate Fisher's exact test P-value
+			double left,right,both;
+			kt_fisher_exact(helper.alleleCounts[0],
+								helper.alleleCounts[1],
+								helper.alleleCounts[4],
+								helper.alleleCounts[5],
+								&left, &right, &both);
+			helper.P = both;
+
+			//std::cerr << "P=" << helper.P << std::endl;
+
+			// Fisher's exact test P value filter
+			//if(helper.P > this->parameters.P_threshold){
+			//	return false;
+			//}
+
+			//helper.setCompleteLD(helper[0] == 0 || helper[1] == 0 || helper[4] == 0 || helper[5] == 0);
+			//helper.setPerfectLD(helper.R2 > 0.99);
+
+			// Calculate Chi-Sq CV from 2x2 contingency table
+			helper.chiSqModel = 0;
+			//helper.chiSqFisher = chi_squared(helper[0],helper[1],helper[4],helper[5]);
+			//helper.chiSqFisher = helper.totalHaplotypeCounts * helper.R2;
+			//helper.chiSqFisher = 0;
+
+			return true;
+		//}
+		return false;
+	}
+
+	bool PhasedMathSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
 		//++this->possible;
 
 		// If haplotype count for (0,0) >
@@ -259,36 +403,50 @@ public:
 
 		// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
 
-		const double af1 = b1.blk->rcds[p1].ac / (2.0f*n_samples);
-		const double af2 = b2.blk->rcds[p2].ac / (2.0f*n_samples);
-		const double divisor = af1 * (1 - af1) * af2 * (1 - af2);
-		if(divisor == 0) return false; // occurs if either has an allele count of 1
+		const double af1 = (double)b1.blk->rcds[p1].ac / (2.0f*n_samples);
+		const double af2 = (double)b2.blk->rcds[p2].ac / (2.0f*n_samples);
+		if(af1 == 0 || af2 == 0) return false;
 
-		double D, Dprime, R2, R;
+		//double D, Dprime, R2, R;
 
-		D  = helper.haplotypeCounts[0]/(2*n_samples) - af1*af2;
-		R2 = D*D / divisor;
-		R  = sqrt(R2);
+		helper.D  = helper.haplotypeCounts[0]/(2*n_samples) - af1*af2;
+		helper.R2 = helper.D*helper.D / (af1*(1-af1)*af2*(1-af2));
+		helper.R  = sqrt(helper.R2);
 
-		if(D < 0){
-			if( af1 * af2 < (1 - af1) * (1 - af2)){
-				Dprime = D / (af1 * af2);
-			} else {
-				Dprime = D / ( (1 - af1) * (1 - af2) );
-			}
-		} else { // D >= 0
-			if((1-af1) * af2 < af1 * (1 - af2)){
-				Dprime = D / ((1 - af1) * af2);
-			} else {
-				Dprime = D / (af1 * (1 - af2));
-			}
+		//if(R2 > 0.1){
+		if(helper.D >= 0) helper.Dmax = af1*af2 < ((1-af1)*(1-af2)) ? af1*af2 : ((1-af1)*(1-af2));
+		else helper.Dmax = (1-af1)*af2 < af1*(1-af2) ? -(1-af1)*af2 : -af1*(1-af2);
+		helper.Dprime = helper.D/helper.Dmax;
+
+
+#if SLAVE_DEBUG_MODE == 3
+		if(helper.R2 > 0.1){
+			twk_debug1.D = helper.D;
+			twk_debug1.Dprime = helper.Dprime;
+			twk_debug1.R = helper.R;
+			twk_debug1.R2 = helper.R2;
+			twk_debug_pos1 = b1.blk->rcds[p1].pos;
+			twk_debug_pos1_2 = b2.blk->rcds[p2].pos;
+			//std::cout << "F\t" << b1.blk->rcds[p1].pos << "\t" << b2.blk->rcds[p2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
 		}
+	#endif
 
-		//std::cerr << "D=" << D << ",Dp=" << Dprime << ",R=" << R << ",R2=" << R2 << std::endl;
+			//std::cerr << "fast-cnts=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
+			//std::cerr << "D=" << helper.D << ",R2=" << helper.R2 << ",R=" << helper.R << ",Dmax=" << helper.Dmax << ",Dprime=" << helper.Dprime << std::endl;
 
-		return true;
+
+			//std::cerr << "D=" << D << ",Dp=" << Dprime << ",R=" << R << ",R2=" << R2 << std::endl;
+
+			return true;
+		//}
+
+		return false;
 
 	}
+
+	bool UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2);
+	double ChiSquaredUnphasedTable(const double& target, const double& p, const double& q);
+	bool ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2,const double& target, const double& p, const double& q);
 
 public:
 	uint32_t n_samples;
