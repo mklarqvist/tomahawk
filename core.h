@@ -206,7 +206,7 @@ struct twk1_igt_t : public twk1_gt_t {
 *  Core record
 ****************************/
 struct twk1_t {
-	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), het(0), gt(nullptr){}
+	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
 	~twk1_t(){ delete gt; }
 
 	twk1_t& operator=(const twk1_t& other){
@@ -217,7 +217,7 @@ struct twk1_t {
 		pos = other.pos;
 		ac = other.ac;
 		an = other.an;
-		het = other.het;
+		rid = other.rid;
 		delete[] gt; gt = nullptr;
 		gt = other.gt->Clone();
 		return(*this);
@@ -231,7 +231,7 @@ struct twk1_t {
 		pos = other.pos;
 		ac = other.ac;
 		an = other.an;
-		het = other.het;
+		rid = other.rid;
 		delete[] gt; gt = nullptr;
 		other.gt->Move(gt);
 		return(*this);
@@ -254,7 +254,7 @@ struct twk1_t {
 		SerializePrimitive(self.pos, buffer);
 		SerializePrimitive(self.ac, buffer);
 		SerializePrimitive(self.an, buffer);
-		SerializePrimitive(self.het, buffer);
+		SerializePrimitive(self.rid, buffer);
 		buffer << *self.gt;
 		return(buffer);
 	}
@@ -270,7 +270,7 @@ struct twk1_t {
 		DeserializePrimitive(self.pos, buffer);
 		DeserializePrimitive(self.ac, buffer);
 		DeserializePrimitive(self.an, buffer);
-		DeserializePrimitive(self.het, buffer);
+		DeserializePrimitive(self.rid, buffer);
 		switch(self.gt_ptype){
 		case(1): self.gt = new twk1_igt_t<uint8_t>; break;
 		case(2): self.gt = new twk1_igt_t<uint16_t>; break;
@@ -285,7 +285,7 @@ struct twk1_t {
 
     uint8_t  gt_ptype: 6, gt_phase: 1, gt_missing: 1;
     uint8_t  alleles;
-    uint32_t pos, ac, an, het;
+    uint32_t pos, ac, an, rid;
     twk1_gt_t* gt;
 };
 
@@ -645,6 +645,81 @@ struct twk_gtocc {
 	uint32_t** cumpos;
 };
 
+
+// output
+struct twk1_two_t {
+public:
+	twk1_two_t() :
+		controller(0), ridA(0), ridB(0), Amiss(0), Aphased(0), Apos(0), Bmiss(0), Bphased(0), Bpos(0), R(0), R2(0), D(0), Dprime(0), P(0), ChiSqModel(0), ChiSqFisher(0){ memset(cnt, 0, sizeof(double)*4); }
+	~twk1_two_t() = default;
+
+	inline double& operator[](const uint32_t& p){ return(this->cnt[p]); }
+	inline const double& operator[](const uint32_t& p) const{ return(this->cnt[p]); }
+
+	void PrintUnphasedCounts(void) const;
+	void PrintPhasedCounts(void) const;
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& os, const twk1_two_t& entry){
+		os += entry.controller;
+		os += entry.ridA;
+		os += entry.ridB;
+		uint32_t packA = entry.Apos << 2 | entry.Aphased << 1 | entry.Amiss;
+		uint32_t packB = entry.Bpos << 2 | entry.Bphased << 1 | entry.Bmiss;
+		os += packA;
+		os += packB;
+		os += entry.cnt[0];
+		os += entry.cnt[1];
+		os += entry.cnt[2];
+		os += entry.cnt[3];
+		os += entry.D;
+		os += entry.Dprime;
+		os += entry.R;
+		os += entry.R2;
+		os += entry.P;
+		os += entry.ChiSqFisher;
+		os += entry.ChiSqModel;
+		return os;
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const twk1_two_t& entry){
+		os << entry.controller << '\t' << entry.ridA << '\t' << entry.Apos << '\t' << entry.ridB << '\t' << entry.Bpos << '\t'
+		   << entry.cnt[0] << '\t' << entry.cnt[1] << '\t' << entry.cnt[2] << '\t' << entry.cnt[3] << '\t'
+		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.ChiSqFisher << '\t' << entry.ChiSqModel;
+		return os;
+	}
+
+	inline void SetUsedPhasedMath(const bool yes = true)   { this->controller |= yes << 0;  } // 1
+	inline void SetSameContig(const bool yes = true)       { this->controller |= yes << 1;  } // 2
+	inline void SetLongRange(const bool yes = true)        { this->controller |= yes << 2;  } // 4
+	inline void SetCompleteLD(const bool yes = true)       { this->controller |= yes << 3;  } // 8
+	inline void SetPerfectLD(const bool yes = true)        { this->controller |= yes << 4;  } // 16
+	inline void SetMultipleRoots(const bool yes = true)    { this->controller |= yes << 5;  } // 32
+	inline void SetFastMode(const bool yes = true)         { this->controller |= yes << 6;  } // 64
+	inline void SetSampled(const bool yes = true)          { this->controller |= yes << 7;  } // 128
+	inline void SetHasMissingValuesA(const bool yes = true){ this->controller |= yes << 8;  } // 256
+	inline void SetHasMissingValuesB(const bool yes = true){ this->controller |= yes << 9;  } // 512
+	inline void SetLowACA(const bool yes = true)           { this->controller |= yes << 10; } // 1024
+	inline void SetLowACB(const bool yes = true)           { this->controller |= yes << 11; } // 2048
+
+	void clear(){
+		controller = 0; ridA = 0; ridB = 0;
+		Amiss = 0; Aphased = 0; Apos = 0;
+		Bmiss = 0; Bphased = 0; Bpos = 0;
+		R = 0; R2 = 0; D = 0; Dprime = 0; P = 0;
+		ChiSqModel = 0; ChiSqFisher = 0;
+		memset(cnt, 0, sizeof(double)*4);
+	}
+
+public:
+	uint16_t controller;
+	uint32_t ridA, ridB;
+	uint32_t Amiss: 1, Aphased: 1, Apos: 30;
+	uint32_t Bmiss: 1, Bphased: 1, Bpos: 30;
+	double R, R2, D, Dprime, P;
+	double ChiSqModel;   // Chi-Squared critical value for 3x3 contingency table
+	double ChiSqFisher;  // Chi-Squared critical value for 2x2 contingency table
+	double cnt[4];
+};
 
 }
 

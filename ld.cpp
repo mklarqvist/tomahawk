@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdlib>
 
 #include "ld.h"
 #include "fisher_math.h"
@@ -79,7 +80,11 @@ bool LDEngine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1
 #endif
 
 	//return(this->CalculateLDPhasedMathSimple(block1, block2));
+#if SLAVE_DEBUG_MODE != 1
 	return(PhasedMathSimple(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -205,7 +210,11 @@ bool LDEngine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, cons
 	std::cerr << "m1 " << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
 #endif
 
+#if SLAVE_DEBUG_MODE != 1
 	return(PhasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -273,7 +282,11 @@ bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const ui
 
 	//this->setFLAGs(block1, block2);
 	//return(this->CalculateLDPhasedMathSimple(block1, block2));
+#if SLAVE_DEBUG_MODE != 1
 	return(PhasedMathSimple(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -371,7 +384,11 @@ bool LDEngine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t&
 #endif
 	//this->setFLAGs(block1, block2);
 	//return(this->CalculateLDPhasedMath());
+#if SLAVE_DEBUG_MODE != 1
 	return(PhasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -522,7 +539,11 @@ bool LDEngine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, co
 	//this->setFLAGs(block1, block2);
 	//return(this->CalculateLDUnphasedMath());
 
-	return UnphasedMath(b1,p1,b2,p2);
+#if SLAVE_DEBUG_MODE != 1
+	return(UnphasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -544,8 +565,6 @@ bool LDEngine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_
 	const twk_igt_vec& block2 = b2.vec[p2];
 	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
 	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
-	const uint8_t* const arrayA_mask = (const uint8_t* const)block1.mask;
-	const uint8_t* const arrayB_mask = (const uint8_t* const)block2.mask;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -658,7 +677,11 @@ bool LDEngine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_
 #endif
 
 	//this->setFLAGs(block1, block2);
-	return UnphasedMath(b1,p1,b2,p2);
+#if SLAVE_DEBUG_MODE != 1
+	return(UnphasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -723,8 +746,11 @@ bool LDEngine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const
 
 	//std::cerr << "p= " << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
 
-
+#if SLAVE_DEBUG_MODE != 1
 	return(PhasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
@@ -786,7 +812,11 @@ bool LDEngine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, con
 						 << "," << helper.alleleCounts[80] << "," << helper.alleleCounts[81]+ helper.alleleCounts[84] << "," << helper.alleleCounts[85] << std::endl;
 #endif
 
+#if SLAVE_DEBUG_MODE != 1
 	return(UnphasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
 }
 
 bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
@@ -825,7 +855,7 @@ bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const tw
 		//++this->no_uncertainty;
 
 		// Reset
-		helper.chiSqModel = 0;
+		cur_rcd.ChiSqModel = 0;
 
 		// Use standard math
 		return(this->PhasedMath(b1,p1,b2,p2));
@@ -878,27 +908,27 @@ bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const tw
 		const double gamma    = xN + constant * cos(4.0*M_PI/3.0 + theta);
 
 		uint8_t biologically_possible = 0;
-		helper.chiSqModel = std::numeric_limits<float>::max();
+		cur_rcd.ChiSqModel = std::numeric_limits<float>::max();
 		const double* chosen = &alpha;
 		if(alpha >= minhap - ALLOWED_ROUNDING_ERROR && alpha <= maxhap + ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			helper.chiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
+			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
 			chosen = &alpha;
 		}
 
 		if(beta >= minhap - ALLOWED_ROUNDING_ERROR && beta <= maxhap + ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(beta, p, q) < helper.chiSqModel){
+			if(this->ChiSquaredUnphasedTable(beta, p, q) < cur_rcd.ChiSqModel){
 				chosen = &beta;
-				helper.chiSqModel = this->ChiSquaredUnphasedTable(beta, p, q);
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(beta, p, q);
 			}
 		}
 
 		if(gamma >= minhap - ALLOWED_ROUNDING_ERROR && gamma <= maxhap + ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(gamma, p, q) < helper.chiSqModel){
+			if(this->ChiSquaredUnphasedTable(gamma, p, q) < cur_rcd.ChiSqModel){
 				chosen = &gamma;
-				helper.chiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
 			}
 		}
 
@@ -907,8 +937,8 @@ bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const tw
 			return false;
 		}
 
-		//if(biologically_possible > 1)
-		//	helper.setMultipleRoots();
+		if(biologically_possible > 1)
+			cur_rcd.SetMultipleRoots();
 
 		//++this->possible;
 		return(this->ChooseF11Calculate(b1,p1,b2,p2,*chosen, p, q));
@@ -929,7 +959,7 @@ bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const tw
 			return false;
 		}
 
-		helper.chiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
+		cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
 		//++this->possible;
 
 		return(this->ChooseF11Calculate(b1,p1,b2,p2,alpha, p, q));
@@ -945,19 +975,19 @@ bool LDEngine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const tw
 		}
 
 		uint8_t biologically_possible = 0;
-		helper.chiSqModel = std::numeric_limits<float>::max();
+		cur_rcd.ChiSqModel = std::numeric_limits<float>::max();
 		const double* chosen = &alpha;
 		if(alpha >= minhap - ALLOWED_ROUNDING_ERROR && alpha <= maxhap + ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			helper.chiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
+			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
 			chosen = &alpha;
 		}
 
 		if(gamma >= minhap - ALLOWED_ROUNDING_ERROR && gamma <= maxhap + ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(gamma, p, q) < helper.chiSqModel){
+			if(this->ChiSquaredUnphasedTable(gamma, p, q) < cur_rcd.ChiSqModel){
 				chosen = &gamma;
-				helper.chiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
 			}
 		}
 
@@ -1004,19 +1034,13 @@ bool LDEngine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& pos1, 
 	const double p1 = target;
 	const double p2 = p - p1;
 	const double q1 = q - p1;
-	const double q2 = (1 - (p1 + p2 + q1) < 0 ? 0 : 1 - (p1 + p2 + q1));
+	const double q2 = (1-(p1+p2+q1) < 0 ? 0 : 1-(p1+p2+q1));
 
 	//std::cerr << "unphased-choose=" << p1 << "," << p2 << "," << q1 << "," << q2 << " with p=" << p << " q=" << q  << std::endl;
 
-	// For writing output
-	//helper.haplotypeCounts[0] = p1 * 2*helper.totalHaplotypeCounts;
-	//helper.haplotypeCounts[1] = p2 * 2*helper.totalHaplotypeCounts;
-	//helper.haplotypeCounts[2] = q1 * 2*helper.totalHaplotypeCounts;
-	//helper.haplotypeCounts[3] = q2 * 2*helper.totalHaplotypeCounts;
-
-	helper.D  = p1*q2 - p2*q1;
-	helper.R2 = helper.D*helper.D / (p*(1-p)*q*(1-q));
-	helper.R  = sqrt(helper.R2);
+	cur_rcd.D  = p1*q2 - p2*q1;
+	cur_rcd.R2 = cur_rcd.D*cur_rcd.D / (p*(1-p)*q*(1-q));
+	cur_rcd.R  = sqrt(cur_rcd.R2);
 
 	//assert(helper.R2 >= 0 && helper.R2 <= 1.01);
 	//if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_sum_alternative_haplotype_count)
@@ -1025,48 +1049,82 @@ bool LDEngine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& pos1, 
 	//if(helper.R2 < this->parameters.R2_min || helper.R2 > this->parameters.R2_max)
 	//	return false;
 
-	if(helper.D >= 0) helper.Dmax = p*(1.0-q) < q*(1.0-p) ? p*(1.0-q) : q*(1.0-p);
-	else helper.Dmax = p*q < (1-p)*(1-q) ? -p*q : -(1-p)*(1-q);
-	helper.Dprime = helper.D / helper.Dmax;
+	if(cur_rcd.R2 > 0.1){
+		cur_rcd[0] = p1 * 2*helper.totalHaplotypeCounts;
+		cur_rcd[1] = p2 * 2*helper.totalHaplotypeCounts;
+		cur_rcd[2] = q1 * 2*helper.totalHaplotypeCounts;
+		cur_rcd[3] = q2 * 2*helper.totalHaplotypeCounts;
 
-	//std::cerr << "unphased -> D=" << helper.D << ",Dprime=" << helper.Dprime << ",R2=" << helper.R2 << ",R=" << helper.R << std::endl;
+		double left,right,both;
+		kt_fisher_exact(round(cur_rcd[0]),round(cur_rcd[1]),
+						round(cur_rcd[2]),round(cur_rcd[3]),
+						&left,&right,&both);
+		cur_rcd.P = both;
+
+		if(cur_rcd.P > 1e-3){
+			cur_rcd.controller = 0;
+			return false;
+		}
+
+		double dmax = 0;
+		if(cur_rcd.D >= 0) dmax = p*(1.0-q) < q*(1.0-p) ? p*(1.0-q) : q*(1.0-p);
+		else dmax = p*q < (1-p)*(1-q) ? -p*q : -(1-p)*(1-q);
+		cur_rcd.Dprime = cur_rcd.D / dmax;
+		cur_rcd.Apos = b1.blk->rcds[pos1].pos;
+		cur_rcd.Bpos = b2.blk->rcds[pos2].pos;
+		cur_rcd.ridA = b1.blk->rcds[pos1].rid;
+		cur_rcd.ridB = b2.blk->rcds[pos2].rid;
+		cur_rcd.ChiSqModel = 0;
+		cur_rcd.ChiSqFisher = helper.totalHaplotypeCounts * cur_rcd.R2;
+
+
+		//std::cerr << "unphased -> D=" << helper.D << ",Dprime=" << helper.Dprime << ",R2=" << helper.R2 << ",R=" << helper.R << std::endl;
+		cur_rcd2.SetLowACA(b1.blk->rcds[pos1].ac < LOW_AC_THRESHOLD);
+		cur_rcd2.SetLowACB(b2.blk->rcds[pos2].ac < LOW_AC_THRESHOLD);
+		cur_rcd.SetCompleteLD(helper.alleleCounts[0] < 1 || helper.alleleCounts[1] < 1 || helper.alleleCounts[4] < 1 || helper.alleleCounts[5] < 1);
+		cur_rcd.SetPerfectLD(cur_rcd.R2 > 0.99);
+		cur_rcd.SetHasMissingValuesA(b1.blk->rcds[pos1].an);
+		cur_rcd.SetHasMissingValuesB(b2.blk->rcds[pos2].an);
+		int32_t diff = (int32_t)b1.blk->rcds[pos1].pos - b2.blk->rcds[pos2].pos;
+		cur_rcd.SetLongRange(abs(diff) > LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
+
+		//if(helper.R2 > 0.5) exit(1);
 
 #if SLAVE_DEBUG_MODE == 3
-	if(helper.R2 > 0.1){
-		twk_debug2.D = helper.D;
-		twk_debug2.Dprime = helper.Dprime;
-		twk_debug2.R = helper.R;
-		twk_debug2.R2 = helper.R2;
-		twk_debug_pos2 = b1.blk->rcds[pos1].pos;
+	if(cur_rcd.R2 > 0.1){
+		twk_debug_pos2   = b1.blk->rcds[pos1].pos;
 		twk_debug_pos2_2 = b2.blk->rcds[pos2].pos;
 		if(twk_debug_pos1 == twk_debug_pos2 && twk_debug_pos1_2 == twk_debug_pos2_2){
-			std::cout << "P\t" << twk_debug1;
-			std::cout << "U\t" << twk_debug2;
+			std::cout << "P\t" << cur_rcd2 << '\n';
+			std::cout << "U\t" << cur_rcd << '\n';
 		}
 		//std::cout << "U\t" << b1.blk->rcds[pos1].pos << "\t" << b2.blk->rcds[pos2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
 	}
 	#endif
 
-	//if(helper.R2 > 0.5) exit(1);
-	/*
-	double left,right,both;
-	kt_fisher_exact(round(helper[0]),round(helper[1]),
-					round(helper[4]),round(helper[5]),
-					&left,&right,&both);
-	helper.P = both;
+		if(n_out == n_lim) this->CompressBlock();
 
-	// Fisher's exact test P value filter
-	if(helper.P > this->parameters.P_threshold)
-		return false;
-	*/
+		buf << cur_rcd;
+		uint32_t temp = cur_rcd.Apos;
+		cur_rcd.Apos = cur_rcd.Bpos;
+		cur_rcd.Bpos = temp;
+		std::swap(cur_rcd.ridA,cur_rcd.ridB);
+		buf << cur_rcd;
+		n_out += 2;
+		//std::cerr << "U\t" << cur_rcd << '\n';
+		cur_rcd.controller = 0;
 
+		// Fisher's exact test P value filter
+		//if(helper.P > this->parameters.P_threshold)
+		//	return false;
+		return true;
+	}
+	cur_rcd.controller = 0;
 
-	//helper.setCompleteLD(helper[0] < 1 || helper[1] < 1 || helper[4] < 1 || helper[5] < 1);
-	//helper.setPerfectLD(helper.R2 > 0.99);
 
 	//helper.chiSqFisher = (helper[0] + helper[1] + helper[4] + helper[5]) * helper.R2;
 
-	return true;
+	return false;
 }
 
 }

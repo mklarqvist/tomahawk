@@ -226,16 +226,12 @@ public:
 
 		uint32_t len = 1, cumsum = 0, icnt = 0;
 		uint8_t  ref = TWK_GT_PACK(data[0],data[1],missing);
-		uint32_t hets = 0;
-
-		hets += ((TWK_GT_MAP[(data[0] >> 1)] == 0 && TWK_GT_MAP[(data[1] >> 1)] == 1) || (TWK_GT_MAP[(data[0] >> 1)] == 1 && TWK_GT_MAP[(data[1] >> 1)] == 0));
 
 		for(int i = 2; i < rec->n_sample*rec->d.fmt[0].n; i+=2){
 			uint8_t cur = TWK_GT_PACK(data[i],data[i+1],missing);
 
 			++ac[TWK_GT_MAP[(data[i] >> 1)]];
 			++ac[TWK_GT_MAP[(data[i+1] >> 1)]];
-			hets += ((TWK_GT_MAP[(data[i] >> 1)] == 0 && TWK_GT_MAP[(data[i+1] >> 1)] == 1) || (TWK_GT_MAP[(data[i] >> 1)] == 1 && TWK_GT_MAP[(data[i+1] >> 1)] == 0));
 
 			if(ref != cur){
 				int_t val = TWK_GT_RLE_PACK(ref,len,missing);
@@ -265,7 +261,6 @@ public:
 		assert(n_tot_ac == rec->n_sample*2);
 		twk.ac = ac[1];
 		twk.an = ac[2];
-		twk.het = hets;
 		//std::cerr << "hets=" << hets << std::endl;
 
 		return true;
