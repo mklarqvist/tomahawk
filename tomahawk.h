@@ -23,6 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #ifndef TOMAHAWK_H_
 #define TOMAHAWK_H_
 
+#include <iostream>
 #include <string>
 #include <regex>
 
@@ -45,6 +46,9 @@ const std::string TOMAHAWK_PROGRAM_NAME  = "tomahawk";
 const std::string TOMAHAWK_OUTPUT_SUFFIX = "twk";
 const std::string TOMAHAWK_MAGIC_HEADER  = "TOMAHAWK\1";
 const uint32_t    TOMAHAWK_MAGIC_HEADER_LENGTH = 9;
+const std::string TOMAHAWK_LD_SUFFIX = "two";
+const std::string TOMAHAWK_LD_MAGIC_HEADER  = "TWO\1";
+const uint32_t    TOMAHAWK_LD_MAGIC_HEADER_LENGTH = 4;
 
 /*------   Regular expression patterns  ------*/
 const std::regex TWK_REGEX_CANONICAL_BASES = std::regex("^[ATGC]{1}$");
@@ -53,10 +57,35 @@ const std::regex TWK_REGEX_CONTIG_POSITION = std::regex("^[A-Za-z0-9\\-_]+\\:[0-
 const std::regex TWK_REGEX_CONTIG_RANGE    = std::regex("^[A-Za-z0-9\\-_]+\\:[0-9]+([\\.]{1}[0-9]+){0,1}([eE]{1}[0-9]{1})?\\-[0-9]+([\\.]{1}[0-9]+){0,1}([eE]{1}[0-9]{1})?$");
 
 /*------   EOF markers   ------*/
-const uint64_t TOMAHAWK_BLOCK_EOF = 7964708207515128046;
 const std::string TOMAHAWK_FILE_EOF = "a4f54f39f5e251a6993796f48164ccf554f1b680c2ebbb13be301f3ff76f82cf";
 const uint32_t TOMAHAWK_FILE_EOF_LENGTH = 32;
 const uint64_t TOMAHAWK_INDEX_START_MARKER = 1954702206512158641;
+
+/*------   Front application functions ------*/
+static void ProgramMessage(const bool separator = true){
+	std::cerr << "Program: " << TOMAHAWK_PROGRAM_NAME << " " << VERSION << std::endl;
+	std::cerr << "Contact: Marcus D. R. Klarqvist <mk819@cam.ac.uk>" << std::endl;
+	std::cerr << "Documentation: https://github.com/mklarqvist/tomahawk" << std::endl;
+	std::cerr << "License: MIT" << std::endl;
+	if(separator) std::cerr << "----------" << std::endl;
+}
+
+static void ProgramHelp(void){
+	std::cerr << "Usage: " << TOMAHAWK_PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
+	std::cerr << "Commands: import, view, calc, sort, concat, aggregate" << std::endl;
+}
+
+static void ProgramHelpDetailed(void){
+	ProgramHelp();
+	std::cerr <<
+    "\n"
+	"calc         calculate linkage disequilibrium\n"
+	"concat       concatenate TWO files from the same set of samples\n"
+	"import       import VCF/BCF to TWK\n"
+	"sort         sort TWO file\n"
+    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
+    "aggregate    data rasterization framework for TWO files\n"<< std::endl;
+}
 
 }
 

@@ -102,6 +102,19 @@ struct twk1_ldd_blk {
 		return(*this);
 	}
 
+	void SetPreloaded(const twk1_ldd_blk& other){
+		if(owns_block) delete blk;
+		owns_block = false; n_rec = 0; // do not change m
+		blk = other.blk;
+		if(blk != nullptr){
+			n_rec = other.blk->n;
+		}
+		this->list = other.list;
+		this->vec = other.vec;
+		this->m_list = other.m_list;
+		this->m_vec = other.m_vec;
+	}
+
 	void Set(twk1_blk_iterator& it, const uint32_t n_samples){
 		if(owns_block) delete blk;
 		delete[] vec;
@@ -131,7 +144,10 @@ struct twk1_ldd_blk {
 		delete[] list;
 	}
 
-	void Inflate(const uint32_t n_samples, const uint8_t unpack = TWK_LDD_ALL){
+	void Inflate(const uint32_t n_samples,
+	             const uint8_t unpack = TWK_LDD_ALL,
+	             const bool resizeable = false)
+	{
 		if(unpack & TWK_LDD_VEC){
 			if(blk->n > m_vec){
 				delete[] vec;
@@ -153,7 +169,7 @@ struct twk1_ldd_blk {
 
 		if(unpack & TWK_LDD_LIST){
 			for(int i = 0; i < blk->n; ++i)
-				list[i].Build(blk->rcds[i], n_samples);
+				list[i].Build(blk->rcds[i], n_samples, resizeable);
 		}
 	}
 
@@ -178,7 +194,6 @@ public:
 		delete rstream;
 	}
 
-	bool Open(void);
 	bool Open(std::string file){
 		rstream = new std::ifstream;
 		std::ifstream* stream = reinterpret_cast<std::ifstream*>(rstream);
@@ -205,18 +220,18 @@ public:
 		twk_buffer_t buf(buf_size);
 		stream->read(obuf.data(),obuf_size);
 		obuf.n_chars_ = obuf_size;
-		std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
+		//std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
 
 		ZSTDCodec zcodec;
 		if(zcodec.Decompress(obuf, buf) == false){
 			std::cerr << "failed to decompress header" << std::endl;
 			return false;
 		}
-		std::cerr << "bufs=" << buf.size() << "==" << buf_size << std::endl;
+		//std::cerr << "bufs=" << buf.size() << "==" << buf_size << std::endl;
 		assert(buf.size() == buf_size);
 		buf >> hdr;
 		buf.reset(); obuf.reset();
-		std::cerr << "done hdr" << std::endl;
+		//std::cerr << "done hdr" << std::endl;
 
 		uint64_t data_start = stream->tellg();
 
@@ -224,22 +239,23 @@ public:
 		stream->seekg(filesize - TOMAHAWK_FILE_EOF_LENGTH - sizeof(uint64_t));
 		uint64_t offset_start_index = 0;
 		stream->read(reinterpret_cast<char*>(&offset_start_index), sizeof(uint64_t));
-		std::cerr << "seek offset=" << offset_start_index << "/" << filesize << std::endl;
+		//std::cerr << "seek offset=" << offset_start_index << "/" << filesize << std::endl;
 		stream->seekg(offset_start_index);
 		if(stream->good() == false){
 			std::cerr << "failed seek" << std::endl;
+			return false;
 		}
-		std::cerr << "seek good=" << stream->tellg() << "/" << filesize << std::endl;
+		//std::cerr << "seek good=" << stream->tellg() << "/" << filesize << std::endl;
 
 		uint8_t marker = 0;
 		stream->read(reinterpret_cast<char*>(&marker),   sizeof(uint8_t));
 		stream->read(reinterpret_cast<char*>(&buf_size), sizeof(uint64_t));
 		stream->read(reinterpret_cast<char*>(&obuf_size),sizeof(uint64_t));
 		obuf.resize(obuf_size), buf.resize(buf_size);
-		std::cerr << "before read=" << obuf_size << std::endl;
+		//std::cerr << "before read=" << obuf_size << std::endl;
 		stream->read(obuf.data(),obuf_size);
 		obuf.n_chars_ = obuf_size;
-		std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
+		//std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
 
 
 		if(zcodec.Decompress(obuf, buf) == false){

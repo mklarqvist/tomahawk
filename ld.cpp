@@ -1079,14 +1079,16 @@ bool LDEngine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& pos1, 
 
 
 		//std::cerr << "unphased -> D=" << helper.D << ",Dprime=" << helper.Dprime << ",R2=" << helper.R2 << ",R=" << helper.R << std::endl;
-		cur_rcd2.SetLowACA(b1.blk->rcds[pos1].ac < LOW_AC_THRESHOLD);
-		cur_rcd2.SetLowACB(b2.blk->rcds[pos2].ac < LOW_AC_THRESHOLD);
-		cur_rcd.SetCompleteLD(helper.alleleCounts[0] < 1 || helper.alleleCounts[1] < 1 || helper.alleleCounts[4] < 1 || helper.alleleCounts[5] < 1);
-		cur_rcd.SetPerfectLD(cur_rcd.R2 > 0.99);
+		cur_rcd.SetLowACA(b1.blk->rcds[pos1].ac < LOW_AC_THRESHOLD);
+		cur_rcd.SetLowACB(b2.blk->rcds[pos2].ac < LOW_AC_THRESHOLD);
+		cur_rcd.SetCompleteLD(cur_rcd[0] < 1 || cur_rcd[1] < 1 || cur_rcd[4] < 1 || cur_rcd[5] < 1);
+		cur_rcd.SetPerfectLD(cur_rcd2.R2 > 0.99);
 		cur_rcd.SetHasMissingValuesA(b1.blk->rcds[pos1].an);
 		cur_rcd.SetHasMissingValuesB(b2.blk->rcds[pos2].an);
 		int32_t diff = (int32_t)b1.blk->rcds[pos1].pos - b2.blk->rcds[pos2].pos;
 		cur_rcd.SetLongRange(abs(diff) > LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
+		cur_rcd.SetUsedPhasedMath();
+		cur_rcd.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
 
 		//if(helper.R2 > 0.5) exit(1);
 
@@ -1104,12 +1106,12 @@ bool LDEngine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& pos1, 
 
 		if(n_out == n_lim) this->CompressBlock();
 
-		buf << cur_rcd;
+		buf_f << cur_rcd;
 		uint32_t temp = cur_rcd.Apos;
 		cur_rcd.Apos = cur_rcd.Bpos;
 		cur_rcd.Bpos = temp;
 		std::swap(cur_rcd.ridA,cur_rcd.ridB);
-		buf << cur_rcd;
+		buf_r << cur_rcd;
 		n_out += 2;
 		//std::cerr << "U\t" << cur_rcd << '\n';
 		cur_rcd.controller = 0;

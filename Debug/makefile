@@ -43,7 +43,7 @@ all: twk_rewrite
 twk_rewrite: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross G++ Linker'
-	g++  -o "twk_rewrite" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -pthread  -o "twk_rewrite" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

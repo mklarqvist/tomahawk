@@ -43,6 +43,8 @@ const uint8_t TWK_BASE_MAP[256] =
  0,0,0,0,0,0,0,0};
 
 const char TWK_BASE_MAP_INV[4] = {'A','T','G','C'};
+const std::vector<std::string> TWK_SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
+
 
 #if defined(_MSC_VER)
      /* Microsoft C/C++-compatible compiler */
@@ -63,8 +65,6 @@ const char TWK_BASE_MAP_INV[4] = {'A','T','G','C'};
      /* GCC-compatible compiler, targeting PowerPC with SPE */
      #include <spe.h>
 #endif
-
-const std::vector<std::string> TWK_SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
 
 #if defined(__AVX512F__) && __AVX512F__ == 1
 #define SIMD_AVAILABLE	1
@@ -426,19 +426,15 @@ public:
 
 	}
 
-	/**<
-	 *
-	 * @param twk
-	 * @param n_samples
-	 * @return
-	 */
-	bool Build(const twk1_t& twk, const uint32_t n_samples){
+	bool Build(const twk1_t& twk,
+	           const uint32_t n_samples,
+	           const bool resizeable = false)
+		{
 		//std::cerr << "build=" << n << "," << m << "," << l_list << std::endl;
 		if(n == 0){
-			//std::cerr << "n is 0" << std::endl;
 			n = ceil((double)(n_samples*2)/32);
-			//m = twk.ac;
-			m = n_samples*2;
+			if(resizeable){ m = twk.ac; }
+			else { m = n_samples*2; }
 			delete[] list; list = new uint32_t[m];
 			delete[] bv; bv = new uint32_t[n];
 			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
