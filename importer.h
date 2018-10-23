@@ -24,7 +24,7 @@
 namespace tomahawk {
 
 struct twk_vimport_settings {
-	twk_vimport_settings() : block_size(500), input("-"), output("-"){}
+	twk_vimport_settings() : block_size(2000), input("-"), output("-"){}
 
 	uint32_t block_size;
 	std::string input, output;
@@ -38,12 +38,16 @@ public:
 	}
 
 	bool Import(void){
+
+		return(this->Compute());
+		//
+
 		// Start timer.
 		Timer timer; timer.Start();
 
 		// Retrieve a unique VcfReader.
-		std::string filename = "/home/mk21/Downloads/1kgp3_chr20.bcf";
-		//std::string filename = "/media/mdrk/NVMe/1kgp3/bcf/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5.20130502.genotypes.bcf";
+		//std::string filename = "/home/mk21/Downloads/1kgp3_chr20.bcf";
+		std::string filename = "/media/mdrk/NVMe/1kgp3/bcf/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5.20130502.genotypes.bcf";
 		//filename = "/home/mk21/Downloads/fish_callset_filtered.bcf";
 		//filename = "/home/mk21/Downloads/randomized.100k-50k.bcf";
 
@@ -67,8 +71,9 @@ public:
 		tomahawk::Index index(vcf->vcf_header_.GetNumberContigs());
 
 		std::ostream* stream = nullptr; bool stream_delete = true;
-		std::string outfile = "/home/mk21/Downloads/debug.twk";
-		outfile = "-";
+		//std::string outfile = "/home/mk21/Downloads/debug.twk";
+		//outfile = "-";
+		std::string outfile = "/media/mdrk/NVMe/1kgp3/debug.twk";
 		if(outfile.size() == 0 || (outfile.size() == 1 && outfile[0] == '-')){
 			stream = &std::cout;
 			stream_delete = false;
@@ -288,12 +293,13 @@ public:
 	}
 
 	bool Compute(){
-		std::string filename = "/home/mk21/Downloads/debug.twk";
-		std::string outname = "/home/mk21/Downloads/debug.two";
+		//std::string filename = "/home/mk21/Downloads/debug.twk";
+		std::string filename = "/media/mdrk/NVMe/1kgp3/debug.twk";
+		std::string outname = "/media/mdrk/NVMe/1kgp3/debug.two";
 
 		ProgramMessage();
 		std::cerr << utility::timestamp("LOG") << "Calling calc..." << std::endl;
-		std::cerr << utility::timestamp("LOG") << "Opening " << filename << "..." << std::endl;
+		std::cerr << utility::timestamp("LOG","READER") << "Opening " << filename << "..." << std::endl;
 
 		//*//////////////// Reopen and compute
 		twk_reader reader;
@@ -302,7 +308,7 @@ public:
 			return false;
 		}
 
-		std::cerr << utility::timestamp("LOG") << "Opening " << outname << "..." << std::endl;
+		std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << outname << "..." << std::endl;
 
 		twk_writer_t* writer = new twk_writer_file;
 		if(writer->Open(outname) == false){
@@ -341,7 +347,7 @@ public:
 		twk1_ldd_blk* ldd = new twk1_ldd_blk[n_blocks];
 		uint32_t n_variants = 0;
 		for(int i = balancer.from; i < balancer.to; ++i) n_variants += reader.index.ent[i].n;
-		std::cerr << utility::timestamp("LOG","PARSE") << utility::ToPrettyString(n_variants) << " variants from " << n_blocks << " blocks..." << std::endl;
+		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << n_blocks << " blocks..." << std::endl;
 
 		bool pre_build = true;
 		timer.Start();
@@ -379,7 +385,6 @@ public:
 			}
 		}
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		std::cerr << utility::timestamp("LOG","NOTICE") << "Running in fast mode! No matrices will be built..." << std::endl;
 		std::cerr << "balancing=" << balancer.from << "-" << balancer.to << std::endl;
 		uint64_t n_vnt_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
 		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_vnt_cmps) << " variant comparisons..." << std::endl;
@@ -457,14 +462,12 @@ public:
 
 		f[0] = &LDEngine::PhasedVectorized;
 		f[1] = &LDEngine::PhasedVectorizedNoMissing;
-		f[2] = &LDEngine::PhasedVectorizedNoMissingNoTable;
-		f[3] = &LDEngine::UnphasedVectorized;
-		f[4] = &LDEngine::UnphasedVectorizedNoMissing;
-		f[5] = &LDEngine::PhasedRunlength;
-		f[6] = &LDEngine::PhasedList;
-		f[7] = &LDEngine::UnphasedRunlength;
-		f[8] = &LDEngine::HybridPhased;
-		f[9] = &LDEngine::HybridUnphased;
+		f[2] = &LDEngine::UnphasedVectorized;
+		f[3] = &LDEngine::UnphasedVectorizedNoMissing;
+		f[4] = &LDEngine::PhasedRunlength;
+		f[5] = &LDEngine::PhasedList;
+		f[6] = &LDEngine::UnphasedRunlength;
+		f[7] = &LDEngine::HybridUnphased;
 
 		f[0] = &LDEngine::PhasedList;
 

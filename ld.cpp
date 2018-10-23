@@ -48,8 +48,8 @@ bool LDEngine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1
 	const twk_igt_list& ref = b1.list[p1];
 	const twk_igt_list& tgt = b2.list[p2];
 	const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
-	const uint32_t n_total  = ref.l_list + tgt.l_list;
-	uint32_t n_same = 0;
+	//const uint32_t n_total  = ref.l_list + tgt.l_list;
+	//uint32_t n_same = 0;
 
 	// Debug timings
 	#if SLAVE_DEBUG_MODE == 1
@@ -58,12 +58,15 @@ bool LDEngine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1
 	#endif
 
 	if(ref.l_list >= tgt.l_list){
-		for(uint32_t i = 0; i < n_cycles; ++i) n_same += ref.get(tgt.list[i]);
+		for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += ref.get(tgt.list[i]);
 	} else {
-		for(uint32_t i = 0; i < n_cycles; ++i) n_same += tgt.get(ref.list[i]);
+		for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += tgt.get(ref.list[i]);
 	}
 
-	helper.alleleCounts[0] = 2*n_samples - (n_total - n_same);
+	helper.alleleCounts[4] = ref.l_list - helper.alleleCounts[5];
+	helper.alleleCounts[1] = tgt.l_list - helper.alleleCounts[5];
+	helper.alleleCounts[0] = 2*n_samples - ((ref.l_list + tgt.l_list) - helper.alleleCounts[5]);
+	//std::cerr << "phased-list=" << ref.l_list << " and " << tgt.l_list << std::endl;
 	//std::cerr << 2*this->n_samples - (n_total - n_same) << '\n';
 	//assert(2*n_samples - (n_total - n_same) < 2*n_samples);
 	//std::cerr << helper.haplotypeCounts[0] << " ";
@@ -76,12 +79,12 @@ bool LDEngine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1
 #endif
 
 #if SLAVE_DEBUG_MODE == 2
-	std::cerr << "list=" << helper.alleleCounts[0] << ",0,0,0" << std::endl;
+	std::cerr << "list=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
 #endif
 
 	//return(this->CalculateLDPhasedMathSimple(block1, block2));
 #if SLAVE_DEBUG_MODE != 1
-	return(PhasedMathSimple(b1,p1,b2,p2));
+	return(PhasedMath(b1,p1,b2,p2));
 #else
 	return(true);
 #endif
@@ -217,9 +220,9 @@ bool LDEngine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, cons
 #endif
 }
 
-bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
+bool LDEngine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
 	helper.resetPhased();
-	helper_simd.counters[TWK_LD_REFREF] = 0;
+	helper_simd.counters[TWK_LD_ALTALT] = 0;
 
 	const twk_igt_vec& block1 = b1.vec[p1];
 	const twk_igt_vec& block2 = b2.vec[p2];
@@ -241,8 +244,8 @@ bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const ui
 	VECTOR_TYPE __intermediate;
 
 #define ITER_SHORT {                                              \
-	__intermediate  = PHASED_REFREF(vectorA[i], vectorB[i]);      \
-	POPCOUNT(helper_simd.counters[TWK_LD_REFREF], __intermediate);\
+	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);      \
+	POPCOUNT(helper_simd.counters[TWK_LD_ALTALT], __intermediate);\
 	i += 1;                                                       \
 }
 
@@ -259,14 +262,19 @@ bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const ui
 	//std::cerr << "k=" << k << "/" << this->byte_width << std::endl;
 	for(; k+8 < this->byte_width; k += 8){
 		for(uint32_t l = 0; l < 8; ++l)
-			helper_simd.scalarB[l] = ((~arrayA[k+l]) & (~arrayB[k+l]));
-		helper_simd.counters[TWK_LD_REFREF] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarB));
+			helper_simd.scalarA[l] = (arrayA[k+l] & arrayB[k+l]);
+		helper_simd.counters[TWK_LD_ALTALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarA));
 	}
 
 	for(; k < this->byte_width; ++k){
-		helper_simd.counters[TWK_LD_REFREF] += POPCOUNT_ITER(((~arrayA[k]) & (~arrayB[k])) & 255);
+		helper_simd.counters[TWK_LD_ALTALT] += POPCOUNT_ITER(arrayA[k] & arrayB[k]);
 	}
-	helper.alleleCounts[0] = helper_simd.counters[TWK_LD_REFREF] + (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 - this->phased_unbalanced_adjustment;
+	//helper.alleleCounts[5] = helper_simd.counters[TWK_LD_REFREF] + (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 - this->phased_unbalanced_adjustment;
+
+	helper.alleleCounts[5] = helper_simd.counters[TWK_LD_ALTALT];
+	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
+	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
+	helper.alleleCounts[0] = 2*n_samples - ((b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac) - helper.alleleCounts[5]);
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -282,108 +290,6 @@ bool LDEngine::PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const ui
 
 	//this->setFLAGs(block1, block2);
 	//return(this->CalculateLDPhasedMathSimple(block1, block2));
-#if SLAVE_DEBUG_MODE != 1
-	return(PhasedMathSimple(b1,p1,b2,p2));
-#else
-	return(true);
-#endif
-}
-
-bool LDEngine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf){
-	helper.resetPhased();
-	helper_simd.counters[0] = 0;
-	helper_simd.counters[1] = 0;
-	helper_simd.counters[2] = 0;
-	helper_simd.counters[3] = 0;
-
-	const twk_igt_vec& block1 = b1.vec[p1];
-	const twk_igt_vec& block2 = b2.vec[p2];
-	const uint8_t* const arrayA = block1.data;
-	const uint8_t* const arrayB = block2.data;
-
-#if SIMD_AVAILABLE == 1
-	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
-	const uint32_t tailSmallest  = block1.tail_zero  < block2.tail_zero  ? block1.tail_zero  : block2.tail_zero;
-	const uint32_t frontBonus    = block1.front_zero != frontSmallest ? block1.front_zero : block2.front_zero;
-	const uint32_t tailBonus     = block1.tail_zero  != tailSmallest  ? block1.tail_zero  : block2.tail_zero;
-
-	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
-	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
-	VECTOR_TYPE __intermediate;
-
-	uint32_t i = frontSmallest;
-	//VECTOR_TYPE altalt, altref, refalt;
-
-	// Debug timings
-#if SLAVE_DEBUG_MODE == 1
-	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
-	auto t0 = std::chrono::high_resolution_clock::now();
-#endif
-
-#define ITER_SHORT {											\
-	__intermediate  = PHASED_REFALT(vectorA[i], vectorB[i]);	\
-	POPCOUNT(helper_simd.counters[TWK_LD_REFALT], __intermediate);	\
-	__intermediate  = PHASED_ALTREF(vectorA[i], vectorB[i]);	\
-	POPCOUNT(helper_simd.counters[TWK_LD_ALTREF], __intermediate);	\
-	i += 1;														\
-}
-
-#define ITER {													\
-	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);	\
-	POPCOUNT(helper_simd.counters[TWK_LD_ALTALT], __intermediate);	\
-	ITER_SHORT													\
-}
-
-	for( ; i < frontBonus; ) 					  	ITER_SHORT
-	for( ; i < this->vector_cycles - tailBonus; )  	ITER
-	for( ; i < this->vector_cycles - tailSmallest; ) ITER_SHORT
-
-#undef ITER
-#undef ITER_SHORT
-	uint32_t k = this->byte_aligned_end;
-#else
-	uint32_t k = 0;
-#endif
-
-	for(; k+8 < this->byte_width; k += 8){
-		for(uint32_t l = 0; l < 8; ++l){
-			helper_simd.scalarA[l] = (arrayA[k+l] & arrayB[k+l]);
-			helper_simd.scalarC[l] = ((arrayA[k+l] ^ arrayB[k+l]) & arrayA[k+l]);
-			helper_simd.scalarD[l] = ((arrayA[k+l] ^ arrayB[k+l]) & arrayB[k+l]);
-		}
-
-		helper_simd.counters[TWK_LD_REFALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarC));
-		helper_simd.counters[TWK_LD_ALTREF] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarD));
-		helper_simd.counters[TWK_LD_ALTALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarA));
-	}
-
-	for(; k < this->byte_width; ++k){
-		helper_simd.counters[TWK_LD_REFALT] += POPCOUNT_ITER((arrayA[k] ^ arrayB[k]) & arrayA[k]);
-		helper_simd.counters[TWK_LD_ALTREF] += POPCOUNT_ITER((arrayA[k] ^ arrayB[k]) & arrayB[k]);
-		helper_simd.counters[TWK_LD_ALTALT] += POPCOUNT_ITER(arrayA[k] & arrayB[k]);
-	}
-
-	helper.alleleCounts[1] = helper_simd.counters[TWK_LD_ALTREF];
-	helper.alleleCounts[4] = helper_simd.counters[TWK_LD_REFALT];
-	helper.alleleCounts[5] = helper_simd.counters[TWK_LD_ALTALT];
-	helper.alleleCounts[0] = 2*n_samples - (helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[5]);
-	helper_simd.counters[1] = 0;
-	helper_simd.counters[2] = 0;
-	helper_simd.counters[3] = 0;
-
-#if SLAVE_DEBUG_MODE == 1
-	auto t1 = std::chrono::high_resolution_clock::now();
-	auto ticks_per_iter = Cycle(t1-t0);
-	perf->cycles[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac] += ticks_per_iter.count();
-	++perf->freq[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac];
-	//std::cout << "V\t" << a.getMeta().MAF*this->samples + b.getMeta().MAF*this->samples << "\t" << ticks_per_iter.count() << '\n';
-#endif
-
-#if SLAVE_DEBUG_MODE == 2
-	std::cerr << "m2 " << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
-#endif
-	//this->setFLAGs(block1, block2);
-	//return(this->CalculateLDPhasedMath());
 #if SLAVE_DEBUG_MODE != 1
 	return(PhasedMath(b1,p1,b2,p2));
 #else

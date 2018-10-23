@@ -166,6 +166,8 @@ struct twk_ld_ticker {
 
 		if(j == limB){
 			++i; j = i; from = i; to = j; type = 1; ++j;
+			if(i == limA){ spinlock.unlock(); return false; }
+			++n_perf;
 			spinlock.unlock();
 			return true;
 		}
@@ -183,7 +185,7 @@ struct twk_ld_ticker {
 		}
 
 		type = (i == j); from = i; to = j;
-		++j;
+		++j; ++n_perf;
 
 		spinlock.unlock();
 
@@ -217,7 +219,7 @@ struct twk_ld_ticker {
 };
 
 struct twk_ld_progress {
-	twk_ld_progress() : is_ticking(false), n_s(0), n_var(0), n_pair(0), n_out(0), thread(nullptr){}
+	twk_ld_progress() : is_ticking(false), n_s(0), n_var(0), n_pair(0), n_out(0), b_out(0), thread(nullptr){}
 	~twk_ld_progress() = default;
 
 	std::thread* Start(){
@@ -263,7 +265,7 @@ struct twk_ld_progress {
 						<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
 						<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
 						<< std::setw(15) << utility::ToPrettyString(n_out.load())
-						<< std::setw(10) << 0 << '\t'
+						<< std::setw(10) << utility::ToPrettyDiskString(b_out.load()) << '\t'
 						<< 0 << std::endl;
 				i = 0;
 			}
@@ -284,7 +286,7 @@ struct twk_ld_progress {
 
 	bool is_ticking;
 	uint32_t n_s;
-	std::atomic<uint64_t> n_var, n_pair, n_out;
+	std::atomic<uint64_t> n_var, n_pair, n_out, b_out;
 	std::thread* thread;
 	Timer timer;
 };
@@ -371,11 +373,11 @@ struct ld_perf {
 class LDEngine {
 public:
 	typedef bool (LDEngine::*func)(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
-	typedef bool (LDEngine::*ep[10])(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
+	typedef bool (LDEngine::*ep[8])(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf);
 
 public:
 	LDEngine() :
-		n_samples(0), n_out(0), n_lim(10000),
+		n_samples(0), n_out(0), n_lim(10000), n_out_tick(250),
 		byte_width(0), byte_aligned_end(0), vector_cycles(0),
 		phased_unbalanced_adjustment(0), unphased_unbalanced_adjustment(0), t_out(0),
 		index(nullptr), writer(nullptr), progress(nullptr){}
@@ -412,8 +414,8 @@ public:
 	bool PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
+	//bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
-	bool PhasedVectorizedNoMissingNoTable(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 
 	/**<
 	 * Unphased functions for calculating linkage-disequilibrium. These functions
@@ -428,15 +430,6 @@ public:
 	bool UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
 	bool UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr);
-
-	// Hybrid functions
-	__attribute__((always_inline))
-	inline bool HybridPhased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
-		const uint32_t n_cycles = b1.list[p1].l_list < b2.list[p2].l_list ? b1.list[p1].l_list : b2.list[p2].l_list;
-		if(n_cycles < 60)
-			return(PhasedList(b1,p1,b2,p2,perf));
-		else return(PhasedVectorizedNoMissingNoTable(b1,p1,b2,p2,perf));
-	}
 
 	__attribute__((always_inline))
 	inline bool HybridUnphased(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, ld_perf* perf = nullptr){
@@ -498,22 +491,26 @@ public:
 
 		cur_rcd2.D = pA*qB - qA*pB;
 		cur_rcd2.R2 = cur_rcd2.D*cur_rcd2.D / (g0*g1*h0*h1);;
-		cur_rcd2.R  = sqrt(cur_rcd2.R2);
 
-		if(cur_rcd2.R2 > 0.1){
+		//assert(cur_rcd2.R2 >= 0 && cur_rcd2.R2 <= 1.02);
+
+		if(cur_rcd2.R2 > 0.3){
 			// Calculate Fisher's exact test P-value
 			double left,right,both;
 			kt_fisher_exact(helper.alleleCounts[0],
-								helper.alleleCounts[1],
-								helper.alleleCounts[4],
-								helper.alleleCounts[5],
-								&left, &right, &both);
-			cur_rcd2.P = both;
+			                helper.alleleCounts[1],
+			                helper.alleleCounts[4],
+			                helper.alleleCounts[5],
+			                &left, &right, &both);
 
-			if(cur_rcd2.P > 1e-3){
+			if(both > 1e-3){
 				cur_rcd2.controller = 0;
 				return false;
 			}
+			cur_rcd2.P = both;
+
+			cur_rcd2.R  = sqrt(cur_rcd2.R2);
+			//std::cerr << "regular D=" << cur_rcd2.D << ",R2=" << cur_rcd2.R2 << ",R=" << cur_rcd2.R << ",Dprime=" << cur_rcd2.Dprime << std::endl;
 
 			double dmax = 0;
 			if(cur_rcd2.D >= 0) dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
@@ -545,8 +542,8 @@ public:
 			std::cerr << "cnts=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
 			std::cerr << "math=" << pA << "," << qA << "," << pB << "," << qA << std::endl;
 			std::cerr << "more=" << g0 << "," << g1 << "," << h0 << "," << h1 << std::endl;
-			std::cerr << "D=" << helper.D << ",R2=" << helper.R2 << ",R=" << helper.R << ",Dmax=" << helper.Dmax << ",Dprime=" << helper.Dprime << std::endl;
-*/
+			*/
+
 
 			//std::cerr << "P=" << helper.P << std::endl;
 
@@ -572,13 +569,20 @@ public:
 			//std::cerr << "P\t" << cur_rcd << '\n';
 			if(n_out == n_lim) this->CompressBlock();
 
+			//std::cerr << n_out << "/" << n_lim << '\n';
+			//std::cerr << cur_rcd2 << std::endl;
+
 			buf_f << cur_rcd2;
 			uint32_t temp = cur_rcd2.Apos;
 			cur_rcd2.Apos = cur_rcd2.Bpos;
 			cur_rcd2.Bpos = temp;
 			std::swap(cur_rcd2.ridA,cur_rcd2.ridB);
 			buf_r << cur_rcd2;
-			n_out += 2;
+			n_out += 2; n_out_tick += 2;
+
+			//std::cerr << n_out_tick << "/" << n_out_tick << std::endl;
+			if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
+			//assert(n_out <= n_out_tick);
 
 			cur_rcd2.controller = 0;
 
@@ -587,117 +591,25 @@ public:
 
 		cur_rcd2.controller = 0;
 		return false;
-	}
-
-	bool PhasedMathSimple(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
-
-		if(helper.alleleCounts[0] == 0){
-			//++this->insufficent_alleles;
-			return false;
-		}
-
-		// If haplotype count for (0,0) >
-		//if(helper[0] > 2*n_samples - this->parameters.minimum_sum_alternative_haplotype_count)
-		//	return false;
-
-		// D = (joint HOM_HOM) - (HOM_A * HOM_B) = pAB - pApB
-
-		const double af1 = (double)b1.blk->rcds[p1].ac / (2.0f*n_samples);
-		const double af2 = (double)b2.blk->rcds[p2].ac / (2.0f*n_samples);
-		if(af1 == 0 || af2 == 0) return false;
-
-		//double D, Dprime, R2, R;
-
-		cur_rcd2.D  = helper.alleleCounts[0]/(2*n_samples) - af1*af2;
-		cur_rcd2.R2 = cur_rcd2.D*cur_rcd2.D / (af1*(1-af1)*af2*(1-af2));
-		cur_rcd2.R  = sqrt(cur_rcd2.R2);
-
-		if(cur_rcd2.R2 > 0.5){
-			double dmax = 0;
-			if(cur_rcd2.D >= 0) dmax = af1*af2 < ((1-af1)*(1-af2)) ? af1*af2 : ((1-af1)*(1-af2));
-			else dmax = (1-af1)*af2 < af1*(1-af2) ? -(1-af1)*af2 : -af1*(1-af2);
-
-			cur_rcd2.Dprime = cur_rcd2.D/dmax;
-			cur_rcd2.Apos = b1.blk->rcds[p1].pos;
-			cur_rcd2.Bpos = b2.blk->rcds[p2].pos;
-			cur_rcd2.ChiSqModel = 0;
-			cur_rcd2.ChiSqFisher = helper.totalHaplotypeCounts * cur_rcd2.R2;
-			cur_rcd2.P = 1;
-			cur_rcd2.ridA = b1.blk->rcds[p1].rid;
-			cur_rcd2.ridB = b2.blk->rcds[p2].rid;
-			cur_rcd2[0] = helper.alleleCounts[0];
-			cur_rcd2[1] = helper.alleleCounts[1];
-			cur_rcd2[2] = helper.alleleCounts[4];
-			cur_rcd2[3] = helper.alleleCounts[5];
-
-			cur_rcd2.SetLowACA(b1.blk->rcds[p1].ac < LOW_AC_THRESHOLD);
-			cur_rcd2.SetLowACB(b2.blk->rcds[p2].ac < LOW_AC_THRESHOLD);
-			cur_rcd2.SetCompleteLD(helper.alleleCounts[0] < 1 || helper.alleleCounts[1] < 1 || helper.alleleCounts[4] < 1 || helper.alleleCounts[5] < 1);
-			cur_rcd2.SetPerfectLD(cur_rcd2.R2 > 0.99);
-			cur_rcd2.SetHasMissingValuesA(b1.blk->rcds[p1].an);
-			cur_rcd2.SetHasMissingValuesB(b2.blk->rcds[p2].an);
-			int32_t diff = (int32_t)b1.blk->rcds[p1].pos - b2.blk->rcds[p2].pos;
-			cur_rcd2.SetLongRange(abs(diff) > LONG_RANGE_THRESHOLD && (cur_rcd2.ridA == cur_rcd2.ridB));
-			cur_rcd2.SetUsedPhasedMath();
-			cur_rcd2.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
-			cur_rcd2.SetFastMode();
-
-#if SLAVE_DEBUG_MODE == 3
-		if(cur_rcd2.R2 > 0.1){
-			twk_debug_pos1 = b1.blk->rcds[p1].pos;
-			twk_debug_pos1_2 = b2.blk->rcds[p2].pos;
-			//std::cout << "F\t" << b1.blk->rcds[p1].pos << "\t" << b2.blk->rcds[p2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
-		}
-	#endif
-			if(n_out == n_lim){
-				this->CompressBlock();
-			}
-
-			buf_f << cur_rcd2;
-			//std::cout << cur_rcd2 << '\n';
-
-			uint32_t temp = cur_rcd2.Apos;
-			cur_rcd2.Apos = cur_rcd2.Bpos;
-			cur_rcd2.Bpos = temp;
-			std::swap(cur_rcd2.ridA,cur_rcd2.ridB);
-			buf_r << cur_rcd2;
-			n_out += 2;
-
-			//std::cerr << "F\t" << cur_rcd << '\n';
-			cur_rcd2.controller = 0;
-
-			//std::cerr << "fast-cnts=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
-			//std::cerr << "D=" << helper.D << ",R2=" << helper.R2 << ",R=" << helper.R << ",Dmax=" << helper.Dmax << ",Dprime=" << helper.Dprime << std::endl;
-
-
-			//std::cerr << "D=" << D << ",Dp=" << Dprime << ",R=" << R << ",R2=" << R2 << std::endl;
-
-			return true;
-		}
-
-		cur_rcd2.controller = 0;
-		return false;
-
 	}
 
 	bool UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2);
 	double ChiSquaredUnphasedTable(const double& target, const double& p, const double& q);
 	bool ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2,const double& target, const double& p, const double& q);
 
-	inline bool CompressBlock(const uint8_t level = 6){
-
-
+	bool CompressBlock(const uint8_t level = 6){
 		// Forward
 		if(buf_f.size()){
 			assert(zcodec.Compress(buf_f, obuf, level));
 			t_out += buf_f.size() / sizeof(twk1_two_t);
+			progress->b_out += buf_f.size();
 			//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
 			irec.clear();
 			irec.foff = writer->stream->tellp();
-			//writer->AddTwoBlock(buf);
+			writer->AddTwoBlock(buf_f);
 			irec.fend = writer->stream->tellp();
 			irec.n = buf_f.size() / sizeof(twk1_two_t);
-			//writer->index[writer->index.n++] = irec;
+			//writer->index.ent[writer->index.n++] = irec;
 			index->AddSafe(irec);
 			//std::cerr << irec.n << "," << irec.foff << "," << irec.fend << "," << irec.rid << "," << irec.ridB << std::endl;
 			buf_f.reset();
@@ -707,19 +619,19 @@ public:
 		if(buf_r.size()){
 			assert(zcodec.Compress(buf_r, obuf, level));
 			t_out += buf_r.size() / sizeof(twk1_two_t);
+			progress->b_out += buf_r.size();
 			//std::cerr << "R=" << buf_r.size() << "->" << obuf.size() << " -> " << (float)buf_r.size()/obuf.size() << std::endl;
 			irec.clear();
 			irec.foff = writer->stream->tellp();
-			//writer->AddTwoBlock(buf);
+			writer->AddTwoBlock(buf_r);
 			irec.fend = writer->stream->tellp();
 			irec.n = buf_r.size() / sizeof(twk1_two_t);
-			//writer->index[writer->index.n++] = irec;
+			//writer->index.ent[writer->index.n++] = irec;
 			index->AddSafe(irec);
 			//std::cerr << irec.n << "," << irec.foff << "," << irec.fend << "," << irec.rid << "," << irec.ridB << std::endl;
 			buf_r.reset();
 		}
 
-		if(progress != nullptr) progress->n_out += n_out;
 		n_out = 0;
 
 		return true;
@@ -727,7 +639,7 @@ public:
 
 public:
 	uint32_t n_samples;
-	uint32_t n_out, n_lim;
+	uint32_t n_out, n_lim, n_out_tick;
 	uint32_t byte_width; // Number of bytes required per variant site
 	uint32_t byte_aligned_end; // End byte position
 	uint32_t vector_cycles; // Number of SIMD cycles (genotypes/2/vector width)
@@ -776,10 +688,11 @@ struct twk_ld_slave {
 								continue;
 							}
 
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
+							//if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
+								engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,nullptr);
 								engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
-							else
-								engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+							//else
+							//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
 						}
 					}
 					progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -796,10 +709,12 @@ struct twk_ld_slave {
 							}
 
 							//engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
+							//if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
+							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,nullptr);
 								engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-							else
-								engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
+
+							//else
+							//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 						}
 					}
 					progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
@@ -821,7 +736,7 @@ struct twk_ld_slave {
 		const uint32_t i_start = ticker->i_start;
 		const uint32_t j_start = ticker->j_start;
 		while(true){
-			if(!ticker->GetBlockPair(from, to, type)) break;
+			if(!ticker->GetBlockWindow(from, to, type)) break;
 
 			//blocks[0] = ldd[from];
 			//blocks[0].Inflate(n_s, TWK_LDD_LIST);
@@ -835,14 +750,17 @@ struct twk_ld_slave {
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
+
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
 							continue;
 						}
 
 						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
-							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+						engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
 						else
-							engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,nullptr);
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -854,9 +772,11 @@ struct twk_ld_slave {
 						}
 
 						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
+					//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
 						else
-							engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
+							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,nullptr);
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;

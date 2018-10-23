@@ -79,14 +79,15 @@ bool HexToBytes(const std::string& hex, uint8_t* target);
 
 template <class T>
 std::string ToPrettyDiskString(const T value){
+	if(value == 0) return("0 b");
 	if(value > 1E9){
-		return(std::to_string((double)value/1e9) + " GB");
+		return(std::to_string((double)value/1e9) + " gb");
 	} else if(value > 1E6){
-		return(std::to_string((double)value/1e6) + " MB");
+		return(std::to_string((double)value/1e6) + " mb");
 	} else if(value > 1E3){
-		return(std::to_string((double)value/1e3) + " KB");
+		return(std::to_string((double)value/1e3) + " kb");
 	} else
-		return(std::to_string(value) + " B");
+		return(std::to_string(value) + " b");
 }
 
 }

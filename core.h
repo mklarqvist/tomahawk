@@ -234,6 +234,7 @@ struct twk1_t {
 		rid = other.rid;
 		delete[] gt; gt = nullptr;
 		other.gt->Move(gt);
+		other.gt = nullptr;
 		return(*this);
 	}
 
@@ -324,6 +325,7 @@ struct twk1_block_t {
 			this->m = 500;
 			return;
 		}
+		std::cerr << "ressizing=" << n << "/" << m << std::endl;
 
 		twk1_t* temp = rcds;
 		rcds = new twk1_t[m*2];
