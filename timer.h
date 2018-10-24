@@ -6,18 +6,32 @@
 
 namespace tomahawk {
 
+/**<
+ * Simple timer class for tracking time differences between two timepoints.
+ * Internally use the `chrono::high_resolution_clock` struct such that we can
+ * track very short time frames.
+ */
 class Timer {
 public:
 	explicit Timer(){}
 
+	/**<
+	 * Start the timer by setting the current timestamp as the reference
+	 * time.
+	 */
 	void Start(void){ this->_start = std::chrono::high_resolution_clock::now(); }
 
-	std::chrono::duration<double> Elapsed() const{
-		return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - this->_start);
+	/**<
+	 * Returns the number `chrono::duration<double>` object for time elapsed.
+	 * If you are interested in the number of seconds elapsed then chain this
+	 * function with the child function `count`: `timer.Elapsed().count()`.
+	 * @return
+	 */
+	inline std::chrono::duration<double> Elapsed() const{
+		return(std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - this->_start));
 	}
 
-	template <typename T, typename Traits>
-	friend std::basic_ostream<T, Traits>& operator<<(std::basic_ostream<T, Traits>& out, const Timer& timer){
+	friend std::ostream& operator<<(std::ostream& out, const Timer& timer){
 		return out << timer.Elapsed().count();
 	}
 

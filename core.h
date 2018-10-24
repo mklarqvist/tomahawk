@@ -31,6 +31,9 @@ DEALINGS IN THE SOFTWARE.
 
 namespace tomahawk {
 
+/****************************
+*  Core support
+****************************/
 const uint8_t TWK_BASE_MAP[256] =
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -45,7 +48,9 @@ const uint8_t TWK_BASE_MAP[256] =
 const char TWK_BASE_MAP_INV[4] = {'A','T','G','C'};
 const std::vector<std::string> TWK_SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
 
-
+/****************************
+*  SIMD definitions
+****************************/
 #if defined(_MSC_VER)
      /* Microsoft C/C++-compatible compiler */
      #include <intrin.h>
@@ -291,9 +296,10 @@ struct twk1_t {
 };
 
 /****************************
-*  Core container
+*  Core containers
 ****************************/
 struct twk1_block_t {
+public:
 	typedef twk1_block_t       self_type;
 	typedef twk1_t             value_type;
 	typedef value_type&        reference;
@@ -306,6 +312,7 @@ struct twk1_block_t {
     typedef yonRawIterator<value_type>       iterator;
    	typedef yonRawIterator<const value_type> const_iterator;
 
+public:
 	twk1_block_t() : n(0), m(0), rid(0), minpos(0), maxpos(0), rcds(nullptr){}
 	twk1_block_t(const uint32_t p): n(0), m(p), rid(0), minpos(0), maxpos(0), rcds(new twk1_t[p]){}
 	~twk1_block_t(){ delete[] rcds; }
@@ -325,7 +332,7 @@ struct twk1_block_t {
 			this->m = 500;
 			return;
 		}
-		std::cerr << "ressizing=" << n << "/" << m << std::endl;
+		//std::cerr << "ressizing=" << n << "/" << m << std::endl;
 
 		twk1_t* temp = rcds;
 		rcds = new twk1_t[m*2];
@@ -374,12 +381,14 @@ struct twk1_block_t {
 		return(buffer);
 	}
 
+public:
 	uint32_t n, m, rid;
 	uint32_t minpos, maxpos;
 	twk1_t* rcds;
 };
 
 struct twk_oblock_t {
+public:
 	twk_oblock_t() : n(0), nc(0){}
 
 	void Write(std::ostream& stream, const uint32_t n, const uint32_t nc, const twk_buffer_t& buffer){
@@ -411,6 +420,7 @@ struct twk_oblock_t {
 		return(stream);
 	}
 
+public:
 	uint32_t n, nc;
 	twk_buffer_t bytes;
 };
@@ -658,25 +668,60 @@ public:
 	void PrintPhasedCounts(void) const;
 
 	friend twk_buffer_t& operator<<(twk_buffer_t& os, const twk1_two_t& entry){
-		os += entry.controller;
-		os += entry.ridA;
-		os += entry.ridB;
+		SerializePrimitive(entry.controller, os);
+		SerializePrimitive(entry.ridA, os);
+		SerializePrimitive(entry.ridB, os);
 		uint32_t packA = entry.Apos << 2 | entry.Aphased << 1 | entry.Amiss;
 		uint32_t packB = entry.Bpos << 2 | entry.Bphased << 1 | entry.Bmiss;
-		os += packA;
-		os += packB;
-		os += entry.cnt[0];
-		os += entry.cnt[1];
-		os += entry.cnt[2];
-		os += entry.cnt[3];
-		os += entry.D;
-		os += entry.Dprime;
-		os += entry.R;
-		os += entry.R2;
-		os += entry.P;
-		os += entry.ChiSqFisher;
-		os += entry.ChiSqModel;
+		SerializePrimitive(packA, os);
+		SerializePrimitive(packB, os);
+		SerializePrimitive(entry.cnt[0], os);
+		SerializePrimitive(entry.cnt[1], os);
+		SerializePrimitive(entry.cnt[2], os);
+		SerializePrimitive(entry.cnt[3], os);
+		SerializePrimitive(entry.D, os);
+		SerializePrimitive(entry.Dprime, os);
+		SerializePrimitive(entry.R, os);
+		SerializePrimitive(entry.R2, os);
+		SerializePrimitive(entry.P, os);
+		SerializePrimitive(entry.ChiSqFisher, os);
+		SerializePrimitive(entry.ChiSqModel, os);
 		return os;
+	}
+
+	friend twk_buffer_t& operator>>(twk_buffer_t& os, twk1_two_t& entry){
+		DeserializePrimitive(entry.controller, os);
+		DeserializePrimitive(entry.ridA, os);
+		DeserializePrimitive(entry.ridB, os);
+		uint32_t packA = 0;
+		uint32_t packB = 0;
+		DeserializePrimitive(packA, os);
+		DeserializePrimitive(packB, os);
+		entry.Apos = packA >> 2;
+		entry.Bpos = packB >> 2;
+		entry.Aphased = (packA >> 1) & 1;
+		entry.Bphased = (packB >> 1) & 1;
+		entry.Amiss = packA & 1;
+		entry.Bmiss = packB & 1;
+		DeserializePrimitive(entry.cnt[0], os);
+		DeserializePrimitive(entry.cnt[1], os);
+		DeserializePrimitive(entry.cnt[2], os);
+		DeserializePrimitive(entry.cnt[3], os);
+		DeserializePrimitive(entry.D, os);
+		DeserializePrimitive(entry.Dprime, os);
+		DeserializePrimitive(entry.R, os);
+		DeserializePrimitive(entry.R2, os);
+		DeserializePrimitive(entry.P, os);
+		DeserializePrimitive(entry.ChiSqFisher, os);
+		DeserializePrimitive(entry.ChiSqModel, os);
+		return(os);
+	}
+
+	std::ostream& Print(std::ostream& os) const {
+		os << controller << '\t' << ridA << '\t' << Apos << '\t' << ridB << '\t' << Bpos << '\t'
+		   << cnt[0] << '\t' << cnt[1] << '\t' << cnt[2] << '\t' << cnt[3] << '\t' << D << '\t'
+		   << Dprime << '\t' << R << '\t' << R2 << '\t' << P << '\t' << ChiSqFisher << '\t' << ChiSqModel << '\n';
+		return(os);
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const twk1_two_t& entry){
@@ -708,6 +753,8 @@ public:
 		memset(cnt, 0, sizeof(double)*4);
 	}
 
+	bool operator<(const twk1_two_t& other) const{ return false; }
+
 public:
 	uint16_t controller;
 	uint32_t ridA, ridB;
@@ -717,6 +764,157 @@ public:
 	double ChiSqModel;   // Chi-Squared critical value for 3x3 contingency table
 	double ChiSqFisher;  // Chi-Squared critical value for 2x2 contingency table
 	double cnt[4];
+};
+
+
+struct twk_oblock_two_t {
+public:
+	twk_oblock_two_t() : n(0), nc(0){}
+
+	inline void operator+=(const twk1_two_t& entry){ bytes << entry; }
+
+	void Write(std::ostream& stream, const uint32_t n, const uint32_t nc, const twk_buffer_t& buffer){
+		uint8_t marker = 1;
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(n, stream);
+		SerializePrimitive(nc, stream);
+		stream.write(buffer.data(), buffer.size());
+	}
+
+	friend std::ostream& operator<<(std::ostream& stream, const twk_oblock_two_t& self){
+		uint8_t marker = 1;
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(self.n, stream);
+		SerializePrimitive(self.nc, stream);
+		assert(self.nc == self.bytes.size());
+		stream.write(self.bytes.data(), self.bytes.size());
+		return(stream);
+	}
+
+	friend std::istream& operator>>(std::istream& stream, twk_oblock_two_t& self){
+		// marker has to be read outside
+		self.bytes.reset();
+		DeserializePrimitive(self.n,  stream);
+		DeserializePrimitive(self.nc, stream);
+		self.bytes.reset(); self.bytes.resize(self.nc);
+		stream.read(self.bytes.data(), self.nc);
+		self.bytes.n_chars_ = self.nc;
+		std::cerr << self.n << "," << self.nc << "," << self.bytes.size() << std::endl;
+		return(stream);
+	}
+
+public:
+	uint32_t n, nc;
+	twk_buffer_t bytes;
+};
+
+struct twk1_two_block_t {
+public:
+	typedef twk1_two_block_t   self_type;
+	typedef twk1_two_t         value_type;
+	typedef value_type&        reference;
+	typedef const value_type&  const_reference;
+	typedef value_type*        pointer;
+	typedef const value_type*  const_pointer;
+	typedef std::ptrdiff_t     difference_type;
+	typedef std::size_t        size_type;
+
+    typedef yonRawIterator<value_type>       iterator;
+   	typedef yonRawIterator<const value_type> const_iterator;
+
+public:
+   	twk1_two_block_t() : n(0), m(0), rcds(nullptr){}
+   	twk1_two_block_t(const uint32_t p): n(0), m(p), rcds(new twk1_two_t[p]){}
+	~twk1_two_block_t(){ delete[] rcds; }
+
+	inline twk1_two_block_t& operator+=(const twk1_two_t& rec){ return(this->Add(rec)); }
+	twk1_two_block_t& Add(const twk1_two_t& rec){
+		if(n == m) this->resize(); // will also trigger when n=0 and m=0
+		rcds[n++] = rec;
+		return(*this);
+	}
+
+	void resize(const uint32_t p){
+		if(p < n) return;
+
+		std::cerr << "resizing to " << p << " @ " << n << "/" << m << std::endl;
+
+		twk1_two_t* temp = rcds;
+		rcds = new twk1_two_t[p];
+		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
+		delete[] temp;
+		m = p;
+	}
+
+	void resize(void){
+		if(this->rcds == nullptr){
+			this->rcds = new twk1_two_t[500];
+			this->n = 0;
+			this->m = 500;
+			return;
+		}
+		std::cerr << "resizing=" << n << "/" << m << std::endl;
+
+		twk1_two_t* temp = rcds;
+		rcds = new twk1_two_t[m*2];
+		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
+		delete[] temp;
+		m*=2;
+	}
+
+	void reserve(const uint32_t p);
+
+	inline const uint32_t& size(void) const{ return(this->n); }
+
+	inline reference front(void){ return(this->rcds[0]); }
+	inline const_reference front(void) const{ return(this->rcds[0]); }
+	inline reference back(void){ return(this->rcds[this->size() == 0 ? 0 : this->size() - 1]); }
+	inline const_reference back(void) const{ return(this->rcds[this->size() == 0 ? 0 : this->size() - 1]); }
+
+	inline reference operator[](const uint32_t position){ return(this->rcds[position]); }
+	inline const_reference operator[](const uint32_t position) const{ return(this->rcds[position]); }
+	inline reference at(const uint32_t position){ return(this->rcds[position]); }
+	inline const_reference at(const uint32_t position) const{ return(this->rcds[position]); }
+
+	inline pointer start(void){ return(&this->rcds[0]); }
+	inline const_pointer start(void) const{ return(&this->rcds[0]); }
+	inline pointer end(void){ return(&this->rcds[this->n]); }
+	inline const_pointer end(void) const{ return(&this->rcds[this->n]); }
+
+
+	void reset(){
+		n = 0;
+	}
+
+	void clear(){
+		delete[] rcds; rcds = nullptr;
+		n = 0; m = 0;
+	}
+
+	bool Sort(){
+		std::sort(start(), end());
+		return(true);
+	}
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_two_block_t& self){
+		SerializePrimitive(self.n, buffer);
+		SerializePrimitive(self.m, buffer);
+		for(int i = 0; i < self.n; ++i) buffer << self.rcds[i];
+		return(buffer);
+	}
+
+	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_two_block_t& self){
+		delete[] self.rcds; self.rcds = nullptr;
+		DeserializePrimitive(self.n, buffer);
+		DeserializePrimitive(self.m, buffer);
+		self.rcds = new twk1_two_t[self.m];
+		for(int i = 0; i < self.n; ++i) buffer >> self.rcds[i];
+		return(buffer);
+	}
+
+public:
+	uint32_t n, m;
+	twk1_two_t* rcds;
 };
 
 }

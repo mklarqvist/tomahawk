@@ -10,57 +10,90 @@ namespace tomahawk {
 
 struct twk_writer_t {
 
-	twk_writer_t() : owner(false), stream(nullptr){}
-	virtual ~twk_writer_t(){ if(owner) delete stream; }
+	twk_writer_t() : buf(nullptr), stream(nullptr){}
+	virtual ~twk_writer_t(){ stream.flush();  }
 
 	virtual bool Open(const std::string& file) =0;
 
 	void Add(twk_buffer_t& buffer){
 		spinlock.lock();
-		stream->write(buffer.data(), buffer.size());
+		stream.write(buffer.data(), buffer.size());
 		spinlock.unlock();
 		buffer.reset();
 	}
 
-	void AddTwoBlock(twk_buffer_t& buffer){
+	/**<
+	 * Write the equivalent of a twk_oblock_two_t block. Takes the arguments
+	 * for the uncompressed byte size and the compressed byte size together
+	 * with the actual byte buffer.
+	 * @param b_unc  Uncompresed size in bytes.
+	 * @param b_comp Compresed size in bytes.
+	 * @param obuf   Src buffer.
+	 */
+	void Add(const uint32_t b_unc, const uint32_t b_comp, twk_buffer_t& obuf){
 		spinlock.lock();
-		uint8_t marker = 1;
-		stream->write(reinterpret_cast<const char*>(&marker), sizeof(uint8_t));
-		stream->write(buffer.data(), buffer.size());
+		uint8_t marker = 1; // non-termination marker
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(b_unc, stream); // uncompressed size
+		SerializePrimitive(b_comp, stream); // compressed size
+		stream.write(obuf.data(), obuf.size()); // actual data
 		spinlock.unlock();
-		buffer.reset();
+		obuf.reset();
 	}
 
-	template <class T> twk_writer_t& operator<<(const T& val){ *this->stream << val; return(*this); }
+	inline void write(const char* data, const uint32_t l){ stream.write(data, l); }
+	inline void flush(){ stream.flush(); }
+	inline bool good() const{ return(stream.good()); }
+	inline std::streambuf* rdbuf(){ return(buf); }
+	virtual void close() =0;
+	virtual bool is_open() const =0;
+	inline int64_t tellp(){ return(stream.tellp()); }
+	inline void seekp(const uint64_t p){ stream.seekp(p); }
 
+	template <class T> twk_writer_t& operator<<(const T& val){ this->stream << val; return(*this); }
+
+public:
+	std::streambuf* buf;
 	SpinLock spinlock;
 	IndexEntry ientry;
 	Index index;
-	bool owner;
-	std::ostream* stream;
+	std::ostream stream;
 };
 
 struct twk_writer_stream : public twk_writer_t {
-	inline bool Open(const std::string& file){
-		stream = &std::cout;
-		owner = false;
+	twk_writer_stream(){
+		buf = std::cout.rdbuf();
+		stream.basic_ios<char>::rdbuf(buf);
+	}
+
+	bool Open(const std::string& file){
+		buf = std::cout.rdbuf();
+		stream.basic_ios<char>::rdbuf(buf);
 		return true;
 	}
+
+	void close(){}
+	bool is_open() const{ return true; }
+
 };
 
 struct twk_writer_file : public twk_writer_t {
-	inline bool Open(const std::string& file){
-		owner = true;
-		stream = new std::ofstream;
-		std::ofstream* outstream = reinterpret_cast<std::ofstream*>(stream);
-		outstream->open(file,std::ios::out | std::ios::binary);
-		if(!outstream->good()){
+	bool Open(const std::string& file){
+		out.open(file,std::ios::out | std::ios::binary);
+		if(!out.good()){
 			std::cerr << "failed to open" << std::endl;
 			return false;
 		}
-		//
+		buf = out.rdbuf();
+		stream.rdbuf(buf);
 		return true;
 	}
+
+	void close(){ out.close(); }
+	bool is_open() const{ return(out.is_open()); }
+
+public:
+	std::ofstream out;
 };
 
 

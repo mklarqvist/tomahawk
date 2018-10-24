@@ -12,7 +12,7 @@
 namespace tomahawk {
 
 struct IndexEntry {
-	IndexEntry() : rid(0), n(0), minpos(0), maxpos(0), foff(0), fend(0){}
+	IndexEntry() : rid(0), n(0), minpos(0), maxpos(0), b_unc(0), b_cmp(0), foff(0), fend(0){}
 	virtual ~IndexEntry(){}
 
 	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const IndexEntry& self){
@@ -20,6 +20,8 @@ struct IndexEntry {
 		SerializePrimitive(self.n, buffer);
 		SerializePrimitive(self.minpos, buffer);
 		SerializePrimitive(self.maxpos, buffer);
+		SerializePrimitive(self.b_unc, buffer);
+		SerializePrimitive(self.b_cmp, buffer);
 		SerializePrimitive(self.foff, buffer);
 		SerializePrimitive(self.fend, buffer);
 		return(buffer);
@@ -30,6 +32,8 @@ struct IndexEntry {
 		DeserializePrimitive(self.n, buffer);
 		DeserializePrimitive(self.minpos, buffer);
 		DeserializePrimitive(self.maxpos, buffer);
+		DeserializePrimitive(self.b_unc, buffer);
+		DeserializePrimitive(self.b_cmp, buffer);
 		DeserializePrimitive(self.foff, buffer);
 		DeserializePrimitive(self.fend, buffer);
 		return(buffer);
@@ -37,15 +41,22 @@ struct IndexEntry {
 
 	int32_t rid;
 	uint32_t n, minpos, maxpos;
+	uint32_t b_unc, b_cmp;
 	uint64_t foff, fend;
 };
 
+/**<
+ * Index entry for two files. This entry is different as we require knowledge
+ * of both the from rid:pos and the to rid as a tuple (rid:pos, rid).
+ * This is different from the case in twk files where the tuple is limited to
+ * (rid:pos) only.
+ */
 struct IndexEntryOutput : public IndexEntry {
-	IndexEntryOutput() : ridB(-1), minposB(0), maxposB(0){ rid = -1; }
+	IndexEntryOutput() : ridB(-1){ rid = -1; }
 	virtual ~IndexEntryOutput(){}
 
 	void clear(){
-		rid = -1; ridB = -1; minpos = 0; minposB = 0; n = 0;
+		rid = -1; ridB = -1; minpos = 0; n = 0;
 		foff = 0; fend = 0;
 	}
 
@@ -54,11 +65,11 @@ struct IndexEntryOutput : public IndexEntry {
 		SerializePrimitive(self.n, buffer);
 		SerializePrimitive(self.minpos, buffer);
 		SerializePrimitive(self.maxpos, buffer);
+		SerializePrimitive(self.b_unc, buffer);
+		SerializePrimitive(self.b_cmp, buffer);
 		SerializePrimitive(self.foff, buffer);
 		SerializePrimitive(self.fend, buffer);
 		SerializePrimitive(self.ridB, buffer);
-		SerializePrimitive(self.minposB, buffer);
-		SerializePrimitive(self.maxposB, buffer);
 		return(buffer);
 	}
 
@@ -67,16 +78,16 @@ struct IndexEntryOutput : public IndexEntry {
 		DeserializePrimitive(self.n, buffer);
 		DeserializePrimitive(self.minpos, buffer);
 		DeserializePrimitive(self.maxpos, buffer);
+		DeserializePrimitive(self.b_unc, buffer);
+		DeserializePrimitive(self.b_cmp, buffer);
 		DeserializePrimitive(self.foff, buffer);
 		DeserializePrimitive(self.fend, buffer);
 		DeserializePrimitive(self.ridB, buffer);
-		DeserializePrimitive(self.minposB, buffer);
-		DeserializePrimitive(self.maxposB, buffer);
 		return(buffer);
 	}
 
-	int32_t ridB;
-	uint32_t minposB, maxposB;
+public:
+	int32_t ridB; // if ridB is mixed in this block we set this to -1
 };
 
 struct IndexEntryEntry : public IndexEntry {
@@ -118,6 +129,7 @@ struct IndexEntryEntry : public IndexEntry {
 		return(buffer);
 	}
 
+public:
 	uint32_t nn; // number of consecutive blocks
 };
 
@@ -188,9 +200,13 @@ public:
 	IndexEntryEntry* ent_meta;
 };
 
+#define TWK_IDX_UNSORTED 0
+#define TWK_IDX_PARTIAL  1
+#define TWK_IDX_SORTED   2
+
 class IndexOutput {
 public:
-	IndexOutput(void) : n(0), m(0), m_ent(0), ent(nullptr), ent_meta(nullptr){}
+	IndexOutput(void) : state(TWK_IDX_UNSORTED), n(0), m(0), m_ent(0), ent(nullptr), ent_meta(nullptr){}
 	IndexOutput(const uint32_t n_contigs) : n(0), m(0), m_ent(n_contigs), ent(nullptr), ent_meta(new IndexEntryEntry[n_contigs]){}
 	~IndexOutput(){ delete[] ent; delete[] ent_meta; }
 
@@ -202,7 +218,7 @@ public:
 		this->ent_meta[rec.rid] += rec;
 	}
 
-	void AddSafe(const IndexEntryOutput& rec){
+	void AddThreadSafe(const IndexEntryOutput& rec){
 		spinlock.lock();
 		if(this->n == this->m) this->resize(); // will also trigger when n=0 and m=0
 		this->ent[this->n++] = rec;
@@ -233,6 +249,7 @@ public:
 
 	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const IndexOutput& self){
 		SerializePrimitive(TOMAHAWK_INDEX_START_MARKER, buffer);
+		SerializePrimitive(self.state, buffer);
 		SerializePrimitive(self.n, buffer);
 		SerializePrimitive(self.m, buffer);
 		SerializePrimitive(self.m_ent, buffer);
@@ -246,6 +263,7 @@ public:
 		DeserializePrimitive(eof, buffer);
 		assert(eof == TOMAHAWK_INDEX_START_MARKER);
 		delete[] self.ent; delete[] self.ent_meta;
+		DeserializePrimitive(self.state, buffer);
 		DeserializePrimitive(self.n, buffer);
 		DeserializePrimitive(self.m, buffer);
 		DeserializePrimitive(self.m_ent, buffer);
@@ -256,8 +274,8 @@ public:
 		return(buffer);
 	}
 
-
 public:
+	uint8_t state; // sorted state of file
 	uint32_t n, m, m_ent;
 	IndexEntryOutput* ent;
 	IndexEntryEntry* ent_meta;

@@ -331,5 +331,44 @@ bcf_hdr_t* VcfHeader::ConvertVcfHeader(void){
 	return(hdr);
 }
 
+twk_buffer_t& operator<<(twk_buffer_t& buffer, const VcfHeader& self){
+	SerializeString(self.fileformat_string_, buffer);
+	SerializeString(self.literals_, buffer);
+
+	// Samples
+	const uint32_t n_samples = self.samples_.size();
+	SerializePrimitive(n_samples, buffer);
+	for(int i = 0; i < n_samples; ++i) SerializeString(self.samples_[i], buffer);
+
+	// Contigs
+	const uint32_t n_contigs = self.contigs_.size();
+	SerializePrimitive(n_contigs, buffer);
+	for(int i = 0; i < n_contigs; ++i) buffer << self.contigs_[i];
+
+	return(buffer);
+}
+
+twk_buffer_t& operator>>(twk_buffer_t& buffer, VcfHeader& self){
+	DeserializeString(self.fileformat_string_, buffer);
+	DeserializeString(self.literals_, buffer);
+
+	// Samples
+	uint32_t n_samples = 0;
+	DeserializePrimitive(n_samples, buffer);
+	self.samples_.resize(n_samples);
+	for(int i = 0; i < n_samples; ++i) DeserializeString(self.samples_[i], buffer);
+
+	// Contigs
+	uint32_t n_contigs = 0;
+	DeserializePrimitive(n_contigs, buffer);
+	self.contigs_.resize(n_contigs);
+	for(int i = 0; i < n_contigs; ++i) buffer >> self.contigs_[i];
+
+	self.BuildMaps();
+	self.BuildReverseMaps();
+
+	return(buffer);
+}
+
 }
 }

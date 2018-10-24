@@ -6,9 +6,12 @@
 CPP_SRCS += \
 ../buffer.cpp \
 ../fisher_math.cpp \
+../importer.cpp \
 ../ld.cpp \
 ../main.cpp \
 ../support_vcf.cpp \
+../twk_reader.cpp \
+../two_reader.cpp \
 ../utility.cpp \
 ../vcf_utils.cpp \
 ../zstd_codec.cpp 
@@ -16,9 +19,12 @@ CPP_SRCS += \
 OBJS += \
 ./buffer.o \
 ./fisher_math.o \
+./importer.o \
 ./ld.o \
 ./main.o \
 ./support_vcf.o \
+./twk_reader.o \
+./two_reader.o \
 ./utility.o \
 ./vcf_utils.o \
 ./zstd_codec.o 
@@ -26,9 +32,12 @@ OBJS += \
 CPP_DEPS += \
 ./buffer.d \
 ./fisher_math.d \
+./importer.d \
 ./ld.d \
 ./main.d \
 ./support_vcf.d \
+./twk_reader.d \
+./two_reader.d \
 ./utility.d \
 ./vcf_utils.d \
 ./zstd_codec.d 
