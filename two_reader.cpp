@@ -8,7 +8,7 @@ bool twk1_two_iterator::NextBlockRaw(){
 		return false;
 	}
 
-	std::cerr << "pos=" << stream->tellg() << std::endl;
+	//std::cerr << "pos=" << stream->tellg() << std::endl;
 
 	uint8_t marker = 0;
 	DeserializePrimitive(marker, *stream);
@@ -16,7 +16,7 @@ bool twk1_two_iterator::NextBlockRaw(){
 		std::cerr << "0 marker found. stopping" << std::endl;
 		return false;
 	}
-	std::cerr << "marker=" << (int)marker << std::endl;
+	//std::cerr << "marker=" << (int)marker << std::endl;
 	assert(marker == 1);
 
 	*stream >> oblk;

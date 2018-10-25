@@ -692,12 +692,12 @@ public:
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
 	bool Compute(){
-		settings.in = "/home/mk21/Downloads/test.twk";
+		settings.in = "/media/mdrk/NVMe/1kgp3/test.twk";
 		//settings.output = "-";
 		//std::string filename = "/home/mk21/Downloads/debug.twk";
 		//std::string filename = "/media/mdrk/NVMe/1kgp3/debug.twk";
 		//std::string outname = "/media/mdrk/NVMe/1kgp3/debug.two";
-		settings.out = "/home/mk21/Downloads/debug.two";
+		settings.out = "/media/mdrk/NVMe/1kgp3/debug.two";
 
 		ProgramMessage();
 		std::cerr << utility::timestamp("LOG") << "Calling calc..." << std::endl;

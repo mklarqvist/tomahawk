@@ -753,7 +753,17 @@ public:
 		memset(cnt, 0, sizeof(double)*4);
 	}
 
-	bool operator<(const twk1_two_t& other) const{ return false; }
+	bool operator<(const twk1_two_t& other) const{
+		if(ridA < other.ridA) return true;
+		if(other.ridA < ridA) return false;
+		if(ridB < other.ridB) return true;
+		if(other.ridB < ridB) return false;
+		if(Apos < other.Apos) return true;
+		if(other.Apos < Apos) return false;
+		if(Bpos < other.Bpos) return true;
+		if(other.Bpos < Bpos) return false;
+		return false;
+	}
 
 public:
 	uint16_t controller;
@@ -799,7 +809,6 @@ public:
 		self.bytes.reset(); self.bytes.resize(self.nc);
 		stream.read(self.bytes.data(), self.nc);
 		self.bytes.n_chars_ = self.nc;
-		std::cerr << self.n << "," << self.nc << "," << self.bytes.size() << std::endl;
 		return(stream);
 	}
 
