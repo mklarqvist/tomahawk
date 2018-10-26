@@ -114,6 +114,21 @@ void twk1_ldd_blk::SetOwn(twk1_blk_iterator& it, const uint32_t n_samples){
 	n_rec = blk->n;
 }
 
+void twk1_ldd_blk::SetOwn(twk1_block_t& it, const uint32_t n_samples){
+	if(owns_block) delete blk;
+	delete[] vec; vec = nullptr;
+	delete[] list; list = nullptr;
+
+	owns_block = false;
+	blk = &it;
+	// Decompress data
+	//it.zcodec.Decompress(it.oblk.bytes, it.buf);
+	//it.buf >> *blk;
+	//it.buf.reset();
+	n_rec = blk->n;
+}
+
+
 void twk1_ldd_blk::Clear(){
 	delete[] vec;
 	delete[] list;

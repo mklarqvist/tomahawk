@@ -11,6 +11,8 @@
 #include "timer.h"
 #include "writer.h"
 
+#include "intervalTree.h"
+
 // Method 0: None
 // Method 1: Performance + no math
 // Method 2: Debug correctness
@@ -168,7 +170,13 @@ struct twk_ld_perf {
 struct twk_ld_ticker {
 	typedef bool (twk_ld_ticker::*get_func)(uint32_t& from, uint32_t& to, uint8_t& type);
 
-	twk_ld_ticker() : n_perf(0), i(0), j(0), ldd(nullptr), diag(false), window(false), fL(0), tL(0), fR(0), tR(0), l_window(0), _getfunc(&twk_ld_ticker::GetBlockPair){}
+	twk_ld_ticker() :
+		n_perf(0), i(0), j(0),
+		ldd(nullptr),
+		diag(false), window(false),
+		fL(0), tL(0), fR(0), tR(0), l_window(0),
+		_getfunc(&twk_ld_ticker::GetBlockPair)
+	{}
 	~twk_ld_ticker(){}
 
 	inline void SetWindow(const bool yes = true){
@@ -417,7 +425,10 @@ struct twk_ld_balancer {
 			return false;
 		}
 		n = n_blocks; p = desired_parts; c = chosen_part;
-		if(p > n) p = n;
+		if(p > n){
+			std::cerr << "asking for more subproblems then there are blocks" << p << ">" << n << std::endl;
+			return false;
+		}
 
 		if(p == 1){
 			p = 1; c = 0;
@@ -429,7 +440,7 @@ struct twk_ld_balancer {
 		uint32_t factor = 0;
 		for(int i = 1; i < desired_parts; ++i){
 			if( (((i*i) - i) / 2) + i == desired_parts ){
-				std::cerr << "factor is " << i << std::endl;
+				//std::cerr << "factor is " << i << std::endl;
 				factor = i;
 				break;
 			}
@@ -449,15 +460,14 @@ struct twk_ld_balancer {
 				fR = tR - chunk_size;
 				tL = (i + 1 == factor ? n_blocks : chunk_size*(i+1));
 				fL = tL - chunk_size;
-				//std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
+
+				std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
 				if(k == chosen_part){
-					//std::cerr << "chosen part" << std::endl;
+					std::cerr << "chosen part:" << std::endl;
 					fromL = fL; toL = tL; fromR = fR; toR = tR;
-					// Square
-					//std::cerr << "from=" << toL - fromL << "," << toR - fromR << std::endl;
 					n_m = (toL - fromL) + (toR - fromR); diag = false;
 					if(i == j){ n_m = toL - fromL; diag = true; }
-					break;
+					return true;
 				}
 			}
 		}
@@ -630,7 +640,7 @@ public:
 };
 
 struct twk_ld_slave {
-	twk_ld_slave() : n_s(0), n_total(0), ticker(nullptr), thread(nullptr), ldd(nullptr), progress(nullptr){}
+	twk_ld_slave() : n_s(0), n_total(0), ticker(nullptr), thread(nullptr), ldd(nullptr), progress(nullptr), itree(nullptr){}
 	~twk_ld_slave(){ delete thread; }
 
 	std::thread* Start(){
@@ -641,6 +651,11 @@ struct twk_ld_slave {
 
 	bool CalculateGeneral(){
 
+	}
+
+	bool CalculatePhasedSlice(){
+
+		//itree->findOverlapping()
 	}
 
 	bool CalculatePhased(){
@@ -654,8 +669,11 @@ struct twk_ld_slave {
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
+
+			const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
+			//std::cerr << "getting=" << from << "," << to << "->" << (from - i_start) << "-" << (add + (to-j_start)) << " add=" << add << std::endl;
 			blocks[0].SetPreloaded(ldd[from - i_start]);
-			blocks[1].SetPreloaded(ldd[to - j_start]);
+			blocks[1].SetPreloaded(ldd[add + (to - j_start)]);
 
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
@@ -668,7 +686,7 @@ struct twk_ld_slave {
 						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
 						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
-						engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
 						else {
 							engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 						}
@@ -771,10 +789,64 @@ public:
 	twk1_ldd_blk* ldd;
 	twk_ld_progress* progress;
 	twk_ld_engine engine;
+	algorithm::IntervalTree<uint32_t, uint32_t>* itree;
 };
 
 class twk_ld {
 public:
+
+	bool ParseIntervalString(const std::string& s, twk_reader& reader){
+		std::cerr << "parsing=" << s << std::endl;
+		if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE)){
+			std::vector<std::string> rid = utility::split(s, ':');
+			std::vector<std::string> pos;
+			if(rid.size() == 2){
+				pos = utility::split(rid[1], '-');
+			} else {
+				std::cerr << "illegal format" << std::endl;
+				return false;
+			}
+			//std::cerr << "match=" << std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE) << std::endl;
+			//std::cerr << "parts=" << rid[0] << ", " << rid[1] << " and " << pos[0] << ", " << pos[1] << std::endl;
+			uint32_t ival_from = (uint32_t)std::atof(pos[0].c_str());
+			uint32_t ival_to   = (uint32_t)std::atof(pos[1].c_str());
+			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(pos[0].c_str()) << "->" << (uint32_t)std::atof(pos[1].c_str()) << std::endl;
+			uint32_t ival_rid = contig->idx;
+			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+			return true;
+
+		} else if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_POSITION)){
+			std::vector<std::string> rid = utility::split(s, ':');
+
+			//std::cerr << "match=" << std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE) << std::endl;
+			//std::cerr << "parts=" << rid[0] << ", " << rid[1] << " and " << pos[0] << ", " << pos[1] << std::endl;
+			uint32_t ival_from = (uint32_t)std::atof(rid[1].c_str());
+			uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str());
+			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(rid[1].c_str()) << "->" << (uint32_t)std::atof(rid[1].c_str()) << std::endl;
+			uint32_t ival_rid = contig->idx;
+			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+			return true;
+		} else if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_ONLY)){
+			const VcfContig* contig = reader.hdr.GetContig(s);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			ivecs[contig->idx].push_back(algorithm::Interval<uint32_t,uint32_t>(0,contig->n_bases,0));
+			return true;
+		} else
+			return false;
+	}
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
@@ -790,6 +862,12 @@ public:
 			std::cerr << "no filename" << std::endl;
 			return false;
 		}
+
+		if(settings.window && settings.n_chunks != 1){
+			std::cerr << "cannot use chunking in window mode" << std::endl;
+			return false;
+		}
+
 		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
 
 		twk_reader reader;
@@ -829,39 +907,37 @@ public:
 		writer->stream.flush();
 		buf.reset();
 
-		// New index
-		IndexOutput index(reader.hdr.GetNumberContigs());
-
+		// temp: find overlap
 		twk1_blk_iterator bit;
 		bit.stream = reader.stream;
 
-		if(settings.window && settings.n_chunks != 1){
-			std::cerr << "cannot use chunking in window mode" << std::endl;
-			return false;
-		}
-		if(settings.window) settings.c_chunk = 0;
+		ival_strings.push_back("20:20e6-30e6");
+		ivecs.resize(reader.hdr.GetNumberContigs());
 
-		twk_ld_balancer balancer;
-		if(balancer.Build(reader.index.n, settings.n_chunks, settings.c_chunk) == false){
-			std::cerr << "failed balancing" << std::endl;
-			return false;
+		for(int i = 0; i < ival_strings.size(); ++i){
+			if(this->ParseIntervalString(ival_strings[i],reader) == false)
+				return false;
 		}
 
-		Timer timer; timer.Start();
-		uint32_t n_blocks = balancer.n_m;
-		twk1_ldd_blk* ldd = new twk1_ldd_blk[n_blocks];
-		uint32_t n_variants = 0;
-		if(balancer.diag){
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-		} else {
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
+		//
+		itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
+		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
+			//std::vector< algorithm::Interval<uint32_t,uint32_t> > v;
+			//if(i == 19) ivecs[i].push_back(algorithm::Interval<uint32_t,uint32_t>((uint32_t)1E6,(uint32_t)10E6,0));
+			itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
 		}
-		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
-		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(n_blocks) << " blocks..." << std::endl;
-		bool pre_build = true;
 
-		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
+		std::vector<IndexEntry*> overlap_blocks = reader.index.FindOverlap(19,20e6,30e6);
+		uint32_t n_max_possible = 0;
+		for(int i = 0; i < overlap_blocks.size(); ++i){
+			n_max_possible += overlap_blocks[i]->n;
+		}
+		uint32_t m_blks = (n_max_possible / 500) + 1;
+		uint32_t n_blks = 0;
+
+		twk1_ldd_blk* ldd  = new twk1_ldd_blk[m_blks];
+		twk1_block_t* ldd2 = new twk1_block_t[m_blks]; // todo: find number of maximum variants, split that into blocks of 500 variants, keep track of how many blocks actually used
+		uint32_t n_vnts = 0;
 
 
 #if SIMD_AVAILABLE == 1
@@ -871,7 +947,70 @@ public:
 #endif
 		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
 
-		timer.Start();
+		Timer timer; timer.Start();
+		for(int i = 0; i < overlap_blocks.size(); ++i){
+			bit.stream->seekg(overlap_blocks[i]->foff);
+			if(bit.NextBlock() == false){
+				std::cerr << "failed to get->" << i << std::endl;
+				return false;
+			}
+
+			for(int j = 0; j < bit.blk.n; ++j){
+				if(itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos,bit.blk.rcds[j].pos).size())
+				{
+					//std::cerr << "overlaps" << std::endl;
+					if(ldd2[n_blks].n == 500){
+						ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+						++n_blks;
+
+					}
+					//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
+					ldd2[n_blks] += bit.blk.rcds[j];
+					++n_vnts;
+				}
+			}
+		}
+		// last block if non-empty
+		if(ldd2[n_blks].n){
+			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			++n_blks;
+		}
+		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
+		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
+
+		// New index
+		IndexOutput index(reader.hdr.GetNumberContigs());
+
+		if(settings.window) settings.c_chunk = 0;
+
+		twk_ld_balancer balancer;
+		if(balancer.Build(n_blks, settings.n_chunks, settings.c_chunk) == false){
+			std::cerr << "failed balancing" << std::endl;
+			return false;
+		}
+
+		//uint32_t n_blocks = balancer.n_m;
+		//twk1_ldd_blk* ldd = new twk1_ldd_blk[n_blocks];
+
+		uint32_t n_variants = 0;
+		if(balancer.diag){
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+		} else {
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
+		}
+
+		//std::cerr << "balancer=" << balancer.n_m << "/" << n_blks << std::endl;
+		//assert(balancer.n_m == n_blks);
+		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
+		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
+		bool pre_build = true;
+
+		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
+
+		/*
 		uint32_t local_block = 0;
 		if(pre_build){
 			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
@@ -928,12 +1067,12 @@ public:
 				}
 			}
 		}
-		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		uint64_t n_vnt_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
+		*/
+
+		uint64_t n_vnt_cmps = ((uint64_t)n_vnts * n_vnts - n_vnts) / 2;
 		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_vnt_cmps) << " variant comparisons..." << std::endl;
 
-
-		twk_ld_ticker ticker;
+		twk_ld_ticker ticker; ticker.SetWindow(settings.window);
 		ticker.diag = balancer.diag;
 		ticker.fL   = balancer.fromL;
 		ticker.tL   = balancer.toL;
@@ -951,6 +1090,7 @@ public:
 		twk_ld_slave* slaves = new twk_ld_slave[n_threads];
 		std::vector<std::thread*> threads(n_threads);
 
+		timer.Start();
 		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << n_threads << " threads: ";
 		for(int i = 0; i < n_threads; ++i){
 			slaves[i].ldd    = ldd;
@@ -988,9 +1128,9 @@ public:
 		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
 
 		// temp write out index
-		for(int i = 0; i < index.n; ++i){
-			std::cerr << i << "/" << index.n << " " << index.ent[i].rid << ":" << index.ent[i].minpos << "-" << index.ent[i].maxpos << " offset=" << index.ent[i].foff << "-" << index.ent[i].fend << " brid=" << index.ent[i].ridB << std::endl;
-		}
+		//for(int i = 0; i < index.n; ++i){
+		//	std::cerr << i << "/" << index.n << " " << index.ent[i].rid << ":" << index.ent[i].minpos << "-" << index.ent[i].maxpos << " offset=" << index.ent[i].foff << "-" << index.ent[i].fend << " brid=" << index.ent[i].ridB << std::endl;
+		//}
 
 		const uint64_t offset_start_index = writer->stream.tellp();
 		uint8_t marker = 0;
@@ -1002,7 +1142,11 @@ public:
 		writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
 		writer->stream.flush();
 
-		delete[] ldd; delete[] slaves; delete writer;
+		delete[] ldd; delete[] ldd2; delete[] slaves; delete writer;
+		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i) delete itree[i];
+		delete[] itree;
+		std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
+
 		return true;
 
 		twk1_ldd_blk blocks[2];
@@ -1208,6 +1352,9 @@ public:
 
 public:
 	twk_ld_settings settings;
+	std::vector<std::string> ival_strings;
+	std::vector< std::vector< algorithm::Interval<uint32_t,uint32_t> > > ivecs;
+	algorithm::IntervalTree<uint32_t,uint32_t>** itree;
 };
 
 }

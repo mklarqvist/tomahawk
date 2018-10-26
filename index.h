@@ -147,6 +147,20 @@ public:
 		this->ent_meta[rec.rid] += rec;
 	}
 
+	std::vector< IndexEntry* > FindOverlap(const uint32_t rid) const;
+	std::vector< IndexEntry* > FindOverlap(const uint32_t rid, const uint32_t pos) const;
+	std::vector< IndexEntry* > FindOverlap(const uint32_t rid, const uint32_t posA, const uint32_t posB) const{
+		std::vector<IndexEntry*> ret;
+		for(int i = 0; i < n; ++i){
+			if(ent[i].rid == rid && ent[i].minpos <= posB && ent[i].maxpos >= posA){
+				//std::cerr << "overlap=(" << rid << "," << posA << "," << posB << ") and (" << ent[i].rid << "," << ent[i].minpos << "," << ent[i].maxpos << ")" << std::endl;
+				ret.push_back(&ent[i]);
+			}
+		}
+		return(ret);
+	}
+
+
 	void resize(void){
 		if(this->ent == nullptr){
 			this->ent = new IndexEntry[500];

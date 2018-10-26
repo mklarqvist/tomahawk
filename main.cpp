@@ -25,12 +25,12 @@ int main(void){
 		tomahawk::twk_ld ld;
 		settings.in  = "/home/mk21/Downloads/test.twk";
 		settings.out = "/home/mk21/Downloads/debug.two";
-		settings.n_chunks = 55;
-		settings.c_chunk  = 23;
+		settings.n_chunks = 1; // has to be non-negative, non-zero
+		settings.c_chunk  = 0; // has to be in range [0, n_chunks)
 		settings.minR2    = 0.1;
 		settings.minP     = 1e-3;
-		//settings.window   = true;
-		//settings.l_window = 500000;
+		settings.window   = true;
+		settings.l_window = 500000;
 
 		if(ld.Compute(settings) == false){
 			std::cerr << "failed compute" << std::endl;

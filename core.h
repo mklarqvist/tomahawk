@@ -123,7 +123,7 @@ struct twk1_gt_t {
 	virtual uint8_t GetRefB(const uint32_t p) const =0;
 
 	virtual twk1_gt_t* Clone() =0;
-	virtual void Move(twk1_gt_t* other) =0;
+	virtual void Move(twk1_gt_t*& other) =0;
 	virtual twk_buffer_t& AddBuffer(twk_buffer_t& buffer) const =0;
 	virtual twk_buffer_t& ReadBuffer(twk_buffer_t& buffer) =0;
 
@@ -173,7 +173,7 @@ struct twk1_igt_t : public twk1_gt_t {
 	 * @return
 	 */
 	twk1_gt_t* Clone(){
-		twk1_igt_t* copied = new twk1_igt_t;
+		twk1_igt_t* copied = new twk1_igt_t<int_t>;
 		copied->n = n;
 		copied->miss = miss;
 		copied->data = new int_t[n];
@@ -185,12 +185,14 @@ struct twk1_igt_t : public twk1_gt_t {
 	 * Move operator for moving an inherited (virtual) class.
 	 * @param other
 	 */
-	void Move(twk1_gt_t* other){
-		if(other == nullptr) other = new twk1_igt_t;
-		twk1_igt_t<int_t>* temp = reinterpret_cast<twk1_igt_t<int_t>*>(other);
-		other->n = n; n = 0;
-		other->miss = miss;
-		std::swap(data, temp->data);
+	void Move(twk1_gt_t*& other){
+		delete other;
+		twk1_igt_t* dat = new twk1_igt_t<int_t>;
+		//twk1_igt_t<int_t>* temp = reinterpret_cast<twk1_igt_t<int_t>*>(other);
+		dat->n = n; n = 0;
+		dat->miss = miss;
+		std::swap(data, dat->data);
+		other = dat;
 		data = nullptr;
 	}
 
@@ -332,8 +334,6 @@ public:
 			this->m = 500;
 			return;
 		}
-		//std::cerr << "ressizing=" << n << "/" << m << std::endl;
-
 		twk1_t* temp = rcds;
 		rcds = new twk1_t[m*2];
 		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over

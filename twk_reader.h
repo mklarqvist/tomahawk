@@ -53,6 +53,7 @@ struct twk1_ldd_blk {
 	void SetPreloaded(const twk1_ldd_blk& other);
 	void Set(twk1_blk_iterator& it, const uint32_t n_samples);
 	void SetOwn(twk1_blk_iterator& it, const uint32_t n_samples);
+	void SetOwn(twk1_block_t& it, const uint32_t n_samples);
 	void Clear();
 
 	void Inflate(const uint32_t n_samples,
