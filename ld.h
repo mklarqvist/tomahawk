@@ -166,24 +166,33 @@ struct twk_ld_perf {
  * This approach allows perfect load-balancing at a small overall CPU cost.
  */
 struct twk_ld_ticker {
-	twk_ld_ticker() : n_perf(0), i(0), j(0), i_start(0), j_start(0), limA(0), limB(0), ldd(nullptr){}
+	typedef bool (twk_ld_ticker::*get_func)(uint32_t& from, uint32_t& to, uint8_t& type);
+
+	twk_ld_ticker() : n_perf(0), i(0), j(0), ldd(nullptr), diag(false), window(false), fL(0), tL(0), fR(0), tR(0), l_window(0), _getfunc(&twk_ld_ticker::GetBlockPair){}
 	~twk_ld_ticker(){}
+
+	inline void SetWindow(const bool yes = true){
+		window = yes;
+		_getfunc = (window ? &twk_ld_ticker::GetBlockWindow : &twk_ld_ticker::GetBlockPair);
+	}
+
+	inline bool Get(uint32_t& from, uint32_t& to, uint8_t& type){ return((this->*_getfunc)(from, to, type)); }
 
 	bool GetBlockWindow(uint32_t& from, uint32_t& to, uint8_t& type){
 		spinlock.lock();
 
-		if(j == limB){
-			++i; j = i; from = i; to = j; type = 1; ++j;
-			if(i == limA){ spinlock.unlock(); return false; }
+		if(j == tR){
+			++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
+			if(i == tL){ spinlock.unlock(); return false; }
 			++n_perf;
 			spinlock.unlock();
 			return true;
 		}
-		if(i == limA){ spinlock.unlock(); return false; }
+		if(i == tL){ spinlock.unlock(); return false; }
 
 		// First in tgt block - last in ref block
 		if(i != j){
-			if(ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec-1].pos > 1000000){
+			if(ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec-1].pos > l_window){
 				//std::cerr << "never overlap=" << ldd[j].blk->rcds[0].pos << "-" << ldd[i].blk->rcds[ldd[i].n_rec - 1].pos << "=" << ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec - 1].pos << std::endl;
 				//std::cerr << i << "," << j << "," << (int)type << std::endl;
 				++i; j = i; type = 1;
@@ -203,14 +212,14 @@ struct twk_ld_ticker {
 	bool GetBlockPair(uint32_t& from, uint32_t& to, uint8_t& type){
 		spinlock.lock();
 
-		if(j == limB){
-			++i; j = i; from = i; to = j; type = 1; ++j;
-			if(i == limA){ spinlock.unlock(); return false; }
+		if(j == tR){
+			++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
+			if(i == tL){ spinlock.unlock(); return false; }
 			++n_perf;
 			spinlock.unlock();
 			return true;
 		}
-		if(i == limA){ spinlock.unlock(); return false; }
+		if(i == tL){ spinlock.unlock(); return false; }
 		type = (i == j); from = i; to = j;
 		++j; ++n_perf;
 
@@ -221,9 +230,12 @@ struct twk_ld_ticker {
 
 	uint32_t n_perf;
 	SpinLock spinlock;
-	uint32_t i,j, i_start, j_start;
-	uint32_t limA, limB;
+	uint32_t i,j;
 	twk1_ldd_blk* ldd;
+
+	bool diag, window;
+	uint32_t fL, tL, fR, tR, l_window;
+	get_func _getfunc;
 };
 
 /**<
@@ -387,20 +399,76 @@ struct twk_ld_count {
  * can be parameterized.
  */
 struct twk_ld_balancer {
+	twk_ld_balancer() : diag(false), n(0), p(0), c(0), fromL(0), toL(0), fromR(0), toR(0), n_m(0){}
 
-	bool Build(uint32_t n_blocks, uint32_t desired_parts, uint32_t chosen_part){
-		assert(chosen_part < desired_parts);
+	/**<
+	 * Find the desired target subproblem range as a tuple (fromL,toL,fromR,toR).
+	 * @param n_blocks      Total number of blocks.
+	 * @param desired_parts Desired number of subproblems to solve.
+	 * @param chosen_part   Target subproblem we are interested in getting the ranges for.
+	 * @return              Return TRUE upon success or FALSE otherwise.
+	 */
+	bool Build(uint32_t n_blocks,
+	           uint32_t desired_parts,
+	           uint32_t chosen_part)
+	{
+		if(chosen_part >= desired_parts){
+			std::cerr << "illegal chosen block" << std::endl;
+			return false;
+		}
 		n = n_blocks; p = desired_parts; c = chosen_part;
 		if(p > n) p = n;
-		uint32_t chunk_size = n / p;
-		from = chunk_size*c;
-		to = chunk_size*(c+1);
-		if(c+1 == p) to = n_blocks;
+
+		if(p == 1){
+			p = 1; c = 0;
+			fromL = 0; toL = n_blocks; fromR = 0; toR = n_blocks;
+			n_m = n_blocks; diag = true;
+			return true;
+		}
+
+		uint32_t factor = 0;
+		for(int i = 1; i < desired_parts; ++i){
+			if( (((i*i) - i) / 2) + i == desired_parts ){
+				std::cerr << "factor is " << i << std::endl;
+				factor = i;
+				break;
+			}
+		}
+
+		if(factor == 0){
+			std::cerr << "could not partition into subproblem=" << desired_parts << std::endl;
+			return false;
+		}
+
+		// cycle
+		uint32_t chunk_size = n / factor;
+		uint32_t fL = 0, tL = 0, fR = 0, tR = 0;
+		for(int i = 0, k = 0; i < factor; ++i){ // rows
+			for(int j = i; j < factor; ++j, ++k){ // cols
+				tR = (j + 1 == factor ? n_blocks : chunk_size*(j+1));
+				fR = tR - chunk_size;
+				tL = (i + 1 == factor ? n_blocks : chunk_size*(i+1));
+				fL = tL - chunk_size;
+				//std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
+				if(k == chosen_part){
+					//std::cerr << "chosen part" << std::endl;
+					fromL = fL; toL = tL; fromR = fR; toR = tR;
+					// Square
+					//std::cerr << "from=" << toL - fromL << "," << toR - fromR << std::endl;
+					n_m = (toL - fromL) + (toR - fromR); diag = false;
+					if(i == j){ n_m = toL - fromL; diag = true; }
+					break;
+				}
+			}
+		}
 		return true;
 	}
 
+public:
+	bool diag; // is selectd chunk diagonal
 	uint32_t n, p, c; // number of available blocks, desired parts, chosen part
-	uint32_t from, to;
+	uint32_t fromL, toL, fromR, toR;
+	uint32_t n_m; // actual blocks used
 };
 
 /**<
@@ -408,14 +476,30 @@ struct twk_ld_balancer {
  */
 struct twk_ld_settings {
 	twk_ld_settings() :
-		square(false), window(true),
+		square(true), window(false),
 		c_level(1), b_size(10000), l_window(1000000),
-		minP(1e-2), minR2(0.3), minR(0.3), minD(-100), minDprime(0)
+		minP(1e-2), minR2(0.1), minDprime(0),
+		n_chunks(0), c_chunk(0)
 	{}
+
+	std::string GetString() const{
+		std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
+		              + ",window=" + std::string((window ? "TRUE" : "FALSE"))
+					  + ",compression_level=" + std::to_string(c_level)
+		              + ",block_size=" + std::to_string(b_size)
+		              + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
+					  + ",minP=" + std::to_string(minP)
+					  + ",minR2=" + std::to_string(minR2)
+		 	 	 	  + ",minDprime=" + std::to_string(minDprime)
+					  + ",n_chunks=" + std::to_string(c_chunk);
+		return(s);
+	}
+
 	bool square, window; // using square compute, using window compute
 	int32_t c_level, b_size, l_window; // compression level, block size, window size in bp
 	std::string in, out; // input file, output file/cout
-	double minP, minR2, minR, minD, minDprime;
+	double minP, minR2, minDprime;
+	int32_t n_chunks, c_chunk;
 };
 
 /**<
@@ -551,83 +635,25 @@ struct twk_ld_slave {
 
 	std::thread* Start(){
 		delete thread;
-		thread = new std::thread(&twk_ld_slave::Calculate, this);
+		thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
 		return(thread);
 	}
 
-	bool test(){
-		twk1_ldd_blk blocks[2];
-		uint32_t from, to; uint8_t type;
-		Timer timer; timer.Start();
+	bool CalculateGeneral(){
 
-		for(int b1 = 0; b1 < ticker->limA; ++b1){
-
-			//blocks[0] = ldd[b1];
-			//blocks[0].Inflate(n_s, TWK_LDD_ALL);
-			blocks[0].SetPreloaded(ldd[b1]);
-
-				for(int i = 0; i < ldd[from].n_rec; ++i){
-					for(int j = i+1; j < ldd[to].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
-							continue;
-						}
-
-						//if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
-							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,nullptr);
-							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
-						//else
-						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
-					}
-				}
-				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
-
-			for(int b2 = b1+1; b2 < ticker->limB; ++b2){
-				//blocks[1] = ldd[b2];
-				//blocks[1].Inflate(n_s, TWK_LDD_ALL);
-				blocks[1].SetPreloaded(ldd[b2]);
-
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
-							continue;
-						}
-
-						//engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-						//if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
-						engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,nullptr);
-							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-
-						//else
-						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
-					}
-				}
-				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
-			}
-		}
-
-		blocks[0].vec = nullptr; blocks[0].list = nullptr;
-		blocks[1].vec = nullptr; blocks[1].list = nullptr;
-
-		std::cerr << "done" << std::endl;
-		return true;
 	}
 
-	bool Calculate(){
+	bool CalculatePhased(){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
 
-		const uint32_t i_start = ticker->i_start;
-		const uint32_t j_start = ticker->j_start;
-		while(true){
-			if(!ticker->GetBlockWindow(from, to, type)) break;
+		const uint32_t i_start = ticker->fL;
+		const uint32_t j_start = ticker->fR;
 
-			//blocks[0] = ldd[from];
-			//blocks[0].Inflate(n_s, TWK_LDD_LIST);
-			//blocks[1] = ldd[to];
-			//blocks[1].Inflate(n_s, TWK_LDD_LIST);
-			//std::cerr << "start=" << (int)from - i_start << " " << from << "-" << i_start << std::endl;
-			//std::cerr << "start=" << (int)to - j_start << " " << to << "-" << j_start << std::endl;
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
 			blocks[0].SetPreloaded(ldd[from - i_start]);
 			blocks[1].SetPreloaded(ldd[to - j_start]);
 
@@ -643,8 +669,9 @@ struct twk_ld_slave {
 						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
 						engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
-						else
-							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,nullptr);
+						else {
+							engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						}
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -656,17 +683,77 @@ struct twk_ld_slave {
 						}
 
 						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
-					//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-						else
-							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,nullptr);
+						else {
+							engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						}
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 			}
 		}
+		//std::cerr << "done" << std::endl;
 
+		// if preloaded
+		blocks[0].vec = nullptr; blocks[0].list = nullptr;
+		blocks[1].vec = nullptr; blocks[1].list = nullptr;
+
+		return true;
+	}
+
+	bool ComputeUnphased(){
+		twk1_ldd_blk blocks[2];
+		uint32_t from, to; uint8_t type;
+		Timer timer; timer.Start();
+
+		const uint32_t i_start = ticker->fL;
+		const uint32_t j_start = ticker->fR;
+
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
+			blocks[0].SetPreloaded(ldd[from - i_start]);
+			blocks[1].SetPreloaded(ldd[to - j_start]);
+
+			if(type == 1){
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = i+1; j < blocks[0].n_rec; ++j){
+
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 50)
+						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+						engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+						else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						}
+					}
+				}
+				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+			} else {
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = 0; j < blocks[1].n_rec; ++j){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 50)
+						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
+							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+						else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						}
+					}
+				}
+				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+			}
+		}
 		//std::cerr << "done" << std::endl;
 
 		// if preloaded
@@ -691,14 +778,12 @@ public:
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
-	bool Compute(){
-		settings.in = "/media/mdrk/NVMe/1kgp3/test.twk";
-		//settings.output = "-";
-		//std::string filename = "/home/mk21/Downloads/debug.twk";
-		//std::string filename = "/media/mdrk/NVMe/1kgp3/debug.twk";
-		//std::string outname = "/media/mdrk/NVMe/1kgp3/debug.two";
-		settings.out = "/media/mdrk/NVMe/1kgp3/debug.two";
+	bool Compute(const twk_ld_settings& settings){
+		this->settings = settings;
+		return(Compute());
+	}
 
+	bool Compute(){
 		ProgramMessage();
 		std::cerr << utility::timestamp("LOG") << "Calling calc..." << std::endl;
 		if(settings.in.size() == 0){
@@ -707,7 +792,6 @@ public:
 		}
 		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
 
-		//*//////////////// Reopen and compute
 		twk_reader reader;
 		if(reader.Open(settings.in) == false){
 			std::cerr << "failed" << std::endl;
@@ -728,7 +812,7 @@ public:
 				return false;
 			}
 		}
-		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << " and blocks: " << utility::ToPrettyString(reader.index.n) << "..." << std::endl;
 
 		tomahawk::ZSTDCodec zcodec;
 		writer->write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
@@ -738,33 +822,47 @@ public:
 			std::cerr << "failed to compress" << std::endl;
 			return false;
 		}
-		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
 
 		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
 		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
 		writer->write(obuf.data(),obuf.size());
 		writer->stream.flush();
 		buf.reset();
-		std::cerr << "start of data=" << writer->stream.tellp() << std::endl;
-		//
+
 		// New index
 		IndexOutput index(reader.hdr.GetNumberContigs());
 
 		twk1_blk_iterator bit;
 		bit.stream = reader.stream;
 
+		if(settings.window && settings.n_chunks != 1){
+			std::cerr << "cannot use chunking in window mode" << std::endl;
+			return false;
+		}
+		if(settings.window) settings.c_chunk = 0;
+
 		twk_ld_balancer balancer;
-		balancer.Build(reader.index.n, 1, 0);
+		if(balancer.Build(reader.index.n, settings.n_chunks, settings.c_chunk) == false){
+			std::cerr << "failed balancing" << std::endl;
+			return false;
+		}
 
 		Timer timer; timer.Start();
-		uint32_t n_blocks = balancer.to - balancer.from;
+		uint32_t n_blocks = balancer.n_m;
 		twk1_ldd_blk* ldd = new twk1_ldd_blk[n_blocks];
 		uint32_t n_variants = 0;
-		for(int i = balancer.from; i < balancer.to; ++i) n_variants += reader.index.ent[i].n;
+		if(balancer.diag){
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+		} else {
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
+		}
+		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(n_blocks) << " blocks..." << std::endl;
-
 		bool pre_build = true;
-		timer.Start();
+
+		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
+
 
 #if SIMD_AVAILABLE == 1
 		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
@@ -773,21 +871,38 @@ public:
 #endif
 		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
 
-		//uint32_t i = 0;
+		timer.Start();
+		uint32_t local_block = 0;
 		if(pre_build){
-			bit.stream->seekg(reader.index.ent[balancer.from].foff);
-			for(int i = 0; i < n_blocks; ++i){
+			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
+			for(int i = balancer.fromL; i < balancer.toL; ++i){
 				if(bit.NextBlockRaw() == false){
 					std::cerr << "failed to get->" << i << std::endl;
 					return false;
 				}
 
 				//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-				ldd[i].SetOwn(bit, reader.hdr.GetNumberSamples());
-				ldd[i].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL,true);
+				ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
+				ldd[local_block].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+				++local_block;
 			}
+			if(balancer.diag == false){
+				bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
+				for(int i = balancer.fromR; i < balancer.toR; ++i){
+					if(bit.NextBlockRaw() == false){
+						std::cerr << "failed to get->" << i << std::endl;
+						return false;
+					}
+
+					//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
+					ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
+					ldd[local_block].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+					++local_block;
+				}
+			}
+
 		} else {
-			bit.stream->seekg(reader.index.ent[balancer.from].foff);
+			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
 			for(int i = 0; i < n_blocks; ++i){
 				if(bit.NextBlockRaw() == false){
 					std::cerr << "failed to get->" << i << std::endl;
@@ -795,22 +910,40 @@ public:
 				}
 
 				//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-				ldd[i].SetOwn(bit, reader.hdr.GetNumberSamples());
+				ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
+				++local_block;
+			}
+
+			if(balancer.diag == false){
+				bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
+				for(int i = balancer.fromR; i < balancer.toR; ++i){
+					if(bit.NextBlockRaw() == false){
+						std::cerr << "failed to get->" << i << std::endl;
+						return false;
+					}
+
+					//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
+					ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
+					++local_block;
+				}
 			}
 		}
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		std::cerr << "balancing=" << balancer.from << "-" << balancer.to << std::endl;
 		uint64_t n_vnt_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
 		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_vnt_cmps) << " variant comparisons..." << std::endl;
 
+
 		twk_ld_ticker ticker;
-		ticker.i = balancer.from;
-		ticker.j = balancer.from;
-		ticker.i_start = balancer.from;
-		ticker.j_start = balancer.from;
-		ticker.limA = balancer.to;
-		ticker.limB = balancer.to;
+		ticker.diag = balancer.diag;
+		ticker.fL   = balancer.fromL;
+		ticker.tL   = balancer.toL;
+		ticker.fR   = balancer.fromR;
+		ticker.tR   = balancer.toR;
 		ticker.ldd  = ldd;
+		ticker.i    = balancer.fromL;
+		ticker.j    = balancer.fromR;
+		ticker.window   = settings.window;
+		ticker.l_window = settings.l_window;
 		twk_ld_progress progress;
 		progress.n_s = reader.hdr.GetNumberSamples();
 		uint32_t n_threads = std::thread::hardware_concurrency();
@@ -820,8 +953,8 @@ public:
 
 		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << n_threads << " threads: ";
 		for(int i = 0; i < n_threads; ++i){
-			slaves[i].ldd = ldd;
-			slaves[i].n_s = reader.hdr.GetNumberSamples();
+			slaves[i].ldd    = ldd;
+			slaves[i].n_s    = reader.hdr.GetNumberSamples();
 			slaves[i].ticker = &ticker;
 			slaves[i].engine.SetSamples(reader.hdr.GetNumberSamples());
 			slaves[i].engine.SetBlocksize(settings.b_size);
@@ -844,7 +977,6 @@ public:
 		writer->stream.flush();
 
 		std::cerr << "performed=" << ticker.n_perf << std::endl;
-
 
 		buf.reset(); obuf.reset();
 		buf << index;
@@ -870,10 +1002,7 @@ public:
 		writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
 		writer->stream.flush();
 
-		delete[] ldd;
-		delete[] slaves;
-		delete writer;
-
+		delete[] ldd; delete[] slaves; delete writer;
 		return true;
 
 		twk1_ldd_blk blocks[2];

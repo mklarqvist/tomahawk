@@ -1194,7 +1194,7 @@ bool twk_ld_engine::CompressFwd(){
 		irecF.foff = writer->stream.tellp();
 		writer->Add(ibuf.size(), obuf.size(), obuf);
 		irecF.fend = writer->stream.tellp();
-		irecF.n = ibuf.size() / sizeof(twk1_two_t);
+		irecF.n = blk_f.n;
 		index->AddThreadSafe(irecF);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
 		ibuf.reset();
@@ -1217,10 +1217,10 @@ bool twk_ld_engine::CompressRev(){
 		t_out += ibuf.size() / sizeof(twk1_two_t);
 		progress->b_out += ibuf.size();
 		//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
-		irecF.foff = writer->stream.tellp();
+		irecR.foff = writer->stream.tellp();
 		writer->Add(ibuf.size(), obuf.size(), obuf);
-		irecF.fend = writer->stream.tellp();
-		irecF.n = ibuf.size() / sizeof(twk1_two_t);
+		irecR.fend = writer->stream.tellp();
+		irecR.n = blk_r.n;
 		index->AddThreadSafe(irecR);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
 		ibuf.reset();

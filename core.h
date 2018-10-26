@@ -846,7 +846,7 @@ public:
 	void resize(const uint32_t p){
 		if(p < n) return;
 
-		std::cerr << "resizing to " << p << " @ " << n << "/" << m << std::endl;
+		//std::cerr << "resizing to " << p << " @ " << n << "/" << m << std::endl;
 
 		twk1_two_t* temp = rcds;
 		rcds = new twk1_two_t[p];
@@ -862,7 +862,7 @@ public:
 			this->m = 500;
 			return;
 		}
-		std::cerr << "resizing=" << n << "/" << m << std::endl;
+		//std::cerr << "resizing=" << n << "/" << m << std::endl;
 
 		twk1_two_t* temp = rcds;
 		rcds = new twk1_two_t[m*2];
@@ -901,6 +901,7 @@ public:
 	}
 
 	bool Sort(){
+		std::cerr << "sorting=" << n << std::endl;
 		std::sort(start(), end());
 		return(true);
 	}
