@@ -487,7 +487,7 @@ public:
 struct twk_ld_settings {
 	twk_ld_settings() :
 		square(true), window(false),
-		c_level(1), b_size(10000), l_window(1000000),
+		c_level(1), bl_size(500), b_size(10000), l_window(1000000),
 		minP(1e-2), minR2(0.1), minDprime(0),
 		n_chunks(0), c_chunk(0)
 	{}
@@ -496,7 +496,8 @@ struct twk_ld_settings {
 		std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
 		              + ",window=" + std::string((window ? "TRUE" : "FALSE"))
 					  + ",compression_level=" + std::to_string(c_level)
-		              + ",block_size=" + std::to_string(b_size)
+		              + ",block_size=" + std::to_string(bl_size)
+					  + ",output_block_size=" + std::to_string(b_size)
 		              + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
 					  + ",minP=" + std::to_string(minP)
 					  + ",minR2=" + std::to_string(minR2)
@@ -506,10 +507,11 @@ struct twk_ld_settings {
 	}
 
 	bool square, window; // using square compute, using window compute
-	int32_t c_level, b_size, l_window; // compression level, block size, window size in bp
+	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
 	std::string in, out; // input file, output file/cout
 	double minP, minR2, minDprime;
 	int32_t n_chunks, c_chunk;
+	std::vector<std::string> ival_strings; // unparsed interval strings
 };
 
 /**<
@@ -794,10 +796,27 @@ public:
 
 class twk_ld {
 public:
+	twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr), itree(nullptr)
+	{
+	}
+
+	~twk_ld(){
+		delete[] ldd; delete[] ldd2;;
+		for(uint32_t i = 0; i < n_tree; ++i) delete itree[i];
+		delete[] itree;
+	}
+
+	bool ParseIntervalStrings(twk_reader& reader){
+		for(int i = 0; i < settings.ival_strings.size(); ++i){
+			if(this->ParseIntervalString(settings.ival_strings[i], reader) == false)
+				return false;
+		}
+		return true;
+	}
 
 	bool ParseIntervalString(const std::string& s, twk_reader& reader){
 		std::cerr << "parsing=" << s << std::endl;
-		if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE)){
+		if(std::regex_match(s, TWK_REGEX_CONTIG_RANGE)){
 			std::vector<std::string> rid = utility::split(s, ':');
 			std::vector<std::string> pos;
 			if(rid.size() == 2){
@@ -818,9 +837,11 @@ public:
 			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(pos[0].c_str()) << "->" << (uint32_t)std::atof(pos[1].c_str()) << std::endl;
 			uint32_t ival_rid = contig->idx;
 			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+			std::vector<IndexEntry*> idx = reader.index.FindOverlap(ival_rid,ival_from,ival_to);
+			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
 			return true;
 
-		} else if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_POSITION)){
+		} else if(std::regex_match(s, TWK_REGEX_CONTIG_POSITION)){
 			std::vector<std::string> rid = utility::split(s, ':');
 
 			//std::cerr << "match=" << std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE) << std::endl;
@@ -835,20 +856,195 @@ public:
 			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(rid[1].c_str()) << "->" << (uint32_t)std::atof(rid[1].c_str()) << std::endl;
 			uint32_t ival_rid = contig->idx;
 			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+			std::vector<IndexEntry*> idx = reader.index.FindOverlap(ival_rid,ival_from,ival_to);
+			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
 			return true;
-		} else if(std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_ONLY)){
+		} else if(std::regex_match(s, TWK_REGEX_CONTIG_ONLY)){
 			const VcfContig* contig = reader.hdr.GetContig(s);
 			if(contig == nullptr){
 				std::cerr << "contig does not exist" << std::endl;
 				return false;
 			}
 			ivecs[contig->idx].push_back(algorithm::Interval<uint32_t,uint32_t>(0,contig->n_bases,0));
+			std::vector<IndexEntry*> idx = reader.index.FindOverlap(contig->idx,0,contig->n_bases);
+			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
 			return true;
 		} else
 			return false;
 	}
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
+
+	bool WriteHeader(twk_writer_t* writer, twk_reader& reader) const{
+		if(writer == nullptr)
+			return false;
+
+		tomahawk::ZSTDCodec zcodec;
+		writer->write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
+		tomahawk::twk_buffer_t buf(256000), obuf(256000);
+		buf << reader.hdr;
+		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
+			std::cerr << "failed to compress" << std::endl;
+			return false;
+		}
+
+		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		writer->write(obuf.data(),obuf.size());
+		writer->stream.flush();
+		buf.reset();
+
+		return(writer->good());
+	}
+
+	bool WriteFinal(twk_writer_t* writer, IndexOutput& index) const {
+		if(writer == nullptr) return false;
+
+		tomahawk::twk_buffer_t buf(256000), obuf(256000);
+		tomahawk::ZSTDCodec zcodec;
+
+		buf << index;
+		//std::cerr << "index buf size =" << buf.size() << std::endl;
+		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
+			std::cerr << "failed compression" << std::endl;
+			return false;
+		}
+		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
+
+		// temp write out index
+		//for(int i = 0; i < index.n; ++i){
+		//	std::cerr << i << "/" << index.n << " " << index.ent[i].rid << ":" << index.ent[i].minpos << "-" << index.ent[i].maxpos << " offset=" << index.ent[i].foff << "-" << index.ent[i].fend << " brid=" << index.ent[i].ridB << std::endl;
+		//}
+
+		const uint64_t offset_start_index = writer->stream.tellp();
+		uint8_t marker = 0;
+		writer->write(reinterpret_cast<const char*>(&marker),sizeof(uint8_t));
+		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		writer->write(obuf.data(),obuf.size());
+		writer->write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
+		writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
+		writer->stream.flush();
+		return(writer->good());
+	}
+
+	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit){
+		if(settings.ival_strings.size()) return(this->LoadTargetBlocks(reader, bit));
+		else return(this->LoadAllBlocks(reader, bit));
+	}
+
+	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit){
+		if(settings.ival_strings.size() == 0){ // if have interval strings
+			return false;
+		}
+		this->ivecs.resize(reader.hdr.GetNumberContigs());
+		if(this->ParseIntervalStrings(reader) == false)
+			return false;
+
+		this->itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
+		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
+			this->itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		}
+
+		uint32_t n_max_possible = 0;
+		for(int i = 0; i < overlap_blocks.size(); ++i){
+			n_max_possible += this->overlap_blocks[i]->n;
+		}
+
+		uint32_t m_blks = (n_max_possible / settings.bl_size) + 1;
+		ldd  = new twk1_ldd_blk[m_blks];
+		ldd2 = new twk1_block_t[m_blks];
+
+#if SIMD_AVAILABLE == 1
+		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+#else
+		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+#endif
+		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
+
+		Timer timer; timer.Start();
+		for(int i = 0; i < overlap_blocks.size(); ++i){
+			bit.stream->seekg(overlap_blocks[i]->foff);
+			if(bit.NextBlock() == false){
+				std::cerr << "failed to get->" << i << std::endl;
+				return false;
+			}
+
+			for(int j = 0; j < bit.blk.n; ++j){
+				if(itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos,bit.blk.rcds[j].pos).size())
+				{
+					//std::cerr << "overlaps" << std::endl;
+					if(ldd2[n_blks].n == settings.bl_size){
+						ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+						++n_blks;
+
+					}
+					//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
+					ldd2[n_blks] += bit.blk.rcds[j];
+					++n_vnts;
+				}
+			}
+		}
+		// last block if non-empty
+		if(ldd2[n_blks].n){
+			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			++n_blks;
+		}
+		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
+		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
+
+		return true;
+	}
+
+	bool LoadAllBlocks(twk_reader& reader, twk1_blk_iterator& bit){
+		uint32_t n_max_possible = 0;
+		for(int i = 0; i < reader.index.n; ++i){
+			n_max_possible += reader.index.ent[i].n;
+		}
+
+		uint32_t m_blks = (n_max_possible / settings.bl_size) + 1;
+		ldd  = new twk1_ldd_blk[m_blks];
+		ldd2 = new twk1_block_t[m_blks];
+
+#if SIMD_AVAILABLE == 1
+		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+#else
+		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+#endif
+		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
+
+		Timer timer; timer.Start();
+		bit.stream->seekg(reader.index.ent[0].foff);
+		for(int i = 0; i < reader.index.n; ++i){
+			if(bit.NextBlock() == false){
+				std::cerr << "failed to get->" << i << std::endl;
+				return false;
+			}
+
+			for(int j = 0; j < bit.blk.n; ++j){
+				if(ldd2[n_blks].n == settings.bl_size){
+					ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+					ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+					++n_blks;
+
+				}
+				//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
+				ldd2[n_blks] += bit.blk.rcds[j];
+				++n_vnts;
+			}
+		}
+		// last block if non-empty
+		if(ldd2[n_blks].n){
+			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
+			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			++n_blks;
+		}
+		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
+		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
+		return(true);
+	}
 
 	bool Compute(const twk_ld_settings& settings){
 		this->settings = settings;
@@ -872,116 +1068,26 @@ public:
 
 		twk_reader reader;
 		if(reader.Open(settings.in) == false){
-			std::cerr << "failed" << std::endl;
+			std::cerr << "failed to open file" << std::endl;
 			return false;
 		}
 
-		twk_writer_t* writer = nullptr;
-		if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
-			std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
-			writer = new twk_writer_stream;
-		} else {
-			std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
-
-			writer = new twk_writer_file;
-			if(writer->Open(settings.out) == false){
-				std::cerr << "failed to open" << std::endl;
-				delete writer;
-				return false;
-			}
-		}
 		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << " and blocks: " << utility::ToPrettyString(reader.index.n) << "..." << std::endl;
 
-		tomahawk::ZSTDCodec zcodec;
-		writer->write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
-		tomahawk::twk_buffer_t buf(256000), obuf(256000);
-		buf << reader.hdr;
-		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-			std::cerr << "failed to compress" << std::endl;
-			return false;
-		}
-
-		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
-		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-		writer->write(obuf.data(),obuf.size());
-		writer->stream.flush();
-		buf.reset();
-
-		// temp: find overlap
 		twk1_blk_iterator bit;
 		bit.stream = reader.stream;
 
-		ival_strings.push_back("20:20e6-30e6");
-		ivecs.resize(reader.hdr.GetNumberContigs());
+		Timer timer;
 
-		for(int i = 0; i < ival_strings.size(); ++i){
-			if(this->ParseIntervalString(ival_strings[i],reader) == false)
-				return false;
+		if(this->LoadBlocks(reader, bit) == false){
+			std::cerr << "failed to load blocks" << std::endl;
+			return false;
 		}
 
-		//
-		itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
-		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
-			//std::vector< algorithm::Interval<uint32_t,uint32_t> > v;
-			//if(i == 19) ivecs[i].push_back(algorithm::Interval<uint32_t,uint32_t>((uint32_t)1E6,(uint32_t)10E6,0));
-			itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		if(this->n_blks == 0){
+			std::cerr << "no data available" << std::endl;
+			return true;
 		}
-
-		std::vector<IndexEntry*> overlap_blocks = reader.index.FindOverlap(19,20e6,30e6);
-		uint32_t n_max_possible = 0;
-		for(int i = 0; i < overlap_blocks.size(); ++i){
-			n_max_possible += overlap_blocks[i]->n;
-		}
-		uint32_t m_blks = (n_max_possible / 500) + 1;
-		uint32_t n_blks = 0;
-
-		twk1_ldd_blk* ldd  = new twk1_ldd_blk[m_blks];
-		twk1_block_t* ldd2 = new twk1_block_t[m_blks]; // todo: find number of maximum variants, split that into blocks of 500 variants, keep track of how many blocks actually used
-		uint32_t n_vnts = 0;
-
-
-#if SIMD_AVAILABLE == 1
-		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-#else
-		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-#endif
-		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
-
-		Timer timer; timer.Start();
-		for(int i = 0; i < overlap_blocks.size(); ++i){
-			bit.stream->seekg(overlap_blocks[i]->foff);
-			if(bit.NextBlock() == false){
-				std::cerr << "failed to get->" << i << std::endl;
-				return false;
-			}
-
-			for(int j = 0; j < bit.blk.n; ++j){
-				if(itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos,bit.blk.rcds[j].pos).size())
-				{
-					//std::cerr << "overlaps" << std::endl;
-					if(ldd2[n_blks].n == 500){
-						ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
-						++n_blks;
-
-					}
-					//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
-					ldd2[n_blks] += bit.blk.rcds[j];
-					++n_vnts;
-				}
-			}
-		}
-		// last block if non-empty
-		if(ldd2[n_blks].n){
-			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
-			++n_blks;
-		}
-		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
-
-		// New index
-		IndexOutput index(reader.hdr.GetNumberContigs());
 
 		if(settings.window) settings.c_chunk = 0;
 
@@ -991,9 +1097,6 @@ public:
 			return false;
 		}
 
-		//uint32_t n_blocks = balancer.n_m;
-		//twk1_ldd_blk* ldd = new twk1_ldd_blk[n_blocks];
-
 		uint32_t n_variants = 0;
 		if(balancer.diag){
 			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
@@ -1002,75 +1105,10 @@ public:
 			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
 		}
 
-		//std::cerr << "balancer=" << balancer.n_m << "/" << n_blks << std::endl;
-		//assert(balancer.n_m == n_blks);
 		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
-		bool pre_build = true;
-
 		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
-
-		/*
-		uint32_t local_block = 0;
-		if(pre_build){
-			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
-			for(int i = balancer.fromL; i < balancer.toL; ++i){
-				if(bit.NextBlockRaw() == false){
-					std::cerr << "failed to get->" << i << std::endl;
-					return false;
-				}
-
-				//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-				ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
-				ldd[local_block].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
-				++local_block;
-			}
-			if(balancer.diag == false){
-				bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
-				for(int i = balancer.fromR; i < balancer.toR; ++i){
-					if(bit.NextBlockRaw() == false){
-						std::cerr << "failed to get->" << i << std::endl;
-						return false;
-					}
-
-					//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-					ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
-					ldd[local_block].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
-					++local_block;
-				}
-			}
-
-		} else {
-			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
-			for(int i = 0; i < n_blocks; ++i){
-				if(bit.NextBlockRaw() == false){
-					std::cerr << "failed to get->" << i << std::endl;
-					return false;
-				}
-
-				//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-				ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
-				++local_block;
-			}
-
-			if(balancer.diag == false){
-				bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
-				for(int i = balancer.fromR; i < balancer.toR; ++i){
-					if(bit.NextBlockRaw() == false){
-						std::cerr << "failed to get->" << i << std::endl;
-						return false;
-					}
-
-					//std::cerr << "next-block=" << bit.stream->tellg() << " n=" << bit.blk.n << std::endl;
-					ldd[local_block].SetOwn(bit, reader.hdr.GetNumberSamples());
-					++local_block;
-				}
-			}
-		}
-		*/
-
-		uint64_t n_vnt_cmps = ((uint64_t)n_vnts * n_vnts - n_vnts) / 2;
-		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_vnt_cmps) << " variant comparisons..." << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_vnts * n_vnts - n_vnts) / 2) << " variant comparisons..." << std::endl;
 
 		twk_ld_ticker ticker; ticker.SetWindow(settings.window);
 		ticker.diag = balancer.diag;
@@ -1089,6 +1127,31 @@ public:
 		//n_threads  = 1;
 		twk_ld_slave* slaves = new twk_ld_slave[n_threads];
 		std::vector<std::thread*> threads(n_threads);
+
+		// Start writing file.
+		twk_writer_t* writer = nullptr;
+		if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
+			std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
+			writer = new twk_writer_stream;
+		} else {
+			std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
+
+			writer = new twk_writer_file;
+			if(writer->Open(settings.out) == false){
+				std::cerr << "failed to open" << std::endl;
+				delete writer;
+				return false;
+			}
+		}
+
+		if(this->WriteHeader(writer, reader) == false){
+			std::cerr << "failed to write header" << std::endl;
+			return false;
+		}
+		// end start write
+
+		// New index
+		IndexOutput index(reader.hdr.GetNumberContigs());
 
 		timer.Start();
 		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << n_threads << " threads: ";
@@ -1117,34 +1180,12 @@ public:
 		writer->stream.flush();
 
 		std::cerr << "performed=" << ticker.n_perf << std::endl;
-
-		buf.reset(); obuf.reset();
-		buf << index;
-		//std::cerr << "index buf size =" << buf.size() << std::endl;
-		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-			std::cerr << "failed compression" << std::endl;
+		if(this->WriteFinal(writer, index) == false){
+			std::cerr << "failed to finalize writing" << std::endl;
 			return false;
 		}
-		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
 
-		// temp write out index
-		//for(int i = 0; i < index.n; ++i){
-		//	std::cerr << i << "/" << index.n << " " << index.ent[i].rid << ":" << index.ent[i].minpos << "-" << index.ent[i].maxpos << " offset=" << index.ent[i].foff << "-" << index.ent[i].fend << " brid=" << index.ent[i].ridB << std::endl;
-		//}
-
-		const uint64_t offset_start_index = writer->stream.tellp();
-		uint8_t marker = 0;
-		writer->write(reinterpret_cast<const char*>(&marker),sizeof(uint8_t));
-		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
-		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-		writer->write(obuf.data(),obuf.size());
-		writer->write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
-		writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
-		writer->stream.flush();
-
-		delete[] ldd; delete[] ldd2; delete[] slaves; delete writer;
-		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i) delete itree[i];
-		delete[] itree;
+		delete[] slaves; delete writer;
 		std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
 
 		return true;
@@ -1351,10 +1392,13 @@ public:
 	}
 
 public:
+	uint32_t n_blks, m_blks, n_vnts, n_tree;
 	twk_ld_settings settings;
-	std::vector<std::string> ival_strings;
-	std::vector< std::vector< algorithm::Interval<uint32_t,uint32_t> > > ivecs;
-	algorithm::IntervalTree<uint32_t,uint32_t>** itree;
+	twk1_ldd_blk* ldd;
+	twk1_block_t* ldd2;
+	std::vector< std::vector< algorithm::Interval<uint32_t,uint32_t> > > ivecs; // vector of vectors of intervals
+	std::vector<IndexEntry*> overlap_blocks; // overlapping blocks of interest
+	algorithm::IntervalTree<uint32_t,uint32_t>** itree; // interval tree array
 };
 
 }

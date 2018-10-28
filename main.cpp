@@ -29,8 +29,11 @@ int main(void){
 		settings.c_chunk  = 0; // has to be in range [0, n_chunks)
 		settings.minR2    = 0.1;
 		settings.minP     = 1e-3;
-		settings.window   = true;
-		settings.l_window = 500000;
+		//settings.window   = true;
+		//settings.l_window = 500000;
+		// Todo: dedupe intervals
+		settings.ival_strings.push_back("20:20e6-21e6");
+		settings.ival_strings.push_back("20:40e6-41e6");
 
 		if(ld.Compute(settings) == false){
 			std::cerr << "failed compute" << std::endl;
@@ -46,10 +49,11 @@ int main(void){
 
 	tomahawk::twk1_two_iterator it;
 	it.stream = oreader.stream;
-	uint32_t i = 0;
 	tomahawk::twk1_two_block_t blk2;
 	std::cerr << "resizing to=" << 1000000000/sizeof(tomahawk::twk1_two_t) << " entries..." << std::endl;
 	blk2.resize(1000000000/sizeof(tomahawk::twk1_two_t));
+
+	//std::FILE* tmpf = std::tmpfile();
 
 	uint32_t tot = 0;
 	while(it.NextBlock()){
@@ -71,7 +75,6 @@ int main(void){
 		//std::cerr << blk2.n << "/" << blk2.m << std::endl;
 	}
 	if(blk2.n){
-		//std::cerr << "resseting" << std::endl;
 		blk2.Sort();
 		//for(int k = 0; k < blk2.n; ++k){
 		//	blk2.rcds[k].Print(std::cerr);
