@@ -280,13 +280,14 @@ struct twk_ld_progress {
 				<< std::setw(10) << "Progress"
 				<< "\tEst. Time left" << std::endl;
 
+		std::this_thread::sleep_for(std::chrono::seconds(30)); // first sleep
 		while(is_ticking){
 			// Triggered every cycle (119 ms)
 			//if(this->Detailed)
 			//	this->GetElapsedTime();
 
 			++i;
-			if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
+			//if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
 				//const double ComparisonsPerSecond = (double)n_var.load()/timer.Elapsed().count();
 				if(n_var.load() > variant_overflow){ variant_width += 3; variant_overflow *= 1e3; }
 				if(n_var.load() > genotype_overflow){ genotype_width += 3; genotype_overflow *= 1e3; }
@@ -302,8 +303,8 @@ struct twk_ld_progress {
 						<< std::setw(10) << 0 << '\t'
 						<< 0 << std::endl;
 				i = 0;
-			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(119));
+			//}
+			std::this_thread::sleep_for(std::chrono::seconds(30));
 		}
 		is_ticking = false;
 
@@ -667,6 +668,9 @@ struct twk_ld_slave {
 
 		const uint32_t i_start = ticker->fL;
 		const uint32_t j_start = ticker->fR;
+		uint32_t prev_i = 0;
+		uint32_t prev_j = 0;
+		uint32_t n_cycles = 0;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -674,18 +678,44 @@ struct twk_ld_slave {
 
 			const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 			//std::cerr << "getting=" << from << "," << to << "->" << (from - i_start) << "-" << (add + (to-j_start)) << " add=" << add << std::endl;
-			blocks[0].SetPreloaded(ldd[from - i_start]);
-			blocks[1].SetPreloaded(ldd[add + (to - j_start)]);
+			//blocks[0].SetPreloaded(ldd[from - i_start]);
+			//blocks[1].SetPreloaded(ldd[add + (to - j_start)]);
+
+			if(n_cycles == 0 || prev_i != from - i_start){
+				//std::cerr << "newA" << std::endl;
+				//delete[] blocks[0].vec;  blocks[0].vec = nullptr;
+				//delete[] blocks[0].list; blocks[0].list = nullptr;
+				blocks[0] = ldd[from - i_start];
+				blocks[0].Inflate(n_s, TWK_LDD_ALL, true);
+			}
+			else {
+				blocks[0].blk = ldd[from - i_start].blk;
+				blocks[0].n_rec = ldd[from - i_start].blk->n;
+				//std::cerr << "recycleA" << std::endl;
+			}
+			if(n_cycles == 0 || prev_j != add + (to - j_start)){
+				//std::cerr << "newB" << std::endl;
+				//delete[] blocks[1].vec;  blocks[1].vec = nullptr;
+				//delete[] blocks[1].list; blocks[1].list = nullptr;
+				blocks[1] = ldd[add + (to - j_start)];
+				blocks[1].Inflate(n_s, TWK_LDD_ALL, true);
+			}
+			else {
+				blocks[1].blk = ldd[add + (to - j_start)].blk;
+				blocks[1].n_rec = ldd[add + (to - j_start)].blk->n;
+				//std::cerr << "recycleB" << std::endl;
+			}
+
+			prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
 
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 50)
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 5000)
 						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
@@ -702,7 +732,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 50)
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 5000)
 						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
@@ -713,13 +743,15 @@ struct twk_ld_slave {
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 			}
+
 		}
 		//std::cerr << "done" << std::endl;
 
 		// if preloaded
-		blocks[0].vec = nullptr; blocks[0].list = nullptr;
-		blocks[1].vec = nullptr; blocks[1].list = nullptr;
-
+		if(1){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr;
+		}
 		return true;
 	}
 
@@ -933,6 +965,36 @@ public:
 		else return(this->LoadAllBlocks(reader, bit));
 	}
 
+	/**<
+	 * Loading twk blocks for a single variant and its surrounding variants in
+	 * some window.
+	 * @param reader
+	 * @param bit
+	 * @return
+	 */
+	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit){
+		if(settings.ival_strings.size() == 0){ // if have interval strings
+			return false;
+		}
+		this->ivecs.resize(reader.hdr.GetNumberContigs());
+		if(this->ParseIntervalStrings(reader) == false)
+			return false;
+
+		this->itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
+		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
+			this->itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		}
+
+		// First block has only 1 variant: the reference.
+		// All other blocks
+	}
+
+	/**<
+	 * Loads twk blocks for a single/many target genomic regions.
+	 * @param reader
+	 * @param bit
+	 * @return
+	 */
 	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit){
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
@@ -998,6 +1060,12 @@ public:
 		return true;
 	}
 
+	/**<
+	 * Loads all available twk blocks into memory.
+	 * @param reader
+	 * @param bit
+	 * @return
+	 */
 	bool LoadAllBlocks(twk_reader& reader, twk1_blk_iterator& bit){
 		uint32_t n_max_possible = 0;
 		for(int i = 0; i < reader.index.n; ++i){
@@ -1026,7 +1094,7 @@ public:
 			for(int j = 0; j < bit.blk.n; ++j){
 				if(ldd2[n_blks].n == settings.bl_size){
 					ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-					ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+					//ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
 					++n_blks;
 
 				}
@@ -1038,7 +1106,7 @@ public:
 		// last block if non-empty
 		if(ldd2[n_blks].n){
 			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			//ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
 			++n_blks;
 		}
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
@@ -1072,7 +1140,7 @@ public:
 			return false;
 		}
 
-		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << " and blocks: " << utility::ToPrettyString(reader.index.n) << "..." << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
 
 		twk1_blk_iterator bit;
 		bit.stream = reader.stream;
@@ -1099,10 +1167,10 @@ public:
 
 		uint32_t n_variants = 0;
 		if(balancer.diag){
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += ldd2[i].n;
 		} else {
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += ldd2[i].n;
+			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += ldd2[i].n;
 		}
 
 		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
