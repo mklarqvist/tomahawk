@@ -487,30 +487,45 @@ public:
  */
 struct twk_ld_settings {
 	twk_ld_settings() :
-		square(true), window(false),
+		square(true), window(false), low_memory(false), bitmaps(false),
+		force_phased(false), forced_unphased(false),
 		c_level(1), bl_size(500), b_size(10000), l_window(1000000),
-		minP(1e-2), minR2(0.1), minDprime(0),
-		n_chunks(0), c_chunk(0)
+		n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
+		ldd_load_type(TWK_LDD_ALL),
+		minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
+		n_chunks(1), c_chunk(0)
 	{}
 
 	std::string GetString() const{
 		std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
 		              + ",window=" + std::string((window ? "TRUE" : "FALSE"))
-					  + ",compression_level=" + std::to_string(c_level)
+		              + ",low_memory=" + std::string((low_memory ? "TRUE" : "FALSE"))
+		              + ",bitmaps=" + std::string((bitmaps ? "TRUE" : "FALSE"))
+		              + ",force_phased=" + std::string((force_phased ? "TRUE" : "FALSE"))
+		              + ",force_unphased=" + std::string((forced_unphased ? "TRUE" : "FALSE"))
+		              + ",compression_level=" + std::to_string(c_level)
 		              + ",block_size=" + std::to_string(bl_size)
-					  + ",output_block_size=" + std::to_string(b_size)
+		              + ",output_block_size=" + std::to_string(b_size)
 		              + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
-					  + ",minP=" + std::to_string(minP)
-					  + ",minR2=" + std::to_string(minR2)
-		 	 	 	  + ",minDprime=" + std::to_string(minDprime)
-					  + ",n_chunks=" + std::to_string(c_chunk);
+		              + ",minP=" + std::to_string(minP)
+		              + ",minR2=" + std::to_string(minR2)
+		              + ",maxR2=" + std::to_string(maxR2)
+		              + ",minDprime=" + std::to_string(minDprime)
+		              + ",maxDprime=" + std::to_string(maxDprime)
+		              + ",n_chunks=" + std::to_string(n_chunks)
+		              + ",c_chunk=" + std::to_string(c_chunk)
+		              + ",n_threads=" + std::to_string(n_threads)
+		              + ",ldd_type=" + std::to_string((int)ldd_load_type)
+		              + ",cycle_threshold=" + std::to_string(cycle_threshold);
 		return(s);
 	}
 
-	bool square, window; // using square compute, using window compute
+	bool square, window, low_memory, bitmaps; // using square compute, using window compute
+	bool force_phased, forced_unphased;
 	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
+	int32_t n_threads, cycle_threshold, ldd_load_type;
 	std::string in, out; // input file, output file/cout
-	double minP, minR2, minDprime;
+	double minP, minR2, maxR2, minDprime, maxDprime;
 	int32_t n_chunks, c_chunk;
 	std::vector<std::string> ival_strings; // unparsed interval strings
 };
@@ -578,6 +593,7 @@ public:
 	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
+	bool PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
 	bool PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2);
 	bool UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
 	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr);
@@ -643,13 +659,80 @@ public:
 };
 
 struct twk_ld_slave {
-	twk_ld_slave() : n_s(0), n_total(0), ticker(nullptr), thread(nullptr), ldd(nullptr), progress(nullptr), itree(nullptr){}
+	twk_ld_slave() : n_s(0), n_total(0),
+		i_start(0), j_start(0), prev_i(0), prev_j(0), n_cycles(0),
+		ticker(nullptr), thread(nullptr), ldd(nullptr),
+		progress(nullptr), settings(nullptr), itree(nullptr)
+	{}
 	~twk_ld_slave(){ delete thread; }
 
 	std::thread* Start(){
 		delete thread;
-		thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
+
+		if(settings->force_phased && settings->low_memory && settings->bitmaps)
+			thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this);
+		else if(settings->force_phased)
+			thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
+		else if(settings->forced_unphased){
+			thread = new std::thread(&twk_ld_slave::CalculateUnphased, this);
+		}
+		else {
+			std::cerr << "unknown" << std::endl;
+			return nullptr;
+		}
+
 		return(thread);
+	}
+
+	/**<
+	 * Update local blocks. Either copies pointer to pre-allocated containers or
+	 * construct new on-the-fly given the memory parametrisation. Internally
+	 * ivokes the subroutines prefixed with `UpdateBlocks`.
+	 * @param blks  Dst twk1_ldd_blk array of size 2.
+	 * @param from  Integer start offset.
+	 * @param to    Interger end offset.
+	 */
+	inline void UpdateBlocks(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
+		if(settings->low_memory == false) this->UpdateBlocksPreloaded(blks,from,to);
+		else this->UpdateBlocksGenerate(blks,from,to);
+	}
+
+	void UpdateBlocksPreloaded(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
+		const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
+		blks[0].SetPreloaded(ldd[from - i_start]);
+		blks[1].SetPreloaded(ldd[add + (to - j_start)]);
+		prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
+	}
+
+	void UpdateBlocksGenerate(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
+		const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
+
+		if(n_cycles == 0 || prev_i != from - i_start){
+			//std::cerr << "newA" << std::endl;
+			//delete[] blocks[0].vec;  blocks[0].vec = nullptr;
+			//delete[] blocks[0].list; blocks[0].list = nullptr;
+			blks[0] = ldd[from - i_start];
+			blks[0].Inflate(n_s, settings->ldd_load_type, true);
+		}
+		else {
+			blks[0].blk = ldd[from - i_start].blk;
+			blks[0].n_rec = ldd[from - i_start].blk->n;
+			//std::cerr << "recycleA" << std::endl;
+		}
+		if(n_cycles == 0 || prev_j != add + (to - j_start)){
+			//std::cerr << "newB" << std::endl;
+			//delete[] blks[1].vec;  blks[1].vec = nullptr;
+			//delete[] blks[1].list; blks[1].list = nullptr;
+			blks[1] = ldd[add + (to - j_start)];
+			blks[1].Inflate(n_s, settings->ldd_load_type, true);
+		}
+		else {
+			blks[1].blk = ldd[add + (to - j_start)].blk;
+			blks[1].n_rec = ldd[add + (to - j_start)].blk->n;
+			//std::cerr << "recycleB" << std::endl;
+		}
+
+		prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
 	}
 
 	bool CalculateGeneral(){
@@ -666,47 +749,17 @@ struct twk_ld_slave {
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
 
-		const uint32_t i_start = ticker->fL;
-		const uint32_t j_start = ticker->fR;
-		uint32_t prev_i = 0;
-		uint32_t prev_j = 0;
-		uint32_t n_cycles = 0;
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
+
+		// heuristcally determined
+		const uint32_t cycle_thresh = n_s / 50;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
-
-			const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
-			//std::cerr << "getting=" << from << "," << to << "->" << (from - i_start) << "-" << (add + (to-j_start)) << " add=" << add << std::endl;
-			//blocks[0].SetPreloaded(ldd[from - i_start]);
-			//blocks[1].SetPreloaded(ldd[add + (to - j_start)]);
-
-			if(n_cycles == 0 || prev_i != from - i_start){
-				//std::cerr << "newA" << std::endl;
-				//delete[] blocks[0].vec;  blocks[0].vec = nullptr;
-				//delete[] blocks[0].list; blocks[0].list = nullptr;
-				blocks[0] = ldd[from - i_start];
-				blocks[0].Inflate(n_s, TWK_LDD_ALL, true);
-			}
-			else {
-				blocks[0].blk = ldd[from - i_start].blk;
-				blocks[0].n_rec = ldd[from - i_start].blk->n;
-				//std::cerr << "recycleA" << std::endl;
-			}
-			if(n_cycles == 0 || prev_j != add + (to - j_start)){
-				//std::cerr << "newB" << std::endl;
-				//delete[] blocks[1].vec;  blocks[1].vec = nullptr;
-				//delete[] blocks[1].list; blocks[1].list = nullptr;
-				blocks[1] = ldd[add + (to - j_start)];
-				blocks[1].Inflate(n_s, TWK_LDD_ALL, true);
-			}
-			else {
-				blocks[1].blk = ldd[add + (to - j_start)].blk;
-				blocks[1].n_rec = ldd[add + (to - j_start)].blk->n;
-				//std::cerr << "recycleB" << std::endl;
-			}
-
-			prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
+			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
@@ -715,13 +768,15 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < 5000)
-						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
-						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh)
+							//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+							//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+							//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
 						else {
 							engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 						}
+
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -732,13 +787,15 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < 5000)
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
 						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
+							//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
 						else {
 							engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 						}
+
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
@@ -748,42 +805,43 @@ struct twk_ld_slave {
 		//std::cerr << "done" << std::endl;
 
 		// if preloaded
-		if(1){
-			blocks[0].vec = nullptr; blocks[0].list = nullptr;
-			blocks[1].vec = nullptr; blocks[1].list = nullptr;
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
 		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
+
 		return true;
 	}
 
-	bool ComputeUnphased(){
+	bool CalculatePhasedBitmap(){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
 
-		const uint32_t i_start = ticker->fL;
-		const uint32_t j_start = ticker->fR;
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
-			blocks[0].SetPreloaded(ldd[from - i_start]);
-			blocks[1].SetPreloaded(ldd[to - j_start]);
+			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 50)
-						//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
-						//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
-						engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
-						else {
-							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
-						}
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 50)
+							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+						else
+							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -794,34 +852,106 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 50)
-						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
-						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
-							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
-						else {
-							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
-						}
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 50)
+							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+						else
+							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 			}
+
+		}
+
+		// if preloaded
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
+
+		return true;
+	}
+
+	bool CalculateUnphased(){
+		twk1_ldd_blk blocks[2];
+		uint32_t from, to; uint8_t type;
+		Timer timer; timer.Start();
+
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
+
+		// heuristcally determined
+		const uint32_t cycle_thresh = n_s / 50;
+
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
+			this->UpdateBlocks(blocks,from,to);
+
+			if(type == 1){
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = i+1; j < blocks[0].n_rec; ++j){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 100)
+							engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+						else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						}
+
+					}
+				}
+				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+			} else {
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = 0; j < blocks[1].n_rec; ++j){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 100)
+							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+						else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						}
+
+					}
+				}
+				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+			}
+
 		}
 		//std::cerr << "done" << std::endl;
 
 		// if preloaded
-		blocks[0].vec = nullptr; blocks[0].list = nullptr;
-		blocks[1].vec = nullptr; blocks[1].list = nullptr;
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
 
 		return true;
 	}
 
 public:
-	uint32_t n_s;
-	uint64_t n_total;
+	uint32_t n_s, n_total;
+	uint32_t i_start, j_start, prev_i, prev_j, n_cycles;
+
 	twk_ld_ticker* ticker;
 	std::thread* thread;
 	twk1_ldd_blk* ldd;
 	twk_ld_progress* progress;
+	twk_ld_settings* settings;
 	twk_ld_engine engine;
 	algorithm::IntervalTree<uint32_t, uint32_t>* itree;
 };
@@ -960,9 +1090,9 @@ public:
 		return(writer->good());
 	}
 
-	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit){
-		if(settings.ival_strings.size()) return(this->LoadTargetBlocks(reader, bit));
-		else return(this->LoadAllBlocks(reader, bit));
+	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
+		if(settings.ival_strings.size()) return(this->LoadTargetBlocks(reader, bit, load));
+		else return(this->LoadAllBlocks(reader, bit, load));
 	}
 
 	/**<
@@ -972,7 +1102,7 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit){
+	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
@@ -995,7 +1125,7 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit){
+	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
@@ -1038,7 +1168,7 @@ public:
 					//std::cerr << "overlaps" << std::endl;
 					if(ldd2[n_blks].n == settings.bl_size){
 						ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),load, true);
 						++n_blks;
 
 					}
@@ -1051,7 +1181,7 @@ public:
 		// last block if non-empty
 		if(ldd2[n_blks].n){
 			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),load, true);
 			++n_blks;
 		}
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
@@ -1066,7 +1196,7 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadAllBlocks(twk_reader& reader, twk1_blk_iterator& bit){
+	bool LoadAllBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
 		uint32_t n_max_possible = 0;
 		for(int i = 0; i < reader.index.n; ++i){
 			n_max_possible += reader.index.ent[i].n;
@@ -1075,6 +1205,11 @@ public:
 		uint32_t m_blks = (n_max_possible / settings.bl_size) + 1;
 		ldd  = new twk1_ldd_blk[m_blks];
 		ldd2 = new twk1_block_t[m_blks];
+
+		if(settings.low_memory)
+			std::cerr << utility::timestamp("LOG") << "Running in restriced memory mode..." << std::endl;
+		else
+			std::cerr << utility::timestamp("LOG") << "Running in standard mode. Pre-computing data..." << std::endl;
 
 #if SIMD_AVAILABLE == 1
 		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
@@ -1094,7 +1229,8 @@ public:
 			for(int j = 0; j < bit.blk.n; ++j){
 				if(ldd2[n_blks].n == settings.bl_size){
 					ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-					//ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+					if(settings.low_memory == false)
+						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 					++n_blks;
 
 				}
@@ -1106,7 +1242,8 @@ public:
 		// last block if non-empty
 		if(ldd2[n_blks].n){
 			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			//ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),TWK_LDD_ALL, true);
+			if(settings.low_memory == false)
+				ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 			++n_blks;
 		}
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
@@ -1120,8 +1257,6 @@ public:
 	}
 
 	bool Compute(){
-		ProgramMessage();
-		std::cerr << utility::timestamp("LOG") << "Calling calc..." << std::endl;
 		if(settings.in.size() == 0){
 			std::cerr << "no filename" << std::endl;
 			return false;
@@ -1147,7 +1282,22 @@ public:
 
 		Timer timer;
 
-		if(this->LoadBlocks(reader, bit) == false){
+		//settings.ldd_load_type = TWK_LDD_ALL;
+		if(settings.low_memory && settings.force_phased && settings.bitmaps){
+			std::cerr << "using low-memory bitmaps" << std::endl;
+			settings.ldd_load_type = TWK_LDD_BITMAP;
+		} else if(settings.low_memory && settings.force_phased){
+			std::cerr << "using low-memory phased" << std::endl;
+			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
+		} else if(settings.force_phased){
+			std::cerr << "using phased: vec,list" << std::endl;
+			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
+		} else if(settings.forced_unphased){
+			std::cerr << "using unphased: vec" << std::endl;
+			settings.ldd_load_type = TWK_LDD_VEC;
+		}
+
+		if(this->LoadBlocks(reader, bit, settings.ldd_load_type) == false){
 			std::cerr << "failed to load blocks" << std::endl;
 			return false;
 		}
@@ -1158,6 +1308,8 @@ public:
 		}
 
 		if(settings.window) settings.c_chunk = 0;
+		if(settings.cycle_threshold == 0)
+			settings.cycle_threshold = reader.hdr.GetNumberSamples() / 50;
 
 		twk_ld_balancer balancer;
 		if(balancer.Build(n_blks, settings.n_chunks, settings.c_chunk) == false){
@@ -1191,10 +1343,10 @@ public:
 		ticker.l_window = settings.l_window;
 		twk_ld_progress progress;
 		progress.n_s = reader.hdr.GetNumberSamples();
-		uint32_t n_threads = std::thread::hardware_concurrency();
+		//uint32_t n_threads = std::thread::hardware_concurrency();
 		//n_threads  = 1;
-		twk_ld_slave* slaves = new twk_ld_slave[n_threads];
-		std::vector<std::thread*> threads(n_threads);
+		twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
+		std::vector<std::thread*> threads(settings.n_threads);
 
 		// Start writing file.
 		twk_writer_t* writer = nullptr;
@@ -1222,8 +1374,8 @@ public:
 		IndexOutput index(reader.hdr.GetNumberContigs());
 
 		timer.Start();
-		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << n_threads << " threads: ";
-		for(int i = 0; i < n_threads; ++i){
+		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
+		for(int i = 0; i < settings.n_threads; ++i){
 			slaves[i].ldd    = ldd;
 			slaves[i].n_s    = reader.hdr.GetNumberSamples();
 			slaves[i].ticker = &ticker;
@@ -1234,6 +1386,7 @@ public:
 			slaves[i].engine.index    = &index;
 			slaves[i].engine.settings = settings;
 			slaves[i].progress = &progress;
+			slaves[i].settings = &settings;
 			threads[i] = slaves[i].Start();
 			std::cerr << ".";
 		}
@@ -1241,8 +1394,8 @@ public:
 
 		progress.Start();
 
-		for(int i = 0; i < n_threads; ++i) threads[i]->join();
-		for(int i = 0; i < n_threads; ++i) slaves[i].engine.CompressBlock();
+		for(int i = 0; i < settings.n_threads; ++i) threads[i]->join();
+		for(int i = 0; i < settings.n_threads; ++i) slaves[i].engine.CompressBlock();
 		progress.is_ticking = false;
 		progress.PrintFinal();
 		writer->stream.flush();

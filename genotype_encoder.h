@@ -8,8 +8,11 @@
 
 namespace tomahawk {
 
-const static uint8_t TWK_GT_MAP[3] = {2,0,1};
+const static uint8_t TWK_GT_MAP[3]  = {2,0,1};
+const static uint8_t TWK_GT_FLIP[3] = {1,0,2}; // usage TWK_GT_FLIP[TWK_GT_MAP[.]]
+const static uint8_t TWK_GT_FLIP_NONE[3] = {0,1,2}; // usage TWK_GT_FLIP_NONE[TWK_GT_MAP[.]]
 #define TWK_GT_PACK(A,B,MISS) ((TWK_GT_MAP[((A) >> 1)] << ((MISS)+1)) | (TWK_GT_MAP[((B) >> 1)]))
+#define TWK_GT_PACK_FLIP(A,B,MISS,FLIP) ((FLIP[TWK_GT_MAP[((A) >> 1)]] << ((MISS)+1)) | (FLIP[TWK_GT_MAP[((B) >> 1)]]))
 #define TWK_GT_RLE_PACK(REF,LEN,MISS) (((LEN) << (2+2*(MISS))) | (REF))
 #define TWK_GT_LIMIT(T,MISS) ((1L << ((T)-2-2*(MISS))) - 1)
 
@@ -22,7 +25,10 @@ public:
 		invariant(false),
 		n_missing(0),
 		n_vector_end(0)
-	{}
+	{
+		memset(cnt, 0, sizeof(uint64_t)*3);
+		memset(hap_cnt, 0, sizeof(uint64_t)*10);
+	}
 
 	~GenotypeSummary() = default;
 
@@ -57,34 +63,41 @@ public:
 		int j = 0;
 		for(uint32_t i = 0; i < n_samples; ++i){
 			if(VcfGenotype<T>::IsMissing(fmt.p[j]) == true
-			   || VcfType<T>::IsVectorEnd(fmt.p[j]) == true)
+			   || VcfType<T>::IsVectorEnd(fmt.p[j]) == true
+			   || VcfGenotype<T>::IsMissing(fmt.p[j+1]) == true
+			   || VcfType<T>::IsVectorEnd(fmt.p[j+1]) == true)
 				j += fmt.n;
 			else {
-				this->phase_if_uniform = fmt.p[j] & 1;
+				this->phase_if_uniform = fmt.p[j+1] & 1;
 				break;
 			}
 		}
+		//const uint32_t ref_phase_pos = j;
+		j = 0;
 
 		// Iterate over genotypes to compute summary statistics
 		// regarding missingness, number of special sentinel
 		// symbols and assess uniformity of phasing.
-		j = 0;
 		for(uint32_t i = 0; i < n_samples; ++i){
-			if(VcfGenotype<T>::IsMissing(fmt.p[j]) == false
-			   && VcfType<int8_t>::IsVectorEnd(fmt.p[j]) == false
-			   && (fmt.p[j] & 1) != this->phase_if_uniform)
+			if(VcfGenotype<T>::IsMissing(fmt.p[j+1]) == false
+			   && VcfType<int8_t>::IsVectorEnd(fmt.p[j+1]) == false
+			   && (fmt.p[j+1] & 1) != this->phase_if_uniform)
 			{
+				//std::cerr << "is mixed=" << (int)(fmt.p[j+1] & 1) << "!=" << (int)this->phase_if_uniform << std::endl;
 				this->mixed_phasing = true;
 			}
 
 			// Iterate over the number of chromosomes / individual
+			++hap_cnt[(TWK_GT_MAP[fmt.p[j] >> 1] << 2) | (TWK_GT_MAP[fmt.p[j+1] >> 1])];
 			for(int k = 0; k < fmt.n; ++k, ++j){
 				assert(j < fmt.p_len);
 
+				++cnt[TWK_GT_MAP[fmt.p[j] >> 1]];
 				this->n_missing    += VcfGenotype<T>::IsMissing(fmt.p[j]);
 				this->n_vector_end += VcfType<T>::IsVectorEnd(fmt.p[j]);
 			}
 		}
+		assert(j == n_samples*2);
 
 		return true;
 	}
@@ -98,6 +111,8 @@ public:
 	bool     invariant;
 	uint64_t n_missing;
 	uint64_t n_vector_end;
+	uint64_t cnt[3]; // ref, alt, miss
+	uint64_t hap_cnt[10]; // largest = 2->2 = 1010b = 9
 };
 
 class GenotypeEncoder {
@@ -167,7 +182,7 @@ public:
 		return(ret);
 	}
 
-	static bool Encode(const bcf1_t* rec, twk1_t& twk){
+	static bool Encode(const bcf1_t* rec, twk1_t& twk, const twk_vimport_settings& settings){
 		GenotypeSummary gt;
 		// Do not support mixed ploidy
 		if(gt.n_vector_end) return false;
@@ -175,19 +190,46 @@ public:
 		const GenotypeHelper ret = GenotypeEncoder::AssessGenotypes(rec,gt.n_missing != 0);
 
 		// Ascertain that there is sufficient amount of samples to reliably calculate LD.
-		if(rec->n_sample - gt.n_missing < 5){
-			std::cerr << "not enough samples=" << rec->n_sample << " with " << gt.n_missing << " miss -> " << rec->n_sample-gt.n_missing << std::endl;
+		uint64_t total = gt.cnt[0] + gt.cnt[1];
+		uint64_t total_hap = gt.hap_cnt[0] + gt.hap_cnt[1] + gt.hap_cnt[4] + gt.hap_cnt[5];
+		if(total_hap < 5){
+			std::cerr << "not enough samples=" << rec->n_sample << " with " << gt.n_missing << " miss -> available=" << 2*rec->n_sample-gt.n_missing << "/" << total << "/" << total_hap << std::endl;
 			return false;
+		}
+
+		if(gt.n_vector_end){
+			std::cerr << "twk do not support mixed ploidy sites" << std::endl;
+			return false;
+		}
+
+		if(gt.hap_cnt[0] == total_hap || gt.hap_cnt[1] == total_hap || gt.hap_cnt[4] == total_hap || gt.hap_cnt[5] == total_hap){
+			std::cerr << "site is invariant=" << gt.cnt[0] << "," << gt.cnt[1] << " and " << gt.hap_cnt[0] << "," << gt.hap_cnt[1] << "," << gt.hap_cnt[4] << "," << gt.hap_cnt[5] << std::endl;
+			//return false;
+			if(settings.remove_univariate){
+				std::cerr << "remvoing" << std::endl;
+				return false;
+			} else
+				std::cerr << "do nothing" << std::endl;
+		}
+
+		bool flip_allele = false;
+		if(gt.cnt[1] > gt.cnt[0]){
+			std::cerr << "site is flipped=" << gt.cnt[0] << "," << gt.cnt[1] << std::endl;
+			flip_allele = true;
+			if(settings.flip_major_minor) twk.gt_flipped = true;
+			if(settings.flip_major_minor) std::cerr << "will flip" << std::endl;
 		}
 
 		// If mixed phasing then set to unphased
 		if(gt.mixed_phasing) twk.gt_phase = 0;
 		else twk.gt_phase = gt.phase_if_uniform;
 
+		//std::cerr << "phase -> mixed=" << (int)gt.mixed_phasing << ", uniform_phase=" << (int)gt.phase_if_uniform << std::endl;
+
 		switch(ret.ptype){
-		case(0): return GenotypeEncoder::Encode_<uint8_t> (rec, ret.cnt, twk, gt.n_missing != 0);
-		case(1): return GenotypeEncoder::Encode_<uint16_t>(rec, ret.cnt, twk, gt.n_missing != 0);
-		case(2): return GenotypeEncoder::Encode_<uint32_t>(rec, ret.cnt, twk, gt.n_missing != 0);
+		case(0): return GenotypeEncoder::Encode_<uint8_t> (rec, ret.cnt, twk, flip_allele && settings.flip_major_minor, gt.n_missing != 0);
+		case(1): return GenotypeEncoder::Encode_<uint16_t>(rec, ret.cnt, twk, flip_allele && settings.flip_major_minor, gt.n_missing != 0);
+		case(2): return GenotypeEncoder::Encode_<uint32_t>(rec, ret.cnt, twk, flip_allele && settings.flip_major_minor, gt.n_missing != 0);
 		}
 		return false;
 	}
@@ -199,6 +241,7 @@ public:
 	 * @param rec
 	 * @param cnt
 	 * @param twk
+	 * @param flip_alleles
 	 * @param missing
 	 * @return
 	 */
@@ -206,6 +249,7 @@ public:
 	static bool Encode_(const bcf1_t* rec,
 	                    const uint32_t cnt,
 	                    twk1_t& twk,
+						const bool flip_alleles,
 	                    const bool missing = false)
 	{
 		assert(rec->n_fmt != 0);
@@ -219,19 +263,21 @@ public:
 		gt->miss = missing;
 		twk.gt_ptype = sizeof(int_t); // set ptype
 
+		const uint8_t* flip_map = (flip_alleles ? TWK_GT_FLIP : TWK_GT_FLIP_NONE);
+
 		// count for an and af
 		uint32_t ac[3]; memset(ac,0,sizeof(uint32_t)*3);
-		++ac[TWK_GT_MAP[(data[0] >> 1)]];
-		++ac[TWK_GT_MAP[(data[1] >> 1)]];
+		++ac[flip_map[TWK_GT_MAP[(data[0] >> 1)]]];
+		++ac[flip_map[TWK_GT_MAP[(data[1] >> 1)]]];
 
 		uint32_t len = 1, cumsum = 0, icnt = 0;
-		uint8_t  ref = TWK_GT_PACK(data[0],data[1],missing);
+		uint8_t  ref = TWK_GT_PACK_FLIP(data[0],data[1],missing,flip_map);
 
 		for(int i = 2; i < rec->n_sample*rec->d.fmt[0].n; i+=2){
-			uint8_t cur = TWK_GT_PACK(data[i],data[i+1],missing);
+			uint8_t cur = TWK_GT_PACK_FLIP(data[i],data[i+1],missing,flip_map);
 
-			++ac[TWK_GT_MAP[(data[i] >> 1)]];
-			++ac[TWK_GT_MAP[(data[i+1] >> 1)]];
+			++ac[flip_map[TWK_GT_MAP[(data[i] >> 1)]]];
+			++ac[flip_map[TWK_GT_MAP[(data[i+1] >> 1)]]];
 
 			if(ref != cur){
 				int_t val = TWK_GT_RLE_PACK(ref,len,missing);

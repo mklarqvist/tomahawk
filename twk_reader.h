@@ -31,20 +31,24 @@ public:
 };
 
 /**<
- * Expanded tomahawk block for use in linkage-disequilibrium calculations. Expands
+ * Expanded twk block for use in linkage-disequilibrium calculations. Expands
  * data into:
  *    1) bit-index lists;
  *    2) uncompressed bitvectors;
- *    3) compressed run-length encoded genotypes.
+ *    3) compressed run-length encoded genotypes;
+ *    4) compressed bitmaps (EWAH);
  * What data to pre-process is determined by passing the appropriate `TWK_LDD_`-prefixed
  * macro-definied value: TWK_LDD_NONE, TWK_LDD_VEC, TWK_LDD_LIST, and TWK_LDD_ALL.
  */
-#define TWK_LDD_NONE 0
-#define TWK_LDD_VEC  1
-#define TWK_LDD_LIST 2
-#define TWK_LDD_ALL  ((TWK_LDD_VEC) | (TWK_LDD_LIST))
+#define TWK_LDD_NONE   0
+#define TWK_LDD_VEC    1
+#define TWK_LDD_LIST   2
+#define TWK_LDD_BITMAP 4
+#define TWK_LDD_ALL  ((TWK_LDD_VEC) | (TWK_LDD_LIST) | (TWK_LDD_BITMAP))
 
 struct twk1_ldd_blk {
+	typedef EWAHBoolArray<uint64_t> bitmap_type;
+
 	twk1_ldd_blk();
 	twk1_ldd_blk(twk1_blk_iterator& it, const uint32_t n_samples);
 	~twk1_ldd_blk();
@@ -66,10 +70,11 @@ struct twk1_ldd_blk {
 
 public:
 	bool owns_block;
-	uint32_t n_rec, m_vec, m_list; // number records, memory allocated for vectors, memory allocated for lists
+	uint32_t n_rec, m_vec, m_list, m_bitmap; // number records, memory allocated for vectors, memory allocated for lists
 	twk1_block_t* blk; // data block
 	twk_igt_vec*  vec; // vectorized (bitvector)
 	twk_igt_list* list; // list
+	bitmap_type* bitmap; // bitmap
 };
 
 /**<

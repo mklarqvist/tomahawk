@@ -89,6 +89,33 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const
 #endif
 }
 
+bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+	helper.resetPhased();
+	const twk1_ldd_blk::bitmap_type& refB = b1.bitmap[p1];
+	const twk1_ldd_blk::bitmap_type& tgtB = b2.bitmap[p2];
+	helper.alleleCounts[5] = refB.logicalandcount(tgtB);
+	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
+	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
+	helper.alleleCounts[0] = 2*n_samples - ((b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac) - helper.alleleCounts[5]);
+
+#if SLAVE_DEBUG_MODE == 1
+	auto t1 = std::chrono::high_resolution_clock::now();
+	auto ticks_per_iter = Cycle(t1-t0);
+	perf->cycles[n_cycles] += ticks_per_iter.count();
+	++perf->freq[n_cycles];
+#endif
+
+#if SLAVE_DEBUG_MODE == 2
+	std::cerr << "bitmap=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
+#endif
+
+#if SLAVE_DEBUG_MODE != 1
+	return(PhasedMath(b1,p1,b2,p2));
+#else
+	return(true);
+#endif
+}
+
 bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
 #if SLAVE_DEBUG_MODE == 0
 	if(b1.blk->rcds[p1].gt_missing == false && b2.blk->rcds[p2].gt_missing == false){
@@ -751,11 +778,21 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const
 
 	cur_rcd2.D = pA*qB - qA*pB;
 	cur_rcd2.R2 = cur_rcd2.D*cur_rcd2.D / (g0*g1*h0*h1);
-	if(cur_rcd2.R2 < settings.minR2){
+	if(cur_rcd2.R2 < settings.minR2 || cur_rcd2.R2 > settings.maxR2){
 		cur_rcd2.controller = 0;
 		return false;
 	}
 
+	double dmax = 0;
+	if(cur_rcd2.D >= 0) dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
+	else dmax = g0*g1 < h0*h1 ? -g0*g1 : -h0*h1;
+
+	cur_rcd2.Dprime = cur_rcd2.D / dmax;
+
+	if(cur_rcd2.Dprime < settings.minDprime || cur_rcd2.Dprime > settings.maxDprime){
+		cur_rcd2.controller = 0;
+		return false;
+	}
 
 	// Calculate Fisher's exact test P-value
 	double left,right,both;
@@ -772,11 +809,6 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const
 	cur_rcd2.P = both;
 	cur_rcd2.R = sqrt(cur_rcd2.R2);
 
-	double dmax = 0;
-	if(cur_rcd2.D >= 0) dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
-	else dmax = g0*g1 < h0*h1 ? -g0*g1 : -h0*h1;
-
-	cur_rcd2.Dprime = cur_rcd2.D / dmax;
 	cur_rcd2.Apos = b1.blk->rcds[p1].pos;
 	cur_rcd2.Bpos = b2.blk->rcds[p2].pos;
 	cur_rcd2.ridA = b1.blk->rcds[p1].rid;
@@ -1079,8 +1111,8 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 
 	//if(helper.R2 < this->parameters.R2_min || helper.R2 > this->parameters.R2_max)
 	//	return false;
-	if(cur_rcd.R2 < settings.minR2){
-		cur_rcd2.controller = 0;
+	if(cur_rcd.R2 < settings.minR2 || cur_rcd.R2 > settings.maxR2){
+		cur_rcd.controller = 0;
 		return false;
 	}
 
@@ -1088,6 +1120,16 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 	cur_rcd[1] = p2 * 2*helper.totalHaplotypeCounts;
 	cur_rcd[2] = q1 * 2*helper.totalHaplotypeCounts;
 	cur_rcd[3] = q2 * 2*helper.totalHaplotypeCounts;
+
+	double dmax = 0;
+	if(cur_rcd.D >= 0) dmax = p*(1.0-q) < q*(1.0-p) ? p*(1.0-q) : q*(1.0-p);
+	else dmax = p*q < (1-p)*(1-q) ? -p*q : -(1-p)*(1-q);
+	cur_rcd.Dprime = cur_rcd.D / dmax;
+
+	if(cur_rcd.Dprime < settings.minDprime || cur_rcd.Dprime > settings.maxDprime){
+		cur_rcd.controller = 0;
+		return false;
+	}
 
 	double left,right,both;
 	kt_fisher_exact(round(cur_rcd[0]),round(cur_rcd[1]),
@@ -1100,10 +1142,6 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 		return false;
 	}
 
-	double dmax = 0;
-	if(cur_rcd.D >= 0) dmax = p*(1.0-q) < q*(1.0-p) ? p*(1.0-q) : q*(1.0-p);
-	else dmax = p*q < (1-p)*(1-q) ? -p*q : -(1-p)*(1-q);
-	cur_rcd.Dprime = cur_rcd.D / dmax;
 	cur_rcd.Apos = b1.blk->rcds[pos1].pos;
 	cur_rcd.Bpos = b2.blk->rcds[pos2].pos;
 	cur_rcd.ridA = b1.blk->rcds[pos1].rid;
@@ -1139,34 +1177,34 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 
 	// If the number of rcds written is equal to the flush limit then
 	// compress and write output.
-	if(n_out == n_lim || irecF.rid != cur_rcd2.ridA || irecR.rid != cur_rcd2.ridB){
+	if(n_out == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
 		if(this->CompressBlock() == false) return false;
-		irecF.rid    = cur_rcd2.ridA;
-		irecF.ridB   = cur_rcd2.ridB;
-		irecF.minpos = cur_rcd2.Apos;
-		irecF.maxpos = cur_rcd2.Apos;
-		irecR.rid    = cur_rcd2.ridB;
-		irecR.ridB   = cur_rcd2.ridA;
-		irecR.minpos = cur_rcd2.Bpos;
-		irecR.maxpos = cur_rcd2.Bpos;
+		irecF.rid    = cur_rcd.ridA;
+		irecF.ridB   = cur_rcd.ridB;
+		irecF.minpos = cur_rcd.Apos;
+		irecF.maxpos = cur_rcd.Apos;
+		irecR.rid    = cur_rcd.ridB;
+		irecR.ridB   = cur_rcd.ridA;
+		irecR.minpos = cur_rcd.Bpos;
+		irecR.maxpos = cur_rcd.Bpos;
 	}
 	// If ridB is mixed then set index value to -1.
-	if(irecF.ridB != cur_rcd2.ridB) irecF.ridB = -1;
-	if(irecR.ridB != cur_rcd2.ridA) irecR.ridB = -1;
+	if(irecF.ridB != cur_rcd.ridB) irecF.ridB = -1;
+	if(irecR.ridB != cur_rcd.ridA) irecR.ridB = -1;
 
 	// Update index
-	irecF.maxpos = cur_rcd2.Apos;
-	irecR.maxpos = cur_rcd2.Bpos;
+	irecF.maxpos = cur_rcd.Apos;
+	irecR.maxpos = cur_rcd.Bpos;
 
 	// Add forward.
-	blk_f += cur_rcd2;
+	blk_f += cur_rcd;
 	// Swap tuple (ridA:posA) with (ridB:posB).
-	uint32_t temp = cur_rcd2.Apos;
-	cur_rcd2.Apos = cur_rcd2.Bpos;
-	cur_rcd2.Bpos = temp;
-	std::swap(cur_rcd2.ridA,cur_rcd2.ridB);
+	uint32_t temp = cur_rcd.Apos;
+	cur_rcd.Apos = cur_rcd.Bpos;
+	cur_rcd.Bpos = temp;
+	std::swap(cur_rcd.ridA,cur_rcd.ridB);
 	// Add reverse.
-	blk_r += cur_rcd2;
+	blk_r += cur_rcd;
 	// Update tickers.
 	n_out += 2; n_out_tick += 2;
 
@@ -1174,7 +1212,7 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 	if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
 
 	// Reset controller.
-	cur_rcd2.controller = 0;
+	cur_rcd.controller = 0;
 
 	return false;
 }

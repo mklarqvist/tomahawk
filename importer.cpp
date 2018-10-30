@@ -23,15 +23,11 @@ bool twk_variant_importer::Import(twk_vimport_settings& settings){
 }
 
 bool twk_variant_importer::Import(void){
-	//return(this->Compute());
-	//
-
 	// Start timer.
 	Timer timer; timer.Start();
 
-	ProgramMessage();
-	std::cerr << utility::timestamp("LOG") << "Calling import..." << std::endl;
-	std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.input << "..." << std::endl;
+	if(settings.input != "-")
+		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.input << "..." << std::endl;
 
 	// Retrieve a unique VcfReader.
 	std::unique_ptr<tomahawk::io::VcfReader> vcf = tomahawk::io::VcfReader::FromFile(settings.input, std::thread::hardware_concurrency());
@@ -51,9 +47,6 @@ bool twk_variant_importer::Import(void){
 	tomahawk::Index index(vcf->vcf_header_.GetNumberContigs());
 
 	std::ostream* stream = nullptr; bool stream_delete = true;
-	//std::string outfile = "/home/mk21/Downloads/debug.twk";
-	//outfile = "-";
-	//std::string outfile = "/media/mdrk/NVMe/1kgp3/debug.twk";
 	if(settings.output.size() == 0 || (settings.output.size() == 1 && settings.output[0] == '-')){
 		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to stdout..." << std::endl;
 		stream = &std::cout;
@@ -70,9 +63,15 @@ bool twk_variant_importer::Import(void){
 		}
 	}
 
+	// Append literal string.
+	std::string import_string = "##tomahawk_importVersion=" + std::to_string(VERSION) + "\n";
+	import_string += "##tomahawk_importCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime(); + "\n";
+	vcf->vcf_header_.literals_ += import_string;
+
 	tomahawk::ZSTDCodec zcodec;
 	stream->write(tomahawk::TOMAHAWK_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_MAGIC_HEADER_LENGTH);
 	tomahawk::twk_buffer_t buf(256000), obuf(256000);
+
 	buf << vcf->vcf_header_;
 	//std::cerr << "header buf size =" << buf.size() << std::endl;
 	if(zcodec.Compress(buf, obuf, settings.c_level) == false){
@@ -104,7 +103,7 @@ bool twk_variant_importer::Import(void){
 	};
 	prev_helper prev_rec; prev_rec.rid = 0; prev_rec.pos = 0; prev_rec.dropped = false;
 
-	// While bcf1_t records available.
+	// While there are bcf1_t records available.
 	while(vcf->next(BCF_UN_ALL)){
 		tomahawk::twk1_t entry;
 		entry.pos = vcf->bcf1_->pos;
@@ -121,15 +120,10 @@ bool twk_variant_importer::Import(void){
 		}
 		prev_rec = vcf->bcf1_;
 
-		//if(n_total_rec == 200000){
-			//std::cerr << "break at 10k" << std::endl;
-			//break;
-		//}
-
 		if(vcf->bcf1_->n_fmt){
 			if(vcf->vcf_header_.GetFormat(vcf->bcf1_->d.fmt[0].id)->id == "GT"){
 				if(vcf->bcf1_->d.fmt[0].n != 2){
-					std::cerr << "do not support non-diploid" << std::endl;
+					std::cerr << "do not support non-diploid samples" << std::endl;
 					++n_vnt_dropped;
 					prev_rec.dropped = true;
 					continue;
@@ -160,8 +154,8 @@ bool twk_variant_importer::Import(void){
 				assert(entry.GetAlleleB() == vcf->bcf1_->d.allele[1][0]);
 
 				// Encode genotypes.
-				if(tomahawk::GenotypeEncoder::Encode(vcf->bcf1_, entry) == false){
-					std::cerr << "invalid encoding" << std::endl;
+				if(tomahawk::GenotypeEncoder::Encode(vcf->bcf1_, entry, settings) == false){
+					//std::cerr << "invalid encoding" << std::endl;
 					++n_vnt_dropped;
 					prev_rec.dropped = true;
 					continue;

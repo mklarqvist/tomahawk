@@ -28,6 +28,7 @@ DEALINGS IN THE SOFTWARE.
 #include "tomahawk.h"
 #include "buffer.h"
 #include "genotype_bitpacker.h"
+#include "third_party/ewah.h"
 
 namespace tomahawk {
 
@@ -213,7 +214,7 @@ struct twk1_igt_t : public twk1_gt_t {
 *  Core record
 ****************************/
 struct twk1_t {
-	twk1_t() : gt_ptype(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
+	twk1_t() : gt_ptype(0), gt_flipped(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
 	~twk1_t(){ delete gt; }
 
 	twk1_t& operator=(const twk1_t& other){
@@ -256,7 +257,7 @@ struct twk1_t {
 
 	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_t& self){
 		assert(self.gt != nullptr);
-		uint8_t pack = self.gt_ptype << 2 | self.gt_phase << 1 | self.gt_missing;
+		uint8_t pack = self.gt_ptype << 3 | self.gt_flipped << 2 | self.gt_phase << 1 | self.gt_missing;
 		SerializePrimitive(pack, buffer);
 		SerializePrimitive(self.alleles, buffer);
 		SerializePrimitive(self.pos, buffer);
@@ -271,7 +272,8 @@ struct twk1_t {
 		delete self.gt; self.gt = nullptr;
 		uint8_t pack = 0;
 		DeserializePrimitive(pack, buffer);
-		self.gt_ptype   = pack >> 2;
+		self.gt_ptype   = pack >> 3;
+		self.gt_flipped = (pack >> 2 & 1);
 		self.gt_phase   = (pack >> 1) & 1;
 		self.gt_missing = pack & 1;
 		DeserializePrimitive(self.alleles, buffer);
@@ -291,7 +293,7 @@ struct twk1_t {
 		return(buffer);
 	}
 
-    uint8_t  gt_ptype: 6, gt_phase: 1, gt_missing: 1;
+    uint8_t  gt_ptype: 5, gt_flipped: 1, gt_phase: 1, gt_missing: 1;
     uint8_t  alleles;
     uint32_t pos, ac, an, rid;
     twk1_gt_t* gt;
