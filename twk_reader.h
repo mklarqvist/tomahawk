@@ -53,6 +53,7 @@ struct twk1_ldd_blk {
 	twk1_ldd_blk(twk1_blk_iterator& it, const uint32_t n_samples);
 	~twk1_ldd_blk();
 	twk1_ldd_blk& operator=(const twk1_ldd_blk& other);
+	twk1_ldd_blk& operator=(twk1_ldd_blk&& other);
 
 	void SetPreloaded(const twk1_ldd_blk& other);
 	void Set(twk1_blk_iterator& it, const uint32_t n_samples);

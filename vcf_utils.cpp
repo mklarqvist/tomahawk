@@ -281,6 +281,60 @@ std::string* VcfHeader::GetSample(const std::string& name) {
 	return(nullptr);
 }
 
+const VcfContig* VcfHeader::GetContig(const std::string& name) const {
+	map_type::const_iterator it = this->contigs_map_.find(name);
+	if(it != this->contigs_map_.end()) return(&this->contigs_[it->second]);
+	return(nullptr);
+}
+
+const VcfContig* VcfHeader::GetContig(const int& idx) const {
+	map_reverse_type::const_iterator it = this->contigs_reverse_map_.find(idx);
+	if(it != this->contigs_reverse_map_.end()) return(&this->contigs_[it->second]);
+	return(nullptr);
+}
+
+const VcfInfo* VcfHeader::GetInfo(const std::string& name) const {
+	map_type::const_iterator it = this->info_fields_map_.find(name);
+	if(it != this->info_fields_map_.end()) return(&this->info_fields_[it->second]);
+	return(nullptr);
+}
+
+const VcfInfo* VcfHeader::GetInfo(const int& idx) const {
+	map_reverse_type::const_iterator it = this->info_fields_reverse_map_.find(idx);
+	if(it != this->info_fields_reverse_map_.end()) return(&this->info_fields_[it->second]);
+	return(nullptr);
+}
+
+const VcfFormat* VcfHeader::GetFormat(const std::string& name) const {
+	map_type::const_iterator it = this->format_fields_map_.find(name);
+	if(it != this->format_fields_map_.end()) return(&this->format_fields_[it->second]);
+	return(nullptr);
+}
+
+const VcfFormat* VcfHeader::GetFormat(const int& idx) const {
+	map_reverse_type::const_iterator it = this->format_fields_reverse_map_.find(idx);
+	if(it != this->format_fields_reverse_map_.end()) return(&this->format_fields_[it->second]);
+	return(nullptr);
+}
+
+const VcfFilter* VcfHeader::GetFilter(const std::string& name) const {
+	map_type::const_iterator it = this->filter_fields_map_.find(name);
+	if(it != this->filter_fields_map_.end()) return(&this->filter_fields_[it->second]);
+	return(nullptr);
+}
+
+const VcfFilter* VcfHeader::GetFilter(const int& idx) const {
+	map_reverse_type::const_iterator it = this->filter_fields_reverse_map_.find(idx);
+	if(it != this->filter_fields_reverse_map_.end()) return(&this->filter_fields_[it->second]);
+	return(nullptr);
+}
+
+const std::string* VcfHeader::GetSample(const std::string& name) const {
+	map_type::const_iterator it = this->samples_map_.find(name);
+	if(it != this->samples_map_.end()) return(&this->samples_[it->second]);
+	return(nullptr);
+}
+
 bool VcfHeader::BuildReverseMaps(void){
 	this->contigs_reverse_map_.clear();
 	this->info_fields_reverse_map_.clear();

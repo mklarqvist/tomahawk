@@ -192,6 +192,10 @@ public:
 		// Ascertain that there is sufficient amount of samples to reliably calculate LD.
 		uint64_t total = gt.cnt[0] + gt.cnt[1];
 		uint64_t total_hap = gt.hap_cnt[0] + gt.hap_cnt[1] + gt.hap_cnt[4] + gt.hap_cnt[5];
+		if(total_hap < settings.threshold_miss*rec->n_sample){
+			std::cerr << "filter miss threshold=" << total_hap << "<" << settings.threshold_miss*rec->n_sample << std::endl;
+			return false;
+		}
 		if(total_hap < 5){
 			std::cerr << "not enough samples=" << rec->n_sample << " with " << gt.n_missing << " miss -> available=" << 2*rec->n_sample-gt.n_missing << "/" << total << "/" << total_hap << std::endl;
 			return false;
@@ -214,10 +218,10 @@ public:
 
 		bool flip_allele = false;
 		if(gt.cnt[1] > gt.cnt[0]){
-			std::cerr << "site is flipped=" << gt.cnt[0] << "," << gt.cnt[1] << std::endl;
+			//std::cerr << "site is flipped=" << gt.cnt[0] << "," << gt.cnt[1] << std::endl;
 			flip_allele = true;
 			if(settings.flip_major_minor) twk.gt_flipped = true;
-			if(settings.flip_major_minor) std::cerr << "will flip" << std::endl;
+			//if(settings.flip_major_minor) std::cerr << "will flip" << std::endl;
 		}
 
 		// If mixed phasing then set to unphased

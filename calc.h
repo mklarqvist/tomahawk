@@ -39,15 +39,14 @@ void calc_usage(void){
 	"  -c INT    number of subproblems to split compute into (must be in (c!2 + c))\n"
 	"  -C INT    chosen part to compute (0 < -C < -c)\n"
 	"  -m        run in low-memory mode: this is considerably slower but use no more memory than\n"
-	"            block1*variants + block2*variants\n"
-	"  -M        use bitmaps in low-memory mode. Requires -m and -p to be set.\n"
+	"               block1*variants + block2*variants\n"
+	"  -M        use phased bitmaps in low-memory mode. Automatically triggers -m and -p.\n"
 	"  -b        number of records in a block. Has an effect on memory usage only when -m is set.\n"
 	"  -w INT    sliding window width in bases\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
 	"  -p        force computations to use phased math\n"
 	"  -u        force computations to use unphased math\n"
 	"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
-	"  -a INT    minimum number of non-major genotypes in 2-by-2 matrix (default: 1)\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n";
@@ -74,29 +73,29 @@ int calc(int argc, char** argv){
 		{"low-memory",        optional_argument, 0, 'm' },
 		{"block-size",        optional_argument, 0, 'b' },
 		{"bitmaps",           optional_argument, 0, 'M' },
+		{"compression-level", optional_argument, 0, 'k' },
+
+		{"cross-chr-only",    no_argument, 0, 'X' },
+		{"no-cross-chr",      no_argument, 0, 'x' },
 
 		{"minP",              optional_argument, 0, 'P' },
-		{"phased",            no_argument,       0, 'p' },
-		{"unphased",          no_argument,       0, 'u' },
-		{"fast-mode",         no_argument,       0, 'f' },
+		{"force-phased",      no_argument,       0, 'p' },
+		{"force-unphased",    no_argument,       0, 'u' },
 		{"samples",           optional_argument, 0, 'S' },
 		{"minR2",             optional_argument, 0, 'r' },
 		{"maxR2",             optional_argument, 0, 'R' },
-		{"minMHF",            optional_argument, 0, 'a' },
-		{"maxMHF",            optional_argument, 0, 'A' },
+
 		{"detailedProgress",  no_argument,       0, 'd' },
 		{"silent",            no_argument,       0, 's' },
 		// Not implemented
 		{"windowBases",       optional_argument, 0, 'w' },
-		{"windowSites",       optional_argument, 0, 'W' },
-		{"longHelp",          optional_argument, 0, '?' },
 		{0,0,0,0}
 	};
 
 	tomahawk::twk_ld_settings settings;
 	//std::vector<std::string> filter_regions;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:W:S:I:sdc:C:fUmMb:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:S:I:sdc:C:mMb:xXk:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -115,11 +114,15 @@ int calc(int argc, char** argv){
 			break;
 		case 'p':
 			settings.force_phased = true;
+			settings.forced_unphased = false;
 			break;
 		case 'u':
 			settings.forced_unphased = true;
+			settings.force_phased = false;
 			break;
 		case 'M':
+			settings.force_phased = true;
+			settings.low_memory = true;
 			settings.bitmaps = true;
 			break;
 		case 't':
@@ -201,6 +204,10 @@ int calc(int argc, char** argv){
 				return(1);
 			}
 
+		  break;
+
+		case 'k':
+		settings.c_level = std::atoi(optarg);
 		break;
 
 
@@ -220,35 +227,12 @@ int calc(int argc, char** argv){
 		return(1);
 	}
 
-	/*
-	if(parameters.fast_mode && parameters.force == tomahawk::TomahawkCalcParameters::force_method::none){
-		std::cerr << tomahawk::utility::timestamp("ERROR") << "Force mode requires that force phasing (-p) is set..." << std::endl;
-		return(1);
-	}
-	*/
-
 	// Print messages
 	tomahawk::ProgramMessage();
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling calc..." << std::endl;
 
 
 	tomahawk::twk_ld ld;
-	//settings.in  = "/media/mdrk/NVMe/sim_haplotypes/sim_1mb_1000k.twk";
-	//settings.out = "/media/mdrk/NVMe/sim_haplotypes/sim_1mb_1000k.two";
-	//settings.n_chunks = 1; // has to be non-negative, non-zero
-	//settings.c_chunk  = 0; // has to be in range [0, n_chunks)
-	//settings.minR2    = 0.1;
-	//settings.minP     = 1e-3;
-	//settings.bl_size  = 100;
-	//settings.window   = true;
-	//settings.l_window = 500000;
-	// Todo: dedupe intervals
-	//settings.ival_strings.push_back("20:20e6-21e6");
-	//settings.ival_strings.push_back("20:40e6-41e6");
-
-	if(ld.Compute(settings) == false){
-		std::cerr << "failed compute" << std::endl;
-		return 1;
-	}
+	if(ld.Compute(settings) == false) return 1;
 	return 0;
 }

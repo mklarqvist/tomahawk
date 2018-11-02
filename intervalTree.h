@@ -50,6 +50,20 @@ public:
     , stop(std::max(s, e))
     , value(v)
     {}
+
+    bool operator<(const Interval& other) const{
+    	if(start < other.start) return true;
+    	if(other.start < start) return false;
+    	if(stop < other.stop) return true;
+    	if(other.stop > stop) return false;
+    	return true;
+    }
+
+    inline bool operator==(const Interval& other) const{
+    	return(start == other.start && stop == other.stop && value == other.value);
+    }
+
+    inline bool operator!=(const Interval& other) const{ return(!(*this == other)); }
 };
 
 template <class Scalar, typename Value>

@@ -79,6 +79,27 @@ twk1_ldd_blk& twk1_ldd_blk::operator=(const twk1_ldd_blk& other){
 	return(*this);
 }
 
+twk1_ldd_blk& twk1_ldd_blk::operator=(twk1_ldd_blk&& other){
+	if(owns_block) delete blk;
+	blk = nullptr;
+	std::swap(blk, other.blk);
+	owns_block = other.owns_block;
+	n_rec = other.n_rec; // do not change m
+
+	delete[] vec; vec = nullptr;
+	delete[] list; list = nullptr;
+	delete[] bitmap; bitmap = nullptr;
+	std::swap(vec, other.vec);
+	std::swap(list, other.list);
+	std::swap(bitmap, other.bitmap);
+
+	if(blk != nullptr){
+		n_rec = blk->n;
+	}
+
+	return(*this);
+}
+
 void twk1_ldd_blk::SetPreloaded(const twk1_ldd_blk& other){
 	if(owns_block) delete blk;
 	owns_block = false; n_rec = 0; // do not change m
@@ -170,12 +191,15 @@ void twk1_ldd_blk::Inflate(const uint32_t n_samples,
 	}
 
 	if(unpack & TWK_LDD_LIST){
-		for(int i = 0; i < blk->n; ++i)
+		for(int i = 0; i < blk->n; ++i){
+			if(blk->rcds[i].an) continue; // do not construct if missing data
 			list[i].Build(blk->rcds[i], n_samples, resizeable);
+		}
 	}
 
 	if(unpack & TWK_LDD_BITMAP){
 		for(int i = 0; i < blk->n; ++i){
+			if(blk->rcds[i].an) continue; // do not construct if missing data
 			bitmap[i].reset(); // does not release memory used
 			uint32_t cumpos = 0;
 			// iterate over run-length encoded entries

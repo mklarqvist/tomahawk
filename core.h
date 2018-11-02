@@ -323,6 +323,15 @@ public:
 
 	inline void operator+=(const twk1_t& rec){ this->Add(rec); }
 
+	twk1_block_t& operator=(twk1_block_t&& other){
+		//std::cerr << "invoking move ctor" << std::endl;
+		delete[] rcds; rcds = nullptr;
+		std::swap(rcds, other.rcds);
+		n = other.n; m = other.m; rid = other.rid;
+		minpos = other.minpos; maxpos = other.maxpos;
+		return(*this);
+	}
+
 	void Add(const twk1_t& rec){
 		if(this->n == this->m) this->resize(); // will also trigger when n=0 and m=0
 		this->maxpos = rec.pos + 1; // right non-inclusive
@@ -719,10 +728,27 @@ public:
 		return(os);
 	}
 
-	std::ostream& Print(std::ostream& os) const {
+	/**<
+	 * Print out record in uncompressed LD format.
+	 * @param os
+	 * @return
+	 */
+	std::ostream& PrintLD(std::ostream& os) const {
 		os << controller << '\t' << ridA << '\t' << Apos << '\t' << ridB << '\t' << Bpos << '\t'
 		   << cnt[0] << '\t' << cnt[1] << '\t' << cnt[2] << '\t' << cnt[3] << '\t' << D << '\t'
 		   << Dprime << '\t' << R << '\t' << R2 << '\t' << P << '\t' << ChiSqFisher << '\t' << ChiSqModel << '\n';
+		return(os);
+	}
+
+	/**<
+	 * Print out JSON
+	 * @param os
+	 * @return
+	 */
+	std::ostream& PrintLDJson(std::ostream& os) const {
+		os << '[' << controller << ',' << ridA << ',' << Apos << ',' << ridB << ',' << Bpos << ','
+		   << cnt[0] << ',' << cnt[1] << ',' << cnt[2] << ',' << cnt[3] << ',' << D << ','
+		   << Dprime << ',' << R << ',' << R2 << ',' << P << ',' << ChiSqFisher << ',' << ChiSqModel << ']' << '\n';
 		return(os);
 	}
 

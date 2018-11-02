@@ -5,6 +5,7 @@
 #include "index.h"
 #include "spinlock.h"
 #include "core.h"
+#include "two_reader.h"
 
 namespace tomahawk {
 
@@ -37,6 +38,8 @@ struct twk_writer_t {
 		SerializePrimitive(b_unc, stream); // uncompressed size
 		SerializePrimitive(b_comp, stream); // compressed size
 		stream.write(obuf.data(), obuf.size()); // actual data
+		//std::cerr << "wrote=" << b_unc << "->" << b_comp << " " << (float)b_unc/b_comp << " -> " << obuf.size() << std::endl;
+
 		spinlock.unlock();
 		obuf.reset();
 	}
@@ -96,6 +99,179 @@ public:
 	std::ofstream out;
 };
 
+
+struct twk_two_writer_t : public twk_writer_t {
+	twk_two_writer_t() : mode('u'), n_blk_lim(10000), oblock(10000){
+		buf = std::cout.rdbuf();
+		stream.basic_ios<char>::rdbuf(buf);
+	}
+
+	bool Open(const std::string& file){
+		if(file.size() == 0 || (file.size() == 1 && file[0] == '-')) return _OpenStream();
+		else return _OpenFile(file);
+	}
+
+	bool _OpenFile(const std::string& file){
+		out.open(file,std::ios::out | std::ios::binary);
+		if(!out.good()){
+			std::cerr << "failed to open" << std::endl;
+			return false;
+		}
+		buf = out.rdbuf();
+		stream.rdbuf(buf);
+		return true;
+	}
+
+	bool _OpenStream(){
+		buf = std::cout.rdbuf();
+		stream.basic_ios<char>::rdbuf(buf);
+		return true;
+	}
+
+	inline void close(){ out.close(); }
+	inline bool is_open() const{ return true; }
+
+	bool WriteHeader(two_reader& reader){
+		if(mode == 'b') return(WriteHeaderBinary(reader));
+		else if(mode == 'u') return(WriteHeaderReadable(reader));
+		return false;
+	}
+
+
+	bool WriteHeaderBinary(two_reader& reader) {
+		if(stream.good() == false)
+			return false;
+
+		obuf.reset();
+		stream.write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
+		tomahawk::twk_buffer_t buf(256000);
+		buf << reader.hdr;
+		if(zcodec.Compress(buf, obuf, 1) == false){
+			std::cerr << "failed to compress" << std::endl;
+			return false;
+		}
+
+		stream.write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		stream.write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		stream.write(obuf.data(),obuf.size());
+		stream.flush();
+		buf.reset();
+
+		return(stream.good());
+	}
+
+	bool WriteHeaderReadable(two_reader& reader) {
+		if(stream.good() == false)
+			return false;
+
+		obuf.reset();
+		stream << reader.hdr.literals_;
+		stream.put('\n');
+		stream << "flags\tridA\tposA\tridB\tposB\tHOMHOM\tHOMALT\tALTHOM\tALTALT\tD\tDprime\tR\tR2\tP\tChiSqFisher\tChiSqModel" << std::endl;
+		stream.flush();
+
+		return(stream.good());
+	}
+
+	bool WriteFinal(){
+		if(stream.good() == false) return false;
+		if(WriteBlock() == false) return false;
+
+		obuf.reset();
+		tomahawk::twk_buffer_t buf(256000);
+
+		buf << oindex;
+		//std::cerr << "index buf size =" << buf.size() << std::endl;
+		if(zcodec.Compress(buf, obuf, 1) == false){
+			std::cerr << "failed compression" << std::endl;
+			return false;
+		}
+		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
+
+		// temp write out index
+		for(int i = 0; i < oindex.n; ++i){
+			std::cerr << i << "/" << oindex.n << " " << oindex.ent[i].rid << ":" << oindex.ent[i].minpos << "-" << oindex.ent[i].maxpos << " offset=" << oindex.ent[i].foff << "-" << oindex.ent[i].fend << " brid=" << oindex.ent[i].ridB << std::endl;
+		}
+
+		const uint64_t offset_start_index = stream.tellp();
+		uint8_t marker = 0;
+		stream.write(reinterpret_cast<const char*>(&marker),sizeof(uint8_t));
+		stream.write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		stream.write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		stream.write(obuf.data(),obuf.size());
+		stream.write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
+		stream.write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
+		stream.flush();
+		return(stream.good());
+	}
+
+	bool Add(const twk1_two_t& rec){
+		if(oblock.n == n_blk_lim){
+			if(WriteBlock() == false)
+				return false;
+		}
+
+		oblock += rec;
+		return true;
+	}
+
+	bool WriteBlock(){
+		if(mode == 'b') return(WriteBlockCompreesedTWO());
+		else if(mode == 'u') return(WriteBlockUncompressedLD());
+
+		return false;
+	}
+
+	bool WriteBlockUncompressedLD(){
+		if(oblock.n){
+			for(int i = 0; i < oblock.n; ++i){
+				oblock.rcds[i].PrintLD(std::cout);
+			}
+			oblock.reset();
+		}
+		return true;
+	}
+
+	bool WriteBlockCompreesedTWO(){
+		// Todo: if uncompressed data then write as is
+		if(oblock.n){
+			//twk_oblock_two_t b;
+			ubuf << oblock;
+
+			if(zcodec.Compress(ubuf, obuf, 1) == false){
+				std::cerr << "failed compression" << std::endl;
+				return false;
+			}
+
+			twk_writer_t::Add(ubuf.size(), obuf.size(), obuf);
+
+			ioentry.n = oblock.n;
+			ioentry.b_unc = ubuf.size();
+			ioentry.b_cmp = obuf.size();
+			ioentry.foff = stream.tellp();
+			ioentry.rid  = -1;
+			ioentry.ridB = -1;
+			ioentry.minpos = 0;
+			ioentry.maxpos = 0;
+			ioentry.fend = stream.tellp();
+
+			oindex += ioentry;
+			ioentry.clear();
+			obuf.reset(); ubuf.reset();
+			oblock.reset();
+		}
+		return true;
+	}
+
+	char mode;
+	uint32_t n_blk_lim; // flush block limit
+	twk1_two_block_t oblock;
+	IndexEntryOutput ioentry;
+	IndexOutput oindex;
+	ZSTDCodec zcodec;
+	twk_buffer_t ubuf, obuf;
+	std::ofstream out;
+};
 
 }
 

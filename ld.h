@@ -163,6 +163,190 @@ struct twk_ld_perf {
 };
 
 /**<
+ * Basic intervals container. Handles tuples of (rid,from_pos,to_pos) and maps
+ * them to the local tomahawk index. Have functionality for sorting, deduping,
+ * and mapping interval tuples and the resulting index objects.
+ */
+class twk_intervals {
+public:
+	typedef algorithm::Interval<uint32_t,uint32_t> interval;
+
+	twk_intervals() : n_c(0), itree(nullptr){}
+	twk_intervals(const uint32_t n_contigs) :
+		n_c(n_contigs),
+		itree(new algorithm::IntervalTree<uint32_t,uint32_t>*[n_c])
+	{}
+
+	virtual ~twk_intervals(){
+		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
+		delete[] itree;
+	}
+
+	/**<
+	 * Dedupes interval vectors tuples (rid,fromA,fromB) by extension. If two
+	 * intervals partially overlap in the right end then we extend the left-most
+	 * interval to the right-most intervals end position.
+	 */
+	void Dedupe(){
+		for(int i = 0; i < n_c; ++i){ // every rid
+			if(ivecs[i].size() == 0) continue;
+			std::vector<interval> ivals;
+			std::sort(ivecs[i].begin(), ivecs[i].end());
+			ivals.push_back(ivecs[i][0]);
+			for(int j = 1; j < ivecs[i].size(); ++j){
+				if(ivecs[i][j].start <= ivals.back().stop
+				   && ivecs[i][j].stop >= ivals.back().start)
+				{
+					ivals.back().stop = ivecs[i][j].stop;
+				}
+				else ivals.push_back(ivecs[i][j]);
+			}
+			ivecs[i] = ivals;
+		}
+	}
+
+public:
+	uint32_t n_c;
+	std::vector< std::vector< interval > > ivecs; // vector of vectors of intervals
+	algorithm::IntervalTree<uint32_t,uint32_t>** itree; // interval tree array
+};
+
+class twk_intervals_twk : public twk_intervals {
+public:
+	twk_intervals_twk() = default;
+	twk_intervals_twk(const uint32_t n_contigs) : twk_intervals(n_contigs){}
+
+	/**<
+	 * Wrapper function for mapping the internal interval tuples to the index
+	 * entries provided by the twk_reader object. If construction fails or
+	 * no map hits are found we return FALSE.
+	 * @param reader Source twk_reader object.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool Build(const twk_reader& reader){
+		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
+		delete[] itree; itree = nullptr;
+
+		if(reader.hdr.GetNumberContigs() == 0) return false;
+		n_c = reader.hdr.GetNumberContigs();
+		this->Dedupe();
+		for(uint32_t i = 0; i < ivecs.size(); ++i){
+			for(int j = 0; j < ivecs[i].size(); ++j){
+				std::vector<IndexEntry*> idx = reader.index.FindOverlap(i,ivecs[i][j].start,ivecs[i][j].stop);
+				overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
+			}
+		}
+
+		itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[n_c];
+		for(uint32_t i = 0; i < n_c; ++i){
+			itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		}
+
+		if(overlap_blocks.size() == 0){
+			std::cerr << utility::timestamp("ERROR","INTERVAL") << "Found no blocks overlapping the provided range(s)..." << std::endl;
+			return(false);
+		}
+
+		return(true);
+	}
+
+	/**<
+	 * Convenince wrapper for interval strings. Iterate over a vector of unparsed
+	 * interval strings and parse them.
+	 * @param ivals  Source vector of unparsed interval strings.
+	 * @param reader Reference instance of twk_reader object.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool ParseIntervalStrings(std::vector<std::string>& ivals, const twk_reader& reader){
+		if(ivals.size() == 0)
+			return true;
+
+		for(int i = 0; i < ivals.size(); ++i){
+			if(this->ParseIntervalString(ivals[i], reader) == false)
+				return false;
+		}
+		return true;
+	}
+
+	/**<
+	 * Internal function for parsing a source interval string into a (rid,posA,posB)
+	 * tuple. Input string has to match any of the following patterns:
+	 *    1) ^rid$
+	 *    2) ^rid:pos$
+	 *    3) ^rid:pos-pos$
+	 *
+	 * Numerical values may be expressed in any standard form: for example, 10e6
+	 * and 20E6 and 100000. This function will return TRUE if parsing is syntactically
+	 * legal and the contig identifier exists in the header. This function will not check
+	 * for out-of-bounds errors such as providing an interval exceeding the length of a
+	 * contig.
+	 * @param s      Source unparsed interval string/
+	 * @param reader Reference instance of twk_reader object.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool ParseIntervalString(const std::string& s, const twk_reader& reader){
+		if(std::regex_match(s, TWK_REGEX_CONTIG_RANGE)){ // contig only
+			std::vector<std::string> rid = utility::split(s, ':');
+			std::vector<std::string> pos;
+			if(rid.size() == 2){
+				pos = utility::split(rid[1], '-');
+			} else {
+				std::cerr << "illegal format" << std::endl;
+				return false;
+			}
+			uint32_t ival_from = (uint32_t)std::atof(pos[0].c_str());
+			uint32_t ival_to   = (uint32_t)std::atof(pos[1].c_str());
+			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			uint32_t ival_rid = contig->idx;
+			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+
+			return true;
+
+		} else if(std::regex_match(s, TWK_REGEX_CONTIG_POSITION)){ // contig and position
+			std::vector<std::string> rid = utility::split(s, ':');
+
+			uint32_t ival_from = (uint32_t)std::atof(rid[1].c_str());
+			uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str());
+			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			uint32_t ival_rid = contig->idx;
+			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
+
+			return true;
+		} else if(std::regex_match(s, TWK_REGEX_CONTIG_ONLY)){ // contig and positional range
+			const VcfContig* contig = reader.hdr.GetContig(s);
+			if(contig == nullptr){
+				std::cerr << "contig does not exist" << std::endl;
+				return false;
+			}
+			ivecs[contig->idx].push_back(algorithm::Interval<uint32_t,uint32_t>(0,contig->n_bases,0));
+
+			return true;
+		} else
+			return false;
+	}
+
+public:
+	std::vector<IndexEntry*> overlap_blocks; // overlapping blocks of interest
+};
+
+class twk_intervals_two : public twk_intervals {
+public:
+	twk_intervals_two() = default;
+	twk_intervals_two(const uint32_t n_contigs) : twk_intervals(n_contigs){}
+
+public:
+	std::vector<IndexEntryOutput*> overlap_blocks; // overlapping blocks of interest
+};
+
+/**<
  * Work balancer for twk_ld_engine threads. Uses a non-blocking spinlock to produce a
  * tuple (from,to) of integers representing the start ref block and dst block.
  * This approach allows perfect load-balancing at a small overall CPU cost.
@@ -171,21 +355,46 @@ struct twk_ld_ticker {
 	typedef bool (twk_ld_ticker::*get_func)(uint32_t& from, uint32_t& to, uint8_t& type);
 
 	twk_ld_ticker() :
-		n_perf(0), i(0), j(0),
-		ldd(nullptr),
 		diag(false), window(false),
+		n_perf(0), i(0), j(0),
 		fL(0), tL(0), fR(0), tR(0), l_window(0),
+		ldd(nullptr),
 		_getfunc(&twk_ld_ticker::GetBlockPair)
 	{}
 	~twk_ld_ticker(){}
 
+	/**<
+	 * Parameterisation of window mode: should we check if blocks overlap given
+	 * some maximum distance between pairs? See function `GetBlockWindow` for
+	 * additional details.
+	 * @param yes Set or unset window mode.
+	 */
 	inline void SetWindow(const bool yes = true){
 		window = yes;
 		_getfunc = (window ? &twk_ld_ticker::GetBlockWindow : &twk_ld_ticker::GetBlockPair);
 	}
 
+	/**<
+	 * Indirection using functional pointer to actual function used. This
+	 * allows us to use a singular function without writing multiple
+	 * versions of downstream functions.
+	 * @param from Row position
+	 * @param to   Column position
+	 * @param type Diagonal (1) or square (0)
+	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
+	 */
 	inline bool Get(uint32_t& from, uint32_t& to, uint8_t& type){ return((this->*_getfunc)(from, to, type)); }
 
+	/**<
+	 * Retrieves (x,y)-coordinates from the selected load-balancing subproblem.
+	 * This variation also checks if the two blocks (x,y) can have any overlapping
+	 * regions given some parameterized maximum distance.
+	 * Uses a spin-lock to make this function thread-safe.
+	 * @param from Row position
+	 * @param to   Column position
+	 * @param type Diagonal (1) or square (0)
+	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
+	 */
 	bool GetBlockWindow(uint32_t& from, uint32_t& to, uint8_t& type){
 		spinlock.lock();
 
@@ -200,9 +409,8 @@ struct twk_ld_ticker {
 
 		// First in tgt block - last in ref block
 		if(i != j){
+			// check if this (x,y) pair have any overlapping intervals.
 			if(ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec-1].pos > l_window){
-				//std::cerr << "never overlap=" << ldd[j].blk->rcds[0].pos << "-" << ldd[i].blk->rcds[ldd[i].n_rec - 1].pos << "=" << ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec - 1].pos << std::endl;
-				//std::cerr << i << "," << j << "," << (int)type << std::endl;
 				++i; j = i; type = 1;
 				spinlock.unlock();
 				return true;
@@ -217,16 +425,26 @@ struct twk_ld_ticker {
 		return true;
 	}
 
+	/**<
+	 * Retrieves (x,y)-coordinates from the selected load-balancing subproblem.
+	 * Uses a spin-lock to make this function thread-safe.
+	 * @param from Row position
+	 * @param to   Column position
+	 * @param type Diagonal (1) or square (0)
+	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
+	 */
 	bool GetBlockPair(uint32_t& from, uint32_t& to, uint8_t& type){
 		spinlock.lock();
 
-		if(j == tR){
+		if(j == tR){ // if current position is at the last column
 			++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
+			// if current position is at the last row
 			if(i == tL){ spinlock.unlock(); return false; }
 			++n_perf;
 			spinlock.unlock();
 			return true;
 		}
+		// if current position is at the last row
 		if(i == tL){ spinlock.unlock(); return false; }
 		type = (i == j); from = i; to = j;
 		++j; ++n_perf;
@@ -236,14 +454,13 @@ struct twk_ld_ticker {
 		return true;
 	}
 
-	uint32_t n_perf;
-	SpinLock spinlock;
-	uint32_t i,j;
-	twk1_ldd_blk* ldd;
-
+public:
 	bool diag, window;
+	uint32_t n_perf, i,j;
 	uint32_t fL, tL, fR, tR, l_window;
+	twk1_ldd_blk* ldd;
 	get_func _getfunc;
+	SpinLock spinlock;
 };
 
 /**<
@@ -253,9 +470,15 @@ struct twk_ld_ticker {
  * that data.
  */
 struct twk_ld_progress {
-	twk_ld_progress() : is_ticking(false), n_s(0), n_var(0), n_pair(0), n_out(0), b_out(0), thread(nullptr){}
+	twk_ld_progress() : is_ticking(false), n_s(0), n_cmps(0), n_var(0), n_pair(0), n_out(0), b_out(0), thread(nullptr){}
 	~twk_ld_progress() = default;
 
+	/**<
+	 * Starts the progress ticker. Spawns a detached thread ticking every 30 seconds
+	 * in the background until the flag `is_ticking` is set to FALSE or the program
+	 * finishes.
+	 * @return Returns a pointer to the detached thread.
+	 */
 	std::thread* Start(){
 		delete thread;
 		is_ticking = true;
@@ -264,8 +487,11 @@ struct twk_ld_progress {
 		return(thread);
 	}
 
+	/**<
+	 * Internal function displaying the progress message every 30 seconds. This
+	 * function is called exclusively by the detached thread.
+	 */
 	void StartTicking(){
-		uint32_t i = 0;
 		timer.Start();
 
 		uint64_t variant_overflow = 99E9, genotype_overflow = 999E12;
@@ -286,7 +512,6 @@ struct twk_ld_progress {
 			//if(this->Detailed)
 			//	this->GetElapsedTime();
 
-			++i;
 			//if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
 				//const double ComparisonsPerSecond = (double)n_var.load()/timer.Elapsed().count();
 				if(n_var.load() > variant_overflow){ variant_width += 3; variant_overflow *= 1e3; }
@@ -295,22 +520,26 @@ struct twk_ld_progress {
 
 				//const uint32_t n_p = sprintf(&support_buffer[0], "%0.3f", 0);
 				//support_buffer[n_p] = '%';
-				std::cerr << utility::timestamp("PROGRESS")
-						<< std::setw(12) << timer.ElapsedString()
-						<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
-						<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
-						<< std::setw(15) << utility::ToPrettyString(n_out.load())
-						<< std::setw(10) << 0 << '\t'
-						<< 0 << std::endl;
-				i = 0;
+				if(n_cmps){
+					std::cerr << utility::timestamp("PROGRESS")
+							<< std::setw(12) << timer.ElapsedString()
+							<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
+							<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
+							<< std::setw(15) << utility::ToPrettyString(n_out.load())
+							<< std::setw(10) << (double)n_var.load()/n_cmps*100 << "%\t"
+							<< (double)0 << std::endl;
+				} else {
+					std::cerr << utility::timestamp("PROGRESS")
+							<< std::setw(12) << timer.ElapsedString()
+							<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
+							<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
+							<< std::setw(15) << utility::ToPrettyString(n_out.load())
+							<< std::setw(10) << 0 << '\t'
+							<< 0 << std::endl;
+				}
 			//}
 			std::this_thread::sleep_for(std::chrono::seconds(30));
 		}
-		is_ticking = false;
-
-		// Final output
-		//if(this->Detailed)
-		//	this->GetElapsedTime();
 	}
 
 	/**<
@@ -325,11 +554,13 @@ struct twk_ld_progress {
 		std::cerr << utility::timestamp("PROGRESS") << "Finished" << std::endl;
 	}
 
+public:
 	bool is_ticking;
-	uint32_t n_s;
-	std::atomic<uint64_t> n_var, n_pair, n_out, b_out;
-	std::thread* thread;
-	Timer timer;
+	uint32_t n_s; // number of samples
+	uint64_t n_cmps; // number of comparisons we estimate to perform
+	std::atomic<uint64_t> n_var, n_pair, n_out, b_out; // counters used by ld threads
+	std::thread* thread; // detached thread
+	Timer timer; // timer instance
 };
 
 
@@ -422,12 +653,13 @@ struct twk_ld_balancer {
 	           uint32_t chosen_part)
 	{
 		if(chosen_part >= desired_parts){
-			std::cerr << "illegal chosen block" << std::endl;
+			std::cerr << utility::timestamp("ERROR","BALANCER") << "Illegal chosen block: " << chosen_part << " >= " << desired_parts << std::endl;
 			return false;
 		}
+
 		n = n_blocks; p = desired_parts; c = chosen_part;
 		if(p > n){
-			std::cerr << "asking for more subproblems then there are blocks" << p << ">" << n << std::endl;
+			std::cerr << utility::timestamp("ERROR","BALANCER") << "Illegal desired number of blocks! You are asking for more subproblems than there are blocks available (" << p << ">" << n << ")..." << std::endl;
 			return false;
 		}
 
@@ -448,7 +680,7 @@ struct twk_ld_balancer {
 		}
 
 		if(factor == 0){
-			std::cerr << "could not partition into subproblem=" << desired_parts << std::endl;
+			std::cerr << utility::timestamp("ERROR","BALANCER") << "Could not partition into " << desired_parts << " number of subproblems. This number is not a function of x!2 + x..." << std::endl;
 			return false;
 		}
 
@@ -462,9 +694,9 @@ struct twk_ld_balancer {
 				tL = (i + 1 == factor ? n_blocks : chunk_size*(i+1));
 				fL = tL - chunk_size;
 
-				std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
+				//std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
 				if(k == chosen_part){
-					std::cerr << "chosen part:" << std::endl;
+					//std::cerr << "chosen part:" << std::endl;
 					fromL = fL; toL = tL; fromR = fR; toR = tR;
 					n_m = (toL - fromL) + (toR - fromR); diag = false;
 					if(i == j){ n_m = toL - fromL; diag = true; }
@@ -491,7 +723,7 @@ struct twk_ld_settings {
 		force_phased(false), forced_unphased(false),
 		c_level(1), bl_size(500), b_size(10000), l_window(1000000),
 		n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
-		ldd_load_type(TWK_LDD_ALL),
+		ldd_load_type(TWK_LDD_ALL), out("-"),
 		minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
 		n_chunks(1), c_chunk(0)
 	{}
@@ -670,15 +902,15 @@ struct twk_ld_slave {
 		delete thread;
 
 		if(settings->force_phased && settings->low_memory && settings->bitmaps)
-			thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this);
+			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this);
+			else thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this);
 		else if(settings->force_phased)
 			thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
 		else if(settings->forced_unphased){
 			thread = new std::thread(&twk_ld_slave::CalculateUnphased, this);
 		}
 		else {
-			std::cerr << "unknown" << std::endl;
-			return nullptr;
+			thread = new std::thread(&twk_ld_slave::Calculate, this);
 		}
 
 		return(thread);
@@ -764,7 +996,7 @@ struct twk_ld_slave {
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -783,7 +1015,7 @@ struct twk_ld_slave {
 			} else {
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -818,6 +1050,7 @@ struct twk_ld_slave {
 	}
 
 	bool CalculatePhasedBitmap(){
+		std::cerr << "regular bitmap" << std::endl;
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
@@ -834,7 +1067,7 @@ struct twk_ld_slave {
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -848,7 +1081,7 @@ struct twk_ld_slave {
 			} else {
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 							continue;
 						}
 
@@ -860,7 +1093,79 @@ struct twk_ld_slave {
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 			}
+		}
 
+		// if preloaded
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
+
+		return true;
+	}
+
+	bool CalculatePhasedBitmapWindow(){
+		std::cerr << "windowed bitmap" << std::endl;
+		twk1_ldd_blk blocks[2];
+		uint32_t from, to; uint8_t type;
+		Timer timer; timer.Start();
+
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
+
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
+			this->UpdateBlocks(blocks,from,to);
+
+			if(type == 1){
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = i+1; j < blocks[0].n_rec; ++j){
+						if(blocks[0].blk->rcds[i].rid != blocks[0].blk->rcds[j].pos
+						   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
+						{
+							//std::cerr << "oor=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[j].pos << std::endl;
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 50)
+							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+						else
+							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
+					}
+				}
+				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+			} else {
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = 0; j < blocks[1].n_rec; ++j){
+						if(blocks[0].blk->rcds[i].rid != blocks[1].blk->rcds[j].pos
+						   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
+						{
+							//std::cerr << "oor=" << blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
+							continue;
+						}
+
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 50)
+							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+						else
+							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
+					}
+				}
+				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+			}
 		}
 
 		// if preloaded
@@ -896,7 +1201,7 @@ struct twk_ld_slave {
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -912,7 +1217,7 @@ struct twk_ld_slave {
 			} else {
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 							continue;
 						}
 
@@ -920,6 +1225,94 @@ struct twk_ld_slave {
 							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 						else {
 							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						}
+
+					}
+				}
+				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+			}
+
+		}
+		//std::cerr << "done" << std::endl;
+
+		// if preloaded
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
+
+		return true;
+	}
+
+	bool Calculate(){
+		twk1_ldd_blk blocks[2];
+		uint32_t from, to; uint8_t type;
+		Timer timer; timer.Start();
+
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
+
+		// Heuristically determined
+		const uint32_t cycle_thresh = n_s / 50;
+
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
+			this->UpdateBlocks(blocks,from,to);
+
+			if(type == 1){
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = i+1; j < blocks[0].n_rec; ++j){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].an || blocks[0].blk->rcds[j].an){
+							if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 100){
+								engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+							} else {
+								engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+							}
+						} else {
+							if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh){
+								//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+								//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+								engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+								//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
+							} else {
+								engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+							}
+						}
+					}
+				}
+				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+			} else {
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = 0; j < blocks[1].n_rec; ++j){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
+							continue;
+						}
+
+						if(blocks[0].blk->rcds[i].an || blocks[1].blk->rcds[j].an){
+							if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 100)
+								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+							else {
+								engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+							}
+						} else {
+							if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
+								//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+								//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+								engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
+								//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
+							else {
+								engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+							}
 						}
 
 					}
@@ -958,82 +1351,15 @@ public:
 
 class twk_ld {
 public:
-	twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr), itree(nullptr)
+	twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr)
 	{
 	}
 
 	~twk_ld(){
 		delete[] ldd; delete[] ldd2;;
-		for(uint32_t i = 0; i < n_tree; ++i) delete itree[i];
-		delete[] itree;
 	}
 
-	bool ParseIntervalStrings(twk_reader& reader){
-		for(int i = 0; i < settings.ival_strings.size(); ++i){
-			if(this->ParseIntervalString(settings.ival_strings[i], reader) == false)
-				return false;
-		}
-		return true;
-	}
-
-	bool ParseIntervalString(const std::string& s, twk_reader& reader){
-		std::cerr << "parsing=" << s << std::endl;
-		if(std::regex_match(s, TWK_REGEX_CONTIG_RANGE)){
-			std::vector<std::string> rid = utility::split(s, ':');
-			std::vector<std::string> pos;
-			if(rid.size() == 2){
-				pos = utility::split(rid[1], '-');
-			} else {
-				std::cerr << "illegal format" << std::endl;
-				return false;
-			}
-			//std::cerr << "match=" << std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE) << std::endl;
-			//std::cerr << "parts=" << rid[0] << ", " << rid[1] << " and " << pos[0] << ", " << pos[1] << std::endl;
-			uint32_t ival_from = (uint32_t)std::atof(pos[0].c_str());
-			uint32_t ival_to   = (uint32_t)std::atof(pos[1].c_str());
-			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(pos[0].c_str()) << "->" << (uint32_t)std::atof(pos[1].c_str()) << std::endl;
-			uint32_t ival_rid = contig->idx;
-			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
-			std::vector<IndexEntry*> idx = reader.index.FindOverlap(ival_rid,ival_from,ival_to);
-			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
-			return true;
-
-		} else if(std::regex_match(s, TWK_REGEX_CONTIG_POSITION)){
-			std::vector<std::string> rid = utility::split(s, ':');
-
-			//std::cerr << "match=" << std::regex_match(ival_strings[0], TWK_REGEX_CONTIG_RANGE) << std::endl;
-			//std::cerr << "parts=" << rid[0] << ", " << rid[1] << " and " << pos[0] << ", " << pos[1] << std::endl;
-			uint32_t ival_from = (uint32_t)std::atof(rid[1].c_str());
-			uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str());
-			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			std::cerr << "contig=" << contig->idx << ":" << (uint32_t)std::atof(rid[1].c_str()) << "->" << (uint32_t)std::atof(rid[1].c_str()) << std::endl;
-			uint32_t ival_rid = contig->idx;
-			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
-			std::vector<IndexEntry*> idx = reader.index.FindOverlap(ival_rid,ival_from,ival_to);
-			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
-			return true;
-		} else if(std::regex_match(s, TWK_REGEX_CONTIG_ONLY)){
-			const VcfContig* contig = reader.hdr.GetContig(s);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			ivecs[contig->idx].push_back(algorithm::Interval<uint32_t,uint32_t>(0,contig->n_bases,0));
-			std::vector<IndexEntry*> idx = reader.index.FindOverlap(contig->idx,0,contig->n_bases);
-			overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
-			return true;
-		} else
-			return false;
-	}
+	bool ParseIntervalStrings(twk_reader& reader){ return(intervals.ParseIntervalStrings(settings.ival_strings, reader)); }
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
@@ -1090,9 +1416,9 @@ public:
 		return(writer->good());
 	}
 
-	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
-		if(settings.ival_strings.size()) return(this->LoadTargetBlocks(reader, bit, load));
-		else return(this->LoadAllBlocks(reader, bit, load));
+	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
+		if(intervals.overlap_blocks.size()) return(this->LoadTargetBlocks(reader, bit, balancer, load));
+		return(this->LoadAllBlocks(reader, bit, balancer, load));
 	}
 
 	/**<
@@ -1102,21 +1428,22 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
+	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
-		this->ivecs.resize(reader.hdr.GetNumberContigs());
+
+		this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
 		if(this->ParseIntervalStrings(reader) == false)
 			return false;
 
-		this->itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
-		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
-			this->itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		if(this->intervals.Build(reader) == false){
+			return false;
 		}
 
 		// First block has only 1 variant: the reference.
 		// All other blocks
+		return true;
 	}
 
 	/**<
@@ -1125,67 +1452,104 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
+	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
-		this->ivecs.resize(reader.hdr.GetNumberContigs());
+
+		this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
 		if(this->ParseIntervalStrings(reader) == false)
 			return false;
 
-		this->itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[reader.hdr.GetNumberContigs()];
-		for(uint32_t i = 0; i < reader.hdr.GetNumberContigs(); ++i){
-			this->itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
+		if(this->intervals.Build(reader) == false){
+			return false;
 		}
 
-		uint32_t n_max_possible = 0;
-		for(int i = 0; i < overlap_blocks.size(); ++i){
-			n_max_possible += this->overlap_blocks[i]->n;
+		this->n_blks = this->intervals.overlap_blocks.size();
+
+		return true;
+	}
+
+	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
+		if(intervals.overlap_blocks.size() == 0){ // if have interval strings
+			return false;
 		}
 
-		uint32_t m_blks = (n_max_possible / settings.bl_size) + 1;
-		ldd  = new twk1_ldd_blk[m_blks];
-		ldd2 = new twk1_block_t[m_blks];
+		if(balancer.diag){
+			std::cerr << "is diag" << std::endl;
+			std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
 
-#if SIMD_AVAILABLE == 1
-		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-#else
-		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-#endif
-		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
+			n_blks = balancer.toR - balancer.fromR;
+			m_blks = balancer.toR - balancer.fromR;
+			ldd  = new twk1_ldd_blk[m_blks];
+			ldd2 = new twk1_block_t[m_blks];
+		} else {
+			std::cerr << "is square" << std::endl;
+			std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
 
-		Timer timer; timer.Start();
-		for(int i = 0; i < overlap_blocks.size(); ++i){
-			bit.stream->seekg(overlap_blocks[i]->foff);
-			if(bit.NextBlock() == false){
-				std::cerr << "failed to get->" << i << std::endl;
-				return false;
-			}
+			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
+			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
+			ldd  = new twk1_ldd_blk[m_blks];
+			ldd2 = new twk1_block_t[m_blks];
+		}
 
-			for(int j = 0; j < bit.blk.n; ++j){
-				if(itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos,bit.blk.rcds[j].pos).size())
-				{
-					//std::cerr << "overlaps" << std::endl;
-					if(ldd2[n_blks].n == settings.bl_size){
-						ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),load, true);
-						++n_blks;
+		if(settings.low_memory)
+			std::cerr << utility::timestamp("LOG") << "Running in restriced memory mode..." << std::endl;
+		else
+			std::cerr << utility::timestamp("LOG") << "Running in standard mode. Pre-computing data..." << std::endl;
 
+	#if SIMD_AVAILABLE == 1
+			std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
+	#else
+			std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
+	#endif
+			std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
+
+			Timer timer; timer.Start();
+			if(balancer.diag){
+				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
+				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
+					if(bit.NextBlock() == false){
+						std::cerr << "failed to get->" << i << std::endl;
+						return false;
 					}
-					//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
-					ldd2[n_blks] += bit.blk.rcds[j];
-					++n_vnts;
+
+					ldd2[i] = std::move(bit.blk);
+					ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
+					ldd[i].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				}
+			} else {
+				uint32_t offset = 0;
+				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
+				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
+					if(bit.NextBlock() == false){
+						std::cerr << "failed to get->" << i << std::endl;
+						return false;
+					}
+
+					ldd2[offset] = std::move(bit.blk);
+					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+					++offset;
+				}
+
+				bit.stream->seekg(intervals.overlap_blocks[balancer.fromR]->foff);
+				for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
+					if(bit.NextBlock() == false){
+						std::cerr << "failed to get->" << i << std::endl;
+						return false;
+					}
+
+					ldd2[offset] = std::move(bit.blk);
+					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+					++offset;
 				}
 			}
-		}
-		// last block if non-empty
-		if(ldd2[n_blks].n){
-			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),load, true);
-			++n_blks;
-		}
-		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
+
+			std::cerr << "Done! " << timer.ElapsedString() << std::endl;
+			//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
+			return(true);
 
 		return true;
 	}
@@ -1196,15 +1560,31 @@ public:
 	 * @param bit
 	 * @return
 	 */
-	bool LoadAllBlocks(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
-		uint32_t n_max_possible = 0;
-		for(int i = 0; i < reader.index.n; ++i){
-			n_max_possible += reader.index.ent[i].n;
-		}
+	bool LoadAllBlocks(twk_reader& reader,
+			twk1_blk_iterator& bit,
+			const twk_ld_balancer& balancer,
+			const uint8_t load)
+	{
+		if(reader.index.n == 0)
+			return false;
 
-		uint32_t m_blks = (n_max_possible / settings.bl_size) + 1;
-		ldd  = new twk1_ldd_blk[m_blks];
-		ldd2 = new twk1_block_t[m_blks];
+		if(balancer.diag){
+			std::cerr << "is diag" << std::endl;
+			std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
+
+			n_blks = balancer.toR - balancer.fromR;
+			m_blks = balancer.toR - balancer.fromR;
+			ldd  = new twk1_ldd_blk[m_blks];
+			ldd2 = new twk1_block_t[m_blks];
+		} else {
+			std::cerr << "is square" << std::endl;
+			std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
+
+			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
+			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
+			ldd  = new twk1_ldd_blk[m_blks];
+			ldd2 = new twk1_block_t[m_blks];
+		}
 
 		if(settings.low_memory)
 			std::cerr << utility::timestamp("LOG") << "Running in restriced memory mode..." << std::endl;
@@ -1219,33 +1599,47 @@ public:
 		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
 
 		Timer timer; timer.Start();
-		bit.stream->seekg(reader.index.ent[0].foff);
-		for(int i = 0; i < reader.index.n; ++i){
-			if(bit.NextBlock() == false){
-				std::cerr << "failed to get->" << i << std::endl;
-				return false;
-			}
-
-			for(int j = 0; j < bit.blk.n; ++j){
-				if(ldd2[n_blks].n == settings.bl_size){
-					ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-					if(settings.low_memory == false)
-						ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-					++n_blks;
-
+		if(balancer.diag){
+			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
+			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
+				if(bit.NextBlock() == false){
+					std::cerr << "failed to get->" << i << std::endl;
+					return false;
 				}
-				//std::cerr << j << "/" << bit.blk.n << ": " << bit.blk.rcds[j].rid << ":" << bit.blk.rcds[j].pos << " GT=" << bit.blk.rcds[j].gt->n  << std::endl;
-				ldd2[n_blks] += bit.blk.rcds[j];
-				++n_vnts;
+
+				ldd2[i] = std::move(bit.blk);
+				ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
+				ldd[i].Inflate(reader.hdr.GetNumberSamples(),load, true);
+			}
+		} else {
+			uint32_t offset = 0;
+			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
+			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
+				if(bit.NextBlock() == false){
+					std::cerr << "failed to get->" << i << std::endl;
+					return false;
+				}
+
+				ldd2[offset] = std::move(bit.blk);
+				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				++offset;
+			}
+
+			bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
+			for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
+				if(bit.NextBlock() == false){
+					std::cerr << "failed to get->" << i << std::endl;
+					return false;
+				}
+
+				ldd2[offset] = std::move(bit.blk);
+				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				++offset;
 			}
 		}
-		// last block if non-empty
-		if(ldd2[n_blks].n){
-			ldd[n_blks].SetOwn(ldd2[n_blks], reader.hdr.GetNumberSamples());
-			if(settings.low_memory == false)
-				ldd[n_blks].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-			++n_blks;
-		}
+
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
 		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
 		return(true);
@@ -1284,27 +1678,21 @@ public:
 
 		//settings.ldd_load_type = TWK_LDD_ALL;
 		if(settings.low_memory && settings.force_phased && settings.bitmaps){
-			std::cerr << "using low-memory bitmaps" << std::endl;
 			settings.ldd_load_type = TWK_LDD_BITMAP;
 		} else if(settings.low_memory && settings.force_phased){
-			std::cerr << "using low-memory phased" << std::endl;
 			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 		} else if(settings.force_phased){
-			std::cerr << "using phased: vec,list" << std::endl;
 			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 		} else if(settings.forced_unphased){
-			std::cerr << "using unphased: vec" << std::endl;
 			settings.ldd_load_type = TWK_LDD_VEC;
+		} else {
+			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 		}
 
-		if(this->LoadBlocks(reader, bit, settings.ldd_load_type) == false){
-			std::cerr << "failed to load blocks" << std::endl;
-			return false;
-		}
-
-		if(this->n_blks == 0){
-			std::cerr << "no data available" << std::endl;
-			return true;
+		if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
+		else {
+			if(this->BuildIntervals(reader, bit, settings.ldd_load_type) == false)
+				return false;
 		}
 
 		if(settings.window) settings.c_chunk = 0;
@@ -1312,23 +1700,32 @@ public:
 			settings.cycle_threshold = reader.hdr.GetNumberSamples() / 50;
 
 		twk_ld_balancer balancer;
-		if(balancer.Build(n_blks, settings.n_chunks, settings.c_chunk) == false){
-			std::cerr << "failed balancing" << std::endl;
+		if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
 			return false;
+		}
+
+		if(this->LoadBlocks(reader, bit, balancer, settings.ldd_load_type) == false){
+			std::cerr << "failed to load blocks" << std::endl;
+			return false;
+		}
+
+		if(this->n_blks == 0){
+			std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
+			return true;
 		}
 
 		uint32_t n_variants = 0;
 		if(balancer.diag){
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += ldd2[i].n;
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
 		} else {
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += ldd2[i].n;
-			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += ldd2[i].n;
+			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
 		}
 
 		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
 		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
-		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_vnts * n_vnts - n_vnts) / 2) << " variant comparisons..." << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_variants * n_variants - n_variants) / 2) << " variant comparisons..." << std::endl;
 
 		twk_ld_ticker ticker; ticker.SetWindow(settings.window);
 		ticker.diag = balancer.diag;
@@ -1343,6 +1740,7 @@ public:
 		ticker.l_window = settings.l_window;
 		twk_ld_progress progress;
 		progress.n_s = reader.hdr.GetNumberSamples();
+		if(settings.window == false) progress.n_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
 		//uint32_t n_threads = std::thread::hardware_concurrency();
 		//n_threads  = 1;
 		twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
@@ -1363,6 +1761,11 @@ public:
 				return false;
 			}
 		}
+
+		// Append literal string.
+		std::string calc_string = "\n##tomahawk_calcVersion=" + std::to_string(VERSION) + "\n";
+		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime(); + "\n";
+		reader.hdr.literals_ += calc_string;
 
 		if(this->WriteHeader(writer, reader) == false){
 			std::cerr << "failed to write header" << std::endl;
@@ -1467,7 +1870,7 @@ public:
 			if(type == 1){
 				for(int i = 0; i < ldd[from].n_rec; ++i){
 					for(int j = i+1; j < ldd[to].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -1488,7 +1891,7 @@ public:
 			} else {
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 							continue;
 						}
 
@@ -1529,7 +1932,7 @@ public:
 
 				for(int i = 0; i < ldd[b1].n_rec; ++i){
 					for(int j = i+1; j < ldd[b1].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac < 5){
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
 
@@ -1565,7 +1968,7 @@ public:
 
 					for(int i = 0; i < blocks[0].n_rec; ++i){
 						for(int j = 0; j < blocks[1].n_rec; ++j){
-							if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac < 5 ){
+							if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2){
 								continue;
 							}
 
@@ -1614,15 +2017,12 @@ public:
 
 public:
 	uint32_t n_blks, m_blks, n_vnts, n_tree;
-	twk_ld_settings settings;
 	twk1_ldd_blk* ldd;
 	twk1_block_t* ldd2;
-	std::vector< std::vector< algorithm::Interval<uint32_t,uint32_t> > > ivecs; // vector of vectors of intervals
-	std::vector<IndexEntry*> overlap_blocks; // overlapping blocks of interest
-	algorithm::IntervalTree<uint32_t,uint32_t>** itree; // interval tree array
+	twk_ld_settings settings;
+	twk_intervals_twk intervals;
 };
 
 }
 
-
-#endif /* LD_H_ */
+#endif

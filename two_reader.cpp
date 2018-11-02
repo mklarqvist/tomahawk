@@ -27,6 +27,8 @@ bool twk1_two_iterator::NextBlockRaw(){
 
 	assert(oblk.bytes.size() == oblk.nc);
 	buf.resize(oblk.n);
+	offset = 0;
+	rcd = nullptr;
 
 	return true;
 }
@@ -39,7 +41,19 @@ bool twk1_two_iterator::NextBlock(){
 	zcodec.Decompress(oblk.bytes, buf);
 	buf >> blk;
 	buf.reset();
+	if(blk.n) rcd = &blk.rcds[0];
 
+	return true;
+}
+
+bool twk1_two_iterator::NextRecord(){
+	if(offset == blk.n){
+		if(this->NextBlock() == false)
+			return false;
+
+		offset = 0;
+	}
+	rcd = &blk.rcds[offset++];
 	return true;
 }
 

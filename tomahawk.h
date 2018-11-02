@@ -55,6 +55,10 @@ const std::regex TWK_REGEX_CANONICAL_BASES = std::regex("^[ATGC]{1}$");
 const std::regex TWK_REGEX_CONTIG_ONLY     = std::regex("^[A-Za-z0-9\\-_]+$");
 const std::regex TWK_REGEX_CONTIG_POSITION = std::regex("^[A-Za-z0-9\\-_]+\\:[0-9]+([\\.]{1}[0-9]+){0,1}([eE]{1}[0-9]{1})?$");
 const std::regex TWK_REGEX_CONTIG_RANGE    = std::regex("^[A-Za-z0-9\\-_]+\\:[0-9]+([\\.]{1}[0-9]+){0,1}([eE]{1}[0-9]{1})?\\-[0-9]+([\\.]{1}[0-9]+){0,1}([eE]{1}[0-9]{1})?$");
+const std::regex TWK_REGEX_FLOATING        = std::regex("^[-+]?[0-9]*\.?[0-9]+$");
+const std::regex TWK_REGEX_FLOATING_EXP    = std::regex("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$");
+const std::regex TWK_REGEX_NUMBER          = std::regex("^[0-9]+$");
+const std::regex TWK_REGEX_NUMBER_EXP      = std::regex("^[0-9]+([eE][-+]?[0-9]+)?$");
 
 /*------   EOF markers   ------*/
 const std::string TOMAHAWK_FILE_EOF = "a4f54f39f5e251a6993796f48164ccf554f1b680c2ebbb13be301f3ff76f82cf";
@@ -81,9 +85,9 @@ static void ProgramHelpDetailed(void){
     "\n"
 	"calc         calculate linkage disequilibrium\n"
 	"concat       concatenate TWO files from the same set of samples\n"
-	"import       import VCF/BCF to TWK\n"
+	"import       import VCF/VCF.gz/BCF to TWK\n"
 	"sort         sort TWO file\n"
-    "view         TWK->VCF conversion, TWO/TWK view, TWK/TWO subset and filter\n"
+    "view         TWO->LD/TWO view, TWO subset and filter\n"
     "aggregate    data rasterization framework for TWO files\n"<< std::endl;
 }
 

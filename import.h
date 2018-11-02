@@ -40,7 +40,7 @@ int import(int argc, char** argv){
 	};
 	tomahawk::twk_vimport_settings settings;
 
-	while ((c = getopt_long(argc, argv, "i:o:rfn?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:rfn:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;

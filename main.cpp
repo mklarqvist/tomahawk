@@ -4,13 +4,13 @@
 std::string tomahawk::LITERAL_COMMAND_LINE;
 std::string tomahawk::INTERPRETED_COMMAND;
 
-#include "importer.h"
-#include "ld.h"
-#include "two_reader.h"
-
 #include "import.h"
 #include "calc.h"
 #include "view.h"
+#include "concat.h"
+#include "sort.h"
+#include "aggregate.h"
+#include "stats.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::utility::IsBigEndian()){
@@ -29,17 +29,17 @@ int main(int argc, char** argv){
 	for(int i = 1; i < argc; ++i)
 		tomahawk::LITERAL_COMMAND_LINE += " " + std::string(&argv[i][0]);
 
-	if(strncmp(&argv[1][0], "import", 5) == 0){
+	if(strcmp(&argv[1][0], "import") == 0){
 		return(import(argc, argv));
 
 	}
 
-	else if(strncmp(&argv[1][0], "calc", 4) == 0){
+	else if(strcmp(&argv[1][0], "calc") == 0){
 		return(calc(argc, argv));
 
 	}
 
-	else if(strncmp(&argv[1][0], "view", 4) == 0){
+	else if(strcmp(&argv[1][0], "view") == 0){
 		return(view(argc, argv));
 
 	}
@@ -57,11 +57,11 @@ int main(int argc, char** argv){
 		return(aggregate(argc, argv));
 	}
 	*/
-	else if(strncmp(&argv[1][0], "--version", 9) == 0 || strncmp(&argv[1][0], "version", 7) == 0){
+	else if(strcmp(&argv[1][0], "--version") == 0 || strcmp(&argv[1][0], "version") == 0){
 		tomahawk::ProgramMessage(false);
 		return(0);
 
-	} else if(strncmp(&argv[1][0], "--help", 6) == 0 || strncmp(&argv[1][0], "help", 4) == 0){
+	} else if(strcmp(&argv[1][0], "--help") == 0 || strcmp(&argv[1][0], "help") == 0){
 		tomahawk::ProgramMessage();
 		tomahawk::ProgramHelpDetailed();
 		return(0);

@@ -73,6 +73,16 @@ public:
 	VcfFilter* GetFilter(const int& idx);
 	std::string* GetSample(const std::string& name);
 
+	const VcfContig* GetContig(const std::string& name) const;
+	const VcfContig* GetContig(const int& idx) const;
+	const VcfInfo* GetInfo(const std::string& name) const;
+	const VcfInfo* GetInfo(const int& idx) const;
+	const VcfFormat* GetFormat(const std::string& name) const;
+	const VcfFormat* GetFormat(const int& idx) const;
+	const VcfFilter* GetFilter(const std::string& name) const;
+	const VcfFilter* GetFilter(const int& idx) const;
+	const std::string* GetSample(const std::string& name) const;
+
 	bool BuildReverseMaps(void);
 	bool BuildMaps(void);
 

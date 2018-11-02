@@ -1103,23 +1103,26 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& p
 
 	cur_rcd.D  = p1*q2 - p2*q1;
 	cur_rcd.R2 = cur_rcd.D*cur_rcd.D / (p*(1-p)*q*(1-q));
-	cur_rcd.R  = sqrt(cur_rcd.R2);
 
-	//assert(helper.R2 >= 0 && helper.R2 <= 1.01);
-	//if(helper.getTotalAltHaplotypeCount() < this->parameters.minimum_sum_alternative_haplotype_count)
-	//	return false;
-
-	//if(helper.R2 < this->parameters.R2_min || helper.R2 > this->parameters.R2_max)
-	//	return false;
 	if(cur_rcd.R2 < settings.minR2 || cur_rcd.R2 > settings.maxR2){
 		cur_rcd.controller = 0;
 		return false;
 	}
 
+	cur_rcd.R  = sqrt(cur_rcd.R2);
+
 	cur_rcd[0] = p1 * 2*helper.totalHaplotypeCounts;
 	cur_rcd[1] = p2 * 2*helper.totalHaplotypeCounts;
 	cur_rcd[2] = q1 * 2*helper.totalHaplotypeCounts;
 	cur_rcd[3] = q2 * 2*helper.totalHaplotypeCounts;
+
+	//std::cerr << p1 << "," << p2 << "," << q1 << "," << q2 << " and " << cur_rcd[0] << "," << cur_rcd[1] << "," << cur_rcd[2] << "," << cur_rcd[3] << " with R2=" << cur_rcd.R2 << std::endl;
+
+	if(cur_rcd[1] + cur_rcd[2] + cur_rcd[3] <= 2){
+		//std::cerr << "filter out=" << cur_rcd[1] + cur_rcd[2] + cur_rcd[3] << " when " << b1[pos1].ac << "," << b2[pos2].ac << std::endl;
+		cur_rcd.controller = 0;
+		return false;
+	}
 
 	double dmax = 0;
 	if(cur_rcd.D >= 0) dmax = p*(1.0-q) < q*(1.0-p) ? p*(1.0-q) : q*(1.0-p);

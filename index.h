@@ -221,15 +221,20 @@ public:
 class IndexOutput {
 public:
 	IndexOutput(void) : state(TWK_IDX_UNSORTED), n(0), m(0), m_ent(0), ent(nullptr), ent_meta(nullptr){}
-	IndexOutput(const uint32_t n_contigs) : n(0), m(0), m_ent(n_contigs), ent(nullptr), ent_meta(new IndexEntryEntry[n_contigs]){}
+	IndexOutput(const uint32_t n_contigs) : state(TWK_IDX_UNSORTED), n(0), m(0), m_ent(n_contigs), ent(nullptr), ent_meta(new IndexEntryEntry[n_contigs]){}
 	~IndexOutput(){ delete[] ent; delete[] ent_meta; }
 
+	void SetChroms(const uint32_t n_contigs){
+		delete[] ent_meta;
+		ent_meta = new IndexEntryEntry[n_contigs];
+		m_ent = n_contigs;
+	}
 	inline void operator+=(const IndexEntryOutput& rec){ this->Add(rec); }
 
 	void Add(const IndexEntryOutput& rec){
 		if(this->n == this->m) this->resize(); // will also trigger when n=0 and m=0
 		this->ent[this->n++] = rec;
-		this->ent_meta[rec.rid] += rec;
+		//this->ent_meta[rec.rid] += rec;
 	}
 
 	void AddThreadSafe(const IndexEntryOutput& rec){
