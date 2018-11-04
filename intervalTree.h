@@ -135,15 +135,15 @@ public:
     IntervalTree(IntervalTree&&) = default;
 
     IntervalTree& operator=(const IntervalTree& other) {
-        center = other.center;
+        center    = other.center;
         intervals = other.intervals;
-        left = other.left ? other.left->clone() : nullptr;
-        right = other.right ? other.right->clone() : nullptr;
+        left      = other.left  ? other.left->clone() : nullptr;
+        right     = other.right ? other.right->clone() : nullptr;
         return *this;
     }
 
     IntervalTree(
-            interval_vector& ivals,
+            interval_vector ivals,
             std::size_t depth = 16,
             std::size_t minbucket = 64,
             std::size_t maxbucket = 512,

@@ -8,6 +8,7 @@
 #include "index.h"
 #include "zstd_codec.h"
 #include "vcf_utils.h"
+#include "intervals.h"
 
 namespace tomahawk {
 
@@ -18,11 +19,13 @@ public:
 
 	twk_two_filter() :
 		filter_vec(0),
-		minR2(0), maxR2(100), minR(-100), maxR(100), minD(-100), maxD(100), minDprime(0), maxDprime(100), minP(0), maxP(1),
+		minR2(0), maxR2(100), minR(-100), maxR(100), minD(-100), maxD(100),
+		minDprime(0), maxDprime(100), minP(0), maxP(1),
 		hA_min(0), hA_max(999999999), hB_min(0), hB_max(999999999),
 		hC_min(0), hC_max(999999999), hD_min(0), hD_max(999999999),
 		mhc_min(0), mhc_max(999999999),
-		minChi(0), maxChi(std::numeric_limits<double>::max()), minChiModel(0), maxChiModel(std::numeric_limits<double>::max()),
+		minChi(0), maxChi(std::numeric_limits<double>::max()),
+		minChiModel(0), maxChiModel(std::numeric_limits<double>::max()),
 		flag_include(std::numeric_limits<uint32_t>::max()), flag_exclude(0)
 	{}
 
@@ -81,7 +84,12 @@ public:
 	inline twk_two_filter& SetChiSqModelLow(const double low){ minChiModel = low; filter_vec |= 1 << 14; return(*this); }
 	inline twk_two_filter& SetChiSqModelHigh(const double high){ maxChiModel = high; filter_vec |= 1 << 14; return(*this); }
 
-
+	/**<
+	 * Constructs the list of functional pointers to the actual functons to
+	 * use for filtering records. It is mandatory to invoke this function
+	 * prior invoking `Filter`.
+	 * @return Returns TRUE.
+	 */
 	bool Build(){
 		funcs.clear();
 		if((filter_vec >> 0)  & 1) funcs.push_back(&twk_two_filter::FilterR2);
@@ -175,15 +183,21 @@ public:
 	twk1_two_t* rcd;
 };
 
+struct twk_two_settings {
+	char out_type;
+	std::string in, out;
+	std::vector<std::string> ivals; // unparsed interval strings
+	twk_intervals_two intervals;
+	twk_two_filter filter;
+};
+
 /**<
  * Reader of twk files.
  */
 class two_reader {
 public:
 	two_reader() : buf(nullptr), stream(nullptr){}
-	~two_reader(){
-		delete stream;
-	}
+	~two_reader(){ delete stream; }
 
 	/**<
 	 * Open a target two file. File header, index, and footer will be read
@@ -193,16 +207,14 @@ public:
 	 * @return     Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Open(std::string file){
-
 		fstream.open(file, std::ios::in|std::ios::binary|std::ios::ate);
 		if(!fstream.good()){
-			std::cerr << "failed to open: " << file << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to open: " << file << std::endl;
 			return false;
 		}
 		buf = fstream.rdbuf();
 		stream = new std::istream(buf);
 
-		//stream->open(file, std::ios::in|std::ios::binary|std::ios::ate);
 		uint64_t filesize = stream->tellg();
 		stream->seekg(0);
 
@@ -210,7 +222,7 @@ public:
 		char magic[TOMAHAWK_LD_MAGIC_HEADER_LENGTH];
 		stream->read(magic, TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
 		if(strncmp(magic, TOMAHAWK_LD_MAGIC_HEADER.data(), TOMAHAWK_LD_MAGIC_HEADER_LENGTH) != 0){
-			std::cerr << "failed to read two magic" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to read TWO magic string!" << std::endl;
 			return false;
 		}
 
@@ -222,36 +234,30 @@ public:
 		twk_buffer_t buf(buf_size);
 		stream->read(obuf.data(),obuf_size);
 		obuf.n_chars_ = obuf_size;
-		//std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
 
 		if(zcodec.Decompress(obuf, buf) == false){
-			std::cerr << "failed to decompress header" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to decompress header!" << std::endl;
 			return false;
 		}
-		//std::cerr << "bufs=" << buf.size() << "==" << buf_size << std::endl;
 		assert(buf.size() == buf_size);
 		buf >> hdr;
 		buf.reset(); obuf.reset();
-		//std::cerr << "done hdr" << std::endl;
 
 		// Remember seek point to start of data.
 		uint64_t data_start = stream->tellg();
-		std::cerr << "start of data=" << (data_start) << std::endl;
 
 		// seek to end-of-file
 		// seek back to end of file marker and position where index offset is stored
 		stream->seekg(filesize - TOMAHAWK_FILE_EOF_LENGTH - sizeof(uint64_t));
 		uint64_t offset_start_index = 0;
 		stream->read(reinterpret_cast<char*>(&offset_start_index), sizeof(uint64_t));
-		std::cerr << "seek offset=" << offset_start_index << "/" << filesize << std::endl;
 
 		// Seek to start of offst
 		stream->seekg(offset_start_index);
 		if(stream->good() == false){
-			std::cerr << "failed seek" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed seek in file!" << std::endl;
 			return false;
 		}
-		//std::cerr << "seek good=" << stream->tellg() << "/" << filesize << std::endl;
 
 		// Load index
 		uint8_t marker = 0;
@@ -259,13 +265,11 @@ public:
 		stream->read(reinterpret_cast<char*>(&buf_size), sizeof(uint64_t));
 		stream->read(reinterpret_cast<char*>(&obuf_size),sizeof(uint64_t));
 		obuf.resize(obuf_size), buf.resize(buf_size);
-		//std::cerr << "before read=" << obuf_size << std::endl;
 		stream->read(obuf.data(),obuf_size);
 		obuf.n_chars_ = obuf_size;
-		//std::cerr << "header=" << buf_size << "," << obuf_size << "/" << buf.capacity() << "/" << obuf.capacity() << std::endl;
 
 		if(zcodec.Decompress(obuf, buf) == false){
-			std::cerr << "failed to decompress" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to decompress!" << std::endl;
 			return false;
 		}
 		buf >> index;
@@ -290,6 +294,7 @@ public:
 	io::VcfHeader hdr;
 	IndexOutput index;
 
+	twk_two_filter filter;
 	twk1_two_iterator it;
 	ZSTDCodec zcodec;
 };

@@ -33,10 +33,10 @@ void view_usage(void){
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
 	"  -h/H      (twk/two) header only / no header\n"
-	"  -I STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos (TWO only)\n\n"
+	"  -I STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos\n\n"
 	//"  -J        output JSON object\n\n"
 	"  -o FILE    output file (- for stdout; default: -)\n"
-	"  -O <b|u>   b: compressed TWK, u: uncompressed VCF\n\n"
+	"  -O <b|u>   b: compressed TWO, u: uncompressed LD\n\n"
 
 
 	// Filter parameters
@@ -109,8 +109,8 @@ int view(int argc, char** argv){
 		{0,0,0,0}
 	};
 
-	std::string in, out;
-	tomahawk::twk_two_filter filter;
+	tomahawk::twk_two_settings settings;
+	//tomahawk::twk_two_filter filter;
 	tomahawk::twk_two_writer_t writer;
 	bool write_header = true, header_only = false;
 
@@ -132,10 +132,10 @@ int view(int argc, char** argv){
 			break;
 
 		case 'i':
-			in = std::string(optarg);
+			settings.in = std::string(optarg);
 			break;
 		case 'o':
-			out = std::string(optarg);
+			settings.out = std::string(optarg);
 			break;
 		case 'O':
 			if(std::string(optarg).size() != 1){
@@ -151,14 +151,14 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetPLow(atof(optarg));
+			settings.filter.SetPLow(atof(optarg));
 			break;
 		case 'P':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetPHigh(atof(optarg));
+			settings.filter.SetPHigh(atof(optarg));
 			break;
 
 		case 'z':
@@ -166,28 +166,28 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetRLow(atof(optarg));
+			settings.filter.SetRLow(atof(optarg));
 			break;
 		case 'Z':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetRHigh(atof(optarg));
+			settings.filter.SetRHigh(atof(optarg));
 			break;
 		case 'r':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetR2Low(atof(optarg));
+			settings.filter.SetR2Low(atof(optarg));
 			break;
 		case 'R':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetR2High(atof(optarg));
+			settings.filter.SetR2High(atof(optarg));
 			break;
 
 		case 'b':
@@ -195,14 +195,14 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetDprimeLow(atof(optarg));
+			settings.filter.SetDprimeLow(atof(optarg));
 			break;
 		case 'B':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetDprimeHigh(atof(optarg));
+			settings.filter.SetDprimeHigh(atof(optarg));
 			break;
 
 		case 'd':
@@ -210,14 +210,14 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetDLow(atof(optarg));
+			settings.filter.SetDLow(atof(optarg));
 			break;
 		case 'D':
 			if(std::regex_match(std::string(optarg), tomahawk::TWK_REGEX_FLOATING_EXP) == false){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetDHigh(atof(optarg));
+			settings.filter.SetDHigh(atof(optarg));
 			break;
 
 		case '1':
@@ -225,7 +225,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapALow(atof(optarg));
+			settings.filter.SetHapALow(atof(optarg));
 			break;
 
 		case '2':
@@ -233,7 +233,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapBLow(atof(optarg));
+			settings.filter.SetHapBLow(atof(optarg));
 			break;
 
 		case '3':
@@ -241,7 +241,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapCLow(atof(optarg));
+			settings.filter.SetHapCLow(atof(optarg));
 			break;
 
 		case '4':
@@ -249,7 +249,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapDLow(atof(optarg));
+			settings.filter.SetHapDLow(atof(optarg));
 			break;
 
 		case '5':
@@ -257,7 +257,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapAHigh(atof(optarg));
+			settings.filter.SetHapAHigh(atof(optarg));
 			break;
 
 		case '6':
@@ -265,7 +265,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapBHigh(atof(optarg));
+			settings.filter.SetHapBHigh(atof(optarg));
 			break;
 
 		case '7':
@@ -273,7 +273,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapCHigh(atof(optarg));
+			settings.filter.SetHapCHigh(atof(optarg));
 			break;
 
 		case '8':
@@ -281,7 +281,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetHapDHigh(atof(optarg));
+			settings.filter.SetHapDHigh(atof(optarg));
 			break;
 
 		case 'a':
@@ -289,7 +289,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetMHCLow(atof(optarg));
+			settings.filter.SetMHCLow(atof(optarg));
 			break;
 
 		case 'A':
@@ -297,7 +297,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetMHCHigh(atof(optarg));
+			settings.filter.SetMHCHigh(atof(optarg));
 			break;
 
 		case 'f':
@@ -305,7 +305,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid number" << std::endl;
 				return 1;
 			}
-			filter.SetFlagInclude(atof(optarg));
+			settings.filter.SetFlagInclude(atof(optarg));
 			break;
 
 		case 'F':
@@ -313,7 +313,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid number" << std::endl;
 				return 1;
 			}
-			filter.SetFlagExclude(atof(optarg));
+			settings.filter.SetFlagExclude(atof(optarg));
 			break;
 
 		case 'x':
@@ -321,7 +321,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetChiSqLow(atof(optarg));
+			settings.filter.SetChiSqLow(atof(optarg));
 			break;
 
 		case 'X':
@@ -329,7 +329,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetChiSqHigh(atof(optarg));
+			settings.filter.SetChiSqHigh(atof(optarg));
 			break;
 
 		case 'm':
@@ -337,7 +337,7 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetChiSqModelLow(atof(optarg));
+			settings.filter.SetChiSqModelLow(atof(optarg));
 			break;
 
 		case 'M':
@@ -345,34 +345,39 @@ int view(int argc, char** argv){
 				std::cerr << "not a valid float" << std::endl;
 				return 1;
 			}
-			filter.SetChiSqModelHigh(atof(optarg));
+			settings.filter.SetChiSqModelHigh(atof(optarg));
 			break;
 
-		case 'u': filter.SetUpperTrig(); break;
-		case 'l': filter.SetLowerTrig(); break;
-		case 'h': header_only = true; break;
+		case 'u': settings.filter.SetUpperTrig(); break;
+		case 'l': settings.filter.SetLowerTrig(); break;
+		case 'h': header_only  = true; break;
 		case 'H': write_header = false; break;
+		case 'I': settings.ivals.push_back(std::string(optarg)); break;
 		}
 	}
 
-	if(in.length() == 0){
+	if(settings.in.length() == 0){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "No input value specified..." << std::endl;
 		return(1);
 	}
 
-
 	tomahawk::two_reader oreader;
-	if(oreader.Open(in) == false){
+
+	if(oreader.Open(settings.in) == false){
 		std::cerr << "failed to open" << std::endl;
 		return false;
 	}
+
+	std::cerr << "intervals=" << settings.ivals.size() << std::endl;
+	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
+		return false;
 
 	std::string view_string = "\n##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
 	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
 	oreader.hdr.literals_ += view_string;
 
 	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
-	writer.Open(out);
+	writer.Open(settings.out);
 	if(writer.mode == 'u' && header_only){
 		writer.WriteHeader(oreader);
 		return 0;
@@ -395,12 +400,12 @@ int view(int argc, char** argv){
 	tomahawk::twk_buffer_t obuf;
 
 	//tomahawk::twk_two_filter filter;
-	filter.Build();
+	settings.filter.Build();
 
 	//std::cout << "{\"data\":[";
 	std::cerr << "before first block" << std::endl;
 	while(oreader.NextRecord()){
-		if(filter.Filter(oreader.it.rcd)){
+		if(settings.filter.Filter(oreader.it.rcd)){
 			// get first
 			break;
 		}
@@ -409,7 +414,11 @@ int view(int argc, char** argv){
 	//oreader.it.rcd->PrintLD(std::cout);
 
 	while(oreader.NextRecord()){
-		if(filter.Filter(oreader.it.rcd)){
+		if(settings.intervals.FilterInterval(*oreader.it.rcd)){
+			continue;
+		}
+
+		if(settings.filter.Filter(oreader.it.rcd)){
 			//std::cout.put(',');
 			//oreader.it.rcd->PrintLD(std::cout);
 			//assert(oreader.it.rcd->Apos != 0);
@@ -417,8 +426,11 @@ int view(int argc, char** argv){
 		}
 	}
 
+	std::cerr << "have=" << writer.oblock.n << std::endl;
+
 	//std::cout << "]}\n";
 	if(writer.mode == 'b') writer.WriteFinal();
+	else writer.WriteBlock();
 	writer.close();
 	return(0);
 

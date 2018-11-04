@@ -266,6 +266,19 @@ public:
 		return(n_total);
 	}
 
+	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid) const;
+	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid, const uint32_t pos) const;
+	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid, const uint32_t posA, const uint32_t posB) const{
+		std::vector<IndexEntryOutput*> ret;
+		for(int i = 0; i < n; ++i){
+			if(ent[i].rid == rid && ent[i].minpos <= posB && ent[i].maxpos >= posA){
+				//std::cerr << "overlap=(" << rid << "," << posA << "," << posB << ") and (" << ent[i].rid << "," << ent[i].minpos << "," << ent[i].maxpos << ")" << std::endl;
+				ret.push_back(&ent[i]);
+			}
+		}
+		return(ret);
+	}
+
 	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const IndexOutput& self){
 		SerializePrimitive(TOMAHAWK_INDEX_START_MARKER, buffer);
 		SerializePrimitive(self.state, buffer);

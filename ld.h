@@ -10,8 +10,7 @@
 #include "spinlock.h"
 #include "timer.h"
 #include "writer.h"
-
-#include "intervalTree.h"
+#include "intervals.h"
 
 // Method 0: None
 // Method 1: Performance + no math
@@ -163,190 +162,6 @@ struct twk_ld_perf {
 };
 
 /**<
- * Basic intervals container. Handles tuples of (rid,from_pos,to_pos) and maps
- * them to the local tomahawk index. Have functionality for sorting, deduping,
- * and mapping interval tuples and the resulting index objects.
- */
-class twk_intervals {
-public:
-	typedef algorithm::Interval<uint32_t,uint32_t> interval;
-
-	twk_intervals() : n_c(0), itree(nullptr){}
-	twk_intervals(const uint32_t n_contigs) :
-		n_c(n_contigs),
-		itree(new algorithm::IntervalTree<uint32_t,uint32_t>*[n_c])
-	{}
-
-	virtual ~twk_intervals(){
-		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
-		delete[] itree;
-	}
-
-	/**<
-	 * Dedupes interval vectors tuples (rid,fromA,fromB) by extension. If two
-	 * intervals partially overlap in the right end then we extend the left-most
-	 * interval to the right-most intervals end position.
-	 */
-	void Dedupe(){
-		for(int i = 0; i < n_c; ++i){ // every rid
-			if(ivecs[i].size() == 0) continue;
-			std::vector<interval> ivals;
-			std::sort(ivecs[i].begin(), ivecs[i].end());
-			ivals.push_back(ivecs[i][0]);
-			for(int j = 1; j < ivecs[i].size(); ++j){
-				if(ivecs[i][j].start <= ivals.back().stop
-				   && ivecs[i][j].stop >= ivals.back().start)
-				{
-					ivals.back().stop = ivecs[i][j].stop;
-				}
-				else ivals.push_back(ivecs[i][j]);
-			}
-			ivecs[i] = ivals;
-		}
-	}
-
-public:
-	uint32_t n_c;
-	std::vector< std::vector< interval > > ivecs; // vector of vectors of intervals
-	algorithm::IntervalTree<uint32_t,uint32_t>** itree; // interval tree array
-};
-
-class twk_intervals_twk : public twk_intervals {
-public:
-	twk_intervals_twk() = default;
-	twk_intervals_twk(const uint32_t n_contigs) : twk_intervals(n_contigs){}
-
-	/**<
-	 * Wrapper function for mapping the internal interval tuples to the index
-	 * entries provided by the twk_reader object. If construction fails or
-	 * no map hits are found we return FALSE.
-	 * @param reader Source twk_reader object.
-	 * @return       Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool Build(const twk_reader& reader){
-		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
-		delete[] itree; itree = nullptr;
-
-		if(reader.hdr.GetNumberContigs() == 0) return false;
-		n_c = reader.hdr.GetNumberContigs();
-		this->Dedupe();
-		for(uint32_t i = 0; i < ivecs.size(); ++i){
-			for(int j = 0; j < ivecs[i].size(); ++j){
-				std::vector<IndexEntry*> idx = reader.index.FindOverlap(i,ivecs[i][j].start,ivecs[i][j].stop);
-				overlap_blocks.insert(overlap_blocks.end(), idx.begin(), idx.end());
-			}
-		}
-
-		itree = new algorithm::IntervalTree<uint32_t,uint32_t>*[n_c];
-		for(uint32_t i = 0; i < n_c; ++i){
-			itree[i] = new algorithm::IntervalTree<uint32_t,uint32_t>(ivecs[i]);
-		}
-
-		if(overlap_blocks.size() == 0){
-			std::cerr << utility::timestamp("ERROR","INTERVAL") << "Found no blocks overlapping the provided range(s)..." << std::endl;
-			return(false);
-		}
-
-		return(true);
-	}
-
-	/**<
-	 * Convenince wrapper for interval strings. Iterate over a vector of unparsed
-	 * interval strings and parse them.
-	 * @param ivals  Source vector of unparsed interval strings.
-	 * @param reader Reference instance of twk_reader object.
-	 * @return       Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool ParseIntervalStrings(std::vector<std::string>& ivals, const twk_reader& reader){
-		if(ivals.size() == 0)
-			return true;
-
-		for(int i = 0; i < ivals.size(); ++i){
-			if(this->ParseIntervalString(ivals[i], reader) == false)
-				return false;
-		}
-		return true;
-	}
-
-	/**<
-	 * Internal function for parsing a source interval string into a (rid,posA,posB)
-	 * tuple. Input string has to match any of the following patterns:
-	 *    1) ^rid$
-	 *    2) ^rid:pos$
-	 *    3) ^rid:pos-pos$
-	 *
-	 * Numerical values may be expressed in any standard form: for example, 10e6
-	 * and 20E6 and 100000. This function will return TRUE if parsing is syntactically
-	 * legal and the contig identifier exists in the header. This function will not check
-	 * for out-of-bounds errors such as providing an interval exceeding the length of a
-	 * contig.
-	 * @param s      Source unparsed interval string/
-	 * @param reader Reference instance of twk_reader object.
-	 * @return       Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool ParseIntervalString(const std::string& s, const twk_reader& reader){
-		if(std::regex_match(s, TWK_REGEX_CONTIG_RANGE)){ // contig only
-			std::vector<std::string> rid = utility::split(s, ':');
-			std::vector<std::string> pos;
-			if(rid.size() == 2){
-				pos = utility::split(rid[1], '-');
-			} else {
-				std::cerr << "illegal format" << std::endl;
-				return false;
-			}
-			uint32_t ival_from = (uint32_t)std::atof(pos[0].c_str());
-			uint32_t ival_to   = (uint32_t)std::atof(pos[1].c_str());
-			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			uint32_t ival_rid = contig->idx;
-			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
-
-			return true;
-
-		} else if(std::regex_match(s, TWK_REGEX_CONTIG_POSITION)){ // contig and position
-			std::vector<std::string> rid = utility::split(s, ':');
-
-			uint32_t ival_from = (uint32_t)std::atof(rid[1].c_str());
-			uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str());
-			const VcfContig* contig = reader.hdr.GetContig(rid[0]);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			uint32_t ival_rid = contig->idx;
-			ivecs[ival_rid].push_back(algorithm::Interval<uint32_t,uint32_t>(ival_from,ival_to,0));
-
-			return true;
-		} else if(std::regex_match(s, TWK_REGEX_CONTIG_ONLY)){ // contig and positional range
-			const VcfContig* contig = reader.hdr.GetContig(s);
-			if(contig == nullptr){
-				std::cerr << "contig does not exist" << std::endl;
-				return false;
-			}
-			ivecs[contig->idx].push_back(algorithm::Interval<uint32_t,uint32_t>(0,contig->n_bases,0));
-
-			return true;
-		} else
-			return false;
-	}
-
-public:
-	std::vector<IndexEntry*> overlap_blocks; // overlapping blocks of interest
-};
-
-class twk_intervals_two : public twk_intervals {
-public:
-	twk_intervals_two() = default;
-	twk_intervals_two(const uint32_t n_contigs) : twk_intervals(n_contigs){}
-
-public:
-	std::vector<IndexEntryOutput*> overlap_blocks; // overlapping blocks of interest
-};
-
-/**<
  * Work balancer for twk_ld_engine threads. Uses a non-blocking spinlock to produce a
  * tuple (from,to) of integers representing the start ref block and dst block.
  * This approach allows perfect load-balancing at a small overall CPU cost.
@@ -470,7 +285,10 @@ public:
  * that data.
  */
 struct twk_ld_progress {
-	twk_ld_progress() : is_ticking(false), n_s(0), n_cmps(0), n_var(0), n_pair(0), n_out(0), b_out(0), thread(nullptr){}
+	twk_ld_progress() :
+		is_ticking(false), n_s(0), n_cmps(0), n_var(0),
+		n_pair(0), n_out(0), b_out(0), thread(nullptr)
+	{}
 	~twk_ld_progress() = default;
 
 	/**<
@@ -641,6 +459,13 @@ struct twk_ld_count {
 struct twk_ld_balancer {
 	twk_ld_balancer() : diag(false), n(0), p(0), c(0), fromL(0), toL(0), fromR(0), toR(0), n_m(0){}
 
+	bool BuildCrossSequence(uint32_t n_blocks,
+	                        uint32_t desired_parts,
+	                        uint32_t chosen_part)
+	{
+		// compare sections of blocks
+	}
+
 	/**<
 	 * Find the desired target subproblem range as a tuple (fromL,toL,fromR,toR).
 	 * @param n_blocks      Total number of blocks.
@@ -720,7 +545,7 @@ public:
 struct twk_ld_settings {
 	twk_ld_settings() :
 		square(true), window(false), low_memory(false), bitmaps(false),
-		force_phased(false), forced_unphased(false),
+		force_phased(false), forced_unphased(false), force_cross_intervals(false),
 		c_level(1), bl_size(500), b_size(10000), l_window(1000000),
 		n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
 		ldd_load_type(TWK_LDD_ALL), out("-"),
@@ -753,7 +578,7 @@ struct twk_ld_settings {
 	}
 
 	bool square, window, low_memory, bitmaps; // using square compute, using window compute
-	bool force_phased, forced_unphased;
+	bool force_phased, forced_unphased, force_cross_intervals;
 	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
 	int32_t n_threads, cycle_threshold, ldd_load_type;
 	std::string in, out; // input file, output file/cout
@@ -896,6 +721,7 @@ struct twk_ld_slave {
 		ticker(nullptr), thread(nullptr), ldd(nullptr),
 		progress(nullptr), settings(nullptr), itree(nullptr)
 	{}
+
 	~twk_ld_slave(){ delete thread; }
 
 	std::thread* Start(){
@@ -1359,10 +1185,16 @@ public:
 		delete[] ldd; delete[] ldd2;;
 	}
 
-	bool ParseIntervalStrings(twk_reader& reader){ return(intervals.ParseIntervalStrings(settings.ival_strings, reader)); }
+	/**<
+	 * Wrapper function for parsing interval strings.
+	 * @param reader Reference twk_reader instance.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool ParseIntervalStrings(twk_reader& reader){ return(intervals.ParseIntervalStrings(settings.ival_strings, reader.hdr)); }
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
+	// move out
 	bool WriteHeader(twk_writer_t* writer, twk_reader& reader) const{
 		if(writer == nullptr)
 			return false;
@@ -1385,6 +1217,7 @@ public:
 		return(writer->good());
 	}
 
+	// write out
 	bool WriteFinal(twk_writer_t* writer, IndexOutput& index) const {
 		if(writer == nullptr) return false;
 
@@ -1392,17 +1225,10 @@ public:
 		tomahawk::ZSTDCodec zcodec;
 
 		buf << index;
-		//std::cerr << "index buf size =" << buf.size() << std::endl;
 		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
 			std::cerr << "failed compression" << std::endl;
 			return false;
 		}
-		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
-
-		// temp write out index
-		//for(int i = 0; i < index.n; ++i){
-		//	std::cerr << i << "/" << index.n << " " << index.ent[i].rid << ":" << index.ent[i].minpos << "-" << index.ent[i].maxpos << " offset=" << index.ent[i].foff << "-" << index.ent[i].fend << " brid=" << index.ent[i].ridB << std::endl;
-		//}
 
 		const uint64_t offset_start_index = writer->stream.tellp();
 		uint8_t marker = 0;
@@ -1416,7 +1242,21 @@ public:
 		return(writer->good());
 	}
 
-	bool LoadBlocks(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
+	/**<
+	 * Reads the desired tomahawk blocks given the balancer intervals. Internally
+	 * decides if the block slicing is based on the universal set of blocks or a
+	 * targetted subset (as decided by the interval slicing operation).
+	 * @param reader
+	 * @param bit
+	 * @param balancer
+	 * @param load
+	 * @return
+	 */
+	bool LoadBlocks(twk_reader& reader,
+			twk1_blk_iterator& bit,
+			const twk_ld_balancer& balancer,
+			const uint8_t load)
+	{
 		if(intervals.overlap_blocks.size()) return(this->LoadTargetBlocks(reader, bit, balancer, load));
 		return(this->LoadAllBlocks(reader, bit, balancer, load));
 	}
@@ -1426,9 +1266,15 @@ public:
 	 * some window.
 	 * @param reader
 	 * @param bit
+	 * @param balancer
+	 * @param load
 	 * @return
 	 */
-	bool LoadTargetSingle(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
+	bool LoadTargetSingle(twk_reader& reader,
+			twk1_blk_iterator& bit,
+			const twk_ld_balancer& balancer,
+			const uint8_t load)
+	{
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
@@ -1437,7 +1283,7 @@ public:
 		if(this->ParseIntervalStrings(reader) == false)
 			return false;
 
-		if(this->intervals.Build(reader) == false){
+		if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
 			return false;
 		}
 
@@ -1447,12 +1293,17 @@ public:
 	}
 
 	/**<
-	 * Loads twk blocks for a single/many target genomic regions.
+	 * Construct interval container and trees given the pre-provided interval
+	 * strings.
 	 * @param reader
 	 * @param bit
+	 * @param load
 	 * @return
 	 */
-	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit, const uint8_t load){
+	bool BuildIntervals(twk_reader& reader,
+			twk1_blk_iterator& bit,
+			const uint8_t load)
+	{
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
@@ -1461,7 +1312,7 @@ public:
 		if(this->ParseIntervalStrings(reader) == false)
 			return false;
 
-		if(this->intervals.Build(reader) == false){
+		if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
 			return false;
 		}
 
@@ -1470,22 +1321,26 @@ public:
 		return true;
 	}
 
-	bool LoadTargetBlocks(twk_reader& reader, twk1_blk_iterator& bit, const twk_ld_balancer& balancer, const uint8_t load){
+	bool LoadTargetBlocks(twk_reader& reader,
+			twk1_blk_iterator& bit,
+			const twk_ld_balancer& balancer,
+			const uint8_t load)
+	{
 		if(intervals.overlap_blocks.size() == 0){ // if have interval strings
 			return false;
 		}
 
 		if(balancer.diag){
-			std::cerr << "is diag" << std::endl;
-			std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
+			//std::cerr << "is diag" << std::endl;
+			//std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
 
 			n_blks = balancer.toR - balancer.fromR;
 			m_blks = balancer.toR - balancer.fromR;
 			ldd  = new twk1_ldd_blk[m_blks];
 			ldd2 = new twk1_block_t[m_blks];
 		} else {
-			std::cerr << "is square" << std::endl;
-			std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
+			//std::cerr << "is square" << std::endl;
+			//std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
 
 			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
@@ -1510,7 +1365,7 @@ public:
 				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
 				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
 					if(bit.NextBlock() == false){
-						std::cerr << "failed to get->" << i << std::endl;
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
 						return false;
 					}
 
@@ -1523,7 +1378,7 @@ public:
 				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
 				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
 					if(bit.NextBlock() == false){
-						std::cerr << "failed to get->" << i << std::endl;
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
 						return false;
 					}
 
@@ -1536,7 +1391,7 @@ public:
 				bit.stream->seekg(intervals.overlap_blocks[balancer.fromR]->foff);
 				for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
 					if(bit.NextBlock() == false){
-						std::cerr << "failed to get->" << i << std::endl;
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
 						return false;
 					}
 
@@ -1558,6 +1413,8 @@ public:
 	 * Loads all available twk blocks into memory.
 	 * @param reader
 	 * @param bit
+	 * @param balancer
+	 * @param load
 	 * @return
 	 */
 	bool LoadAllBlocks(twk_reader& reader,
@@ -1569,16 +1426,16 @@ public:
 			return false;
 
 		if(balancer.diag){
-			std::cerr << "is diag" << std::endl;
-			std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
+			//std::cerr << "is diag" << std::endl;
+			//std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
 
 			n_blks = balancer.toR - balancer.fromR;
 			m_blks = balancer.toR - balancer.fromR;
 			ldd  = new twk1_ldd_blk[m_blks];
 			ldd2 = new twk1_block_t[m_blks];
 		} else {
-			std::cerr << "is square" << std::endl;
-			std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
+			//std::cerr << "is square" << std::endl;
+			//std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
 
 			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
@@ -1603,7 +1460,7 @@ public:
 			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
 			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
 				if(bit.NextBlock() == false){
-					std::cerr << "failed to get->" << i << std::endl;
+					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
 					return false;
 				}
 
@@ -1616,8 +1473,8 @@ public:
 			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
 			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
 				if(bit.NextBlock() == false){
-					std::cerr << "failed to get->" << i << std::endl;
-					return false;
+					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+							return false;
 				}
 
 				ldd2[offset] = std::move(bit.blk);
@@ -1629,7 +1486,7 @@ public:
 			bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
 			for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
 				if(bit.NextBlock() == false){
-					std::cerr << "failed to get->" << i << std::endl;
+					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
 					return false;
 				}
 
@@ -1652,12 +1509,12 @@ public:
 
 	bool Compute(){
 		if(settings.in.size() == 0){
-			std::cerr << "no filename" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
 			return false;
 		}
 
 		if(settings.window && settings.n_chunks != 1){
-			std::cerr << "cannot use chunking in window mode" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Cannot use chunking in window mode!" << std::endl;
 			return false;
 		}
 
@@ -1665,7 +1522,7 @@ public:
 
 		twk_reader reader;
 		if(reader.Open(settings.in) == false){
-			std::cerr << "failed to open file" << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to open file: " << settings.in << "..." << std::endl;
 			return false;
 		}
 
@@ -1705,7 +1562,6 @@ public:
 		}
 
 		if(this->LoadBlocks(reader, bit, balancer, settings.ldd_load_type) == false){
-			std::cerr << "failed to load blocks" << std::endl;
 			return false;
 		}
 
@@ -1756,7 +1612,7 @@ public:
 
 			writer = new twk_writer_file;
 			if(writer->Open(settings.out) == false){
-				std::cerr << "failed to open" << std::endl;
+				std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
 				delete writer;
 				return false;
 			}
@@ -1768,7 +1624,7 @@ public:
 		reader.hdr.literals_ += calc_string;
 
 		if(this->WriteHeader(writer, reader) == false){
-			std::cerr << "failed to write header" << std::endl;
+			std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write header!" << std::endl;
 			return false;
 		}
 		// end start write
@@ -1803,9 +1659,9 @@ public:
 		progress.PrintFinal();
 		writer->stream.flush();
 
-		std::cerr << "performed=" << ticker.n_perf << std::endl;
+		//std::cerr << "performed=" << ticker.n_perf << std::endl;
 		if(this->WriteFinal(writer, index) == false){
-			std::cerr << "failed to finalize writing" << std::endl;
+			std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write final block!" << std::endl;
 			return false;
 		}
 

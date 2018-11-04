@@ -174,6 +174,7 @@ struct twk_two_writer_t : public twk_writer_t {
 	}
 
 	bool WriteFinal(){
+		std::cerr << "in write final=" << stream.good() << " and mode=" << mode << std::endl;
 		if(stream.good() == false) return false;
 		if(WriteBlock() == false) return false;
 
@@ -228,6 +229,7 @@ struct twk_two_writer_t : public twk_writer_t {
 				oblock.rcds[i].PrintLD(std::cout);
 			}
 			oblock.reset();
+			std::cout.flush();
 		}
 		return true;
 	}
