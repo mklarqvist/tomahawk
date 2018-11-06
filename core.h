@@ -668,6 +668,8 @@ struct twk_gtocc {
 // output
 struct twk1_two_t {
 public:
+	const static uint32_t packed_size = sizeof(uint16_t) + 2*sizeof(int32_t) + 2*sizeof(uint32_t) + 11*sizeof(double);
+
 	twk1_two_t() :
 		controller(0), ridA(0), ridB(0), Amiss(0), Aphased(0), Apos(0), Bmiss(0), Bphased(0), Bpos(0), R(0), R2(0), D(0), Dprime(0), P(0), ChiSqModel(0), ChiSqFisher(0){ memset(cnt, 0, sizeof(double)*4); }
 	~twk1_two_t() = default;

@@ -381,9 +381,10 @@ int view(int argc, char** argv){
 	if(writer.mode == 'u' && header_only){
 		writer.WriteHeader(oreader);
 		return 0;
-	} else if(writer.mode == 'u' && write_header)
+	} else if(writer.mode == 'u' && write_header) {
 		writer.WriteHeader(oreader);
-	else if(writer.mode == 'u' && write_header == false){
+		writer.n_blk_lim = 65536 / sizeof(tomahawk::twk1_two_t);
+	} else if(writer.mode == 'u' && write_header == false){
 		std::cout << "flags\tridA\tposA\tridB\tposB\tHOMHOM\tHOMALT\tALTHOM\tALTALT\tD\tDprime\tR\tR2\tP\tChiSqFisher\tChiSqModel" << std::endl;
 	}
 	else if(writer.mode == 'b')
@@ -402,31 +403,23 @@ int view(int argc, char** argv){
 	//tomahawk::twk_two_filter filter;
 	settings.filter.Build();
 
-	//std::cout << "{\"data\":[";
-	std::cerr << "before first block" << std::endl;
-	while(oreader.NextRecord()){
-		if(settings.filter.Filter(oreader.it.rcd)){
-			// get first
-			break;
+	if(settings.ivals.size()){
+		while(oreader.NextRecord()){
+			if(settings.intervals.FilterInterval(*oreader.it.rcd)){
+				continue;
+			}
+
+			if(settings.filter.Filter(oreader.it.rcd)){
+				writer.Add(*oreader.it.rcd);
+			}
+		}
+	} else {
+		while(oreader.NextRecord()){
+			if(settings.filter.Filter(oreader.it.rcd)){
+				writer.Add(*oreader.it.rcd);
+			}
 		}
 	}
-	writer.Add(*oreader.it.rcd);
-	//oreader.it.rcd->PrintLD(std::cout);
-
-	while(oreader.NextRecord()){
-		if(settings.intervals.FilterInterval(*oreader.it.rcd)){
-			continue;
-		}
-
-		if(settings.filter.Filter(oreader.it.rcd)){
-			//std::cout.put(',');
-			//oreader.it.rcd->PrintLD(std::cout);
-			//assert(oreader.it.rcd->Apos != 0);
-			writer.Add(*oreader.it.rcd);
-		}
-	}
-
-	std::cerr << "have=" << writer.oblock.n << std::endl;
 
 	//std::cout << "]}\n";
 	if(writer.mode == 'b') writer.WriteFinal();

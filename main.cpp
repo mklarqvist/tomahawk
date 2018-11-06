@@ -43,11 +43,13 @@ int main(int argc, char** argv){
 		return(view(argc, argv));
 
 	}
-	/*
+
 	else if(strncmp(&argv[1][0], "sort", 4) == 0){
 		return(sort(argc, argv));
 
-	} else if(strncmp(&argv[1][0], "concat", 6) == 0){
+	}
+	/*
+	else if(strncmp(&argv[1][0], "concat", 6) == 0){
 		return(concat(argc, argv));
 
 	} else if(strncmp(&argv[1][0], "stats", 5) == 0){

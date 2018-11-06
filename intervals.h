@@ -232,6 +232,7 @@ public:
 	 * @return       Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Build(std::vector<std::string>& strings, const uint32_t n_contigs, const IndexOutput& index, const io::VcfHeader& hdr){
+		if(strings.size() == 0) return true;
 		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
 		delete[] itree; itree = nullptr;
 		ivecs.clear();
