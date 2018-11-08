@@ -44,6 +44,24 @@ struct twk_writer_t {
 		obuf.reset();
 	}
 
+	static std::string RandomSuffix() {
+		 std::string name1 = std::tmpnam(nullptr);
+		 std::vector<std::string> ret = utility::split(name1, '/');
+		 return(ret.back());
+	}
+
+	static std::string GetExtension(const std::string ret) {
+		return(utility::ExtensionName(ret));
+	}
+
+	static std::string GetBasePath(const std::string ret) {
+		return(utility::BasePath(ret));
+	}
+
+	static std::string GetBaseName(const std::string ret) {
+		return(utility::BaseName(ret));
+	}
+
 	inline void write(const char* data, const uint32_t l){ stream.write(data, l); }
 	inline void flush(){ stream.flush(); }
 	inline bool good() const{ return(stream.good()); }
@@ -285,24 +303,6 @@ struct twk_two_writer_t : public twk_writer_t {
 			oblock.reset();
 		}
 		return true;
-	}
-
-	static std::string RandomSuffix() {
-		 std::string name1 = std::tmpnam(nullptr);
-		 std::vector<std::string> ret = utility::split(name1, '/');
-		 return(ret.back());
-	}
-
-	static std::string GetExtension(const std::string ret) {
-		return(utility::ExtensionName(ret));
-	}
-
-	static std::string GetBasePath(const std::string ret) {
-		return(utility::BasePath(ret));
-	}
-
-	static std::string GetBaseName(const std::string ret) {
-		return(utility::BaseName(ret));
 	}
 
 	char mode;

@@ -16,6 +16,17 @@ const static uint8_t TWK_GT_FLIP_NONE[3] = {0,1,2}; // usage TWK_GT_FLIP_NONE[TW
 #define TWK_GT_RLE_PACK(REF,LEN,MISS) (((LEN) << (2+2*(MISS))) | (REF))
 #define TWK_GT_LIMIT(T,MISS) ((1L << ((T)-2-2*(MISS))) - 1)
 
+// 0: invariant
+// 1: missing threshold
+// 2: insufficient samples
+// 3: mixed ploidy
+// 4: no genotypes
+// 5: no fmt
+// 6: not biallelic
+// 7: not snp
+static uint64_t TWK_SITES_FILTERED[8];
+const static std::string TWK_SITES_FILTERED_NAMES[8] = {"Invariant","Missing threshold","Insufficient samples","Mixed ploidy","No genotypes","No FORMAT","Not biallelic","Not SNP"};
+
 struct GenotypeSummary {
 public:
 	GenotypeSummary(void) :
@@ -193,27 +204,35 @@ public:
 		uint64_t total = gt.cnt[0] + gt.cnt[1];
 		uint64_t total_hap = gt.hap_cnt[0] + gt.hap_cnt[1] + gt.hap_cnt[4] + gt.hap_cnt[5];
 		if(total_hap < settings.threshold_miss*rec->n_sample){
-			std::cerr << "filter miss threshold=" << total_hap << "<" << settings.threshold_miss*rec->n_sample << std::endl;
+			//std::cerr << "filter miss threshold=" << total_hap << "<" << settings.threshold_miss*rec->n_sample << std::endl;
+			++TWK_SITES_FILTERED[1];
 			return false;
 		}
+
 		if(total_hap < 5){
-			std::cerr << "not enough samples=" << rec->n_sample << " with " << gt.n_missing << " miss -> available=" << 2*rec->n_sample-gt.n_missing << "/" << total << "/" << total_hap << std::endl;
+			//std::cerr << "not enough samples=" << rec->n_sample << " with " << gt.n_missing << " miss -> available=" << 2*rec->n_sample-gt.n_missing << "/" << total << "/" << total_hap << std::endl;
+			++TWK_SITES_FILTERED[2];
 			return false;
 		}
 
 		if(gt.n_vector_end){
-			std::cerr << "twk do not support mixed ploidy sites" << std::endl;
+			++TWK_SITES_FILTERED[3];
+			//std::cerr << "twk do not support mixed ploidy sites" << std::endl;
 			return false;
 		}
 
-		if(gt.hap_cnt[0] == total_hap || gt.hap_cnt[1] == total_hap || gt.hap_cnt[4] == total_hap || gt.hap_cnt[5] == total_hap){
-			std::cerr << "site is invariant=" << gt.cnt[0] << "," << gt.cnt[1] << " and " << gt.hap_cnt[0] << "," << gt.hap_cnt[1] << "," << gt.hap_cnt[4] << "," << gt.hap_cnt[5] << std::endl;
+		if(gt.hap_cnt[0] == total_hap || gt.hap_cnt[1] == total_hap ||
+		   gt.hap_cnt[4] == total_hap || gt.hap_cnt[5] == total_hap)
+		{
+			//std::cerr << "site is invariant=" << gt.cnt[0] << "," << gt.cnt[1] << " and " << gt.hap_cnt[0] << "," << gt.hap_cnt[1] << "," << gt.hap_cnt[4] << "," << gt.hap_cnt[5] << std::endl;
 			//return false;
 			if(settings.remove_univariate){
-				std::cerr << "remvoing" << std::endl;
+				++TWK_SITES_FILTERED[0];
+				//std::cerr << "removing ivariant site=" << rec->rid << ":" << rec->pos+1 << "..." << std::endl;
 				return false;
-			} else
-				std::cerr << "do nothing" << std::endl;
+			} else {
+				//std::cerr << "do nothing" << std::endl;
+			}
 		}
 
 		bool flip_allele = false;

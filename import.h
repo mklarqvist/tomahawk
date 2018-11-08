@@ -17,7 +17,7 @@ void import_usage(void){
 	"  -o FILE  output file prefix (required)\n"
 	"  -f       Flip reference and alternative alleles when major is the alternative allele\n"
 	"  -r       Do NOT filter out variant sites that are univariate for REF or ALT\n"
-	"  -n FLOAT Missingness fraction cutoff (default: 1)\n"
+	"  -n FLOAT Missingness fraction cutoff (default: 0.95)\n"
 	"  -s       Hide all program messages [null]\n";
 }
 
@@ -33,7 +33,7 @@ int import(int argc, char** argv){
 		{"input",       required_argument, 0,  'i' },
 		{"output",      optional_argument, 0,  'o' },
 		//{"extend",      optional_argument, 0,  'e' },
-		{"filter-univariate",        optional_argument, 0,  'r' },
+		{"filter-univariate", optional_argument, 0,  'r' },
 		{"flip",        optional_argument, 0,  'f' },
 		{"missingness", optional_argument, 0,  'n' },
 		{0,0,0,0}

@@ -813,7 +813,7 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = n_s / 50;
+		const uint32_t cycle_thresh = n_s / 45;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -887,6 +887,8 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
+		const uint32_t cycle_thresh = n_s / 45;
+
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
@@ -899,7 +901,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 50)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
@@ -913,7 +915,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 50)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
@@ -946,6 +948,8 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
+		const uint32_t cycle_thresh = n_s / 45;
+
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
@@ -965,7 +969,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 50)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
@@ -986,7 +990,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 50)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
@@ -1020,7 +1024,7 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = n_s / 50;
+		const uint32_t cycle_thresh = n_s / 45;
 
 
 		while(true){
@@ -1102,7 +1106,7 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = n_s / 50;
+		const uint32_t cycle_thresh = (n_s / 60 == 0 ? 2 : n_s / 60);
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1116,7 +1120,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 100)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh)
 							engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
 						else {
 							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
@@ -1132,7 +1136,7 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 100)
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh)
 							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 						else {
 							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
@@ -1169,7 +1173,8 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// Heuristically determined
-		const uint32_t cycle_thresh = n_s / 50;
+		const uint32_t cycle_thresh_p = n_s / 45;
+		const uint32_t cycle_thresh_u = (n_s / 60 == 0 ? 2 : n_s / 60);
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1184,17 +1189,14 @@ struct twk_ld_slave {
 						}
 
 						if(blocks[0].blk->rcds[i].an || blocks[0].blk->rcds[j].an){
-							if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < 100){
+							if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh_u){
 								engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
 							} else {
 								engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 							}
 						} else {
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh){
-								//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
-								//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+							if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh_p){
 								engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
-								//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
 							} else {
 								engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 							}
@@ -1210,17 +1212,14 @@ struct twk_ld_slave {
 						}
 
 						if(blocks[0].blk->rcds[i].an || blocks[1].blk->rcds[j].an){
-							if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < 100)
+							if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh_u)
 								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 							else {
 								engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 							}
 						} else {
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
-								//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
-								//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
+							if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh_p)
 								engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-								//engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
 							else {
 								engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 							}

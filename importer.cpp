@@ -14,6 +14,7 @@
 #include "index.h"
 #include "zstd_codec.h"
 #include "timer.h"
+#include "writer.h"
 
 namespace tomahawk {
 
@@ -53,6 +54,17 @@ bool twk_variant_importer::Import(void){
 		stream_delete = false;
 	}
 	else {
+		std::string base_path = tomahawk::twk_writer_t::GetBasePath(settings.output);
+		std::string base_name = tomahawk::twk_writer_t::GetBaseName(settings.output);
+		std::string extension = twk_writer_t::GetExtension(settings.output);
+		if(extension.length() == 3){
+			if(strncasecmp(&extension[0], "twk", 3) != 0){
+				settings.output =  (base_path.size() ? base_path + "/" : "") + base_name + ".twk";
+			}
+		} else {
+			 settings.output = (base_path.size() ? base_path + "/" : "") + base_name + ".twk";
+		}
+
 		std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.output << "..." << std::endl;
 		stream = new std::ofstream;
 		std::ofstream* outstream = reinterpret_cast<std::ofstream*>(stream);
@@ -103,8 +115,12 @@ bool twk_variant_importer::Import(void){
 	};
 	prev_helper prev_rec; prev_rec.rid = 0; prev_rec.pos = 0; prev_rec.dropped = false;
 
+	memset(TWK_SITES_FILTERED, 0, sizeof(uint64_t)*8);
+	uint64_t n_tot_vnts = 0;
+
 	// While there are bcf1_t records available.
 	while(vcf->next(BCF_UN_ALL)){
+		++n_tot_vnts;
 		tomahawk::twk1_t entry;
 		entry.pos = vcf->bcf1_->pos;
 		if(prev_rec == vcf->bcf1_){
@@ -124,6 +140,7 @@ bool twk_variant_importer::Import(void){
 			if(vcf->vcf_header_.GetFormat(vcf->bcf1_->d.fmt[0].id)->id == "GT"){
 				if(vcf->bcf1_->d.fmt[0].n != 2){
 					std::cerr << "do not support non-diploid samples" << std::endl;
+					++TWK_SITES_FILTERED[3];
 					++n_vnt_dropped;
 					prev_rec.dropped = true;
 					continue;
@@ -131,6 +148,7 @@ bool twk_variant_importer::Import(void){
 
 				if(vcf->bcf1_->n_allele != 2){
 					//std::cerr << "allele != 2" << std::endl;
+					++TWK_SITES_FILTERED[6];
 					++n_vnt_dropped;
 					prev_rec.dropped = true;
 					continue;
@@ -140,6 +158,7 @@ bool twk_variant_importer::Import(void){
 				for(int i = 0; i < 2; ++i){
 					if(std::regex_match(vcf->bcf1_->d.allele[i],tomahawk::TWK_REGEX_CANONICAL_BASES) == false){
 						//std::cerr << "failed match= " << vcf->bcf1_->d.allele[i] << std::endl;
+						++TWK_SITES_FILTERED[7];
 						++n_vnt_dropped;
 						prev_rec.dropped = true;
 						valid = false;
@@ -164,7 +183,7 @@ bool twk_variant_importer::Import(void){
 
 				if(block.n != 0){
 					if(block.rid != vcf->bcf1_->rid){
-						std::cerr << "wrong rid@" << block.rid << "!=" << vcf->bcf1_->rid << std::endl;
+						//std::cerr << "wrong rid@" << block.rid << "!=" << vcf->bcf1_->rid << std::endl;
 						buf << block;
 						/*
 						std::cerr << "buf now=" << buf.size() << std::endl;
@@ -184,7 +203,7 @@ bool twk_variant_importer::Import(void){
 
 						tomahawk::twk_buffer_t obuf(buf.size() + 65536);
 						assert(zcodec.Compress(buf, obuf, settings.c_level));
-						std::cerr << buf.size() << "->" << obuf.size() << " = " << (float)buf.size()/obuf.size() << std::endl;
+						//std::cerr << buf.size() << "->" << obuf.size() << " = " << (float)buf.size()/obuf.size() << std::endl;
 						// Write block: size-un, size, buffer
 						tomahawk::twk_oblock_t oblock;
 						oblock.Write(*stream, buf.size(), obuf.size(), obuf);
@@ -243,11 +262,13 @@ bool twk_variant_importer::Import(void){
 			} else {
 				++n_vnt_dropped;
 				prev_rec.dropped = true;
+				++TWK_SITES_FILTERED[4];
 				std::cerr << "no genotypes" << std::endl;
 			}
 		} else {
 			++n_vnt_dropped;
 			prev_rec.dropped = true;
+			++TWK_SITES_FILTERED[5];
 			std::cerr << "no fmt" << std::endl;
 		}
 	}
@@ -298,6 +319,10 @@ bool twk_variant_importer::Import(void){
 
 	std::cerr << utility::timestamp("LOG") << "Wrote: " << utility::ToPrettyString(index.GetTotalVariants()) << " variants to " << utility::ToPrettyString(index.n) << " blocks..." << std::endl;
 	std::cerr << utility::timestamp("LOG") << "Finished: " << timer.ElapsedString() << std::endl;
+	std::cerr << utility::timestamp("LOG") << "Filtered out " << utility::ToPrettyString(n_tot_vnts - index.GetTotalVariants()) << " sites (" << (float)(n_tot_vnts - index.GetTotalVariants())/n_tot_vnts*100 << "%):" << std::endl;
+	for(int i = 0; i < 8; ++i){
+		std::cerr << utility::timestamp("LOG") << "   " << TWK_SITES_FILTERED_NAMES[i] << ": " << utility::ToPrettyString(TWK_SITES_FILTERED[i]) << " (" << (float)TWK_SITES_FILTERED[i]/n_tot_vnts*100 << "%)" << std::endl;
+	}
 
 	if(stream_delete) delete stream;
 	return(true);

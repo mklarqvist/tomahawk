@@ -49,7 +49,8 @@ void calc_usage(void){
 	"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n";
+	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	"  -k INT    compression level to use (default: 1, max = 22).\n";
 }
 
 int calc(int argc, char** argv){
