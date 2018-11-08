@@ -226,7 +226,7 @@ struct twk_ld_ticker {
 		if(i != j){
 			// check if this (x,y) pair have any overlapping intervals.
 			if(ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec-1].pos > l_window){
-				++i; j = i; type = 1;
+				++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
 				spinlock.unlock();
 				return true;
 			}
@@ -730,9 +730,10 @@ struct twk_ld_slave {
 		if(settings->force_phased && settings->low_memory && settings->bitmaps)
 			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this);
 			else thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this);
-		else if(settings->force_phased)
-			thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
-		else if(settings->forced_unphased){
+		else if(settings->force_phased){
+			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedWindow, this);
+			else thread = new std::thread(&twk_ld_slave::CalculatePhased, this);
+		} else if(settings->forced_unphased){
 			thread = new std::thread(&twk_ld_slave::CalculateUnphased, this);
 		}
 		else {
@@ -820,6 +821,7 @@ struct twk_ld_slave {
 			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
+				std::cerr << "type=" << 1 << std::endl;
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
@@ -952,7 +954,7 @@ struct twk_ld_slave {
 			if(type == 1){
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].rid != blocks[0].blk->rcds[j].pos
+						if(blocks[0].blk->rcds[i].rid != blocks[0].blk->rcds[j].rid
 						   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
 						{
 							//std::cerr << "oor=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[j].pos << std::endl;
@@ -973,7 +975,7 @@ struct twk_ld_slave {
 			} else {
 				for(int i = 0; i < blocks[0].n_rec; ++i){
 					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].rid != blocks[1].blk->rcds[j].pos
+						if(blocks[0].blk->rcds[i].rid != blocks[1].blk->rcds[j].rid
 						   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
 						{
 							//std::cerr << "oor=" << blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
@@ -992,6 +994,89 @@ struct twk_ld_slave {
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 			}
+		}
+
+		// if preloaded
+		if(settings->low_memory == false){
+			blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+			blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+		}
+
+		// compress last
+		if(this->engine.CompressBlock() == false)
+			return false;
+
+		return true;
+	}
+
+	bool CalculatePhasedWindow(){
+		std::cerr << "windowed phased" << std::endl;
+		twk1_ldd_blk blocks[2];
+		uint32_t from, to; uint8_t type;
+		Timer timer; timer.Start();
+
+		i_start = ticker->fL; j_start = ticker->fR;
+		prev_i = 0; prev_j = 0;
+		n_cycles = 0;
+
+		// heuristcally determined
+		const uint32_t cycle_thresh = n_s / 50;
+
+
+		while(true){
+			if(!ticker->Get(from, to, type)) break;
+
+			this->UpdateBlocks(blocks,from,to);
+
+			if(type == 1){
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = i+1; j < blocks[0].n_rec; ++j){
+						//std::cerr << "here=" << i << "/" << j << " diff=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
+ 						if(blocks[0].blk->rcds[i].rid == blocks[0].blk->rcds[j].rid
+						   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
+						{
+							//std::cerr << "oor=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
+							//progress->n_var += i*j;
+							goto end_cycle;
+							//continue;
+						}
+
+						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+							continue;
+						}
+
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh)
+							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+						else
+							engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+					}
+				}
+				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+			} else {
+				for(int i = 0; i < blocks[0].n_rec; ++i){
+					for(int j = 0; j < blocks[1].n_rec; ++j){
+						if(blocks[0].blk->rcds[i].rid == blocks[1].blk->rcds[j].rid
+						   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
+						{
+							//std::cerr << "oor=" << blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
+							goto end_cycle;
+							//continue;
+						}
+
+						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
+							continue;
+						}
+
+						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
+							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
+						else
+							engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+					}
+				}
+				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+			}
+			end_cycle:
+			progress->n_var += 0;
 		}
 
 		// if preloaded

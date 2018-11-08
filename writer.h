@@ -137,7 +137,6 @@ struct twk_two_writer_t : public twk_writer_t {
 		return false;
 	}
 
-
 	bool WriteHeaderBinary(two_reader& reader) {
 		if(stream.good() == false)
 			return false;
@@ -194,6 +193,10 @@ struct twk_two_writer_t : public twk_writer_t {
 			std::cerr << i << "/" << oindex.n << " " << oindex.ent[i].rid << ":" << oindex.ent[i].minpos << "-" << oindex.ent[i].maxpos << " offset=" << oindex.ent[i].foff << "-" << oindex.ent[i].fend << " brid=" << oindex.ent[i].ridB << std::endl;
 		}
 
+		for(int i = 0; i < oindex.m_ent; ++i){
+			std::cerr << "meta=" << i << "/" << oindex.m_ent << " " << oindex.ent_meta[i].rid << ":" << oindex.ent_meta[i].minpos << "-" << oindex.ent_meta[i].maxpos << " offset=" << oindex.ent_meta[i].foff << "-" << oindex.ent_meta[i].fend << std::endl;
+		}
+
 		const uint64_t offset_start_index = stream.tellp();
 		uint8_t marker = 0;
 		stream.write(reinterpret_cast<const char*>(&marker),sizeof(uint8_t));
@@ -217,7 +220,7 @@ struct twk_two_writer_t : public twk_writer_t {
 	}
 
 	bool WriteBlock(){
-		if(mode == 'b') return(WriteBlockCompreesedTWO());
+		if(mode == 'b') return(WriteBlockCompressedTWO());
 		else if(mode == 'u') return(WriteBlockUncompressedLD());
 
 		return false;
@@ -234,7 +237,7 @@ struct twk_two_writer_t : public twk_writer_t {
 		return true;
 	}
 
-	bool WriteBlockCompreesedTWO(){
+	bool WriteBlockCompressedTWO(){
 		// Todo: if uncompressed data then write as is
 		if(oblock.n){
 			//twk_oblock_two_t b;
@@ -245,24 +248,61 @@ struct twk_two_writer_t : public twk_writer_t {
 				return false;
 			}
 
+			// parent add
+			ioentry.foff = stream.tellp();
 			twk_writer_t::Add(ubuf.size(), obuf.size(), obuf);
 
 			ioentry.n = oblock.n;
 			ioentry.b_unc = ubuf.size();
 			ioentry.b_cmp = obuf.size();
-			ioentry.foff = stream.tellp();
-			ioentry.rid  = -1;
-			ioentry.ridB = -1;
-			ioentry.minpos = 0;
-			ioentry.maxpos = 0;
+			if(oindex.state == TWK_IDX_SORTED){ // if index is sorted
+				uint32_t ridb = oblock.rcds[0].ridB;
+				for(int i = 1; i < oblock.n; ++i){ // check if ridb is uniform
+					if(oblock.rcds[i].ridB != ridb){
+						ridb = -1;
+						break;
+					}
+				}
+				ioentry.rid    = oblock.rcds[0].ridA;
+				ioentry.ridB   = ridb;
+				ioentry.minpos = oblock.rcds[0].Apos;
+				ioentry.maxpos = oblock.rcds[oblock.n-1].Apos;
+			} else {
+				ioentry.rid    = -1;
+				ioentry.ridB   = -1;
+				ioentry.minpos = 0;
+				ioentry.maxpos = 0;
+			}
 			ioentry.fend = stream.tellp();
 
 			oindex += ioentry;
+			if(oindex.state == TWK_IDX_SORTED){
+				oindex.ent_meta[ioentry.rid] += ioentry;
+			}
+
 			ioentry.clear();
 			obuf.reset(); ubuf.reset();
 			oblock.reset();
 		}
 		return true;
+	}
+
+	static std::string RandomSuffix() {
+		 std::string name1 = std::tmpnam(nullptr);
+		 std::vector<std::string> ret = utility::split(name1, '/');
+		 return(ret.back());
+	}
+
+	static std::string GetExtension(const std::string ret) {
+		return(utility::ExtensionName(ret));
+	}
+
+	static std::string GetBasePath(const std::string ret) {
+		return(utility::BasePath(ret));
+	}
+
+	static std::string GetBaseName(const std::string ret) {
+		return(utility::BaseName(ret));
 	}
 
 	char mode;

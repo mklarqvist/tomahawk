@@ -266,8 +266,8 @@ public:
 		return(n_total);
 	}
 
-	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid) const;
-	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid, const uint32_t pos) const;
+	//std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid) const;
+	//std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid, const uint32_t pos) const;
 	std::vector< IndexEntryOutput* > FindOverlap(const uint32_t rid, const uint32_t posA, const uint32_t posB) const{
 		std::vector<IndexEntryOutput*> ret;
 		for(int i = 0; i < n; ++i){

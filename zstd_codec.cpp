@@ -33,7 +33,6 @@ bool ZSTDCodec::InitStreamDecompress(){
 	return true;
 }
 
-
 size_t ZSTDCodec::StreamCompress(const twk_buffer_t& src,
 		twk_buffer_t& dst,
 		std::ostream& out,

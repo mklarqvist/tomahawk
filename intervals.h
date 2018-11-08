@@ -231,7 +231,11 @@ public:
 	 * @param reader Source twk_reader object.
 	 * @return       Returns TRUE upon success or FALSE otherwise.
 	 */
-	bool Build(std::vector<std::string>& strings, const uint32_t n_contigs, const IndexOutput& index, const io::VcfHeader& hdr){
+	bool Build(std::vector<std::string>& strings,
+	           const uint32_t n_contigs,
+	           const IndexOutput& index,
+	           const io::VcfHeader& hdr)
+	{
 		if(strings.size() == 0) return true;
 		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
 		delete[] itree; itree = nullptr;
@@ -428,9 +432,8 @@ public:
 
 			mateA->value = interval_pair_payload(mateB_rid, mateB_offset, 0);
 			mateB->value = interval_pair_payload(mateA_rid, mateA_offset, 1);
-			std::cerr << "before mate print" << std::endl;
-			std::cerr << "have=" << mateA->start << "-" << mateA->stop << " with " << mateA->value.rid << "," << mateA->value.offset << " and " <<
-					mateB->start << "-" << mateB->stop << " with " << mateB->value.rid << "," << mateB->value.offset << std::endl;
+			//std::cerr << "have=" << mateA->start << "-" << mateA->stop << " with " << mateA->value.rid << "," << mateA->value.offset << " and " <<
+			//		mateB->start << "-" << mateB->stop << " with " << mateB->value.rid << "," << mateB->value.offset << std::endl;
 			return true;
 		}
 	}
@@ -458,6 +461,13 @@ public:
 			}
 			ivecs_internal[i] = ivals;
 		}
+
+
+		/*for(int i = 0; i < n_c; ++i){
+			for(int j = 0; j < ivecs_internal[i].size(); ++j){
+				std::cerr << "ivecs=" << ivecs_internal[i][j].start << "-" << ivecs_internal[i][j].stop << std::endl;
+			}
+		}*/
 	}
 
 	bool FilterInterval(const twk1_two_t& rec) const {

@@ -128,10 +128,32 @@ int sort(int argc, char** argv){
 	std::string view_string = "\n##tomahawk_sortVersion=" + std::to_string(VERSION) + "\n";
 	view_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
 
-	tomahawk::twk_two_writer_t writer;
+	// generate temp name
 
+	/*std::string BasePath(const std::string& input);
+	std::string BaseName(const std::string& input);
+	std::string ExtensionName(const std::string& input);
+	*/
+
+	std::string extension = tomahawk::twk_two_writer_t::GetExtension(out);
+	if(extension != "two"){
+		out += ".two";
+	}
+
+	// generate temp names
+	std::string suffix = tomahawk::twk_two_writer_t::RandomSuffix();
+	std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
+	std::string base_name = tomahawk::twk_two_writer_t::GetBaseName(out);
+	std::string temp_out = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
+
+	tomahawk::twk_two_writer_t writer;
 	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
-	writer.Open(out); writer.mode = 'b';
+	std::cerr << tomahawk::utility::timestamp("LOG","WRITER") << "Opening " << (base_name + "_" + suffix + ".two") << std::endl;
+	if(writer.Open(temp_out) == false){
+		std::cerr << "failed to open=" << temp_out << std::endl;
+		return 1;
+	}
+	writer.mode = 'b'; // force binary mode
 	writer.WriteHeader(oreader);
 
 	tomahawk::twk1_two_block_t blk2;
@@ -237,109 +259,259 @@ int sort(int argc, char** argv){
 		std::cerr << i << ": " << offsets[i].foff << "->" << offsets[i].fend << " " << offsets[i].n << " " << offsets[i].nc << std::endl;
 	}
 
-	std::cerr << "testing" << std::endl;
-	std::ifstream re(out, std::ios::binary | std::ios::in | std::ios::ate);
-	if(re.good() == false){
-		std::cerr << "failed reopen" << std::endl;
-		return false;
-	}
-	const uint64_t filesize = re.tellg();
-	//re.seekg(0);
+	struct twk_two_stream_iterator {
+
+		bool Open(const std::string file,
+				const uint64_t foff,
+				const uint64_t fend,
+				const uint32_t n_uncompressed,
+				const uint32_t n_compressed)
+		{
+			stream = std::ifstream(file, std::ios::binary);
+			if(stream.good() == false){
+				std::cerr << "could not open " << file << std::endl;
+				return false;
+			}
+
+			stream.seekg(foff);
+			if(stream.good() == false){
+				std::cerr << "seek failed" << std::endl;
+			}
+
+			n = 0; it = 0; n_unc_cum = 0;
+			b_left = fend - foff;
+			it_tot = 0;
+			//std::cerr << "data left=" << b_left << ": " << foff << "-" << fend << std::endl;
+			n_unc = n_uncompressed; n_cmp = n_compressed;
+			n_tot = n_unc / tomahawk::twk1_two_t::packed_size;
+			off_start = foff; off_end = fend;
+			out.reset(); out2.reset();
+
+			zcodec.InitStreamDecompress();
+
+			return true;
+		}
+
+		bool Next(tomahawk::twk1_two_t& rec){
+			if(it == n){
+				if(NextBlock() == false)
+					return false;
+			}
+
+			out2 >> rec;
+			++it; ++it_tot;
+			return true;
+		}
+
+		bool NextBlock(uint32_t b_read = 256000){
+			if(b_left == 0)
+				return false;
+
+			const uint32_t residual = out2.size() % tomahawk::twk1_two_t::packed_size;
+
+			if(residual){
+				//std::cerr << "has residual=" << residual << std::endl;
+				std::memmove(out2.data(), out2.data() + (out2.size() - residual), residual);
+			}
+
+			//b_read = b_read > b_left ? b_left : b_read;
+			const size_t n_read = b_left > b_read ? b_read : b_left;
+			n = 0; it = 0;
+
+			n_unc_cum += out2.size();
+			if(out.n_chars_ - out.iterator_position_ != 0){
+				//std::cerr << "moving=" << out.n_chars_ - out.iterator_position_ << "(" << out.n_chars_ << " and " << out.iterator_position_ << ")" << std::endl;
+				std::memmove(out.data(), out.data() + out.iterator_position_, out.n_chars_ - out.iterator_position_);
+				out.n_chars_ = out.n_chars_ - out.iterator_position_;
+			} else out.n_chars_ = 0;
+
+			out.iterator_position_ = 0;
+			out2.n_chars_ = residual;
+			out2.iterator_position_ = 0;
+			n_unc_cum -= residual;
+
+			if(out.capacity() == 0 || b_read > out.capacity()){
+				out.resize(b_read);
+				out2.resize(b_read);
+			}
+
+			if(stream.good() == false){
+				std::cerr << "stream is dead" << std::endl;
+				return false;
+			}
+
+			// Read a block of data
+			//std::cerr << "reader=" << stream.tellg() << " left=" << b_left << std::endl;
+			stream.read(out.data() + out.n_chars_, n_read);
+			if(stream.good() == false){
+				std::cerr << "failed to read: " << n_read << std::endl;
+				return false;
+			}
+			out.n_chars_ += n_read;
+
+			// Decompress
+			//std::cerr << "read=" << n_read << " and " << out.iterator_position_ << "/" << out.n_chars_ << std::endl;
+			if(zcodec.StreamDecompress(out, out2) == false){
+				std::cerr << "fail stream decompress" << std::endl;
+				return false;
+			}
+
+			// If input data is not all consumed
+			//std::cerr << "decomp=" << out.iterator_position_ << " -> " << out2.size() << std::endl;
+
+			n = out2.size() / tomahawk::twk1_two_t::packed_size;
+			//std::cerr << "n=" << n << " it=" << it << std::endl;
+
+			b_left -= n_read;
+			return true;
+		}
+
+		uint32_t n, it, n_tot, it_tot; // n_records, it_pos
+		uint32_t b_left, n_unc, n_cmp, n_unc_cum;
+		uint64_t off_start, off_end;
+		std::ifstream stream;
+		tomahawk::twk_buffer_t out, out2;
+		tomahawk::ZSTDCodec zcodec;
+	};
+
+	struct two_queue_entry {
+	public:
+		two_queue_entry(const tomahawk::twk1_two_t& data, uint32_t streamID) :
+			qid(streamID), rec(data)
+	    {}
+
+	    inline bool operator<(const two_queue_entry& other) const {
+	        return(!(rec < other.rec));
+	    }
+
+	public:
+	    uint32_t qid;
+	    tomahawk::twk1_two_t rec;
+	};
 
 	obuf.reset(); obuf2.reset();
 	obuf.resize(256000);
 	obuf2.resize(256000);
 
+	//uint32_t k = 0;
+	std::priority_queue<two_queue_entry> queue;
+
+	twk_two_stream_iterator* its = new twk_two_stream_iterator[offsets.size()];
+	tomahawk::twk1_two_t rec;
+	uint64_t n_rec_total = 0;
 	for(int p = 0; p < offsets.size(); ++p){
-		std::cerr << "seeking to: " << offsets[p].foff << std::endl;
-		re.seekg(offsets[p].foff);
-		if(re.good() == false){
-			std::cerr << "failed seek" << std::endl;
-			return 1;
+		// open iterators
+		if(its[p].Open(temp_out, offsets[p].foff, offsets[p].fend, offsets[p].n, offsets[p].nc) == false){
+			std::cerr << "failed open" << std::endl;
+			return false;
 		}
 
-		size_t left = offsets[p].nc;
-		size_t n_uncomp = 0;
-		oreader.zcodec.InitStreamDecompress();
-		uint32_t iterations = 0;
-		while(left){
-			//if(iterations++ == 2) return 1;
-			if(re.good() == false){
-				std::cerr << "stream is dead" << std::endl;
-				return 1;
-			}
-
-			// Read a block of data
-			std::cerr << "reader=" << re.tellg() << "/" << filesize << " left=" << left << std::endl;
-			const size_t n_read = left < 256000 ? left : 256000;
-			re.read(obuf.data() + obuf.n_chars_, n_read);
-			if(re.good() == false){
-				std::cerr << "failed to read: " << n_read << std::endl;
-				return 1;
-			}
-			obuf.n_chars_ += n_read;
-
-			// Decompress
-			std::cerr << "read=" << n_read << " and " << obuf.iterator_position_ << "/" << obuf.n_chars_ << std::endl;
-			if(oreader.zcodec.StreamDecompress(obuf, obuf2) == false){
-				std::cerr << "fail stream decompress" << std::endl;
-				return 1;
-			}
-
-			// Print head records
-			/*
-			uint32_t n_rcs = obuf2.size() / tomahawk::twk1_two_t::packed_size;
-			tomahawk::twk1_two_t rec;
-			obuf2.iterator_position_ = 0;
-			for(int i = 0; i < 5; ++i){
-				std::cerr << "HEAD\t"<< i << "/" << n_rcs << "@" << obuf2.iterator_position_ << "/" << obuf2.size() << " ";
-				obuf2 >> rec;
-				rec.PrintLD(std::cerr);
-			}
-			obuf2.iterator_position_ = (tomahawk::twk1_two_t::packed_size * (n_rcs - 5));
-			std::cerr << "moving up to: " << obuf2.iterator_position_ << "/" << obuf2.size() << std::endl;
-
-
-			std::cerr << "records=" << n_rcs << std::endl;
-
-			for(int i = n_rcs - 5; i < n_rcs; ++i){
-				std::cerr << "TAIL\t" << i << "/" << n_rcs << "@" << obuf2.iterator_position_ << "/" << obuf2.size() << " ";
-				obuf2 >> rec;
-				rec.PrintLD(std::cerr);
-			}
-*/
-			// If input data is not all consumed
-			std::cerr << "decomp=" << obuf.iterator_position_ << " -> " << obuf2.size() << std::endl;
-			n_uncomp += obuf2.size();
-			if(obuf.n_chars_ - obuf.iterator_position_ != 0){
-				std::cerr << "moving=" << obuf.n_chars_ - obuf.iterator_position_ << "(" << obuf.n_chars_ << " and " << obuf.iterator_position_ << ")" << std::endl;
-				std::memmove(obuf.data(), obuf.data() + obuf.iterator_position_, obuf.n_chars_ - obuf.iterator_position_);
-				obuf.n_chars_ = obuf.n_chars_ - obuf.iterator_position_;
-			} else obuf.n_chars_ = 0;
-			obuf.iterator_position_ = 0;
-
-			//std::cerr << "division=" << (float)obuf2.size() / tomahawk::twk1_two_t::packed_size << " size=" << tomahawk::twk1_two_t::packed_size << std::endl;
-			const uint32_t residual = obuf2.size() % tomahawk::twk1_two_t::packed_size;
-
-			//std::cerr << "move=" << obuf2.size() / tomahawk::twk1_two_t::packed_size * tomahawk::twk1_two_t::packed_size << "/" << obuf2.size() << " total of=" << residual << std::endl;
-			std::memmove(obuf2.data(), obuf2.data() + (obuf2.size() - residual), residual);
-			obuf2.n_chars_ = residual;
-			obuf2.iterator_position_ = 0;
-			n_uncomp -= residual;
-
-			left -= n_read;
-			assert(re.good());
-			//obuf.reset();
+		if(its[p].Next(rec) == false){
+			std::cerr << "failed to get next" << std::endl;
+			return false;
 		}
-		assert(n_uncomp == offsets[p].n);
-		//std::cerr << "left=" << left << " and " << re.tellg() << "/" << offsets[p].fend << std::endl;
-		//std::cerr << "done reading=" << offsets[p].nc << "->" << n_uncomp << "/" << offsets[p].n << std::endl;
-		//std::cerr << "remainder=" << oreader.zcodec.outbuf.pos << "/" << oreader.zcodec.outbuf.size << std::endl;
-		//std::cerr << "remainder-in=" << oreader.zcodec.inbuf.pos << "/" << oreader.zcodec.inbuf.size << std::endl;
-		//std::cerr << "expect=" << offsets[p].n << " and " << offsets[p].nc << " adding " << n_uncomp+oreader.zcodec.outbuf.pos << std::endl;
+		std::cerr << "queue-" << p << std::endl;
+		//rec.PrintLD(std::cerr);
+		queue.push(two_queue_entry(rec, p));
+
+		n_rec_total += offsets[p].n / tomahawk::twk1_two_t::packed_size;
+		std::cerr << "total=" << its[p].n_tot << std::endl;
 	}
 
-	// destream
+	if(queue.empty()){
+		std::cerr << tomahawk::utility::timestamp("ERROR","SORT") << "No data in queue..." << std::endl;
+		return false;
+	}
 
+	//std::cerr << "top" << std::endl;
+	//queue.top().rec.PrintLD(std::cerr);
+
+	tomahawk::twk_two_writer_t owriter;
+	owriter.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+	std::cerr << "opening=" << out << std::endl;
+	if(owriter.Open(out) == false){
+		std::cerr << "failed top open" << std::endl;
+		return false;
+	}
+	owriter.mode = 'b';
+	owriter.oindex.state = TWK_IDX_SORTED;
+	// Write header
+	std::string sort_string = "\n##tomahawk_sortVersion=" + std::to_string(VERSION) + "\n";
+	sort_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
+	oreader.hdr.literals_ += sort_string;
+	if(owriter.WriteHeader(oreader) == false){
+		std::cerr << "failed to write header" << std::endl;
+		return false;
+	}
+
+
+	// Reference
+	uint32_t ridA = queue.top().rec.ridA;
+
+	tomahawk::Timer timer; timer.Start();
+	uint64_t n_entries_out = 0;
+	while(queue.empty() == false){
+		// peek at top entry in queue
+		const uint32_t id = queue.top().qid;
+
+		if(queue.top().rec.ridA != ridA){
+			//std::cerr << "change in ridA=" << queue.top().rec.ridA << "!=" << ridA << " -> " << owriter.oblock.n << std::endl;
+			if(owriter.WriteBlock() == false){
+				std::cerr << "failed to flush" << std::endl;
+				return false;
+			}
+		}
+
+		//queue.top().rec.PrintLD(std::cout);
+		owriter.Add(queue.top().rec);
+		ridA = queue.top().rec.ridA;
+
+
+		++n_entries_out;
+		if(n_entries_out % 1000000 == 0)
+			std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
+
+		// remove this record from the queue
+		queue.pop();
+
+		while(its[id].Next(rec)){
+			if(!(rec < queue.top().rec)){
+				queue.push( two_queue_entry(rec, id) );
+				break;
+			}
+
+			if(rec.ridA != ridA){
+				//std::cerr << "change in ridA=" << rec.ridA << "!=" << ridA << " -> " << owriter.oblock.n << std::endl;
+
+				if(owriter.WriteBlock() == false){
+					std::cerr << "failed to flush" << std::endl;
+					return false;
+				}
+			}
+			//rec.PrintLD(std::cout);
+			owriter.Add(rec);
+			ridA = rec.ridA;
+
+			++n_entries_out;
+			if(n_entries_out % 1000000 == 0)
+				std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
+		}
+	}
+
+	owriter.flush();
+	owriter.WriteFinal();
+	owriter.close();
+	std::cerr << "merge time=" << timer.ElapsedString() << std::endl;
+
+	std::cerr << "deleting intermediary" << std::endl;
+
+	if( remove( temp_out.c_str() ) != 0 )
+	    std::cerr << "Error deleting file=" << out << std::endl;
+	  else {
+	    std::cerr << "File successfully deleted" << out << std::endl;
+	    return 1;
+	  }
+
+	delete[] its;
 	return 0;
 }

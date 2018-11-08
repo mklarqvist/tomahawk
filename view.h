@@ -365,12 +365,11 @@ int view(int argc, char** argv){
 
 	if(oreader.Open(settings.in) == false){
 		std::cerr << "failed to open" << std::endl;
-		return false;
+		return 1;
 	}
 
-	std::cerr << "intervals=" << settings.ivals.size() << std::endl;
 	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
-		return false;
+		return 1;
 
 	std::string view_string = "\n##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
 	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
@@ -390,20 +389,34 @@ int view(int argc, char** argv){
 	else if(writer.mode == 'b')
 		writer.WriteHeader(oreader);
 
-	//tomahawk::twk1_two_iterator it;
-	//it.stream = oreader.stream;
-	tomahawk::twk1_two_block_t blk2;
-	//tomahawk::ZSTDCodec zcodec;
-	//std::cerr << "resizing to=" << 1000000000/sizeof(tomahawk::twk1_two_t) << " entries..." << std::endl;
-	//blk2.resize(1000000000/sizeof(tomahawk::twk1_two_t));
-
-	//std::FILE* tmpf = std::tmpfile();
-	tomahawk::twk_buffer_t obuf;
-
 	//tomahawk::twk_two_filter filter;
 	settings.filter.Build();
 
-	if(settings.ivals.size()){
+	// todo: if data is sorted then only visit overlapping blocks
+	if(oreader.index.state == TWK_IDX_SORTED && settings.ivals.size()){
+		writer.oindex.state = TWK_IDX_SORTED;
+
+		std::cerr << settings.intervals.overlap_blocks.size() << std::endl;
+		for(int i = 0; i < settings.intervals.overlap_blocks.size(); ++i){
+			oreader.stream->seekg(settings.intervals.overlap_blocks[i]->foff);
+			if(oreader.NextBlock() == false){
+				std::cerr << "failed to get next block" << std::endl;
+				return 1;
+			}
+
+			for(int j = 0; j < oreader.it.blk.n; ++j){
+				assert(oreader.NextRecord());
+				//oreader.it.rcd->PrintLD(std::cerr);
+				if(settings.intervals.FilterInterval(*oreader.it.rcd)){
+					continue;
+				}
+
+				if(settings.filter.Filter(oreader.it.rcd)){
+					writer.Add(*oreader.it.rcd);
+				}
+			}
+		}
+	} else if(settings.ivals.size()){
 		while(oreader.NextRecord()){
 			if(settings.intervals.FilterInterval(*oreader.it.rcd)){
 				continue;
@@ -426,56 +439,4 @@ int view(int argc, char** argv){
 	else writer.WriteBlock();
 	writer.close();
 	return(0);
-
-	uint32_t tot = 0;
-	while(oreader.NextBlock()){
-		//std::cerr << i++ << " -> " << it.GetBlock().n << std::endl;
-		tot += oreader.it.GetBlock().n;
-		for(int j = 0; j < oreader.it.blk.n; ++j){
-			//it.blk[j].Print(std::cerr);
-			if(blk2.n == blk2.m){
-				//std::cerr << "resseting" << std::endl;
-				blk2.Sort();
-				obuf << blk2;
-				if(oreader.zcodec.Compress(obuf, oreader.it.oblk.bytes, 1) == false){
-					std::cerr << "could not compress" << std::endl;
-				}
-				oreader.it.oblk.n = obuf.size();
-				oreader.it.oblk.nc = oreader.it.oblk.bytes.size();
-				std::cerr << oreader.it.oblk.n << "->" << oreader.it.oblk.nc << " " << (float)oreader.it.oblk.n/oreader.it.oblk.nc << "-fold" << std::endl;
-
-				for(int k = 0; k < blk2.n; ++k){
-					blk2.rcds[k].PrintLD(std::cout);
-				}
-
-				obuf.reset();
-				blk2.reset();
-			}
-			blk2 += oreader.it.blk[j];
-			//it.blk[j].Print(std::cout);
-		}
-		//std::cerr << blk2.n << "/" << blk2.m << std::endl;
-	}
-	if(blk2.n){
-		blk2.Sort();
-		obuf << blk2;
-		if(oreader.zcodec.Compress(obuf, oreader.it.oblk.bytes, 1) == false){
-			std::cerr << "could not compress" << std::endl;
-		}
-		oreader.it.oblk.n = obuf.size();
-		oreader.it.oblk.nc = oreader.it.oblk.bytes.size();
-		std::cerr << oreader.it.oblk.n << "->" << oreader.it.oblk.nc << " " << (float)oreader.it.oblk.n/oreader.it.oblk.nc << "-fold" << std::endl;
-
-
-		for(int k = 0; k < blk2.n; ++k){
-			blk2.rcds[k].PrintLD(std::cout);
-		}
-
-		obuf.reset();
-		blk2.reset();
-	}
-	std::cerr << "total=" << tot << "/" << oreader.index.GetTotalVariants() << std::endl;
-
-
-	return 0;
 }
