@@ -18,6 +18,8 @@ void import_usage(void){
 	"  -f       Flip reference and alternative alleles when major is the alternative allele\n"
 	"  -r       Do NOT filter out variant sites that are univariate for REF or ALT\n"
 	"  -n FLOAT Missingness fraction cutoff (default: 0.95)\n"
+	"  -b INT   Block size (default: 500)\n"
+	"  -L INT   Compression level in range 1-20 (default: 1)\n"
 	"  -s       Hide all program messages [null]\n";
 }
 
@@ -36,11 +38,13 @@ int import(int argc, char** argv){
 		{"filter-univariate", optional_argument, 0,  'r' },
 		{"flip",        optional_argument, 0,  'f' },
 		{"missingness", optional_argument, 0,  'n' },
+		{"compression-level", optional_argument, 0,  'b' },
+		{"block-size", optional_argument, 0,  'L' },
 		{0,0,0,0}
 	};
 	tomahawk::twk_vimport_settings settings;
 
-	while ((c = getopt_long(argc, argv, "i:o:rfn:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:rfn:b:L:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -73,6 +77,12 @@ int import(int argc, char** argv){
 			break;
 		case 'f':
 			settings.flip_major_minor = false;
+			break;
+		case 'b':
+			settings.block_size = atoi(optarg);
+			break;
+		case 'L':
+			settings.c_level = atoi(optarg);
 			break;
 
 		default:
