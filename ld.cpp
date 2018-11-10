@@ -161,24 +161,24 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1,
 #define ITER_SHORT {                                                     \
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);              \
 	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
 	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
 	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
 	i += 1;                                                              \
 }
 
 #define ITER {                                                           \
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);              \
 	__intermediate  = PHASED_ALTALT_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);       \
 	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
 	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
 	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks); \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
 	i += 1;                                                              \
 }
 
@@ -271,7 +271,7 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 
 #define ITER_SHORT {                                              \
 	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);      \
-	POPCOUNT(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);\
+	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);\
 	i += 1;                                                       \
 }
 
@@ -387,29 +387,29 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p
 #define ITER_SHORT {                                                        \
 	ITER_BASE                                                               \
 	__intermediate = FILTER_UNPHASED_SPECIAL(refref);                       \
-	POPCOUNT(helper_simd.counters[0], __intermediate);                      \
+	popcnt128(helper_simd.counters[0], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);    \
-	POPCOUNT(helper_simd.counters[1], __intermediate);                      \
+	popcnt128(helper_simd.counters[1], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED(altref, altref);                       \
-	POPCOUNT(helper_simd.counters[2], __intermediate);                      \
+	popcnt128(helper_simd.counters[2], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);    \
-	POPCOUNT(helper_simd.counters[3], __intermediate);                      \
+	popcnt128(helper_simd.counters[3], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_PAIR(refref, altalt, altalt, refref);  \
-	POPCOUNT(helper_simd.counters[4], __intermediate);                      \
+	popcnt128(helper_simd.counters[4], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altref, altref, refalt);  \
-	POPCOUNT(helper_simd.counters[4], __intermediate);                      \
+	popcnt128(helper_simd.counters[4], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED(refalt,refalt);                        \
-	POPCOUNT(helper_simd.counters[6], __intermediate);                      \
+	popcnt128(helper_simd.counters[6], __intermediate);                      \
 }
 
 #define ITER_LONG {                                                         \
 	ITER_SHORT                                                              \
 	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref);    \
-	POPCOUNT(helper_simd.counters[5], __intermediate);                      \
+	popcnt128(helper_simd.counters[5], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt);  \
-	POPCOUNT(helper_simd.counters[7], __intermediate);                      \
+	popcnt128(helper_simd.counters[7], __intermediate);                      \
 	__intermediate = FILTER_UNPHASED_SPECIAL(altalt);                       \
-	POPCOUNT(helper_simd.counters[8], __intermediate);                      \
+	popcnt128(helper_simd.counters[8], __intermediate);                      \
 }
 
 	for( ; i < frontBonus; ) 					  	 ITER_SHORT
@@ -528,25 +528,25 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 #define ITER_SHORT {														\
 	ITER_BASE																\
 	__intermediate = FILTER_UNPHASED_SPECIAL(refref);						\
-	POPCOUNT(helper_simd.counters[0], __intermediate);				\
+	popcnt128(helper_simd.counters[0], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);	\
-	POPCOUNT(helper_simd.counters[1], __intermediate);				\
+	popcnt128(helper_simd.counters[1], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(altref, altref);						\
-	POPCOUNT(helper_simd.counters[2], __intermediate);				\
+	popcnt128(helper_simd.counters[2], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);	\
-	POPCOUNT(helper_simd.counters[3], __intermediate);				\
+	popcnt128(helper_simd.counters[3], __intermediate);				\
 	__intermediate = FILTER_UNPHASED(refalt,refalt);						\
-	POPCOUNT(helper_simd.counters[6], __intermediate);				\
+	popcnt128(helper_simd.counters[6], __intermediate);				\
 }
 
 #define ITER_LONG {															\
 	ITER_SHORT																\
 	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref);	\
-	POPCOUNT(helper_simd.counters[5], __intermediate);				\
+	popcnt128(helper_simd.counters[5], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt);	\
-	POPCOUNT(helper_simd.counters[7], __intermediate);				\
+	popcnt128(helper_simd.counters[7], __intermediate);				\
 	__intermediate = FILTER_UNPHASED_SPECIAL(altalt);						\
-	POPCOUNT(helper_simd.counters[8], __intermediate);				\
+	popcnt128(helper_simd.counters[8], __intermediate);				\
 }
 
 	for( ; i < frontBonus; )                         ITER_SHORT

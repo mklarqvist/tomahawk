@@ -20,11 +20,196 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-#ifndef CONCAT_H_
-#define CONCAT_H_
+#include <getopt.h>
+
+#include "utility.h"
+#include "two_reader.h"
+
+void concat_usage(void){
+	tomahawk::ProgramMessage();
+	std::cerr <<
+	"About:  Concatenate two or more TWO files\n\n"
+	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " concat [options] -i <in.two> -i <in.two> -o <out.two>\n\n"
+	"Options:\n"
+	"  -i FILE    input TWO file specified 1-or-more times (required)\n"
+	"  -I STRING  input file list (required)\n"
+	"  -o FILE    output file (- for stdout; default: -)\n" << std::endl;
+}
+
+/**<
+ * Reads a list of strings and stores them in the provided reference vector
+ * of strings. This function is used to grab filenames from lists of strings.
+ * @param list  Src vector of file-names pointing to lists of file-names.
+ * @param files Dst vector of strings.
+ * @return      Returns TRUE upon success or FALSE otherwise.
+ */
+bool GrabNames(const std::vector<std::string>& list, std::vector<std::string>& files){
+	for(int i = 0; i < list.size(); ++i){
+		std::ifstream stream(list[i], std::ios::in);
+		if(stream.good() == false){
+			std::cerr << "faield to open list=" << list[i] << std::endl;
+			return false;
+		}
+
+		std::string line;
+		while(getline(stream,line)){
+			std::cerr << "adding file=" << line << std::endl;
+			files.push_back(line);
+		}
+	}
+	return true;
+}
+
+int concat(int argc, char** argv){
+	if(argc < 3){
+		concat_usage();
+		return(0);
+	}
+
+	static struct option long_options[] = {
+		{"input",   optional_argument, 0, 'i' },
+		{"output",  optional_argument, 0, 'o' },
+		{"list",    optional_argument, 0, 'I' },
+
+		{0,0,0,0}
+	};
+
+	std::vector<std::string> in_list;
+	std::vector<std::string> in_file_list;
+	std::string out;
+
+	int c = 0;
+	int long_index = 0;
+	int hits = 0;
+	while ((c = getopt_long(argc, argv, "i:I:o:?", long_options, &long_index)) != -1){
+		hits += 2;
+		switch (c){
+		case ':':   /* missing option argument */
+			fprintf(stderr, "%s: option `-%c' requires an argument\n",
+					argv[0], optopt);
+			break;
+
+		case '?':
+		default:
+			fprintf(stderr, "%s: option `-%c' is invalid: ignored\n",
+					argv[0], optopt);
+			break;
+
+		case 'i':
+			in_list.push_back(std::string(optarg));
+			break;
+		case 'o':
+			out = std::string(optarg);
+			break;
+		case 'I':
+			in_file_list.push_back(std::string(optarg));
+			break;
+		}
+	}
+
+	if(in_list.size() == 0 && in_file_list.size() == 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+		return(1);
+	}
+
+	if(in_file_list.size()){
+		if(GrabNames(in_file_list, in_list) == false){
+			return 1;
+		}
+	}
+
+	if(in_list.size() == 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+		return(1);
+	}
+
+	if(in_list.size() == 1){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Only one input file provided..." << std::endl;
+		return(1);
+	}
+
+	tomahawk::two_reader oreader;
+
+	// open first
+	if(oreader.Open(in_list[0]) == false){
+		std::cerr << "failed to open" << std::endl;
+		return 1;
+	}
+
+	// Open each and peek the headers
+	for(int i = 1; i < in_list.size(); ++i){
+		tomahawk::two_reader rdr;
+
+		// open first
+		if(rdr.Open(in_list[i]) == false){
+			std::cerr << "failed to open=" << in_list[i] << std::endl;
+			return 1;
+		}
+
+		if(oreader.hdr.samples_.size() != rdr.hdr.samples_.size()){
+			std::cerr << tomahawk::utility::timestamp("ERROR") << "Sample have different sample lengths..." << std::endl;
+			return 1;
+		}
+
+		for(int j = 0; j < oreader.hdr.samples_.size(); ++j){
+			if(oreader.hdr.samples_[j] != rdr.hdr.samples_[j]){
+				std::cerr << tomahawk::utility::timestamp("ERROR") << "Sample have different sample names..." << std::endl;
+				std::cerr << tomahawk::utility::timestamp("ERROR") << "Conflict: " << oreader.hdr.samples_[j] << "!=" << rdr.hdr.samples_[i] << " in file " << in_list[i] << std::endl;
+				return 1;
+			}
+		}
+	}
+	std::cerr << tomahawk::utility::timestamp("LOG") << "All files are compatible. Beginning merging..." << std::endl;
+
+	std::string concat_string = "\n##tomahawk_concatVersion=" + std::to_string(VERSION) + "\n";
+	concat_string += "##tomahawk_concatCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
+	oreader.hdr.literals_ += concat_string;
+
+	tomahawk::twk_two_writer_t writer;
+	writer.mode = 'b';
+	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+	if(writer.Open(out) == false){
+		std::cerr << "failed to open " << out << std::endl;
+		return false;
+	}
+
+	writer.WriteHeader(oreader);
 
 
+	// Begin merge
+	// Step0: write out first file
+	uint32_t idx_offset = 0;
+	while(oreader.NextBlockRaw()){ // get raw uncompressed data
+		tomahawk::IndexEntryOutput rec = oreader.index.ent[idx_offset];
+		rec.foff = writer.stream.tellp();
+		writer.stream << oreader.it.oblk;
+		rec.fend = writer.stream.tellp();
+		writer.oindex += rec;
+		++idx_offset;
+	}
 
+	for(int i = 1; i < in_list.size(); ++i){
+		tomahawk::two_reader rdr;
 
+		// open first
+		if(rdr.Open(in_list[i]) == false){
+			std::cerr << "failed to open=" << in_list[i] << std::endl;
+			return 1;
+		}
 
-#endif /* CONCAT_H_ */
+		idx_offset = 0;
+		while(rdr.NextBlockRaw()){ // get raw uncompressed data
+			tomahawk::IndexEntryOutput rec = rdr.index.ent[idx_offset];
+			rec.foff = writer.stream.tellp();
+			writer.stream << rdr.it.oblk;
+			rec.fend = writer.stream.tellp();
+			writer.oindex += rec;
+			++idx_offset;
+		}
+	}
+
+	if(writer.mode == 'b') writer.WriteFinal();
+	else writer.WriteBlock();
+	writer.close();
+	return(0);
+}

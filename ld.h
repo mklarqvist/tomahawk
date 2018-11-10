@@ -135,6 +135,15 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 #define PHASED_REFALT_MASK(A,B,M) _mm_and_si128(PHASED_REFALT(A, B), M)
 #define MASK_MERGE(A,B)           _mm_xor_si128(_mm_or_si128(A, B), ONE_MASK)
 
+__attribute__((always_inline))
+static inline void popcnt128(uint64_t& a, const __m128i& n) {
+    #ifdef _MSC_VER
+        a += __popcnt64(_mm_cvtsi128_si64(n)) + __popcnt64(_mm_cvtsi128_si64(_mm_unpackhi_epi64(n, n)));
+    #else
+        a += __popcntq(_mm_cvtsi128_si64(n)) + __popcntq(_mm_cvtsi128_si64(_mm_unpackhi_epi64(n, n)));
+    #endif
+}
+
 #if SIMD_VERSION >= 3
 #define POPCOUNT(A, B) {								\
 	A += POPCOUNT_ITER(_mm_extract_epi64(B, 0));		\
@@ -496,7 +505,7 @@ struct twk_ld_balancer {
 		}
 
 		uint32_t factor = 0;
-		for(int i = 1; i < desired_parts; ++i){
+		for(uint32_t i = 1; i < desired_parts; ++i){
 			if( (((i*i) - i) / 2) + i == desired_parts ){
 				//std::cerr << "factor is " << i << std::endl;
 				factor = i;
@@ -512,8 +521,8 @@ struct twk_ld_balancer {
 		// cycle
 		uint32_t chunk_size = n / factor;
 		uint32_t fL = 0, tL = 0, fR = 0, tR = 0;
-		for(int i = 0, k = 0; i < factor; ++i){ // rows
-			for(int j = i; j < factor; ++j, ++k){ // cols
+		for(uint32_t i = 0, k = 0; i < factor; ++i){ // rows
+			for(uint32_t j = i; j < factor; ++j, ++k){ // cols
 				tR = (j + 1 == factor ? n_blocks : chunk_size*(j+1));
 				fR = tR - chunk_size;
 				tL = (i + 1 == factor ? n_blocks : chunk_size*(i+1));
@@ -794,15 +803,6 @@ struct twk_ld_slave {
 		prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
 	}
 
-	bool CalculateGeneral(){
-
-	}
-
-	bool CalculatePhasedSlice(){
-
-		//itree->findOverlapping()
-	}
-
 	bool CalculatePhased(){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
@@ -811,6 +811,8 @@ struct twk_ld_slave {
 		i_start = ticker->fL; j_start = ticker->fR;
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
+		const twk1_t* rcds0 = nullptr;
+		const twk1_t* rcds1 = nullptr;
 
 		// heuristcally determined
 		const uint32_t cycle_thresh = n_s / 45;
@@ -819,16 +821,17 @@ struct twk_ld_slave {
 			if(!ticker->Get(from, to, type)) break;
 
 			this->UpdateBlocks(blocks,from,to);
+			rcds0 = blocks[0].blk->rcds;
+			rcds1 = blocks[1].blk->rcds;
 
 			if(type == 1){
-				std::cerr << "type=" << 1 << std::endl;
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
+						if(rcds0[i].ac + rcds0[j].ac <= 2){
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh)
+						if(std::min(rcds0[i].ac, rcds0[j].ac) < cycle_thresh)
 							//engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 							//engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[0],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
@@ -841,13 +844,13 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
+						if( rcds0[i].ac + rcds1[j].ac <= 2){
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
+						if(std::min(rcds0[i].ac, rcds1[j].ac) < cycle_thresh)
 						//	engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 						//	engine.PhasedVectorizedNoMissingNoTable(blocks[0],i,blocks[1],j,nullptr);
 							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
@@ -887,21 +890,26 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
-		const uint32_t cycle_thresh = n_s / 45;
+		const int cycle_thresh = n_s / 45;
+		const twk1_t* rcds0 = nullptr;
+		const twk1_t* rcds1 = nullptr;
+
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
 			this->UpdateBlocks(blocks,from,to);
+			rcds0 = blocks[0].blk->rcds;
+			rcds1 = blocks[1].blk->rcds;
 
 			if(type == 1){
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
-						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
+						if(rcds0[i].ac + rcds0[j].ac <= 2){
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh)
+						if(rcds0[i].gt->n + rcds0[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
@@ -909,13 +917,13 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
-						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
+						if( rcds0[i].ac + rcds1[j].ac <= 2){
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh)
+						if(rcds0[i].gt->n + rcds1[j].gt->n < cycle_thresh)
 							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
 						else
 							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
@@ -956,8 +964,8 @@ struct twk_ld_slave {
 			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].rid != blocks[0].blk->rcds[j].rid
 						   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
 						{
@@ -977,8 +985,8 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].rid != blocks[1].blk->rcds[j].rid
 						   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
 						{
@@ -1033,8 +1041,8 @@ struct twk_ld_slave {
 			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 						//std::cerr << "here=" << i << "/" << j << " diff=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
  						if(blocks[0].blk->rcds[i].rid == blocks[0].blk->rcds[j].rid
 						   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
@@ -1057,8 +1065,8 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].rid == blocks[1].blk->rcds[j].rid
 						   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
 						{
@@ -1114,8 +1122,8 @@ struct twk_ld_slave {
 			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
@@ -1130,8 +1138,8 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 							continue;
 						}
@@ -1182,8 +1190,8 @@ struct twk_ld_slave {
 			this->UpdateBlocks(blocks,from,to);
 
 			if(type == 1){
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = i+1; j < blocks[0].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 						if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 							continue;
 						}
@@ -1205,8 +1213,8 @@ struct twk_ld_slave {
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 			} else {
-				for(int i = 0; i < blocks[0].n_rec; ++i){
-					for(int j = 0; j < blocks[1].n_rec; ++j){
+				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+					for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 						if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 							continue;
 						}
