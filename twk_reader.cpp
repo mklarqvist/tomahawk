@@ -191,10 +191,21 @@ void twk1_ldd_blk::Inflate(const uint32_t n_samples,
 	}
 
 	if(unpack & TWK_LDD_LIST){
-		for(int i = 0; i < blk->n; ++i){
-			if(blk->rcds[i].an) continue; // do not construct if missing data
-			list[i].Build(blk->rcds[i], n_samples, resizeable);
+		if(unpack & TWK_LDD_VEC){
+			//std::cerr << "not owner" << std::endl;
+			for(int i = 0; i < blk->n; ++i){
+				if(blk->rcds[i].an) continue; // do not construct if missing data
+				list[i].own = false; list[i].n = vec[i].n;
+				list[i].bv = vec[i].data;
+				list[i].Build(blk->rcds[i], n_samples, resizeable);
+			}
+		} else {
+			for(int i = 0; i < blk->n; ++i){
+				if(blk->rcds[i].an) continue; // do not construct if missing data
+				list[i].Build(blk->rcds[i], n_samples, resizeable);
+			}
 		}
+
 	}
 
 	if(unpack & TWK_LDD_BITMAP){

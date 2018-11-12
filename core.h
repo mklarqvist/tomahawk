@@ -443,7 +443,7 @@ public:
 struct twk_igt_list {
 public:
 	twk_igt_list() :
-		n(0), m(0), l_list(0),
+		own(1), n(0), m(0), l_list(0),
 		list(nullptr), bv(nullptr)
 	{
 
@@ -455,11 +455,13 @@ public:
 		{
 		//std::cerr << "build=" << n << "," << m << "," << l_list << std::endl;
 		if(n == 0){
-			n = ceil((double)(n_samples*2)/32);
+			n = ceil((double)(n_samples*2)/8);
 			if(resizeable){ m = twk.ac; }
 			else { m = n_samples*2; }
 			delete[] list; list = new uint32_t[m];
-			delete[] bv; bv = new uint32_t[n];
+			if(own){
+				bv = new uint8_t[n];
+			}
 			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
 		}
 
@@ -468,48 +470,73 @@ public:
 			m = twk.ac;
 			delete[] list; list = new uint32_t[m];
 		}
-		l_list = 0;
 
-		memset(bv, 0, n*sizeof(uint32_t));
-		uint32_t cumpos = 0;
-		for(int i = 0; i < twk.gt->n; ++i){
-			const uint32_t len  = twk.gt->GetLength(i);
-			const uint8_t  refA = twk.gt->GetRefA(i);
-			const uint8_t  refB = twk.gt->GetRefB(i);
-
-			if(refA == 0 && refB == 0){
-				cumpos += 2*len;
-				continue;
-			}
-
-			for(int j = 0; j < 2*len; j+=2){
-				if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
-				if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
-			}
-			cumpos += 2*len;
+		if(own){
+			memset(bv, 0, n*sizeof(uint8_t));
 		}
-		assert(cumpos == n_samples*2);
-		assert(l_list <= m);
+
+		l_list = 0;
+		uint32_t cumpos = 0;
+		if(own){
+			for(int i = 0; i < twk.gt->n; ++i){
+				const uint32_t len  = twk.gt->GetLength(i);
+				const uint8_t  refA = twk.gt->GetRefA(i);
+				const uint8_t  refB = twk.gt->GetRefB(i);
+
+				if(refA == 0 && refB == 0){
+					cumpos += 2*len;
+					continue;
+				}
+
+				for(int j = 0; j < 2*len; j+=2){
+					if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
+					if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
+				}
+				cumpos += 2*len;
+			}
+			assert(cumpos == n_samples*2);
+			assert(l_list <= m);
+		} else {
+			//std::cerr << "in not own" << std::endl;
+			for(int i = 0; i < twk.gt->n; ++i){
+				const uint32_t len  = twk.gt->GetLength(i);
+				const uint8_t  refA = twk.gt->GetRefA(i);
+				const uint8_t  refB = twk.gt->GetRefB(i);
+
+				if(refA == 0 && refB == 0){
+					cumpos += 2*len;
+					continue;
+				}
+
+				for(int j = 0; j < 2*len; j+=2){
+					if(refA != 0){ list[l_list++] = cumpos + j + 0; }
+					if(refB != 0){ list[l_list++] = cumpos + j + 1; }
+				}
+				cumpos += 2*len;
+			}
+			assert(cumpos == n_samples*2);
+		}
 
 		return true;
 	}
 
 	~twk_igt_list(){
 		delete[] this->list;
-		delete[] this->bv;
+		if(own) delete[] this->bv;
 	}
 
 	inline void reset(void){ memset(this->bv, 0, this->n); delete[] list; l_list = 0; }
-	inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 32))); }
-	inline const bool get(const uint32_t p) const{ return(this->bv[p/32] & (1L << (p % 32)));}
-	inline void set(const uint32_t p){ this->bv[p/32] |= (1L << (p % 32)); }
-	inline void set(const uint32_t p, const bool val){ this->bv[p/32] |= ((uint64_t)val << (p % 32)); }
+	inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 8))); }
+	inline const bool get(const uint32_t p) const{ return(this->bv[p/8] & (1L << (p % 8)));}
+	inline void set(const uint32_t p){ this->bv[p/8] |= (1L << (p % 8)); }
+	inline void set(const uint32_t p, const bool val){ this->bv[p/8] |= ((uint64_t)val << (p % 8)); }
 
 public:
-	uint32_t  n, m; // n bytes, m allocated list entries
+	uint32_t own: 1, n: 31;
+	uint32_t m; // n bytes, m allocated list entries
 	uint32_t  l_list; // number of odd items
 	uint32_t* list; // list entries
-	uint32_t* bv; // bit-vector
+	uint8_t* bv; // bit-vector
 };
 
 /**<
@@ -545,6 +572,7 @@ const static uint8_t TWK_GT_BV_DATA_MISS_LOOKUP[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0
 struct twk_igt_vec {
 public:
 	twk_igt_vec():
+		n(0),
 		front_zero(0),
 		tail_zero(0),
 		data(nullptr),
@@ -562,6 +590,12 @@ public:
 	#endif
 	}
 
+	inline void reset(void){ memset(this->data, 0, this->n); memset(this->mask, 0, this->n); }
+	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 8))); }
+	inline const bool get(const uint32_t p) const{ return(this->data[p/8] & (1L << (p % 8)));}
+	inline void set(const uint32_t p){ this->data[p/8] |= (1L << (p % 8)); }
+	inline void set(const uint32_t p, const bool val){ this->data[p/8] |= ((uint64_t)val << (p % 8)); }
+
 	/**<
 	 *
 	 * @param rec
@@ -572,6 +606,38 @@ public:
 	bool Build(const twk1_t& rec,
 	           const uint32_t& n_samples)
 	{
+		if(n == 0){
+			n = ceil((double)(n_samples*2)/8);
+#if SIMD_AVAILABLE == 1
+				data = (uint8_t*)_mm_malloc(n, SIMD_ALIGNMENT);
+				mask = (uint8_t*)_mm_malloc(n, SIMD_ALIGNMENT);
+			#else
+				data = new uint8_t[bytes];
+				mask = new uint8_t[bytes];
+			#endif
+		}
+
+		memset(data, 0, n*sizeof(uint8_t));
+		uint32_t cumpos = 0;
+		for(int i = 0; i < rec.gt->n; ++i){
+			const uint32_t len  = rec.gt->GetLength(i);
+			const uint8_t  refA = rec.gt->GetRefA(i);
+			const uint8_t  refB = rec.gt->GetRefB(i);
+
+			if(refA == 0 && refB == 0){
+				cumpos += 2*len;
+				continue;
+			}
+
+			for(int j = 0; j < 2*len; j+=2){
+				if(refA != 0){ this->set(cumpos + j + 0); }
+				if(refB != 0){ this->set(cumpos + j + 1); }
+			}
+			cumpos += 2*len;
+		}
+		assert(cumpos == n_samples*2);
+
+		/*
 		const uint32_t bytes = ceil((double)n_samples/4);
 
 		if(data == nullptr){
@@ -599,8 +665,9 @@ public:
 			packerA.Add(lookup_d[ref], len);
 			packerB.Add(lookup_m[ref], len);
 		}
+		 */
 
-		const uint32_t byteAlignedEnd  = bytes / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
+		const uint32_t byteAlignedEnd  = n / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
 
 		int j = 0;
 		// Search from left->right
@@ -626,6 +693,7 @@ public:
 	}
 
 public:
+	uint32_t  n; // n bytes, m allocated entries
 	uint16_t front_zero; // leading zeros in aligned vector width
 	uint16_t tail_zero; // trailing zeros in aligned vector width
 	uint8_t* data;

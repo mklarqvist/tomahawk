@@ -1347,10 +1347,10 @@ public:
 	bool LoadBlocks(twk_reader& reader,
 			twk1_blk_iterator& bit,
 			const twk_ld_balancer& balancer,
-			const uint8_t load)
+			const twk_ld_settings& settings)
 	{
-		if(intervals.overlap_blocks.size()) return(this->LoadTargetBlocks(reader, bit, balancer, load));
-		return(this->LoadAllBlocks(reader, bit, balancer, load));
+		if(intervals.overlap_blocks.size()) return(this->LoadTargetBlocks(reader, bit, balancer, settings));
+		return(this->LoadAllBlocks(reader, bit, balancer, settings));
 	}
 
 	/**<
@@ -1416,7 +1416,7 @@ public:
 	bool LoadTargetBlocks(twk_reader& reader,
 			twk1_blk_iterator& bit,
 			const twk_ld_balancer& balancer,
-			const uint8_t load)
+			const twk_ld_settings& settings)
 	{
 		if(intervals.overlap_blocks.size() == 0){ // if have interval strings
 			return false;
@@ -1463,7 +1463,7 @@ public:
 
 					ldd2[i] = std::move(bit.blk);
 					ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-					ldd[i].Inflate(reader.hdr.GetNumberSamples(),load, true);
+					ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
 				}
 			} else {
 				uint32_t offset = 0;
@@ -1476,7 +1476,7 @@ public:
 
 					ldd2[offset] = std::move(bit.blk);
 					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 					++offset;
 				}
 
@@ -1489,7 +1489,7 @@ public:
 
 					ldd2[offset] = std::move(bit.blk);
 					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 					++offset;
 				}
 			}
@@ -1512,7 +1512,7 @@ public:
 	bool LoadAllBlocks(twk_reader& reader,
 			twk1_blk_iterator& bit,
 			const twk_ld_balancer& balancer,
-			const uint8_t load)
+			const twk_ld_settings& settings)
 	{
 		if(reader.index.n == 0)
 			return false;
@@ -1523,6 +1523,8 @@ public:
 
 			n_blks = balancer.toR - balancer.fromR;
 			m_blks = balancer.toR - balancer.fromR;
+			std::cerr << utility::timestamp("LOG") << "Allocating " << m_blks << " blocks..." << std::endl;
+
 			ldd  = new twk1_ldd_blk[m_blks];
 			ldd2 = new twk1_block_t[m_blks];
 		} else {
@@ -1531,6 +1533,8 @@ public:
 
 			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
+			std::cerr << utility::timestamp("LOG") << "Allocating " << m_blks << " blocks..." << std::endl;
+
 			ldd  = new twk1_ldd_blk[m_blks];
 			ldd2 = new twk1_block_t[m_blks];
 		}
@@ -1547,7 +1551,152 @@ public:
 #endif
 		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
 
+		// Parallel importer.
+		struct twk_ld_unpacker {
+
+			std::thread* Start(const bool diag, const twk_ld_settings& settings){
+				load = settings.ldd_load_type;
+				this->diag = diag;
+
+				bit.stream = new std::ifstream(settings.in, std::ios::binary | std::ios::in);
+				if(bit.stream->good() == false){
+					std::cerr << "failed to open=" << settings.in << std::endl;
+					return nullptr;
+				}
+
+				if(diag) thread = new std::thread(&twk_ld_unpacker::UnpackDiagonal, this);
+				else thread = new std::thread(&twk_ld_unpacker::UnpackSquare, this);
+				return(thread);
+			}
+
+			bool UnpackDiagonal(){
+				bit.stream->seekg(rdr->index.ent[fL].foff);
+				if(bit.stream->good() == false){
+					std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+					return false;
+				}
+
+				//std::cerr << "in unpack diag (" << fL << "-" << tL << ")" << std::endl;
+				//std::cerr << "left-shift=" << lshift << std::endl;
+				for(int i = lshift; i < lshift + (tL-fL); ++i){
+					//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
+					if(bit.NextBlock() == false){
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+						return false;
+					}
+
+					ldd2[i] = std::move(bit.blk);
+					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+				}
+
+				std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
+				s->close();
+				bit.stream = nullptr;
+
+				return true;
+			}
+
+			bool UnpackSquare(){
+				bit.stream->seekg(rdr->index.ent[fL].foff);
+				if(bit.stream->good() == false){
+					std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+					return false;
+				}
+
+				//std::cerr << "in unpack square (" << fL << "-" << tL << ")(" << fR << "-" << tR << ")" << std::endl;
+				//std::cerr << "left-shift=" << lshift << std::endl;
+				for(int i = lshift; i < lshift + (tL-fL); ++i){
+					//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
+					if(bit.NextBlock() == false){
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+						return false;
+					}
+
+					ldd2[i] = std::move(bit.blk);
+					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+				}
+
+				bit.stream->seekg(rdr->index.ent[fR].foff); // seek absolute offset
+				if(bit.stream->good() == false){
+					std::cerr << "failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << std::endl;
+					return false;
+				}
+
+				// compute with local offset
+				//std::cerr << "left offset=" << loff << " and right=" << roff << std::endl;
+				//std::cerr << "offset=" << fR - loff << " and steps=" << loff + (tR - fR) << std::endl;
+				for(int i = loff + roff; i < loff + roff + (tR - fR); ++i){
+					//std::cerr << "at2=" << i << "/" << loff + roff + (tR - fR) << " with range=" << (tR - fR) << std::endl;
+					if(bit.NextBlock() == false){
+						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+						return false;
+					}
+
+					ldd2[i] = std::move(bit.blk);
+					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+				}
+
+				std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
+				s->close();
+				bit.stream = nullptr;
+
+				return true;
+			}
+
+			bool resize, diag;
+			uint8_t load;
+			uint32_t fL, tL, fR, tR, loff, roff, lshift;
+			twk_reader* rdr;
+			std::thread* thread;
+			twk1_ldd_blk* ldd;
+			twk1_block_t* ldd2;
+			twk1_blk_iterator bit;
+		};
+
+		const uint32_t rangeL = balancer.toL - balancer.fromL;
+		const uint32_t rangeR = balancer.toR - balancer.fromR;
+		uint32_t unpack_threads = settings.n_threads;
+		uint32_t ppthreadL = std::ceil((float)(balancer.toL - balancer.fromL) / unpack_threads);
+		assert(balancer.toL - balancer.fromL == balancer.toR - balancer.fromR);
+
+		if(ppthreadL == 0){
+			unpack_threads = rangeL;
+			//std::cerr << "changing unpack threads=" << settings.n_threads << "->" << unpack_threads << std::endl;
+		} else {
+			if(ppthreadL * unpack_threads > rangeL){
+				unpack_threads = rangeL / ppthreadL;
+				//std::cerr << "changing unpack threads=" << settings.n_threads << "->" << unpack_threads << std::endl;
+			}
+		}
+
+		//std::cerr << "balance=" << (balancer.toL - balancer.fromL) << " and " << (balancer.toL - balancer.fromL) / unpack_threads << " -> " << ppthreadL << std::endl;
+		twk_ld_unpacker* slaves = new twk_ld_unpacker[unpack_threads];
+		//std::vector<std::thread*> threads(settings.n_threads);
 		Timer timer; timer.Start();
+		for(uint32_t i = 0; i < unpack_threads; ++i){
+			slaves[i].ldd = ldd;
+			slaves[i].ldd2 = ldd2;
+			slaves[i].rdr = &reader;
+			slaves[i].resize = true;
+			slaves[i].fL = balancer.fromL + ppthreadL*i;
+			slaves[i].tL = i+1 == unpack_threads ? balancer.fromL+rangeL : balancer.fromL+(ppthreadL*(i+1));
+			slaves[i].fR = balancer.fromR + ppthreadL*i;
+			slaves[i].tR = i+1 == unpack_threads ? balancer.fromR+rangeR : balancer.fromR+(ppthreadL*(i+1));
+
+			slaves[i].loff = balancer.toL - balancer.fromL;
+			slaves[i].lshift = slaves[i].fL - balancer.fromL;
+			slaves[i].roff = slaves[i].fR - balancer.fromR;
+			//std::cerr << "range=" << slaves[i].fL << "->" << slaves[i].tL << " and " << slaves[i].fR << "->" << slaves[i].tR << std::endl;
+		}
+
+		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].Start(balancer.diag, settings);
+		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].thread->join();
+		delete[] slaves;
+
+/*
 		if(balancer.diag){
 			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
 			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
@@ -1558,7 +1707,7 @@ public:
 
 				ldd2[i] = std::move(bit.blk);
 				ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-				ldd[i].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				ldd[i].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 			}
 		} else {
 			uint32_t offset = 0;
@@ -1571,7 +1720,7 @@ public:
 
 				ldd2[offset] = std::move(bit.blk);
 				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 
@@ -1584,10 +1733,11 @@ public:
 
 				ldd2[offset] = std::move(bit.blk);
 				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),load, true);
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 		}
+		*/
 
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
 		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
@@ -1653,7 +1803,9 @@ public:
 			return false;
 		}
 
-		if(this->LoadBlocks(reader, bit, balancer, settings.ldd_load_type) == false){
+		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
+
+		if(this->LoadBlocks(reader, bit, balancer, settings) == false){
 			return false;
 		}
 
@@ -1670,7 +1822,6 @@ public:
 			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
 		}
 
-		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
 		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
 		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_variants * n_variants - n_variants) / 2) << " variant comparisons..." << std::endl;
@@ -1712,7 +1863,7 @@ public:
 
 		// Append literal string.
 		std::string calc_string = "\n##tomahawk_calcVersion=" + std::to_string(VERSION) + "\n";
-		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime(); + "\n";
+		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 		reader.hdr.literals_ += calc_string;
 
 		if(this->WriteHeader(writer, reader) == false){
