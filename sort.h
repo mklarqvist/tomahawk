@@ -32,31 +32,8 @@ void sort_usage(void){
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " view [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
-	"  -h/H      (twk/two) header only / no header\n"
-	"  -I STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos\n\n"
-	//"  -J        output JSON object\n\n"
-	"  -o FILE    output file (- for stdout; default: -)\n"
-	"  -O <b|u>   b: compressed TWO, u: uncompressed LD\n\n"
-
-
-	// Filter parameters
-	"Filter parameters:\n"
-	"  -r,-R --minR2,--maxR2   FLOAT   Pearson's R-squared min/max cut-off value\n"
-	"  -z,-Z --minR,--maxR     FLOAT   Pearson's R min/max cut-off value\n"
-	"  -p,-P --minP,--maxP     FLOAT   Min/max P-value (default: [0,1])\n"
-	"  -d,-D --minD,--maxD     FLOAT   Min/max D value (default: [-1,1])\n"
-	"  -b,-B --minDP,--maxDP   FLOAT   Min/max D' value (default: [0,1])\n"
-	"  -1,-5 --minP1,--maxP1   FLOAT   Min/max REF_REF count (default: [0,inf])\n"
-	"  -2,-6 --minP2,--maxP2   FLOAT   Min/max REF_ALT count (default: [0,inf])\n"
-	"  -3,-7 --minQ1,--maxQ1   FLOAT   Min/max ALT_REF count (default: [0,inf])\n"
-	"  -4,-8 --minQ2,--maxQ1   FLOAT   Min/max ALT_ALT count (default: [0,inf])\n"
-	"  -a,-A --minMHC,--maxMHC FLOAT   Min/max number of non-major haplotype count (default: [0,inf])\n"
-	"  -x,-X --minChi,--maxChi FLOAT   Min/max Chi-squared CV of contingency table (default: [0,inf])\n"
-	"  -m,-M --minMCV,--maxMCV FLOAT   Min/max Chi-squared CV of unphased model (default: [0,inf])\n"
-	"  -f  INT  include FLAG value\n"
-	"  -F  INT  exclude FLAG value\n"
-	"  -u       output only the upper triangular values\n"
-	"  -l       output only the lower triangular values\n";
+	"  -o FILE   output file (- for stdout; default: -)\n"
+	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n\n";
 }
 
 int sort(int argc, char** argv){
@@ -75,7 +52,7 @@ int sort(int argc, char** argv){
 	};
 
 	std::string in, out;
-	int32_t memory_limit = 0;
+	float memory_limit = 0.5;
 
 	int c = 0;
 	int long_index = 0;
@@ -101,12 +78,7 @@ int sort(int argc, char** argv){
 			out = std::string(optarg);
 			break;
 		case 'm':
-			if(std::string(optarg).size() != 1){
-				std::cerr << "illegal O" << std::endl;
-				return 1;
-			}
-
-			memory_limit = atoi(optarg);
+			memory_limit = atof(optarg);
 			break;
 
 
@@ -125,9 +97,6 @@ int sort(int argc, char** argv){
 		return false;
 	}
 
-	std::string view_string = "\n##tomahawk_sortVersion=" + std::to_string(VERSION) + "\n";
-	view_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
-
 	// generate temp name
 
 	/*std::string BasePath(const std::string& input);
@@ -141,24 +110,24 @@ int sort(int argc, char** argv){
 	}
 
 	// generate temp names
-	std::string suffix = tomahawk::twk_two_writer_t::RandomSuffix();
-	std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
-	std::string base_name = tomahawk::twk_two_writer_t::GetBaseName(out);
-	std::string temp_out = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
+	//std::string suffix = tomahawk::twk_two_writer_t::RandomSuffix();
+	//std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
+	//std::string base_name = tomahawk::twk_two_writer_t::GetBaseName(out);
+	//std::string temp_out = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
 
-	tomahawk::twk_two_writer_t writer;
-	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
-	std::cerr << tomahawk::utility::timestamp("LOG","WRITER") << "Opening " << (base_name + "_" + suffix + ".two") << std::endl;
-	if(writer.Open(temp_out) == false){
-		std::cerr << "failed to open=" << temp_out << std::endl;
-		return 1;
-	}
-	writer.mode = 'b'; // force binary mode
-	writer.WriteHeader(oreader);
+	//tomahawk::twk_two_writer_t writer;
+	//writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+	//std::cerr << tomahawk::utility::timestamp("LOG","WRITER") << "Opening " << (base_name + "_" + suffix + ".two") << std::endl;
+	//if(writer.Open(temp_out) == false){
+	//	std::cerr << "failed to open=" << temp_out << std::endl;
+	//	return 1;
+	//}
+	//writer.mode = 'b'; // force binary mode
+	//writer.WriteHeader(oreader);
 
 	tomahawk::twk1_two_block_t blk2;
-	std::cerr << "resizing to=" << 1000000000/sizeof(tomahawk::twk1_two_t) << " entries..." << std::endl;
-	blk2.resize(1000000000/sizeof(tomahawk::twk1_two_t));
+	//std::cerr << "resizing to=" << (memory_limit*1e9)/sizeof(tomahawk::twk1_two_t) << " entries..." << std::endl;
+	//blk2.resize((memory_limit*1e9)/sizeof(tomahawk::twk1_two_t));
 
 	//std::FILE* tmpf = std::tmpfile();
 	tomahawk::twk_buffer_t obuf, obuf2;
@@ -169,94 +138,179 @@ int sort(int argc, char** argv){
 		uint64_t foff, fend, n, nc;
 	};
 
-	std::vector<sort_helper> offsets;
+	struct twk_sort_slave {
 
-	uint32_t tot = 0;
-	while(oreader.NextBlock()){
-		//std::cerr << i++ << " -> " << it.GetBlock().n << std::endl;
-		tot += oreader.it.GetBlock().n;
-		for(int j = 0; j < oreader.it.blk.n; ++j){
-			//it.blk[j].Print(std::cerr);
-			if(blk2.n == blk2.m){
+		std::thread* Start(tomahawk::two_reader& rdr){
+			blk.resize((m_limit*1e9)/sizeof(tomahawk::twk1_two_t));
+			if(f > t) return nullptr;
+			if(t - f == 0) return nullptr;
+			//delete thread;
+
+			stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+			if(stream.good() == false){
+				std::cerr << "failed to open=" << filename << std::endl;
+				return nullptr;
+			}
+
+			stream.seekg(rdr.index.ent[f].foff);
+			if(stream.good() == false){
+				std::cerr << "failed to seek to pos=" << rdr.index.ent[f].foff << " in "  << filename << std::endl;
+				return nullptr;
+			}
+
+			it.stream = &stream;
+
+			ostream = std::ofstream(tmp_filename, std::ios::binary | std::ios::out);
+			if(ostream.good() == false){
+				std::cerr << "failed to open temp output file=" << tmp_filename << std::endl;
+				return nullptr;
+			}
+
+			std::cerr << "starting" << std::endl;
+			thread = new std::thread(&twk_sort_slave::Sort, this);
+			return(thread);
+		}
+
+		bool Sort(){
+			uint32_t tot = 0;
+			for(int i = f; i < t; ++i){
+				assert(it.NextBlock());
+				tot += it.GetBlock().n;
+				for(int j = 0; j < it.blk.n; ++j){
+					//it.blk[j].Print(std::cerr);
+					if(blk.n == blk.m){
+						//std::cerr << "resseting" << std::endl;
+						blk.Sort();
+						//obuf << blk; // poor memory management:
+
+						sort_helper rec;
+						rec.foff = ostream.tellp();
+						zcodec.InitStreamCompress(1);
+						// Compress chunks of 10k records
+						int k = 0;
+						for(; k + 10000 < blk.n; k += 10000){
+							for(int l = k; l < k + 10000; ++l) obuf << blk.rcds[l];
+							rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
+							obuf.reset(); obuf2.reset();
+						}
+
+						// Compress residual records
+						std::cerr << "remainder=" << k << "/" << blk.n << std::endl;
+
+						for(int l = k; l < blk.n; ++l) obuf << blk.rcds[l];
+						rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
+						obuf.reset(); obuf2.reset();
+
+						zcodec.StopStreamCompress();
+						std::cerr << "after stop=" << zcodec.outbuf.pos << "/" << zcodec.outbuf.size << std::endl;
+						ostream.write((const char*)zcodec.outbuf.dst, zcodec.outbuf.pos);
+						rec.nc += zcodec.outbuf.pos;
+						rec.n = blk.n * tomahawk::twk1_two_t::packed_size;
+						rec.fend = ostream.tellp();
+						local_idx.push_back(rec);
+
+						blk.reset();
+
+					}
+					blk += it.blk[j];
+					//it.blk[j].Print(std::cout);
+				}
+			}
+			// any possible remainder
+			if(blk.n){
 				//std::cerr << "resseting" << std::endl;
-				blk2.Sort();
+				blk.Sort();
 				//obuf << blk2; // poor memory management:
 
 				sort_helper rec;
-				rec.foff = writer.stream.tellp();
-				oreader.zcodec.InitStreamCompress(1);
+				rec.foff = ostream.tellp();
+				zcodec.InitStreamCompress(1);
 				// Compress chunks of 10k records
 				int k = 0;
-				for(; k + 10000 < blk2.n; k += 10000){
-					for(int l = k; l < k + 10000; ++l) obuf << blk2.rcds[l];
-					rec.nc += oreader.zcodec.StreamCompress(obuf, obuf2, writer.stream, tomahawk::twk1_two_t::packed_size * 5000);
+				for(; k + 10000 < blk.n; k += 10000){
+					for(int l = k; l < k + 10000; ++l) obuf << blk.rcds[l];
+					rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
 					obuf.reset(); obuf2.reset();
 
 				}
 
 				// Compress residual records
-				std::cerr << "remainder=" << k << "/" << blk2.n << std::endl;
+				std::cerr << "remainder=" << k << "/" << blk.n << std::endl;
 
-				for(int l = k; l < blk2.n; ++l) obuf << blk2.rcds[l];
-				rec.nc += oreader.zcodec.StreamCompress(obuf, obuf2, writer.stream, tomahawk::twk1_two_t::packed_size * 5000);
+				for(int l = k; l < blk.n; ++l) obuf << blk.rcds[l];
+				rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
 				obuf.reset(); obuf2.reset();
 
-				oreader.zcodec.StopStreamCompress();
-				std::cerr << "after stop=" << oreader.zcodec.outbuf.pos << "/" << oreader.zcodec.outbuf.size << std::endl;
-				writer.stream.write((const char*)oreader.zcodec.outbuf.dst, oreader.zcodec.outbuf.pos);
-				rec.nc += oreader.zcodec.outbuf.pos;
-				rec.n = blk2.n * tomahawk::twk1_two_t::packed_size;
-				rec.fend = writer.stream.tellp();
-				offsets.push_back(rec);
+				zcodec.StopStreamCompress();
+				std::cerr << "after stop=" << zcodec.outbuf.pos << "/" << zcodec.outbuf.size << std::endl;
+				ostream.write((const char*)zcodec.outbuf.dst, zcodec.outbuf.pos);
+				rec.nc += zcodec.outbuf.pos;
+				rec.n = blk.n * tomahawk::twk1_two_t::packed_size;
+				rec.fend = ostream.tellp();
+				local_idx.push_back(rec);
 
-				blk2.reset();
-
+				blk.reset();
 			}
-			blk2 += oreader.it.blk[j];
-			//it.blk[j].Print(std::cout);
-		}
-		//std::cerr << blk2.n << "/" << blk2.m << std::endl;
-	}
-	if(blk2.n){
-		//std::cerr << "resseting" << std::endl;
-		blk2.Sort();
-		//obuf << blk2; // poor memory management:
+			ostream.flush();
+			std::cerr << "total=" << tot << " size=" << tomahawk::utility::ToPrettyDiskString((uint64_t)ostream.tellp()) << std::endl;
+			ostream.close();
 
-		sort_helper rec;
-		rec.foff = writer.stream.tellp();
-		oreader.zcodec.InitStreamCompress(1);
-		// Compress chunks of 10k records
-		int k = 0;
-		for(; k + 10000 < blk2.n; k += 10000){
-			for(int l = k; l < k + 10000; ++l) obuf << blk2.rcds[l];
-			rec.nc += oreader.zcodec.StreamCompress(obuf, obuf2, writer.stream, tomahawk::twk1_two_t::packed_size * 5000);
-			obuf.reset(); obuf2.reset();
-
+			return true;
 		}
 
-		// Compress residual records
-		std::cerr << "remainder=" << k << "/" << blk2.n << std::endl;
+		float m_limit;
+		uint32_t n; // limit in gb, number of entries that corresponds to
+		uint32_t f, t, bl_size; // (from,to)-tuple, flush block-size
+		std::string filename, tmp_filename; // temporary filename
+		std::thread* thread;
+		std::ifstream stream;
+		std::ofstream ostream;
+		tomahawk::twk1_two_iterator it;
+		tomahawk::twk1_two_block_t blk;
+		std::vector<sort_helper> local_idx; // local offset index
+		tomahawk::ZSTDCodec zcodec;
+		tomahawk::twk_buffer_t obuf, obuf2;
+	};
 
-		for(int l = k; l < blk2.n; ++l) obuf << blk2.rcds[l];
-		rec.nc += oreader.zcodec.StreamCompress(obuf, obuf2, writer.stream, tomahawk::twk1_two_t::packed_size * 5000);
-		obuf.reset(); obuf2.reset();
+	uint32_t n_threads = std::thread::hardware_concurrency();
+	twk_sort_slave* slaves = new twk_sort_slave[n_threads];
+	std::cerr << "index=" << oreader.index.n << " -> " << oreader.index.n / n_threads << std::endl;
+	uint32_t range_thread = oreader.index.n / n_threads;
+	for(int i = 0; i < n_threads; ++i){
+		slaves[i].f = range_thread * i;
+		slaves[i].t = range_thread * (i+1);
+		slaves[i].m_limit = memory_limit;
+		slaves[i].filename = in;
 
-		oreader.zcodec.StopStreamCompress();
-		std::cerr << "after stop=" << oreader.zcodec.outbuf.pos << "/" << oreader.zcodec.outbuf.size << std::endl;
-		writer.stream.write((const char*)oreader.zcodec.outbuf.dst, oreader.zcodec.outbuf.pos);
-		rec.nc += oreader.zcodec.outbuf.pos;
-		rec.n = blk2.n * tomahawk::twk1_two_t::packed_size;
-		rec.fend = writer.stream.tellp();
-		offsets.push_back(rec);
-
-		blk2.reset();
+		std::string suffix = tomahawk::twk_two_writer_t::RandomSuffix();
+		std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
+		std::string base_name = tomahawk::twk_two_writer_t::GetBaseName(out);
+		std::string temp_out = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
+		slaves[i].tmp_filename = temp_out;
+		std::cerr << "range=" << slaves[i].f << "->" << slaves[i].t << " and name " << slaves[i].tmp_filename << std::endl;
 	}
-	writer.flush();
-	writer.close();
-	std::cerr << "total=" << tot << "/" << oreader.index.GetTotalVariants() << std::endl;
 
-	for(int i = 0; i < offsets.size(); ++i){
-		std::cerr << i << ": " << offsets[i].foff << "->" << offsets[i].fend << " " << offsets[i].n << " " << offsets[i].nc << std::endl;
+	for(int i = 0; i < n_threads; ++i){
+		if(slaves[i].Start(oreader) == nullptr){
+			std::cerr << "failed to spawn slave" << std::endl;
+			return 1;
+		}
+	}
+	for(int i = 0; i < n_threads; ++i) slaves[i].thread->join();
+	for(int i = 0; i < n_threads; ++i){
+		slaves[i].obuf.clear(); // release memory
+		slaves[i].obuf2.clear();
+		slaves[i].it.buf.clear();
+		slaves[i].it.oblk.bytes.clear();
+	}
+
+
+	uint32_t n_queues = 0;
+	for(int i = 0; i < n_threads; ++i){
+		for(int j = 0; j < slaves[i].local_idx.size(); ++j){
+			std::cerr << i << ": " << slaves[i].local_idx[j].foff << "->" << slaves[i].local_idx[j].fend << " " << slaves[i].local_idx[j].n << " " << slaves[i].local_idx[j].nc << std::endl;
+			++n_queues;
+		}
 	}
 
 	struct twk_two_stream_iterator {
@@ -396,32 +450,39 @@ int sort(int argc, char** argv){
 	//uint32_t k = 0;
 	std::priority_queue<two_queue_entry> queue;
 
-	twk_two_stream_iterator* its = new twk_two_stream_iterator[offsets.size()];
+	std::cerr << "spawning=" << n_queues << " queues" << std::endl;
+	twk_two_stream_iterator* its = new twk_two_stream_iterator[n_queues];
 	tomahawk::twk1_two_t rec;
 	uint64_t n_rec_total = 0;
-	for(int p = 0; p < offsets.size(); ++p){
-		// open iterators
-		if(its[p].Open(temp_out, offsets[p].foff, offsets[p].fend, offsets[p].n, offsets[p].nc) == false){
-			std::cerr << "failed open" << std::endl;
-			return false;
-		}
+	uint32_t local_queue = 0;
+	for(int i = 0; i < n_threads; ++i){
+		for(int j = 0; j < slaves[i].local_idx.size(); ++j, ++local_queue){
+			// open iterators
+			if(its[local_queue].Open(slaves[i].tmp_filename, slaves[i].local_idx[j].foff, slaves[i].local_idx[j].fend, slaves[i].local_idx[j].n, slaves[i].local_idx[j].nc) == false){
+				std::cerr << "failed open" << std::endl;
+				return false;
+			}
 
-		if(its[p].Next(rec) == false){
-			std::cerr << "failed to get next" << std::endl;
-			return false;
-		}
-		std::cerr << "queue-" << p << std::endl;
-		//rec.PrintLD(std::cerr);
-		queue.push(two_queue_entry(rec, p));
+			if(its[local_queue].Next(rec) == false){
+				std::cerr << "failed to get next" << std::endl;
+				return false;
+			}
+			std::cerr << "queue-" << local_queue << std::endl;
+			//rec.PrintLD(std::cerr);
+			queue.push(two_queue_entry(rec, local_queue));
 
-		n_rec_total += offsets[p].n / tomahawk::twk1_two_t::packed_size;
-		std::cerr << "total=" << its[p].n_tot << std::endl;
+			n_rec_total += slaves[i].local_idx[j].n / tomahawk::twk1_two_t::packed_size;
+			std::cerr << "total=" << its[local_queue].n_tot << std::endl;
+		}
 	}
 
 	if(queue.empty()){
 		std::cerr << tomahawk::utility::timestamp("ERROR","SORT") << "No data in queue..." << std::endl;
 		return false;
 	}
+
+	//delete[] slaves;
+	//return 0;
 
 	//std::cerr << "top" << std::endl;
 	//queue.top().rec.PrintLD(std::cerr);
@@ -437,7 +498,7 @@ int sort(int argc, char** argv){
 	owriter.oindex.state = TWK_IDX_SORTED;
 	// Write header
 	std::string sort_string = "\n##tomahawk_sortVersion=" + std::to_string(VERSION) + "\n";
-	sort_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
+	sort_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
 	oreader.hdr.literals_ += sort_string;
 	if(owriter.WriteHeader(oreader) == false){
 		std::cerr << "failed to write header" << std::endl;
@@ -505,13 +566,16 @@ int sort(int argc, char** argv){
 
 	std::cerr << "deleting intermediary" << std::endl;
 
-	if( remove( temp_out.c_str() ) != 0 )
-	    std::cerr << "Error deleting file=" << out << std::endl;
-	  else {
-	    std::cerr << "File successfully deleted" << out << std::endl;
+	for(int i = 0; i < n_threads; ++i){
+	if( remove( slaves[i].tmp_filename.c_str() ) != 0 ){
+	    std::cerr << "Error deleting file=" << slaves[i].tmp_filename << std::endl;
 	    return 1;
+	} else {
+	    std::cerr << "File successfully deleted" << slaves[i].tmp_filename << std::endl;
 	  }
+	}
 
+	delete[] slaves;
 	delete[] its;
 	return 0;
 }

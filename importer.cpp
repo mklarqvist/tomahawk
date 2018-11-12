@@ -77,7 +77,7 @@ bool twk_variant_importer::Import(void){
 
 	// Append literal string.
 	std::string import_string = "##tomahawk_importVersion=" + std::to_string(VERSION) + "\n";
-	import_string += "##tomahawk_importCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime(); + "\n";
+	import_string += "##tomahawk_importCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 	vcf->vcf_header_.literals_ += import_string;
 
 	tomahawk::ZSTDCodec zcodec;

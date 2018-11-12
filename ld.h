@@ -614,7 +614,9 @@ public:
 		byte_width(0), byte_aligned_end(0), vector_cycles(0),
 		phased_unbalanced_adjustment(0), unphased_unbalanced_adjustment(0), t_out(0),
 		index(nullptr), writer(nullptr), progress(nullptr)
-	{}
+	{
+		memset(n_method, 0, sizeof(uint64_t)*10);
+	}
 
 	/**<
 	 * Set the number of samples in the target file. This function is mandatory
@@ -675,14 +677,13 @@ public:
 
 	// Debugging function for invoking each algorithm on the same data.
 	inline bool AllAlgorithms(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf = nullptr){
-		//this->PhasedVectorized(b1,p1,b2,p2,perf);
+		this->PhasedVectorized(b1,p1,b2,p2,perf);
 		this->PhasedVectorizedNoMissing(b1,p1,b2,p2,perf);
-		//this->PhasedVectorizedNoMissingNoTable(b1,p1,b2,p2,perf);
-		//this->UnphasedVectorized(b1,p1,b2,p2,perf);
+		this->UnphasedVectorized(b1,p1,b2,p2,perf);
 		this->UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf);
-		//this->PhasedRunlength(b1,p1,b2,p2,perf);
-		//this->PhasedList(b1,p1,b2,p2,perf);
-		//this->UnphasedRunlength(b1,p1,b2,p2,perf);
+		this->PhasedRunlength(b1,p1,b2,p2,perf);
+		this->PhasedList(b1,p1,b2,p2,perf);
+		this->UnphasedRunlength(b1,p1,b2,p2,perf);
 		return true;
 	}
 
@@ -708,6 +709,7 @@ public:
 	uint32_t phased_unbalanced_adjustment; // Modulus remainder
 	uint32_t unphased_unbalanced_adjustment; // Modulus remainder
 	uint64_t t_out; // number of bytes written
+	uint64_t n_method[10];
 
 	IndexEntryOutput irecF, irecR;
 	ZSTDCodec zcodec; // reusable zstd codec instance with internal context.
@@ -733,6 +735,11 @@ struct twk_ld_slave {
 
 	~twk_ld_slave(){ delete thread; }
 
+	/**<
+	 * Primary subroutine for starting the slave thread to compute its designated
+	 * region(s) of linkage-disequilibrium.
+	 * @return Returns a pointer to the spawned slave thread.
+	 */
 	std::thread* Start(){
 		delete thread;
 
@@ -765,6 +772,12 @@ struct twk_ld_slave {
 		else this->UpdateBlocksGenerate(blks,from,to);
 	}
 
+	/**<
+	 * Subroutine for retrieving a pair of twk1_ldd_blk from the pre-loaded arrays.
+	 * @param blks Dst pointers to twk1_ldd_blks.
+	 * @param from Virtual offset for A.
+	 * @param to   Virtual offset for B.
+	 */
 	void UpdateBlocksPreloaded(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
 		const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 		blks[0].SetPreloaded(ldd[from - i_start]);
@@ -772,6 +785,13 @@ struct twk_ld_slave {
 		prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
 	}
 
+	/**<
+	 * Subroutine for online pre-computing of a pair of twk1_ldd_blk. This
+	 * subroutine is used exclusively in low-memory mode.
+	 * @param blks Dst pointers to twk1_ldd_blks.
+	 * @param from Virtual offset for A.
+	 * @param to   Virtual offset for B.
+	 */
 	void UpdateBlocksGenerate(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
 		const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 
@@ -815,7 +835,9 @@ struct twk_ld_slave {
 		const twk1_t* rcds1 = nullptr;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = n_s / 45;
+		uint32_t cycle_thresh = n_s / 45;
+		if(settings->cycle_threshold != 0)
+			cycle_thresh = settings->cycle_threshold;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -890,7 +912,10 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
-		const int cycle_thresh = n_s / 45;
+		uint32_t cycle_thresh = n_s / 45;
+		if(settings->cycle_threshold != 0)
+			cycle_thresh = settings->cycle_threshold;
+
 		const twk1_t* rcds0 = nullptr;
 		const twk1_t* rcds1 = nullptr;
 
@@ -956,7 +981,9 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
-		const uint32_t cycle_thresh = n_s / 45;
+		uint32_t cycle_thresh = n_s / 45;
+		if(settings->cycle_threshold != 0)
+			cycle_thresh = settings->cycle_threshold;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1032,8 +1059,9 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = n_s / 45;
-
+		uint32_t cycle_thresh = n_s / 45;
+		if(settings->cycle_threshold != 0)
+			cycle_thresh = settings->cycle_threshold;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1114,7 +1142,9 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// heuristcally determined
-		const uint32_t cycle_thresh = (n_s / 60 == 0 ? 2 : n_s / 60);
+		uint32_t cycle_thresh = (n_s / 60 == 0 ? 2 : n_s / 60);
+		if(settings->cycle_threshold != 0)
+			cycle_thresh = settings->cycle_threshold;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1181,8 +1211,12 @@ struct twk_ld_slave {
 		n_cycles = 0;
 
 		// Heuristically determined
-		const uint32_t cycle_thresh_p = n_s / 45;
-		const uint32_t cycle_thresh_u = (n_s / 60 == 0 ? 2 : n_s / 60);
+		uint32_t cycle_thresh_p = n_s / 45 == 0 ? 2 : n_s / 45;
+		if(settings->cycle_threshold != 0)
+			cycle_thresh_p = settings->cycle_threshold;
+		uint32_t cycle_thresh_u = (n_s / 60 == 0 ? 2 : n_s / 60);
+		if(settings->cycle_threshold != 0)
+			cycle_thresh_u = settings->cycle_threshold;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -1265,6 +1299,110 @@ public:
 	twk_ld_settings* settings;
 	twk_ld_engine engine;
 	algorithm::IntervalTree<uint32_t, uint32_t>* itree;
+};
+
+// Parallel unpacker.
+struct twk_ld_unpacker {
+	std::thread* Start(const bool diag, const twk_ld_settings& settings){
+		load = settings.ldd_load_type;
+		this->diag = diag;
+
+		bit.stream = new std::ifstream(settings.in, std::ios::binary | std::ios::in);
+		if(bit.stream->good() == false){
+			std::cerr << "failed to open=" << settings.in << std::endl;
+			return nullptr;
+		}
+
+		if(diag) thread = new std::thread(&twk_ld_unpacker::UnpackDiagonal, this);
+		else thread = new std::thread(&twk_ld_unpacker::UnpackSquare, this);
+		return(thread);
+	}
+
+	bool UnpackDiagonal(){
+		bit.stream->seekg(rdr->index.ent[fL].foff);
+		if(bit.stream->good() == false){
+			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+			return false;
+		}
+
+		//std::cerr << "in unpack diag (" << fL << "-" << tL << ")" << std::endl;
+		//std::cerr << "left-shift=" << lshift << std::endl;
+		for(int i = lshift; i < lshift + (tL-fL); ++i){
+			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
+			if(bit.NextBlock() == false){
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				return false;
+			}
+
+			ldd2[i] = std::move(bit.blk);
+			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+		}
+
+		std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
+		s->close();
+		bit.stream = nullptr;
+
+		return true;
+	}
+
+	bool UnpackSquare(){
+		bit.stream->seekg(rdr->index.ent[fL].foff);
+		if(bit.stream->good() == false){
+			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+			return false;
+		}
+
+		//std::cerr << "in unpack square (" << fL << "-" << tL << ")(" << fR << "-" << tR << ")" << std::endl;
+		//std::cerr << "left-shift=" << lshift << std::endl;
+		for(int i = lshift; i < lshift + (tL-fL); ++i){
+			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
+			if(bit.NextBlock() == false){
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				return false;
+			}
+
+			ldd2[i] = std::move(bit.blk);
+			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+		}
+
+		bit.stream->seekg(rdr->index.ent[fR].foff); // seek absolute offset
+		if(bit.stream->good() == false){
+			std::cerr << "failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << std::endl;
+			return false;
+		}
+
+		// compute with local offset
+		//std::cerr << "left offset=" << loff << " and right=" << roff << std::endl;
+		//std::cerr << "offset=" << fR - loff << " and steps=" << loff + (tR - fR) << std::endl;
+		for(int i = loff + roff; i < loff + roff + (tR - fR); ++i){
+			//std::cerr << "at2=" << i << "/" << loff + roff + (tR - fR) << " with range=" << (tR - fR) << std::endl;
+			if(bit.NextBlock() == false){
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				return false;
+			}
+
+			ldd2[i] = std::move(bit.blk);
+			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
+			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
+		}
+
+		std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
+		s->close();
+		bit.stream = nullptr;
+
+		return true;
+	}
+
+	bool resize, diag;
+	uint8_t load;
+	uint32_t fL, tL, fR, tR, loff, roff, lshift;
+	twk_reader* rdr;
+	std::thread* thread;
+	twk1_ldd_blk* ldd;
+	twk1_block_t* ldd2;
+	twk1_blk_iterator bit;
 };
 
 class twk_ld {
@@ -1354,8 +1492,10 @@ public:
 	}
 
 	/**<
-	 * Loading twk blocks for a single variant and its surrounding variants in
-	 * some window.
+	 * Loading twk blocks for a single variant and its surrounding variants within
+	 * some distance and on the same chromosome. This function loads the target variant
+	 * in a single block and the other variants in separate blocks as usual. The
+	 * identity of the target site is parameterized in the settings object.
 	 * @param reader
 	 * @param bit
 	 * @param balancer
@@ -1392,27 +1532,37 @@ public:
 	 * @param load
 	 * @return
 	 */
-	bool BuildIntervals(twk_reader& reader,
-			twk1_blk_iterator& bit,
-			const uint8_t load)
+	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit)
 	{
 		if(settings.ival_strings.size() == 0){ // if have interval strings
 			return false;
 		}
 
 		this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
+		// Parse the literal interval strings into actual interval tuples.
 		if(this->ParseIntervalStrings(reader) == false)
 			return false;
 
+		// Construct interval trees and find overlaps.
 		if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
 			return false;
 		}
 
+		// Number of blocks available to iterate over.
 		this->n_blks = this->intervals.overlap_blocks.size();
 
 		return true;
 	}
 
+	/**<
+	 * Loads only the target blocks that overlap with the given vector of interval
+	 * tuples as parameterized in the settings object.
+	 * @param reader   Reference to twk reader.
+	 * @param bit      Reference to a twk block iterator.
+	 * @param balancer Reference of a pre-computed load balancer.
+	 * @param settings Reference of a user-paramterized settings object.
+	 * @return         Returns TRUE upon success or FALSE otherwise.
+	 */
 	bool LoadTargetBlocks(twk_reader& reader,
 			twk1_blk_iterator& bit,
 			const twk_ld_balancer& balancer,
@@ -1422,6 +1572,7 @@ public:
 			return false;
 		}
 
+		// src1 and src2 blocks are the same: e.g. (5,5) or (10,10).
 		if(balancer.diag){
 			//std::cerr << "is diag" << std::endl;
 			//std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
@@ -1430,7 +1581,9 @@ public:
 			m_blks = balancer.toR - balancer.fromR;
 			ldd  = new twk1_ldd_blk[m_blks];
 			ldd2 = new twk1_block_t[m_blks];
-		} else {
+		}
+		// Computation is square: e.g. (5,6) or (10,21).
+		else {
 			//std::cerr << "is square" << std::endl;
 			//std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
 
@@ -1502,12 +1655,13 @@ public:
 	}
 
 	/**<
-	 * Loads all available twk blocks into memory.
-	 * @param reader
-	 * @param bit
-	 * @param balancer
-	 * @param load
-	 * @return
+	 * Loads all available twk blocks into memory. Internally spawns the maximum
+	 * possible number of unpacking threads possible (as parameterized by settings).
+	 * @param reader   Reference to twk reader.
+	 * @param bit      Reference to a twk block iterator.
+	 * @param balancer Reference of a pre-computed load balancer.
+	 * @param settings Reference of a user-paramterized settings object.
+	 * @return         Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool LoadAllBlocks(twk_reader& reader,
 			twk1_blk_iterator& bit,
@@ -1549,117 +1703,17 @@ public:
 #else
 		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
 #endif
-		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
 
-		// Parallel importer.
-		struct twk_ld_unpacker {
-
-			std::thread* Start(const bool diag, const twk_ld_settings& settings){
-				load = settings.ldd_load_type;
-				this->diag = diag;
-
-				bit.stream = new std::ifstream(settings.in, std::ios::binary | std::ios::in);
-				if(bit.stream->good() == false){
-					std::cerr << "failed to open=" << settings.in << std::endl;
-					return nullptr;
-				}
-
-				if(diag) thread = new std::thread(&twk_ld_unpacker::UnpackDiagonal, this);
-				else thread = new std::thread(&twk_ld_unpacker::UnpackSquare, this);
-				return(thread);
-			}
-
-			bool UnpackDiagonal(){
-				bit.stream->seekg(rdr->index.ent[fL].foff);
-				if(bit.stream->good() == false){
-					std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
-					return false;
-				}
-
-				//std::cerr << "in unpack diag (" << fL << "-" << tL << ")" << std::endl;
-				//std::cerr << "left-shift=" << lshift << std::endl;
-				for(int i = lshift; i < lshift + (tL-fL); ++i){
-					//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[i] = std::move(bit.blk);
-					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-				}
-
-				std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
-				s->close();
-				bit.stream = nullptr;
-
-				return true;
-			}
-
-			bool UnpackSquare(){
-				bit.stream->seekg(rdr->index.ent[fL].foff);
-				if(bit.stream->good() == false){
-					std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
-					return false;
-				}
-
-				//std::cerr << "in unpack square (" << fL << "-" << tL << ")(" << fR << "-" << tR << ")" << std::endl;
-				//std::cerr << "left-shift=" << lshift << std::endl;
-				for(int i = lshift; i < lshift + (tL-fL); ++i){
-					//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[i] = std::move(bit.blk);
-					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-				}
-
-				bit.stream->seekg(rdr->index.ent[fR].foff); // seek absolute offset
-				if(bit.stream->good() == false){
-					std::cerr << "failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << std::endl;
-					return false;
-				}
-
-				// compute with local offset
-				//std::cerr << "left offset=" << loff << " and right=" << roff << std::endl;
-				//std::cerr << "offset=" << fR - loff << " and steps=" << loff + (tR - fR) << std::endl;
-				for(int i = loff + roff; i < loff + roff + (tR - fR); ++i){
-					//std::cerr << "at2=" << i << "/" << loff + roff + (tR - fR) << " with range=" << (tR - fR) << std::endl;
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[i] = std::move(bit.blk);
-					ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-					ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-				}
-
-				std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
-				s->close();
-				bit.stream = nullptr;
-
-				return true;
-			}
-
-			bool resize, diag;
-			uint8_t load;
-			uint32_t fL, tL, fR, tR, loff, roff, lshift;
-			twk_reader* rdr;
-			std::thread* thread;
-			twk1_ldd_blk* ldd;
-			twk1_block_t* ldd2;
-			twk1_blk_iterator bit;
-		};
-
+		// Distribute unpacking across multiple slaves.
+		// This has insignificant performance impact on small files and/or
+		// files with small number of samples (n<10,000). It has considerable
+		// impact of large files when hundreds to thousands of subproblems
+		// is solved.
 		const uint32_t rangeL = balancer.toL - balancer.fromL;
 		const uint32_t rangeR = balancer.toR - balancer.fromR;
 		uint32_t unpack_threads = settings.n_threads;
 		uint32_t ppthreadL = std::ceil((float)(balancer.toL - balancer.fromL) / unpack_threads);
+		// Assert blocks are balanced.
 		assert(balancer.toL - balancer.fromL == balancer.toR - balancer.fromR);
 
 		if(ppthreadL == 0){
@@ -1673,21 +1727,21 @@ public:
 		}
 
 		//std::cerr << "balance=" << (balancer.toL - balancer.fromL) << " and " << (balancer.toL - balancer.fromL) / unpack_threads << " -> " << ppthreadL << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE..." << std::endl;
+		std::cerr << utility::timestamp("LOG","THREAD") << "Unpacking using " << unpack_threads << " threads... ";
 		twk_ld_unpacker* slaves = new twk_ld_unpacker[unpack_threads];
-		//std::vector<std::thread*> threads(settings.n_threads);
 		Timer timer; timer.Start();
 		for(uint32_t i = 0; i < unpack_threads; ++i){
 			slaves[i].ldd = ldd;
 			slaves[i].ldd2 = ldd2;
 			slaves[i].rdr = &reader;
 			slaves[i].resize = true;
-			slaves[i].fL = balancer.fromL + ppthreadL*i;
-			slaves[i].tL = i+1 == unpack_threads ? balancer.fromL+rangeL : balancer.fromL+(ppthreadL*(i+1));
-			slaves[i].fR = balancer.fromR + ppthreadL*i;
-			slaves[i].tR = i+1 == unpack_threads ? balancer.fromR+rangeR : balancer.fromR+(ppthreadL*(i+1));
-
-			slaves[i].loff = balancer.toL - balancer.fromL;
-			slaves[i].lshift = slaves[i].fL - balancer.fromL;
+			slaves[i].fL = balancer.fromL + ppthreadL*i; // from-left
+			slaves[i].tL = i+1 == unpack_threads ? balancer.fromL+rangeL : balancer.fromL+(ppthreadL*(i+1)); // to-left
+			slaves[i].fR = balancer.fromR + ppthreadL*i; // from-right
+			slaves[i].tR = i+1 == unpack_threads ? balancer.fromR+rangeR : balancer.fromR+(ppthreadL*(i+1)); // to-right
+			slaves[i].loff = balancer.toL - balancer.fromL; // offset from left
+			slaves[i].lshift = slaves[i].fL - balancer.fromL; // offset from right
 			slaves[i].roff = slaves[i].fR - balancer.fromR;
 			//std::cerr << "range=" << slaves[i].fL << "->" << slaves[i].tL << " and " << slaves[i].fR << "->" << slaves[i].tR << std::endl;
 		}
@@ -1696,59 +1750,26 @@ public:
 		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].thread->join();
 		delete[] slaves;
 
-/*
-		if(balancer.diag){
-			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
-			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
-				if(bit.NextBlock() == false){
-					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-					return false;
-				}
-
-				ldd2[i] = std::move(bit.blk);
-				ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-				ldd[i].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-			}
-		} else {
-			uint32_t offset = 0;
-			bit.stream->seekg(reader.index.ent[balancer.fromL].foff);
-			for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
-				if(bit.NextBlock() == false){
-					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-							return false;
-				}
-
-				ldd2[offset] = std::move(bit.blk);
-				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-				++offset;
-			}
-
-			bit.stream->seekg(reader.index.ent[balancer.fromR].foff);
-			for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
-				if(bit.NextBlock() == false){
-					std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-					return false;
-				}
-
-				ldd2[offset] = std::move(bit.blk);
-				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-				++offset;
-			}
-		}
-		*/
-
 		std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-		//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
 		return(true);
 	}
 
+	/**<
+	 * Helper function to call Compute subroutine when passing a new settings
+	 * object to be used.
+	 * @param settings Src settings objects.
+	 * @return Returns TRUE upon success or FALSE otherwise.
+	 */
 	bool Compute(const twk_ld_settings& settings){
 		this->settings = settings;
 		return(Compute());
 	}
 
+	/**<
+	 * Main subroutine for computing linkage-disequilibrium as contextually
+	 * determined given the user-defined parameters.
+	 * @return Returns TRUE upon success or FALSE otherwise.
+	 */
 	bool Compute(){
 		if(settings.in.size() == 0){
 			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
@@ -1790,13 +1811,11 @@ public:
 
 		if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
 		else {
-			if(this->BuildIntervals(reader, bit, settings.ldd_load_type) == false)
+			if(this->BuildIntervals(reader, bit) == false)
 				return false;
 		}
 
 		if(settings.window) settings.c_chunk = 0;
-		if(settings.cycle_threshold == 0)
-			settings.cycle_threshold = reader.hdr.GetNumberSamples() / 50;
 
 		twk_ld_balancer balancer;
 		if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
@@ -1839,9 +1858,13 @@ public:
 		ticker.l_window = settings.l_window;
 		twk_ld_progress progress;
 		progress.n_s = reader.hdr.GetNumberSamples();
-		if(settings.window == false) progress.n_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
-		//uint32_t n_threads = std::thread::hardware_concurrency();
-		//n_threads  = 1;
+		if(settings.window == false){
+			if(balancer.diag)
+				progress.n_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
+			else {
+
+			}
+		}
 		twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
 		std::vector<std::thread*> threads(settings.n_threads);
 
@@ -1851,8 +1874,18 @@ public:
 			std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
 			writer = new twk_writer_stream;
 		} else {
-			std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
+			std::string base_path = twk_writer_t::GetBasePath(settings.out);
+			std::string base_name = twk_writer_t::GetBaseName(settings.out);
+			std::string extension = twk_writer_t::GetExtension(settings.out);
+			if(extension.length() == 3){
+				if(strncasecmp(&extension[0], "two", 3) != 0){
+					settings.out =  (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+				}
+			} else {
+				 settings.out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+			}
 
+			std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
 			writer = new twk_writer_file;
 			if(writer->Open(settings.out) == false){
 				std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
@@ -1902,6 +1935,15 @@ public:
 		progress.PrintFinal();
 		writer->stream.flush();
 
+		std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
+		for(int i = 0; i < settings.n_threads; ++i){
+			std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
+			for(int j = 0; j < 8; ++j){
+				std::cerr << "\t" << utility::ToPrettyString(slaves[i].engine.n_method[j]);
+			}
+			std::cerr << std::endl;
+		}
+
 		//std::cerr << "performed=" << ticker.n_perf << std::endl;
 		if(this->WriteFinal(writer, index) == false){
 			std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write final block!" << std::endl;
@@ -1912,6 +1954,7 @@ public:
 		std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
 
 		return true;
+		// Done
 
 		twk1_ldd_blk blocks[2];
 

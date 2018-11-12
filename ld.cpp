@@ -70,6 +70,7 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const
 	//std::cerr << 2*this->n_samples - (n_total - n_same) << '\n';
 	//assert(2*n_samples - (n_total - n_same) < 2*n_samples);
 	//std::cerr << helper.haplotypeCounts[0] << " ";
+	++n_method[0];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -97,6 +98,7 @@ bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, con
 	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
 	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
 	helper.alleleCounts[0] = 2*n_samples - ((b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac) - helper.alleleCounts[5]);
+	++n_method[1];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -221,7 +223,7 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1,
 	helper.alleleCounts[5] = helper_simd.counters[TWK_LD_SIMD_ALTALT];
 	helper.alleleCounts[0] = helper_simd.counters[TWK_LD_SIMD_REFREF] + (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 - phased_unbalanced_adjustment;
 	//helper.haplotypeCounts[0] += (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT;
-
+	++n_method[2];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -301,6 +303,7 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
 	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
 	helper.alleleCounts[0] = 2*n_samples - ((b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac) - helper.alleleCounts[5]);
+	++n_method[3];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -454,6 +457,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p
 	helper.alleleCounts[80] = helper_simd.counters[6];
 	helper.alleleCounts[81] = helper_simd.counters[7];
 	helper.alleleCounts[85] = helper_simd.counters[8];
+	++n_method[4];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -593,6 +597,7 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 	helper.alleleCounts[85] = helper_simd.counters[8];
 	//helper[17] = helper_simd.counters[4];
 	helper.alleleCounts[17] = n_samples - (helper.alleleCounts[0] +  helper.alleleCounts[1] + helper.alleleCounts[5] + helper.alleleCounts[16] + helper.alleleCounts[21] + helper.alleleCounts[80] + helper.alleleCounts[81] + helper.alleleCounts[85]);
+	++n_method[5];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -663,6 +668,7 @@ bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, 
 		currentMixL = (gt1.GetRefA(offsetA) << 2) | gt2.GetRefA(offsetB);
 		currentMixR = (gt1.GetRefB(offsetA) << 2) | gt2.GetRefB(offsetB);
 	}
+	++n_method[6];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -729,6 +735,7 @@ bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1
 
 		currentMix = (gt1.GetRefA(offsetA) << 6) | (gt1.GetRefB(offsetA) << 4) | (gt2.GetRefA(offsetB) << 2) | (gt2.GetRefB(offsetB));
 	}
+	++n_method[7];
 
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();

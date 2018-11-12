@@ -371,8 +371,8 @@ int view(int argc, char** argv){
 	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
 		return 1;
 
-	std::string view_string = "\n##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
-	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
+	std::string view_string = "##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
+	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
 	oreader.hdr.literals_ += view_string;
 
 	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());

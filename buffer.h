@@ -78,6 +78,7 @@ public:
 	inline void set(const size_t size, char* target);
 	inline void set(char* target);
 
+	inline void clear(){ this->n_chars_ = 0; this->width_ = 0; this->iterator_position_ = 0; if(owns_data_){ delete[] buffer_; buffer_ = nullptr; } }
 	inline void reset(){ this->n_chars_ = 0; this->iterator_position_ = 0; }
 	inline void resetIterator(){ this->iterator_position_ = 0; }
 	inline void move(const uint64_t to){ this->n_chars_ = to; }

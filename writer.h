@@ -183,7 +183,6 @@ struct twk_two_writer_t : public twk_writer_t {
 
 		obuf.reset();
 		stream << reader.hdr.literals_;
-		stream.put('\n');
 		stream << "flags\tridA\tposA\tridB\tposB\tHOMHOM\tHOMALT\tALTHOM\tALTALT\tD\tDprime\tR\tR2\tP\tChiSqFisher\tChiSqModel" << std::endl;
 		stream.flush();
 

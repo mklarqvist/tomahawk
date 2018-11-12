@@ -50,7 +50,8 @@ void calc_usage(void){
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
-	"  -k INT    compression level to use (default: 1, max = 22).\n";
+	"  -k INT    compression level to use (default: 1, max = 22).\n"
+	"  -J INT    cycle threshold (default: heuristically determined).\n";
 }
 
 int calc(int argc, char** argv){
@@ -75,6 +76,7 @@ int calc(int argc, char** argv){
 		{"block-size",        optional_argument, 0, 'b' },
 		{"bitmaps",           optional_argument, 0, 'M' },
 		{"compression-level", optional_argument, 0, 'k' },
+		{"cycle-threshold",   optional_argument, 0, 'J' },
 
 		{"cross-chr-only",    no_argument, 0, 'X' },
 		{"no-cross-chr",      no_argument, 0, 'x' },
@@ -96,7 +98,7 @@ int calc(int argc, char** argv){
 	tomahawk::twk_ld_settings settings;
 	//std::vector<std::string> filter_regions;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:S:I:sdc:C:mMb:xXk:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:S:I:sdc:C:mMb:xXk:J:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -125,6 +127,13 @@ int calc(int argc, char** argv){
 			settings.force_phased = true;
 			settings.low_memory = true;
 			settings.bitmaps = true;
+			break;
+		case 'J':
+			settings.cycle_threshold = atoi(optarg);
+			if(settings.cycle_threshold <= 0){
+				std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have a non-positive cycle threshold" << std::endl;
+				return(1);
+			}
 			break;
 		case 't':
 			settings.n_threads = atoi(optarg);
