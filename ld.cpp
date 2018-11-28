@@ -42,14 +42,11 @@ twk_ld_simd::~twk_ld_simd(){
 
 
 //
-
-bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetPhased();
 	const twk_igt_list& ref = b1.list[p1];
 	const twk_igt_list& tgt = b2.list[p2];
 	const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
-	//const uint32_t n_total  = ref.l_list + tgt.l_list;
-	//uint32_t n_same = 0;
 
 	// Debug timings
 	#if SLAVE_DEBUG_MODE == 1
@@ -57,19 +54,27 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const
 		auto t0 = std::chrono::high_resolution_clock::now();
 	#endif
 
-	if(ref.l_list >= tgt.l_list){
-		for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += ref.get(tgt.list[i]);
-	} else {
-		for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += tgt.get(ref.list[i]);
+	if(n_cycles == 0) helper.alleleCounts[5] = 0;
+	else {
+		if(ref.l_list >= tgt.l_list){
+			if(tgt.list[tgt.l_list - 1] < ref.list[0]) {
+				helper.alleleCounts[5] = 0;
+				//std::cerr << "no overlap=" << tgt.list[tgt.l_list - 1] << "<" << ref.list[0] << " len=" << tgt.l_list << "<" << ref.l_list << std::endl;
+			}
+			else
+				for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += ref.get(tgt.list[i]);
+		} else {
+			if(ref.list[ref.l_list - 1] < tgt.list[0]) {
+				helper.alleleCounts[5] = 0;
+				//std::cerr << "no overlap=" << ref.list[ref.l_list - 1] << "<" << tgt.list[0] << " len=" << ref.l_list << "<" << tgt.l_list << std::endl;
+			} else
+				for(uint32_t i = 0; i < n_cycles; ++i) helper.alleleCounts[5] += tgt.get(ref.list[i]);
+		}
 	}
 
 	helper.alleleCounts[4] = ref.l_list - helper.alleleCounts[5];
 	helper.alleleCounts[1] = tgt.l_list - helper.alleleCounts[5];
 	helper.alleleCounts[0] = 2*n_samples - ((ref.l_list + tgt.l_list) - helper.alleleCounts[5]);
-	//std::cerr << "phased-list=" << ref.l_list << " and " << tgt.l_list << std::endl;
-	//std::cerr << 2*this->n_samples - (n_total - n_same) << '\n';
-	//assert(2*n_samples - (n_total - n_same) < 2*n_samples);
-	//std::cerr << helper.haplotypeCounts[0] << " ";
 	++n_method[0];
 
 #if SLAVE_DEBUG_MODE == 1
@@ -90,10 +95,15 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t& p1, const
 #endif
 }
 
-bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetPhased();
 	const twk1_ldd_blk::bitmap_type& refB = b1.bitmap[p1];
 	const twk1_ldd_blk::bitmap_type& tgtB = b2.bitmap[p2];
+	// Debug timings
+	#if SLAVE_DEBUG_MODE == 1
+		typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
+		auto t0 = std::chrono::high_resolution_clock::now();
+	#endif
 	helper.alleleCounts[5] = refB.logicalandcount(tgtB);
 	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
 	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
@@ -103,6 +113,7 @@ bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, con
 #if SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
+	const uint32_t n_cycles = b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac;
 	perf->cycles[n_cycles] += ticks_per_iter.count();
 	++perf->freq[n_cycles];
 #endif
@@ -118,11 +129,10 @@ bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t& p1, con
 #endif
 }
 
-bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 #if SLAVE_DEBUG_MODE == 0
 	if(b1.blk->rcds[p1].gt_missing == false && b2.blk->rcds[p2].gt_missing == false){
 		return(this->PhasedVectorizedNoMissing(b1,p1,b2,p2,perf));
-		//return(this->CalculateLDPhasedVectorizedNoMissingNoTable(helper, block1, block2));
 	}
 #endif
 
@@ -149,6 +159,7 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1,
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
 	const VECTOR_TYPE* const vectorA_mask = (const VECTOR_TYPE* const)arrayA_mask;
 	const VECTOR_TYPE* const vectorB_mask = (const VECTOR_TYPE* const)arrayB_mask;
+	VECTOR_TYPE a, b;
 
 	VECTOR_TYPE __intermediate, masks;
 
@@ -162,24 +173,28 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1,
 
 #define ITER_SHORT {                                                     \
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);              \
-	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks); \
+	a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
+	b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
+	__intermediate  = PHASED_REFREF_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
-	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks); \
+	__intermediate  = PHASED_ALTREF_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
-	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks); \
+	__intermediate  = PHASED_REFALT_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
 	i += 1;                                                              \
 }
 
 #define ITER {                                                           \
 	masks   = MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);              \
-	__intermediate  = PHASED_ALTALT_MASK(vectorA[i], vectorB[i], masks); \
+	__m128i a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
+	__m128i b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
+	__intermediate  = PHASED_ALTALT_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);       \
-	__intermediate  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], masks); \
+	__intermediate  = PHASED_REFREF_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFREF], __intermediate);       \
-	__intermediate  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], masks); \
+	__intermediate  = PHASED_ALTREF_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTREF], __intermediate);       \
-	__intermediate  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], masks); \
+	__intermediate  = PHASED_REFALT_MASK(a, b, masks); \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_REFALT], __intermediate);       \
 	i += 1;                                                              \
 }
@@ -248,7 +263,7 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1,
 #endif
 }
 
-bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetPhased();
 	helper_simd.counters[TWK_LD_SIMD_ALTALT] = 0;
 
@@ -269,10 +284,12 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 
 	const VECTOR_TYPE* const vectorA = (const VECTOR_TYPE* const)arrayA;
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
-	VECTOR_TYPE __intermediate;
+	VECTOR_TYPE __intermediate, a, b;
 
 #define ITER_SHORT {                                              \
-	__intermediate  = PHASED_ALTALT(vectorA[i], vectorB[i]);      \
+	a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
+	b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
+	__intermediate  = PHASED_ALTALT(a, b);      \
 	popcnt128(helper_simd.counters[TWK_LD_SIMD_ALTALT], __intermediate);\
 	i += 1;                                                       \
 }
@@ -326,7 +343,7 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 #endif
 }
 
-bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 #if SLAVE_DEBUG_MODE == 0
 	if(b1.blk->rcds[p1].gt_missing == false && b2.blk->rcds[p2].gt_missing == false){
 		return(this->UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf));
@@ -365,7 +382,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p
 	const VECTOR_TYPE* const vectorA_mask = (const VECTOR_TYPE* const)arrayA_mask;
 	const VECTOR_TYPE* const vectorB_mask = (const VECTOR_TYPE* const)arrayB_mask;
 
-	VECTOR_TYPE __intermediate, mask;
+	VECTOR_TYPE __intermediate, mask, a, b;
 
 	uint32_t i = frontSmallest;
 	VECTOR_TYPE altalt, refref, altref, refalt;
@@ -380,10 +397,12 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p
 
 #define ITER_BASE {                                             \
 	mask	= MASK_MERGE(vectorA_mask[i], vectorB_mask[i]);     \
-	refref  = PHASED_REFREF_MASK(vectorA[i], vectorB[i], mask);	\
-	refalt  = PHASED_REFALT_MASK(vectorA[i], vectorB[i], mask);	\
-	altref  = PHASED_ALTREF_MASK(vectorA[i], vectorB[i], mask);	\
-	altalt  = PHASED_ALTALT_MASK(vectorA[i], vectorB[i], mask);	\
+	a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
+	b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
+	refref  = PHASED_REFREF_MASK(a, b, mask);	\
+	refalt  = PHASED_REFALT_MASK(a, b, mask);	\
+	altref  = PHASED_ALTREF_MASK(a, b, mask);	\
+	altalt  = PHASED_ALTALT_MASK(a, b, mask);	\
 	i += 1;                                                     \
 }
 
@@ -482,7 +501,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t& p
 #endif
 }
 
-bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetUnphased();
 
 	helper_simd.counters[0] = 0;
@@ -513,7 +532,7 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 	const VECTOR_TYPE* const vectorB = (const VECTOR_TYPE* const)arrayB;
 
 	VECTOR_TYPE altalt, refref, altref, refalt;
-	VECTOR_TYPE __intermediate;
+	VECTOR_TYPE __intermediate, a, b;
 
 // Debug timings
 #if SLAVE_DEBUG_MODE == 1
@@ -522,10 +541,12 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 #endif
 
 #define ITER_BASE {										\
-	refref  = PHASED_REFREF(vectorA[i], vectorB[i]);	\
-	refalt  = PHASED_REFALT(vectorA[i], vectorB[i]);	\
-	altref  = PHASED_ALTREF(vectorA[i], vectorB[i]);	\
-	altalt  = PHASED_ALTALT(vectorA[i], vectorB[i]);	\
+	a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
+	b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
+	refref  = PHASED_REFREF(a, b);	\
+	refalt  = PHASED_REFALT(a, b);	\
+	altref  = PHASED_ALTREF(a, b);	\
+	altalt  = PHASED_ALTALT(a, b);	\
 	i += 1;												\
 }
 
@@ -621,7 +642,7 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 #endif
 }
 
-bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetPhased();
 #if SLAVE_DEBUG_MODE == 1
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
@@ -691,7 +712,7 @@ bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, 
 #endif
 }
 
-bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2, twk_ld_perf* perf){
+bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetUnphased();
 #if SLAVE_DEBUG_MODE == 1
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
@@ -758,7 +779,7 @@ bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t& p1
 #endif
 }
 
-bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
+bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2){
 	// Total amount of non-missing alleles
 	helper.totalHaplotypeCounts = helper.alleleCounts[0] + helper.alleleCounts[1] +
 								  helper.alleleCounts[4] + helper.alleleCounts[5];
@@ -889,7 +910,7 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const
 	return true;
 }
 
-bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, const twk1_ldd_blk& b2, const uint32_t& p2){
+bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2){
 	// Total amount of non-missing alleles
 	helper.totalHaplotypeCounts = helper.alleleCounts[0]  + helper.alleleCounts[1]  + helper.alleleCounts[4]  + helper.alleleCounts[5]
 	                     + helper.alleleCounts[16] + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[21]
@@ -1072,7 +1093,7 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t& p1, con
 	return(false);
 }
 
-double twk_ld_engine::ChiSquaredUnphasedTable(const double& target, const double& p, const double& q){
+double twk_ld_engine::ChiSquaredUnphasedTable(const double target, const double p, const double q){
 	const double f12   = p - target;
 	const double f21   = q - target;
 	const double f22   = 1 - (target + f12 + f21);
@@ -1100,7 +1121,7 @@ double twk_ld_engine::ChiSquaredUnphasedTable(const double& target, const double
 	return(chisq1111 + chisq1112 + chisq1122 + chisq1211 + chisq1212 + chisq1222 + chisq2211 + chisq2212 + chisq2222);
 }
 
-bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t& pos1, const twk1_ldd_blk& b2, const uint32_t& pos2,const double& target, const double& p, const double& q){
+bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t pos1, const twk1_ldd_blk& b2, const uint32_t pos2, const double target, const double p, const double q){
 	const double p1 = target;
 	const double p2 = p - p1;
 	const double q1 = q - p1;

@@ -214,7 +214,9 @@ struct twk1_igt_t : public twk1_gt_t {
 *  Core record
 ****************************/
 struct twk1_t {
-	twk1_t() : gt_ptype(0), gt_flipped(0), gt_phase(0), gt_missing(0), alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
+	twk1_t() :
+		gt_ptype(0), gt_flipped(0), gt_phase(0), gt_missing(0),
+		alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
 	~twk1_t(){ delete gt; }
 
 	twk1_t& operator=(const twk1_t& other){
@@ -455,12 +457,12 @@ public:
 		{
 		//std::cerr << "build=" << n << "," << m << "," << l_list << std::endl;
 		if(n == 0){
-			n = ceil((double)(n_samples*2)/8);
+			n = ceil((double)(n_samples*2)/64);
 			if(resizeable){ m = twk.ac; }
 			else { m = n_samples*2; }
 			delete[] list; list = new uint32_t[m];
 			if(own){
-				bv = new uint8_t[n];
+				bv = new uint64_t[n];
 			}
 			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
 		}
@@ -472,7 +474,7 @@ public:
 		}
 
 		if(own){
-			memset(bv, 0, n*sizeof(uint8_t));
+			memset(bv, 0, n*sizeof(uint64_t));
 		}
 
 		l_list = 0;
@@ -498,6 +500,7 @@ public:
 			assert(l_list <= m);
 		} else {
 			//std::cerr << "in not own" << std::endl;
+
 			for(int i = 0; i < twk.gt->n; ++i){
 				const uint32_t len  = twk.gt->GetLength(i);
 				const uint8_t  refA = twk.gt->GetRefA(i);
@@ -525,18 +528,24 @@ public:
 		if(own) delete[] this->bv;
 	}
 
-	inline void reset(void){ memset(this->bv, 0, this->n); delete[] list; l_list = 0; }
-	inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 8))); }
-	inline const bool get(const uint32_t p) const{ return(this->bv[p/8] & (1L << (p % 8)));}
-	inline void set(const uint32_t p){ this->bv[p/8] |= (1L << (p % 8)); }
-	inline void set(const uint32_t p, const bool val){ this->bv[p/8] |= ((uint64_t)val << (p % 8)); }
+	inline void reset(void){ memset(this->bv, 0, this->n*sizeof(uint64_t)); delete[] list; l_list = 0; }
+	//inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 8))); }
+	/**<
+	 * p >> 3 = p/8
+	 * p % 8 = p & (8 - 1)
+	 * @param p
+	 * @return
+	 */
+	__attribute__((always_inline)) inline const bool get(const uint32_t p) const{ return(this->bv[(p >> 6)] & (1L << ( p & (64 - 1) )));}
+	inline void set(const uint32_t p){ this->bv[p/64] |= (1L << (p % 64)); }
+	inline void set(const uint32_t p, const bool val){ this->bv[p/64] |= ((uint64_t)val << (p % 64)); }
 
 public:
 	uint32_t own: 1, n: 31;
 	uint32_t m; // n bytes, m allocated list entries
 	uint32_t  l_list; // number of odd items
 	uint32_t* list; // list entries
-	uint8_t* bv; // bit-vector
+	uint64_t* bv; // bit-vector
 };
 
 /**<
@@ -569,6 +578,25 @@ const static uint8_t TWK_GT_BV_MASK_MISS_LOOKUP[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3
 const static uint8_t TWK_GT_BV_DATA_LOOKUP[16]      = {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 const static uint8_t TWK_GT_BV_DATA_MISS_LOOKUP[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+inline void* aligned_malloc(size_t size, size_t align) {
+    void *result;
+    #ifdef _MSC_VER
+    result = _aligned_malloc(size, align);
+    #else
+     if(posix_memalign(&result, align, size)) result = 0;
+    #endif
+    return result;
+}
+
+inline void aligned_free(void *ptr) {
+    #ifdef _MSC_VER
+        _aligned_free(ptr);
+    #else
+      free(ptr);
+    #endif
+
+}
+
 struct twk_igt_vec {
 public:
 	twk_igt_vec():
@@ -581,20 +609,15 @@ public:
 	}
 
 	~twk_igt_vec(){
-	#if SIMD_AVAILABLE == 1
-		_mm_free(this->data);
-		_mm_free(this->mask);
-	#else
-		delete [] this->data.data;
-		delete [] this->mask.data;
-	#endif
+		aligned_free(data);
+		aligned_free(mask);
 	}
 
-	inline void reset(void){ memset(this->data, 0, this->n); memset(this->mask, 0, this->n); }
-	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 8))); }
-	inline const bool get(const uint32_t p) const{ return(this->data[p/8] & (1L << (p % 8)));}
-	inline void set(const uint32_t p){ this->data[p/8] |= (1L << (p % 8)); }
-	inline void set(const uint32_t p, const bool val){ this->data[p/8] |= ((uint64_t)val << (p % 8)); }
+	inline void reset(void){ memset(this->data, 0, this->n*sizeof(uint64_t)); memset(this->mask, 0, this->n*sizeof(uint64_t)); }
+	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 64))); }
+	inline const bool get(const uint32_t p) const{ return(this->data[p/64] & (1L << (p % 64)));}
+	inline void set(const uint32_t p){ this->data[p/64] |= (1L << (p % 64)); }
+	inline void set(const uint32_t p, const bool val){ this->data[p/64] |= ((uint64_t)val << (p % 64)); }
 
 	/**<
 	 *
@@ -607,17 +630,12 @@ public:
 	           const uint32_t& n_samples)
 	{
 		if(n == 0){
-			n = ceil((double)(n_samples*2)/8);
-#if SIMD_AVAILABLE == 1
-				data = (uint8_t*)_mm_malloc(n, SIMD_ALIGNMENT);
-				mask = (uint8_t*)_mm_malloc(n, SIMD_ALIGNMENT);
-			#else
-				data = new uint8_t[bytes];
-				mask = new uint8_t[bytes];
-			#endif
+			n = ceil((double)(n_samples*2)/64);
+			data = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
+			mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
 		}
 
-		memset(data, 0, n*sizeof(uint8_t));
+		memset(data, 0, n*sizeof(uint64_t));
 		uint32_t cumpos = 0;
 		for(int i = 0; i < rec.gt->n; ++i){
 			const uint32_t len  = rec.gt->GetLength(i);
@@ -696,8 +714,8 @@ public:
 	uint32_t  n; // n bytes, m allocated entries
 	uint16_t front_zero; // leading zeros in aligned vector width
 	uint16_t tail_zero; // trailing zeros in aligned vector width
-	uint8_t* data;
-	uint8_t* mask;
+	uint64_t* data;
+	uint64_t* mask;
 };
 
 // gtocc
