@@ -49,6 +49,25 @@ const uint8_t TWK_BASE_MAP[256] =
 const char TWK_BASE_MAP_INV[4] = {'A','T','G','C'};
 const std::vector<std::string> TWK_SIMD_MAPPING = {"NONE","SSE","SSE2","SSE4","AVX","AVX2-256","AVX-512"};
 
+inline void* aligned_malloc(size_t size, size_t align) {
+    void *result;
+    #ifdef _MSC_VER
+    result = _aligned_malloc(size, align);
+    #else
+     if(posix_memalign(&result, align, size)) result = 0;
+    #endif
+    return result;
+}
+
+inline void aligned_free(void *ptr) {
+    #ifdef _MSC_VER
+        _aligned_free(ptr);
+    #else
+      free(ptr);
+    #endif
+
+}
+
 /****************************
 *  SIMD definitions
 ****************************/
@@ -444,18 +463,69 @@ public:
 
 struct twk_igt_list {
 public:
+	struct ilist_t {
+		ilist_t() :
+			bin(0),
+			vals(reinterpret_cast<uint64_t*>(aligned_malloc(2*sizeof(uint64_t), SIMD_ALIGNMENT)))
+		{
+			memset(vals, 0, sizeof(uint64_t)*2);
+		}
+		~ilist_t(){ aligned_free(vals); }
+
+		inline void Set(uint32_t p){
+			p %= 128;
+			assert(p/64 < 2);
+			vals[p/64] |= ((uint64_t)1 << (p % 64));
+		}
+
+		uint32_t bin;
+		uint64_t* vals;
+	};
+
+	struct ilist_cont {
+		ilist_cont() : n(0), m(78126), data(new ilist_t[78126]){}
+		~ilist_cont(){ delete[] data; }
+
+		void operator+=(const int32_t p){
+			assert(p < m*128);
+			if(p / 128 == tail()){
+				assert(n != 0);
+				data[n - 1].Set(p);
+			} else {
+				//std::cerr << "p=" << p << std::endl;
+				//std::cerr << "diff=" << p/128 << " and " << tail() << " n=" << n << "/" << m << std::endl;
+				++n;
+				assert(n < m);
+				data[n - 1].bin = p / 128;
+				data[n - 1].Set(p);
+			}
+		}
+
+		inline int32_t tail() const{ return(n == 0 ? -1 : data[n - 1].bin); }
+
+		uint32_t n, m;
+		ilist_t* data;
+	};
+
 	twk_igt_list() :
 		own(1), n(0), m(0), l_list(0),
-		list(nullptr), bv(nullptr)
+		list(nullptr), bv(nullptr),
+		bin_bitmap(reinterpret_cast<uint64_t*>(aligned_malloc(2*sizeof(uint64_t), SIMD_ALIGNMENT)))
 	{
-
+		memset(bin_bitmap, 0, sizeof(uint64_t)*2);
 	}
+
+	~twk_igt_list(){
+		delete[] this->list;
+		if(own) delete[] this->bv;
+		aligned_free(bin_bitmap);
+	}
+
 
 	bool Build(const twk1_t& twk,
 	           const uint32_t n_samples,
 	           const bool resizeable = false)
 		{
-		//std::cerr << "build=" << n << "," << m << "," << l_list << std::endl;
 		if(n == 0){
 			n = ceil((double)(n_samples*2)/64);
 			if(resizeable){ m = twk.ac; }
@@ -512,20 +582,22 @@ public:
 				}
 
 				for(int j = 0; j < 2*len; j+=2){
-					if(refA != 0){ list[l_list++] = cumpos + j + 0; }
-					if(refB != 0){ list[l_list++] = cumpos + j + 1; }
+					if(refA != 0){ list[l_list++] = cumpos + j + 0; d += cumpos + j + 0; }
+					if(refB != 0){ list[l_list++] = cumpos + j + 1; d += cumpos + j + 1; }
 				}
 				cumpos += 2*len;
 			}
 			assert(cumpos == n_samples*2);
+			//std::cerr << "total bins=" << d.n << " with ac=" << twk.ac << std::endl;
+
+			uint32_t divide = std::ceil((float)78126 / 2);
+			for(int i = 0; i < d.n; ++i){
+				assert(d.data[i].bin/divide < 2);
+				bin_bitmap[d.data[i].bin/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(d.data[i].bin % divide) / divide)*64) ));
+			}
 		}
 
 		return true;
-	}
-
-	~twk_igt_list(){
-		delete[] this->list;
-		if(own) delete[] this->bv;
 	}
 
 	inline void reset(void){ memset(this->bv, 0, this->n*sizeof(uint64_t)); delete[] list; l_list = 0; }
@@ -538,14 +610,16 @@ public:
 	 */
 	__attribute__((always_inline)) inline const bool get(const uint32_t p) const{ return(this->bv[(p >> 6)] & (1L << ( p & (64 - 1) )));}
 	inline void set(const uint32_t p){ this->bv[p/64] |= (1L << (p % 64)); }
-	inline void set(const uint32_t p, const bool val){ this->bv[p/64] |= ((uint64_t)val << (p % 64)); }
+	//inline void set(const uint32_t p, const bool val){ this->bv[p/64] |= ((uint64_t)1 << (p % 64)); }
 
 public:
 	uint32_t own: 1, n: 31;
-	uint32_t m; // n bytes, m allocated list entries
-	uint32_t  l_list; // number of odd items
+	uint32_t m, l_list; // n bytes, m allocated list entries
 	uint32_t* list; // list entries
 	uint64_t* bv; // bit-vector
+	ilist_cont d;
+	// higher level bitmap checks
+	uint64_t* bin_bitmap;
 };
 
 /**<
@@ -577,25 +651,6 @@ const static uint8_t TWK_GT_BV_MASK_LOOKUP[16]      = {0, 0, 0, 0, 0, 0, 0, 0, 0
 const static uint8_t TWK_GT_BV_MASK_MISS_LOOKUP[16] = {0, 0, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 const static uint8_t TWK_GT_BV_DATA_LOOKUP[16]      = {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 const static uint8_t TWK_GT_BV_DATA_MISS_LOOKUP[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-inline void* aligned_malloc(size_t size, size_t align) {
-    void *result;
-    #ifdef _MSC_VER
-    result = _aligned_malloc(size, align);
-    #else
-     if(posix_memalign(&result, align, size)) result = 0;
-    #endif
-    return result;
-}
-
-inline void aligned_free(void *ptr) {
-    #ifdef _MSC_VER
-        _aligned_free(ptr);
-    #else
-      free(ptr);
-    #endif
-
-}
 
 struct twk_igt_vec {
 public:

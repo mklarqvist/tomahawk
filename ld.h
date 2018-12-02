@@ -16,7 +16,7 @@
 // Method 1: Performance + no math
 // Method 2: Debug correctness
 // Method 3: Print LD difference Phased and Unphased
-#define SLAVE_DEBUG_MODE 0
+#define SLAVE_DEBUG_MODE 1
 
 namespace tomahawk {
 
@@ -136,7 +136,7 @@ const VECTOR_TYPE maskUnphasedLow  = _mm_set1_epi8(UNPHASED_LOWER_MASK);	// 0101
 #define MASK_MERGE(A,B)           _mm_xor_si128(_mm_or_si128(A, B), ONE_MASK)
 
 __attribute__((always_inline))
-static inline void popcnt128(uint64_t& a, const __m128i& n) {
+static inline void popcnt128(uint64_t& a, const __m128i n) {
 	a += _mm_popcnt_u64(_mm_cvtsi128_si64(n)) + _mm_popcnt_u64(_mm_cvtsi128_si64(_mm_unpackhi_epi64(n, n)));
 }
 
@@ -625,7 +625,7 @@ public:
 
 	// Function definitions to computing functions defined below.
 	typedef bool (twk_ld_engine::*func)(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf);
-	typedef bool (twk_ld_engine::*ep[9])(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf);
+	typedef bool (twk_ld_engine::*ep[10])(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf);
 
 public:
 	twk_ld_engine() :
@@ -680,6 +680,10 @@ public:
 	 */
 	bool PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
+	bool PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
+
+	bool PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
+
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
@@ -876,9 +880,11 @@ struct twk_ld_slave {
 					}
 
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
+						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 							engine.PhasedList(blocks[0],i,blocks[0],j,perf);
-						else {
+							engine.PhasedListSpecial(blocks[0],i,blocks[0],j,perf);
+							engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
+						} else {
 							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,perf);
 						}
 					} else {
@@ -908,9 +914,11 @@ struct twk_ld_slave {
 
 							//std::cerr << ii << "/" << n_blocks1 << "," << jj << "/" << n_blocks2 << "," << i << "/" << ii+bsize << "," << j << "/" << jj+bsize << " bsize=" << bsize << std::endl;
 							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-								if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
+								if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 									engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-								else {
+									engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+									engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+								} else {
 									engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
 								}
 							} else {
@@ -933,9 +941,11 @@ struct twk_ld_slave {
 						}
 
 						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-							if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
+							if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 								engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-							else {
+								engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+								engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+							} else {
 								engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
 							}
 						} else {
@@ -960,9 +970,11 @@ struct twk_ld_slave {
 					}
 
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
+						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 							engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-						else {
+							engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+						} else {
 							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
 						}
 					} else {
@@ -2046,7 +2058,7 @@ public:
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Compute(){
-		//return(ComputePerformance());
+		return(ComputePerformance());
 
 		if(settings.in.size() == 0){
 			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
@@ -2330,6 +2342,8 @@ public:
 		f[5] = &twk_ld_engine::PhasedList;
 		f[6] = &twk_ld_engine::UnphasedRunlength;
 		f[7] = &twk_ld_engine::PhasedBitmap;
+		f[8] = &twk_ld_engine::PhasedListSpecial;
+		f[9] = &twk_ld_engine::PhasedListVector;
 
 		const std::vector<std::string> method_names = {"PhasedVectorized",
 				"PhasedVectorizedNoMissing",
@@ -2338,7 +2352,9 @@ public:
 				"PhasedRunlength",
 				"PhasedList",
 				"UnphasedRunlength",
-				"PhasedBitmap"};
+				"PhasedBitmap",
+				"PhasedListSpecial",
+				"PhasedListBV"};
 
 		uint8_t unpack_list[10];
 		memset(unpack_list, TWK_LDD_VEC, 10);
@@ -2346,6 +2362,8 @@ public:
 		unpack_list[5] = TWK_LDD_LIST;
 		unpack_list[6] = TWK_LDD_NONE;
 		unpack_list[7] = TWK_LDD_BITMAP;
+		unpack_list[8] = TWK_LDD_ALL;
+		unpack_list[9] = TWK_LDD_ALL;
 
 		twk_ld_perf perfs[10];
 		uint32_t perf_size = reader.hdr.GetNumberSamples()*4 + 2;
@@ -2357,7 +2375,8 @@ public:
 		}
 
 		//prepare_shuffling_dictionary();
-		for(int method = 0; method < 8; ++method){
+		for(int method = 0; method < 10; ++method){
+			if(method == 2 || method == 3 || method == 4 || method == 6) continue;
 			std::cerr << utility::timestamp("LOG","PROGRESS") << "Starting method: " << method_names[method] << "..." << std::endl;
 			settings.ldd_load_type = unpack_list[method];
 			if(this->LoadBlocks(reader, bit, balancer, settings) == false){
@@ -2389,7 +2408,7 @@ public:
 			//std::cerr << "m=" << method << " " << utility::ToPrettyString(1) << " " << utility::ToPrettyString((uint64_t)((float)1/timer.Elapsed().count())) << "/s " << utility::ToPrettyString((uint64_t)((float)1*reader.hdr.GetNumberSamples()/timer.Elapsed().count())) << "/gt/s " << timer.ElapsedString() << " " << utility::ToPrettyString(1) << std::endl;
 		}
 
-		for(int i = 0; i < 8; ++i){
+		for(int i = 0; i < 10; ++i){
 			for(int j = 0; j < perf_size; ++j){
 				std::cout << i<<"\t"<<j<<"\t"<< (double)perfs[i].cycles[j]/perfs[i].freq[j] << "\t" << perfs[i].freq[j] << "\t" << perfs[i].cycles[j] << '\n';
 			}
