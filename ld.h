@@ -16,7 +16,7 @@
 // Method 1: Performance + no math
 // Method 2: Debug correctness
 // Method 3: Print LD difference Phased and Unphased
-#define SLAVE_DEBUG_MODE 1
+#define SLAVE_DEBUG_MODE 0
 
 namespace tomahawk {
 
@@ -632,6 +632,7 @@ public:
 		n_samples(0), n_out(0), n_lim(10000), n_out_tick(250),
 		byte_width(0), byte_aligned_end(0), vector_cycles(0),
 		phased_unbalanced_adjustment(0), unphased_unbalanced_adjustment(0), t_out(0),
+		math_divide(0),
 		index(nullptr), writer(nullptr), progress(nullptr), list_out(nullptr)
 	{
 		memset(n_method, 0, sizeof(uint64_t)*10);
@@ -653,6 +654,7 @@ public:
 		vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
 		phased_unbalanced_adjustment   = (samples*2)%8;
 		unphased_unbalanced_adjustment = samples%4;
+		math_divide = std::ceil((float)2*samples/128) + 1;
 	}
 
 	void SetBlocksize(const uint32_t s){
@@ -735,6 +737,7 @@ public:
 	uint32_t unphased_unbalanced_adjustment; // Modulus remainder
 	uint64_t t_out; // number of bytes written
 	uint64_t n_method[10];
+	uint32_t math_divide;
 
 	IndexEntryOutput irecF, irecR;
 	ZSTDCodec zcodec; // reusable zstd codec instance with internal context.
@@ -770,16 +773,16 @@ struct twk_ld_slave {
 		delete thread;
 
 		if(settings->force_phased && settings->low_memory && settings->bitmaps)
-			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this);
-			else thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this);
+			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this, nullptr);
+			else thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmap, this, nullptr);
 		else if(settings->force_phased){
-			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedWindow, this);
+			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedWindow, this, nullptr);
 			else thread = new std::thread(&twk_ld_slave::CalculatePhased, this, nullptr);
 		} else if(settings->forced_unphased){
 			thread = new std::thread(&twk_ld_slave::CalculateUnphased, this, nullptr);
 		}
 		else {
-			thread = new std::thread(&twk_ld_slave::Calculate, this);
+			thread = new std::thread(&twk_ld_slave::Calculate, this, nullptr);
 		}
 
 		return(thread);
@@ -866,7 +869,7 @@ struct twk_ld_slave {
 		// Heuristically determined linear model at varying number of samples
 		// using SSE4.2
 		// y = 0.008145*n_s + 32.8227
-		const uint32_t thresh_nomiss = 0.008145*n_s + 32.8227;
+		//const uint32_t thresh_nomiss = 0.008145*n_s + 32.8227;
 		// RLEP-BVP intersection
 		// y = 0.0047*n_s + 5.2913
 		const uint32_t thresh_miss = 0.0047*n_s + 5.2913;
@@ -880,13 +883,15 @@ struct twk_ld_slave {
 					}
 
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
+						engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
+						//engine.PhasedListSpecial(blocks[0],i,blocks[0],j,perf);
+						/*if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 							engine.PhasedList(blocks[0],i,blocks[0],j,perf);
-							engine.PhasedListSpecial(blocks[0],i,blocks[0],j,perf);
-							engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
+							//engine.PhasedListSpecial(blocks[0],i,blocks[0],j,perf);
+							//engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
 						} else {
 							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[0],j,perf);
-						}
+						}*/
 					} else {
 						if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
 							engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
@@ -914,13 +919,16 @@ struct twk_ld_slave {
 
 							//std::cerr << ii << "/" << n_blocks1 << "," << jj << "/" << n_blocks2 << "," << i << "/" << ii+bsize << "," << j << "/" << jj+bsize << " bsize=" << bsize << std::endl;
 							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-								if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
+								engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+								//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+
+								/*if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 									engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-									engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
-									engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+									//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+									//engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 								} else {
 									engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
-								}
+								}*/
 							} else {
 								if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
 									engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -941,13 +949,15 @@ struct twk_ld_slave {
 						}
 
 						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-							if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
+							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+							//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+							/*if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 								engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-								engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
-								engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+								//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+								//engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 							} else {
 								engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
-							}
+							}*/
 						} else {
 							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
 								engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -970,13 +980,15 @@ struct twk_ld_slave {
 					}
 
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
-						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
+						engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+						//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+						/*if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss){
 							engine.PhasedList(blocks[0],i,blocks[1],j,perf);
-							engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
-							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+							//engine.PhasedListSpecial(blocks[0],i,blocks[1],j,perf);
+							//engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 						} else {
 							engine.PhasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
-						}
+						}*/
 					} else {
 						if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
 							engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -1184,8 +1196,7 @@ struct twk_ld_slave {
 		return true;
 	}
 
-	bool CalculatePhasedBitmap(){
-		std::cerr << "regular bitmap" << std::endl;
+	bool CalculatePhasedBitmap(twk_ld_perf* perf = nullptr){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
@@ -1193,10 +1204,6 @@ struct twk_ld_slave {
 		i_start = ticker->fL; j_start = ticker->fR;
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
-
-		uint32_t cycle_thresh = n_s / 45;
-		if(settings->cycle_threshold != 0)
-			cycle_thresh = settings->cycle_threshold;
 
 		const twk1_t* rcds0 = nullptr;
 		const twk1_t* rcds1 = nullptr;
@@ -1216,10 +1223,11 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(rcds0[i].gt->n + rcds0[j].gt->n < cycle_thresh)
-							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
-						else
-							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedBitmap(blocks[0],i,blocks[0],j,perf);
+						} else {
+							engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
+						}
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -1230,10 +1238,11 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(rcds0[i].gt->n + rcds1[j].gt->n < cycle_thresh)
-							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
-						else
-							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedBitmap(blocks[0],i,blocks[1],j,perf);
+						} else {
+							engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
+						}
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
@@ -1253,8 +1262,7 @@ struct twk_ld_slave {
 		return true;
 	}
 
-	bool CalculatePhasedBitmapWindow(){
-		std::cerr << "windowed bitmap" << std::endl;
+	bool CalculatePhasedBitmapWindow(twk_ld_perf* perf = nullptr){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
@@ -1263,14 +1271,16 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
-		uint32_t cycle_thresh = n_s / 45;
-		if(settings->cycle_threshold != 0)
-			cycle_thresh = settings->cycle_threshold;
+		const twk1_t* rcds0 = nullptr;
+		const twk1_t* rcds1 = nullptr;
+
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
 			this->UpdateBlocks(blocks,from,to);
+			rcds0 = blocks[0].blk->rcds;
+			rcds1 = blocks[1].blk->rcds;
 
 			if(type == 1){
 				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
@@ -1286,10 +1296,11 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh)
-							engine.PhasedRunlength(blocks[0],i,blocks[0],j,nullptr);
-						else
-							engine.PhasedBitmap(blocks[0],i,blocks[0],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedBitmap(blocks[0],i,blocks[0],j,perf);
+						} else {
+							engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
+						}
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -1307,10 +1318,11 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh)
-							engine.PhasedRunlength(blocks[0],i,blocks[1],j,nullptr);
-						else
-							engine.PhasedBitmap(blocks[0],i,blocks[1],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedBitmap(blocks[0],i,blocks[1],j,perf);
+						} else {
+							engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
+						}
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
@@ -1330,8 +1342,7 @@ struct twk_ld_slave {
 		return true;
 	}
 
-	bool CalculatePhasedWindow(){
-		std::cerr << "windowed phased" << std::endl;
+	bool CalculatePhasedWindow(twk_ld_perf* perf = nullptr){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
@@ -1340,15 +1351,17 @@ struct twk_ld_slave {
 		prev_i = 0; prev_j = 0;
 		n_cycles = 0;
 
-		// heuristcally determined
-		uint32_t cycle_thresh = n_s / 45;
-		if(settings->cycle_threshold != 0)
-			cycle_thresh = settings->cycle_threshold;
+		const uint32_t thresh_miss = 0.0047*n_s + 5.2913;
+
+		const twk1_t* rcds0 = nullptr;
+		const twk1_t* rcds1 = nullptr;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
 			this->UpdateBlocks(blocks,from,to);
+			rcds0 = blocks[0].blk->rcds;
+			rcds1 = blocks[1].blk->rcds;
 
 			if(type == 1){
 				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
@@ -1367,10 +1380,14 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh)
-							engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
-						else
-							engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
+						} else {
+							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+								engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
+							else
+								engine.PhasedVectorized(blocks[0],i,blocks[0],j,perf);
+						}
 					}
 				}
 				progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -1389,10 +1406,14 @@ struct twk_ld_slave {
 							continue;
 						}
 
-						if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh)
-							engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-						else
-							engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+						} else {
+							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+								engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
+							else
+								engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
+						}
 					}
 				}
 				progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
@@ -1414,7 +1435,7 @@ struct twk_ld_slave {
 		return true;
 	}
 
-	bool Calculate(){
+	bool Calculate(twk_ld_perf* perf = nullptr){
 		twk1_ldd_blk blocks[2];
 		uint32_t from, to; uint8_t type;
 		Timer timer; timer.Start();
@@ -1431,10 +1452,17 @@ struct twk_ld_slave {
 		if(settings->cycle_threshold != 0)
 			cycle_thresh_u = settings->cycle_threshold;
 
+		const uint32_t thresh_miss = 0.0047*n_s + 5.2913;
+
+		const twk1_t* rcds0 = nullptr;
+		const twk1_t* rcds1 = nullptr;
+
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
 
 			this->UpdateBlocks(blocks,from,to);
+			rcds0 = blocks[0].blk->rcds;
+			rcds1 = blocks[1].blk->rcds;
 
 			if(type == 1){
 				for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
@@ -1450,10 +1478,13 @@ struct twk_ld_slave {
 								engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
 							}
 						} else {
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[0].blk->rcds[j].ac) < cycle_thresh_p){
-								engine.PhasedList(blocks[0],i,blocks[0],j,nullptr);
+							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+								engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
 							} else {
-								engine.PhasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+								if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+									engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
+								else
+									engine.PhasedVectorized(blocks[0],i,blocks[0],j,perf);
 							}
 						}
 					}
@@ -1473,10 +1504,13 @@ struct twk_ld_slave {
 								engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
 							}
 						} else {
-							if(std::min(blocks[0].blk->rcds[i].ac,blocks[1].blk->rcds[j].ac) < cycle_thresh_p)
-								engine.PhasedList(blocks[0],i,blocks[1],j,nullptr);
-							else {
-								engine.PhasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+								engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+							} else {
+								if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+									engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
+								else
+									engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
 							}
 						}
 
@@ -1486,7 +1520,6 @@ struct twk_ld_slave {
 			}
 
 		}
-		//std::cerr << "done" << std::endl;
 
 		// if preloaded
 		if(settings->low_memory == false){
@@ -1511,8 +1544,6 @@ struct twk_ld_slave {
 		n_cycles = 0;
 		const twk1_t* rcds0 = nullptr;
 		const twk1_t* rcds1 = nullptr;
-
-		uint32_t lim = 1299.351;
 
 		while(true){
 			if(!ticker->Get(from, to, type)) break;
@@ -2058,7 +2089,7 @@ public:
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Compute(){
-		return(ComputePerformance());
+		//return(ComputePerformance());
 
 		if(settings.in.size() == 0){
 			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
@@ -2362,8 +2393,8 @@ public:
 		unpack_list[5] = TWK_LDD_LIST;
 		unpack_list[6] = TWK_LDD_NONE;
 		unpack_list[7] = TWK_LDD_BITMAP;
-		unpack_list[8] = TWK_LDD_ALL;
-		unpack_list[9] = TWK_LDD_ALL;
+		unpack_list[8] = TWK_LDD_VEC | TWK_LDD_LIST;
+		unpack_list[9] = TWK_LDD_VEC | TWK_LDD_LIST;
 
 		twk_ld_perf perfs[10];
 		uint32_t perf_size = reader.hdr.GetNumberSamples()*4 + 2;
@@ -2375,7 +2406,7 @@ public:
 		}
 
 		//prepare_shuffling_dictionary();
-		for(int method = 0; method < 10; ++method){
+		for(int method = 8; method < 10; ++method){
 			if(method == 2 || method == 3 || method == 4 || method == 6) continue;
 			std::cerr << utility::timestamp("LOG","PROGRESS") << "Starting method: " << method_names[method] << "..." << std::endl;
 			settings.ldd_load_type = unpack_list[method];
@@ -2410,7 +2441,9 @@ public:
 
 		for(int i = 0; i < 10; ++i){
 			for(int j = 0; j < perf_size; ++j){
-				std::cout << i<<"\t"<<j<<"\t"<< (double)perfs[i].cycles[j]/perfs[i].freq[j] << "\t" << perfs[i].freq[j] << "\t" << perfs[i].cycles[j] << '\n';
+				// Print if non-zero
+				if(perfs[i].freq[j] != 0)
+					std::cout << i << "\t" << j << "\t" << (double)perfs[i].cycles[j]/perfs[i].freq[j] << "\t" << perfs[i].freq[j] << "\t" << perfs[i].cycles[j] << '\n';
 			}
 			delete[] perfs[i].cycles;
 		}

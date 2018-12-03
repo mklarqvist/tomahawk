@@ -483,11 +483,32 @@ public:
 	};
 
 	struct ilist_cont {
-		ilist_cont() : n(0), m(78126), data(new ilist_t[78126]){}
+		ilist_cont(uint32_t n_s) : n(0), m(n_s*2), s(0), data(new ilist_t[n_s*2]){}
+		ilist_cont() : n(0), m(0), s(0), data(nullptr){}
 		~ilist_cont(){ delete[] data; }
 
-		void operator+=(const int32_t p){
+		void resize(uint32_t n_s){
+			n = 0; s = 0;
+			delete[] data;
+			m = std::ceil((float)2*n_s/128) + 1;
+			data = new ilist_t[m];
+			//std::cerr << "m=" << m << std::endl;
+		}
+
+		void resize2(uint32_t n_s){
+			s = 0;
+			delete[] data;
+			m = n_s / 128 + 1;
+			n = m;
+			//std::cerr << "allocating=" << m << " registers" << std::endl;
+			data = new ilist_t[m];
+			//std::cerr << "m=" << m << std::endl;
+		}
+
+		void Add(const int32_t p){
+			//std::cerr << "add=" << p << "/" << m*128 << " bin=" << p / 128 << "/" << m << std::endl;
 			assert(p < m*128);
+			//data[p / 128].Set(p);
 			if(p / 128 == tail()){
 				assert(n != 0);
 				data[n - 1].Set(p);
@@ -499,17 +520,81 @@ public:
 				data[n - 1].bin = p / 128;
 				data[n - 1].Set(p);
 			}
+			++s;
+		}
+
+		void operator+=(const int32_t p){
+			//std::cerr << "add=" << p << "/" << m*128 << " bin=" << p / 128 << "/" << m << std::endl;
+			assert(p < m*128);
+			data[p / 128].Set(p);
+			++s;
+			if(pos.size()){
+				if(pos.back() != p/128)
+					pos.push_back(p/128);
+			} else pos.push_back(p/128);
 		}
 
 		inline int32_t tail() const{ return(n == 0 ? -1 : data[n - 1].bin); }
 
-		uint32_t n, m;
+		void cleanup(){
+			if(s == 0){
+				m = 0;
+				n = 0;
+				delete[] data;
+				data = nullptr;
+				pos.clear();
+			}
+		}
+
+		uint32_t n, m, s;
 		ilist_t* data;
+		std::vector<uint32_t> pos;
+	};
+
+	struct ilist_cont_bins {
+		ilist_cont_bins() : n(0), m(0), b(0), data(nullptr){}
+		~ilist_cont_bins(){ delete[] data; }
+
+		void resize(uint32_t n_s){
+			delete[] data;
+			m = 128;
+			n = m;
+			b = std::ceil((float)2*n_s / 128) + 1;
+			//std::cerr << "registers=" << std::ceil((float)2*n_s / 128) + 1 << std::endl;
+			b = std::ceil((float)b / m);
+			data = new ilist_cont[m];
+			//std::cerr << "allocating=" << 128 << " bins" << std::endl;
+			for(int i = 0; i < m; ++i){
+				//std::cerr << "resizing to=" << b*128 << std::endl;
+				data[i].resize2(b*128);
+			}
+			//exit(1);
+		}
+
+		void operator+=(const int32_t p){
+			//std::cerr << "Adding=" << p << "->" << p % (b * 128) << " in bucket " << p / (b * 128) << std::endl;
+			data[p / (b * 128)] += p % (b * 128);
+			if(pos.size()){
+				if(pos.back() != (p / (b * 128)))
+					pos.push_back(p / (b * 128));
+			} else pos.push_back(p / (b * 128));
+		}
+
+		void cleanup(){
+			for(int i = 0; i < m; ++i){
+				data[i].cleanup();
+			}
+		}
+
+		uint32_t n, m, b;
+		//ilist_cont_bins* heap;
+		ilist_cont* data; // containers for each bin
+		std::vector<uint32_t> pos;
 	};
 
 	twk_igt_list() :
 		own(1), n(0), m(0), l_list(0),
-		list(nullptr), bv(nullptr),
+		list(nullptr), bv(nullptr), x_bins(0),
 		bin_bitmap(reinterpret_cast<uint64_t*>(aligned_malloc(2*sizeof(uint64_t), SIMD_ALIGNMENT)))
 	{
 		memset(bin_bitmap, 0, sizeof(uint64_t)*2);
@@ -536,6 +621,7 @@ public:
 			}
 			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
 		}
+		//if(d.m == 0) d.resize(n_samples);
 
 		if(twk.ac > m){
 			//std::cerr << "resize=" << twk.ac << ">" << m << std::endl;
@@ -571,6 +657,7 @@ public:
 		} else {
 			//std::cerr << "in not own" << std::endl;
 
+			//x.resize(n_samples);
 			for(int i = 0; i < twk.gt->n; ++i){
 				const uint32_t len  = twk.gt->GetLength(i);
 				const uint8_t  refA = twk.gt->GetRefA(i);
@@ -582,21 +669,62 @@ public:
 				}
 
 				for(int j = 0; j < 2*len; j+=2){
-					if(refA != 0){ list[l_list++] = cumpos + j + 0; d += cumpos + j + 0; }
-					if(refB != 0){ list[l_list++] = cumpos + j + 1; d += cumpos + j + 1; }
+					if(refA != 0){
+						list[l_list++] = cumpos + j + 0;
+						//d.Add(cumpos + j + 0);
+						//x += cumpos + j + 0;
+					}
+					if(refB != 0){
+						list[l_list++] = cumpos + j + 1;
+						//d.Add(cumpos + j + 1);
+						//x += cumpos + j + 1;
+					}
 				}
 				cumpos += 2*len;
 			}
 			assert(cumpos == n_samples*2);
 			//std::cerr << "total bins=" << d.n << " with ac=" << twk.ac << std::endl;
 
-			uint32_t divide = std::ceil((float)78126 / 2);
-			for(int i = 0; i < d.n; ++i){
-				assert(d.data[i].bin/divide < 2);
-				bin_bitmap[d.data[i].bin/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(d.data[i].bin % divide) / divide)*64) ));
+			for(int i = 0; i < l_list; ++i){
+				if(r_pos.size()){
+					if(r_pos.back() != list[i] / 128)
+						r_pos.push_back(list[i] / 128);
+				} else r_pos.push_back(list[i] / 128);
 			}
-		}
 
+			for(int i = 0; i < r_pos.size(); ++i) r_pos[i] *= 2;
+
+			//d.n = d.m;
+			//std::cerr << "size=" << d.n << " and " << d.m << std::endl;
+			//uint32_t divide = std::ceil((float)d.m / 2);
+			uint32_t divide = std::ceil((float)2*n_samples/128) + 1;
+			for(int i = 0; i < r_pos.size(); ++i){
+				//assert(d.data[i].bin/divide < 2);
+				assert(r_pos[i] / divide < 2);
+				//std::cerr << "binmap=" << i << ": " << d.data[i].bin << "/" << d.n << std::endl;
+				//bin_bitmap[d.data[i].bin/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(d.data[i].bin % divide) / divide)*64) ));
+				bin_bitmap[r_pos[i]/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(r_pos[i] % divide) / divide)*64) ));
+			}
+			//std::cerr << std::bitset<64>(bin_bitmap[0]) << " " << std::bitset<64>(bin_bitmap[1]) << std::endl;
+
+			/*for(int i = 0; i < d.n; ++i){
+				aligned_free(d.data[i].vals);
+				d.data[i].vals = nullptr;
+			}*/
+
+
+			/*x_bins = 0;
+			for(int i = 0; i < x.n; ++i){
+				x_bins += x.data[i].pos.size();
+				//for(int j = 0; j < x.data[i].pos.size(); ++j){
+					//std::cerr << i << "/" << x.n << " " << j << "/" << x.data[i].pos.size() << " -> " << x.data[i].pos[j] << std::endl;
+				//}
+			}
+			//std::cerr << "done" << std::endl;
+			//std::cerr << "bins=" << x_bins << " and " << x.pos.size() << std::endl;
+
+			x.cleanup();*/
+		}
 		return true;
 	}
 
@@ -618,8 +746,11 @@ public:
 	uint32_t* list; // list entries
 	uint64_t* bv; // bit-vector
 	ilist_cont d;
+	ilist_cont_bins x;
+	uint32_t x_bins;
 	// higher level bitmap checks
 	uint64_t* bin_bitmap;
+	std::vector<uint32_t> r_pos;
 };
 
 /**<
@@ -686,6 +817,7 @@ public:
 	{
 		if(n == 0){
 			n = ceil((double)(n_samples*2)/64);
+			n += (n*64) % 128; // must be divisible by 128-bit register
 			data = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
 			mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
 		}

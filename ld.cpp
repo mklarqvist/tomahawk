@@ -110,7 +110,7 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 	const VECTOR_TYPE binmapA = _mm_loadu_si128((const VECTOR_TYPE*)refBV.bin_bitmap);
 	const VECTOR_TYPE binmapB = _mm_loadu_si128((const VECTOR_TYPE*)tgtBV.bin_bitmap);
 	const VECTOR_TYPE binmap  = _mm_and_si128(binmapA,binmapB);
-	const uint64_t b[2] = {_mm_extract_epi64(binmap, 0), _mm_extract_epi64(binmap, 1)};
+	//const uint64_t b[2] = {_mm_extract_epi64(binmap, 0), _mm_extract_epi64(binmap, 1)};
 
 	// Check bins of bins if anything overlaps
 	uint64_t a = 0;
@@ -118,7 +118,8 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 
 	if(a == 0){
 #if SLAVE_DEBUG_MODE == 1
-		const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+		//const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+		const uint32_t n_list = b1.list[p1].d.n < b2.list[p2].d.n ? b1.list[p1].d.n : b2.list[p2].d.n;
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto ticks_per_iter = Cycle(t1-t0);
 		perf->cycles[n_list] += ticks_per_iter.count();
@@ -139,34 +140,19 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 #endif
 	}
 
-	const twk_igt_list::ilist_cont& ref = b1.list[p1].d;
-	const twk_igt_list::ilist_cont& tgt = b2.list[p2].d;
-	const uint32_t n_cycles = ref.n < tgt.n ? ref.n : tgt.n;
-
-	if(n_cycles == 0) helper.alleleCounts[5] = 0;
-	else {
-		if(ref.n >= tgt.n){
-			for(uint32_t i = 0; i < n_cycles; ++i){
-				//std::cerr << tgt.data[i].bin << "->" << tgt.data[i].bin/(78126/2) << " and " << tgt.data[i].bin%64 << std::endl;
-				//assert(tgt.data[i].bin/(78126/2) < 2);
-				if((b[tgt.data[i].bin/(78126/2)] & (1 << (tgt.data[i].bin % 64))) == 0){
-					//std::cerr << "empty" << std::endl;
-					continue;
-				}
-				const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[2*tgt.data[i].bin]);
-				const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[2*tgt.data[i].bin]);
-				popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
-			}
-		} else {
-			for(uint32_t i = 0; i < n_cycles; ++i){
-				if((b[ref.data[i].bin/(78126/2)] & (1 << (ref.data[i].bin % 64))) == 0){
-					//std::cerr << "empty" << std::endl;
-					continue;
-				}
-				const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[2*ref.data[i].bin]);
-				const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[2*ref.data[i].bin]);
-				popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
-			}
+	if(refBV.r_pos.size() < tgtBV.r_pos.size()){
+		for(uint32_t i = 0; i < refBV.r_pos.size(); ++i){
+			//std::cerr << "checking=" << refBV.r_pos[i] << "/" << 2*math_divide << std::endl;
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[refBV.r_pos[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[refBV.r_pos[i]]);
+			popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
+		}
+	} else {
+		for(uint32_t i = 0; i < tgtBV.r_pos.size(); ++i){
+			//std::cerr << "checking=" << tgtBV.r_pos[i] << "/" << 2*math_divide << std::endl;
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[tgtBV.r_pos[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[tgtBV.r_pos[i]]);
+			popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
 		}
 	}
 
@@ -176,7 +162,8 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 	++n_method[0];
 
 #if SLAVE_DEBUG_MODE == 1
-	const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+	//const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+	const uint32_t n_list = b1.list[p1].d.n < b2.list[p2].d.n ? b1.list[p1].d.n : b2.list[p2].d.n;
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ticks_per_iter = Cycle(t1-t0);
 	perf->cycles[n_list] += ticks_per_iter.count();
@@ -196,8 +183,8 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 
 bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.resetPhased();
-	const twk_igt_list::ilist_cont& ref = b1.list[p1].d;
-	const twk_igt_list::ilist_cont& tgt = b2.list[p2].d;
+	//const twk_igt_list::ilist_cont& ref = b1.list[p1].d;
+	//const twk_igt_list::ilist_cont& tgt = b2.list[p2].d;
 	const twk_igt_list& refBV = b1.list[p1];
 	const twk_igt_list& tgtBV = b2.list[p2];
 
@@ -219,8 +206,10 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 #if SLAVE_DEBUG_MODE == 1
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto ticks_per_iter = Cycle(t1-t0);
-		perf->cycles[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac] += ticks_per_iter.count();
-		++perf->freq[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac];
+		//const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+		const uint32_t n_list = refBV.x_bins < tgtBV.x_bins ? refBV.x_bins : tgtBV.x_bins;
+		perf->cycles[n_list] += ticks_per_iter.count();
+		++perf->freq[n_list];
 #endif
 		helper.alleleCounts[5] = 0;
 		helper.alleleCounts[4] = b1.list[p1].l_list - helper.alleleCounts[5];
@@ -237,7 +226,121 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 #endif
 	}
 
-	uint32_t i = 0, j = 0;
+
+	// Cycle over buckets of registers
+	if(refBV.x.pos.size() < tgtBV.x.pos.size()){
+		//std::cerr << "pos=" << refBV.x.pos.size() << std::endl;
+		for(int k = 0; k < refBV.x.pos.size(); ++k){
+			const uint32_t reg = refBV.x.pos[k];
+			//std::cerr << "curpos=" << reg << std::endl;
+			if(!(refBV.x.data[reg].s && tgtBV.x.data[reg].s)) continue;
+				//uint32_t i = 0, j = 0;
+				//uint32_t ii = 0, jj = 0;
+
+				const twk_igt_list::ilist_cont& ref = refBV.x.data[reg];
+				const twk_igt_list::ilist_cont& tgt = tgtBV.x.data[reg];
+				const std::vector<uint32_t>& posA = ref.pos;
+				const std::vector<uint32_t>& posB = tgt.pos;
+
+				// Lookup tgt register in ref register
+				if(posA.size() < posB.size()){
+					for(int i = 0; i < posA.size(); ++i){
+						const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)ref.data[posA[i]].vals);
+						const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgt.data[posA[i]].vals);
+						popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
+					}
+				} else {
+					for(int i = 0; i < posB.size(); ++i){
+						const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)ref.data[posB[i]].vals);
+						const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgt.data[posB[i]].vals);
+						popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
+					}
+				}
+
+				/*while(true){
+					// select
+					const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)refBV.x.data[reg].data[i].vals);
+					const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgtBV.x.data[reg].data[j].vals);
+
+					popcnt128(helper.alleleCounts[5],
+							_mm_and_si128(
+							  _mm_and_si128(vectorA,vectorB),
+											_mm_set1_epi32(mask_lookup[refBV.x.data[reg].data[i].bin == tgtBV.x.data[reg].data[j].bin])));
+
+					//std::cerr << "Diff@" << k << " -> " << refBV.x.data[k].data[i].bin << " and " << tgtBV.x.data[k].data[j].bin << std::endl;
+					ii = i; jj = j;
+					i += (refBV.x.data[reg].data[ii].bin == tgtBV.x.data[reg].data[jj].bin); // A == B
+					j += (refBV.x.data[reg].data[ii].bin == tgtBV.x.data[reg].data[jj].bin); // A == B
+					j += refBV.x.data[reg].data[ii].bin > tgtBV.x.data[reg].data[jj].bin; // A > B
+					i += refBV.x.data[reg].data[ii].bin < tgtBV.x.data[reg].data[jj].bin; // A < B
+
+					//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
+					if(i == refBV.x.data[reg].n || j == tgtBV.x.data[reg].n) break;
+				}*/
+				//std::cerr << "overlap=" << helper.alleleCounts[5] << std::endl;
+			//}
+			//else {
+				//std::cerr << "no overlap = " << refBV.x.data[k].s << " && " << tgtBV.x.data[k].s << std::endl;
+			//}
+		}
+	} else {
+		//std::cerr << "pos=" << refBV.x.pos.size() << std::endl;
+		for(int k = 0; k < tgtBV.x.pos.size(); ++k){
+			const uint32_t reg = tgtBV.x.pos[k];
+			if(!(refBV.x.data[reg].s && tgtBV.x.data[reg].s)) continue;
+			//if(refBV.x.data[reg].s && tgtBV.x.data[reg].s){
+				//uint32_t i = 0, j = 0;
+				//uint32_t ii = 0, jj = 0;
+
+				//std::cerr << "checking=" << tgtBV.x.data[reg].pos.size() << std::endl;
+				const twk_igt_list::ilist_cont& ref = refBV.x.data[reg];
+				const twk_igt_list::ilist_cont& tgt = tgtBV.x.data[reg];
+				const std::vector<uint32_t>& posA = ref.pos;
+				const std::vector<uint32_t>& posB = tgt.pos;
+
+				if(posA.size() < posB.size()){
+					for(int i = 0; i < posA.size(); ++i){
+						const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)ref.data[posA[i]].vals);
+						const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgt.data[posA[i]].vals);
+						popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
+					}
+				} else {
+					for(int i = 0; i < posB.size(); ++i){
+						const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)ref.data[posB[i]].vals);
+						const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgt.data[posB[i]].vals);
+						popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
+					}
+				}
+
+				/*while(true){
+					// select
+					const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)refBV.x.data[reg].data[i].vals);
+					const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)tgtBV.x.data[reg].data[j].vals);
+
+					popcnt128(helper.alleleCounts[5],
+							_mm_and_si128(
+							  _mm_and_si128(vectorA,vectorB),
+											_mm_set1_epi32(mask_lookup[refBV.x.data[reg].data[i].bin == tgtBV.x.data[reg].data[j].bin])));
+
+					//std::cerr << "Diff@" << k << " -> " << refBV.x.data[k].data[i].bin << " and " << tgtBV.x.data[k].data[j].bin << std::endl;
+					ii = i; jj = j;
+					i += (refBV.x.data[reg].data[ii].bin == tgtBV.x.data[reg].data[jj].bin); // A == B
+					j += (refBV.x.data[reg].data[ii].bin == tgtBV.x.data[reg].data[jj].bin); // A == B
+					j += refBV.x.data[reg].data[ii].bin > tgtBV.x.data[reg].data[jj].bin; // A > B
+					i += refBV.x.data[reg].data[ii].bin < tgtBV.x.data[reg].data[jj].bin; // A < B
+
+					//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
+					if(i == refBV.x.data[reg].n || j == tgtBV.x.data[reg].n) break;
+				}*/
+				//std::cerr << "overlap=" << helper.alleleCounts[5] << std::endl;
+			//}
+			//else {
+				//std::cerr << "no overlap = " << refBV.x.data[k].s << " && " << tgtBV.x.data[k].s << std::endl;
+			//}
+		}
+	}
+
+	/*uint32_t i = 0, j = 0;
 	const uint32_t mask_lookup[2] = {(uint32_t)0, ~(uint32_t)0};
 	uint32_t ii = 0, jj = 0;
 	while(true){
@@ -259,21 +362,21 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 
 		//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
 		if(i == ref.n || j == tgt.n) break;
-	}
+	}*/
 
-
+#if SLAVE_DEBUG_MODE == 1
+	auto t1 = std::chrono::high_resolution_clock::now();
+	auto ticks_per_iter = Cycle(t1-t0);
+	//const uint32_t n_list = refBV.l_list < tgtBV.l_list ? refBV.l_list : tgtBV.l_list;
+	const uint32_t n_list = refBV.x_bins < tgtBV.x_bins ? refBV.x_bins : tgtBV.x_bins;
+	perf->cycles[n_list] += ticks_per_iter.count();
+	++perf->freq[n_list];
+#endif
 
 	helper.alleleCounts[4] = b1.list[p1].l_list - helper.alleleCounts[5];
 	helper.alleleCounts[1] = b2.list[p2].l_list - helper.alleleCounts[5];
 	helper.alleleCounts[0] = 2*n_samples - ((b1.list[p1].l_list + b2.list[p2].l_list) - helper.alleleCounts[5]);
 	++n_method[0];
-
-#if SLAVE_DEBUG_MODE == 1
-	auto t1 = std::chrono::high_resolution_clock::now();
-	auto ticks_per_iter = Cycle(t1-t0);
-	perf->cycles[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac] += ticks_per_iter.count();
-	++perf->freq[b1.blk->rcds[p1].ac + b2.blk->rcds[p2].ac];
-#endif
 
 #if SLAVE_DEBUG_MODE == 2
 	std::cerr << "listS=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[4] << "," << helper.alleleCounts[5] << std::endl;
