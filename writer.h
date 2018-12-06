@@ -272,6 +272,7 @@ struct twk_two_writer_t : public twk_writer_t {
 			ioentry.n = oblock.n;
 			ioentry.b_unc = ubuf.size();
 			ioentry.b_cmp = obuf.size();
+
 			if(oindex.state == TWK_IDX_SORTED){ // if index is sorted
 				uint32_t ridb = oblock.rcds[0].ridB;
 				for(int i = 1; i < oblock.n; ++i){ // check if ridb is uniform

@@ -99,7 +99,13 @@ struct IndexEntryEntry : public IndexEntry {
 			foff = entry.foff;
 			rid = entry.rid;
 		}
-		assert(entry.rid == this->rid);
+
+		// Assertion.
+		if(entry.rid != this->rid){
+			std::cerr << "illegal addition of rid: " << entry.rid << "!=" << rid << std::endl;
+			std::cerr << entry.rid << ":" << entry.minpos << "-" << entry.maxpos << " " << entry.n << std::endl;
+			exit(1);
+		}
 
 		n += entry.n;
 		maxpos = entry.maxpos;

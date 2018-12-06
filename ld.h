@@ -632,7 +632,6 @@ public:
 		n_samples(0), n_out(0), n_lim(10000), n_out_tick(250),
 		byte_width(0), byte_aligned_end(0), vector_cycles(0),
 		phased_unbalanced_adjustment(0), unphased_unbalanced_adjustment(0), t_out(0),
-		math_divide(0),
 		index(nullptr), writer(nullptr), progress(nullptr), list_out(nullptr)
 	{
 		memset(n_method, 0, sizeof(uint64_t)*10);
@@ -654,7 +653,6 @@ public:
 		vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
 		phased_unbalanced_adjustment   = (samples*2)%8;
 		unphased_unbalanced_adjustment = samples%4;
-		math_divide = std::ceil((float)2*samples/128) + 1;
 	}
 
 	void SetBlocksize(const uint32_t s){
@@ -737,7 +735,6 @@ public:
 	uint32_t unphased_unbalanced_adjustment; // Modulus remainder
 	uint64_t t_out; // number of bytes written
 	uint64_t n_method[10];
-	uint32_t math_divide;
 
 	IndexEntryOutput irecF, irecR;
 	ZSTDCodec zcodec; // reusable zstd codec instance with internal context.

@@ -361,16 +361,20 @@ int view(int argc, char** argv){
 		return(1);
 	}
 
+	// New instance of reader.
 	tomahawk::two_reader oreader;
 
+	// Open file handle.
 	if(oreader.Open(settings.in) == false){
 		std::cerr << "failed to open" << std::endl;
 		return 1;
 	}
 
+	// Build intervals data structures if any are available.
 	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
 		return 1;
 
+	// Prepare writer.
 	std::string view_string = "##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
 	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
 	oreader.hdr.literals_ += view_string;
@@ -389,7 +393,7 @@ int view(int argc, char** argv){
 	else if(writer.mode == 'b')
 		writer.WriteHeader(oreader);
 
-	//tomahawk::twk_two_filter filter;
+	// Construct filters.
 	settings.filter.Build();
 
 	// todo: if data is sorted then only visit overlapping blocks

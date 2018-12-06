@@ -142,14 +142,12 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 
 	if(refBV.r_pos.size() < tgtBV.r_pos.size()){
 		for(uint32_t i = 0; i < refBV.r_pos.size(); ++i){
-			//std::cerr << "checking=" << refBV.r_pos[i] << "/" << 2*math_divide << std::endl;
 			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[refBV.r_pos[i]]);
 			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[refBV.r_pos[i]]);
 			popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
 		}
 	} else {
 		for(uint32_t i = 0; i < tgtBV.r_pos.size(); ++i){
-			//std::cerr << "checking=" << tgtBV.r_pos[i] << "/" << 2*math_divide << std::endl;
 			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[tgtBV.r_pos[i]]);
 			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[tgtBV.r_pos[i]]);
 			popcnt128(helper.alleleCounts[5], _mm_and_si128(vectorA,vectorB));
@@ -1570,6 +1568,8 @@ bool twk_ld_engine::CompressFwd(){
 		writer->Add(ibuf.size(), obuf.size(), obuf);
 		irecF.fend = writer->stream.tellp();
 		irecF.n = blk_f.n;
+		irecF.b_cmp = ibuf.size();
+		irecF.b_unc = twk1_two_t::packed_size * irecF.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecF);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
 		ibuf.reset();
@@ -1596,6 +1596,8 @@ bool twk_ld_engine::CompressRev(){
 		writer->Add(ibuf.size(), obuf.size(), obuf);
 		irecR.fend = writer->stream.tellp();
 		irecR.n = blk_r.n;
+		irecR.b_cmp = ibuf.size();
+		irecR.b_unc = twk1_two_t::packed_size * irecR.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecR);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
 		ibuf.reset();

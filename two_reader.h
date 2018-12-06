@@ -192,7 +192,7 @@ struct twk_two_settings {
 };
 
 /**<
- * Reader of twk files.
+ * Reader of twk output files.
  */
 class two_reader {
 public:

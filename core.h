@@ -1204,7 +1204,7 @@ public:
 	}
 
 	bool Sort(){
-		std::cerr << "sorting=" << n << std::endl;
+		//std::cerr << "sorting=" << n << std::endl;
 		std::sort(start(), end());
 		return(true);
 	}
