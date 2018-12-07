@@ -62,34 +62,8 @@ const std::regex TWK_REGEX_NUMBER_EXP      = std::regex("^[0-9]+([eE][-+]?[0-9]+
 
 /*------   EOF markers   ------*/
 const std::string TOMAHAWK_FILE_EOF = "a4f54f39f5e251a6993796f48164ccf554f1b680c2ebbb13be301f3ff76f82cf";
-const uint32_t TOMAHAWK_FILE_EOF_LENGTH = 32;
-const uint64_t TOMAHAWK_INDEX_START_MARKER = 1954702206512158641;
-
-/*------   Front application functions ------*/
-static void ProgramMessage(const bool separator = true){
-	std::cerr << "Program: " << TOMAHAWK_PROGRAM_NAME << " " << VERSION << std::endl;
-	std::cerr << "Contact: Marcus D. R. Klarqvist <mk819@cam.ac.uk>" << std::endl;
-	std::cerr << "Documentation: https://github.com/mklarqvist/tomahawk" << std::endl;
-	std::cerr << "License: MIT" << std::endl;
-	if(separator) std::cerr << "----------" << std::endl;
-}
-
-static void ProgramHelp(void){
-	std::cerr << "Usage: " << TOMAHAWK_PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: import, view, calc, sort, concat, aggregate" << std::endl;
-}
-
-static void ProgramHelpDetailed(void){
-	ProgramHelp();
-	std::cerr <<
-    "\n"
-	"calc         calculate linkage disequilibrium\n"
-	"concat       concatenate TWO files from the same set of samples\n"
-	"import       import VCF/VCF.gz/BCF to TWK\n"
-	"sort         sort TWO file\n"
-    "view         TWO->LD/TWO view, TWO subset and filter\n"
-    "aggregate    data rasterization framework for TWO files\n"<< std::endl;
-}
+const uint32_t    TOMAHAWK_FILE_EOF_LENGTH = 32;
+const uint64_t    TOMAHAWK_INDEX_START_MARKER = 1954702206512158641;
 
 }
 

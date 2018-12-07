@@ -110,10 +110,10 @@ endif
 # see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
 ifneq ($(shell uname), Darwin)
 SHARED_EXT   = so
-LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib,-soname,libtachyon.$(SHARED_EXT)'
+LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)'
 else
 SHARED_EXT   = dylib
-LD_LIB_FLAGS = -dynamiclib -install_name libtachyon.$(SHARED_EXT) '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib'
+LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib'
 endif
 
 CXXFLAGS      = -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
@@ -122,25 +122,9 @@ CFLAGS_VENDOR = -std=c99   $(OPTFLAGS)
 BINARY_RPATHS = '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/openssl,-rpath,$$ORIGIN/htslib'
 
 LIBS := -lzstd -lhts
-CXX_SOURCE = $(wildcard lib/algorithm/compression/*.cpp) \
-			 $(wildcard lib/algorithm/digest/*.cpp) \
-			 $(wildcard lib/algorithm/encryption/*.cpp) \
-		  	 $(wildcard lib/algorithm/permutation/*.cpp) \
-			 $(wildcard lib/containers/*.cpp) \
-			 $(wildcard lib/containers/components/*.cpp) \
-			 $(wildcard lib/core/header/*.cpp) \
-			 $(wildcard lib/core/*.cpp) \
-			 $(wildcard lib/index/*.cpp) \
-			 $(wildcard lib/io/*.cpp) \
-			 $(wildcard lib/io/bcf/*.cpp) \
-			 $(wildcard lib/io/compression/*.cpp) \
-			 $(wildcard lib/io/vcf/*.cpp) \
-			 $(wildcard lib/*.cpp) \
-			 $(wildcard lib/math/*.cpp) \
-			 $(wildcard lib/support/*.cpp) \
-			 $(wildcard lib/utility/*.cpp)
+CXX_SOURCE = $(wildcard lib/*.cpp)
 
-C_SOURCE =
+C_SOURCE = 
 
 OBJECTS  = $(CXX_SOURCE:.cpp=.o) $(C_SOURCE:.c=.o)
 CPP_DEPS = $(CXX_SOURCE:.cpp=.d) $(C_SOURCE:.c=.d)
@@ -162,8 +146,8 @@ all: tomahawk
 
 tomahawk: $(OBJECTS)
 	g++ $(BINARY_RPATHS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o twk
-	#$(MAKE) cleanmost
-	#$(MAKE) library library=true
+	$(MAKE) cleanmost
+	$(MAKE) library library=true
 
 library: $(OBJECTS)
 	@echo 'Building dynamic library...'
@@ -171,8 +155,8 @@ library: $(OBJECTS)
 	@echo 'Building static library...'
 	ar crs libtomahawk.a $(OBJECTS)
 	@echo 'Symlinking library...'
-	ln -sf libtachyon.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
-	ln -sf libtachyon.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
+	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
+	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
 
 examples: $(LIB_EXAMPLE_OUTPUT)
 
