@@ -256,14 +256,14 @@ int sort(int argc, char** argv){
 
 	uint32_t n_threads = std::thread::hardware_concurrency();
 	if(oreader.index.n < n_threads) n_threads = oreader.index.n;
-	uint32_t b_unc_thread = b_unc / n_threads;
+	uint64_t b_unc_thread = b_unc / n_threads;
 	std::cerr << "bytes / thread = " << b_unc_thread << std::endl;
 
 	std::vector< std::pair<uint32_t,uint32_t> > ranges;
-	uint32_t f = 0, t = 0, b_unc_tot = 0;
+	uint64_t f = 0, t = 0, b_unc_tot = 0;
 	for(int i = 0; i < oreader.index.n; ++i){
 		if(b_unc_tot >= b_unc_thread){
-			std::cerr << "adding=" << f << "-" << t <<  " with " << b_unc_tot << std::endl;
+			//std::cerr << "adding=" << f << "-" << t <<  " with " << b_unc_tot << std::endl;
 			ranges.push_back(std::pair<uint32_t,uint32_t>(f, t));
 			b_unc_tot = 0;
 			f = t;
@@ -272,13 +272,14 @@ int sort(int argc, char** argv){
 		++t;
 	}
 	if(f != t){
-		std::cerr << "adding=" << f << "-" << t <<  " with " << b_unc_tot << std::endl;
+		//std::cerr << "adding=" << f << "-" << t <<  " with " << b_unc_tot << std::endl;
 		ranges.push_back(std::pair<uint32_t,uint32_t>(f, t));
 		b_unc_tot = 0;
 		f = t;
 	}
 	std::cerr << "ranges=" << ranges.size() << std::endl;
 	assert(ranges.back().second == oreader.index.n);
+	assert(ranges.size() <= n_threads);
 
 	twk_sort_slave* slaves = new twk_sort_slave[n_threads];
 	std::cerr << "index=" << oreader.index.n << " -> " << oreader.index.n / n_threads << std::endl;
