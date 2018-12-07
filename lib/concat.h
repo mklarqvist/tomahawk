@@ -161,7 +161,7 @@ int concat(int argc, char** argv){
 	}
 	std::cerr << tomahawk::utility::timestamp("LOG") << "All files are compatible. Beginning merging..." << std::endl;
 
-	std::string concat_string = "\n##tomahawk_concatVersion=" + std::to_string(VERSION) + "\n";
+	std::string concat_string = "\n##tomahawk_concatVersion=" + std::string(VERSION) + "\n";
 	concat_string += "##tomahawk_concatCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime(); + "\n";
 	oreader.hdr.literals_ += concat_string;
 

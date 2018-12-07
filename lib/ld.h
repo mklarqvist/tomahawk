@@ -2206,7 +2206,7 @@ public:
 		}
 
 		// Append literal string.
-		std::string calc_string = "\n##tomahawk_calcVersion=" + std::to_string(VERSION) + "\n";
+		std::string calc_string = "\n##tomahawk_calcVersion=" + std::string(VERSION) + "\n";
 		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 		reader.hdr.literals_ += calc_string;
 
@@ -2354,7 +2354,7 @@ public:
 		}
 
 		// Append literal string.
-		std::string calc_string = "\n##tomahawk_calcVersion=" + std::to_string(VERSION) + "\n";
+		std::string calc_string = "\n##tomahawk_calcVersion=" + std::string(VERSION) + "\n";
 		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 		reader.hdr.literals_ += calc_string;
 

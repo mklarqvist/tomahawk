@@ -505,7 +505,7 @@ int sort(int argc, char** argv){
 	owriter.mode = 'b';
 	owriter.oindex.state = TWK_IDX_SORTED;
 	// Write header
-	std::string sort_string = "\n##tomahawk_sortVersion=" + std::to_string(VERSION) + "\n";
+	std::string sort_string = "\n##tomahawk_sortVersion=" + std::string(VERSION) + "\n";
 	sort_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
 	oreader.hdr.literals_ += sort_string;
 	if(owriter.WriteHeader(oreader) == false){

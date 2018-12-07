@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+curl**/
+htslib/
+openssl/
+zstd/

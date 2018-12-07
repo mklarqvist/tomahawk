@@ -375,7 +375,7 @@ int view(int argc, char** argv){
 		return 1;
 
 	// Prepare writer.
-	std::string view_string = "##tomahawk_viewVersion=" + std::to_string(VERSION) + "\n";
+	std::string view_string = "##tomahawk_viewVersion=" + std::string(VERSION) + "\n";
 	view_string += "##tomahawk_viewCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
 	oreader.hdr.literals_ += view_string;
 
