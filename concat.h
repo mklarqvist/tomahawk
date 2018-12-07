@@ -184,6 +184,8 @@ int concat(int argc, char** argv){
 		rec.foff = writer.stream.tellp();
 		writer.stream << oreader.it.oblk;
 		rec.fend = writer.stream.tellp();
+		rec.b_cmp = oreader.it.oblk.nc;
+		rec.b_unc = oreader.it.oblk.n;
 		writer.oindex += rec;
 		++idx_offset;
 	}
@@ -203,6 +205,8 @@ int concat(int argc, char** argv){
 			rec.foff = writer.stream.tellp();
 			writer.stream << rdr.it.oblk;
 			rec.fend = writer.stream.tellp();
+			rec.b_cmp = rdr.it.oblk.nc;
+			rec.b_unc = rdr.it.oblk.n;
 			writer.oindex += rec;
 			++idx_offset;
 		}

@@ -269,7 +269,7 @@ struct twk_two_writer_t : public twk_writer_t {
 			ioentry.foff = stream.tellp();
 			twk_writer_t::Add(ubuf.size(), obuf.size(), obuf);
 
-			ioentry.n = oblock.n;
+			ioentry.n     = oblock.n;
 			ioentry.b_unc = ubuf.size();
 			ioentry.b_cmp = obuf.size();
 
