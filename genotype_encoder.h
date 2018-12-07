@@ -201,7 +201,7 @@ public:
 		const GenotypeHelper ret = GenotypeEncoder::AssessGenotypes(rec,gt.n_missing != 0);
 
 		// Ascertain that there is sufficient amount of samples to reliably calculate LD.
-		uint64_t total = gt.cnt[0] + gt.cnt[1];
+		//uint64_t total = gt.cnt[0] + gt.cnt[1];
 		uint64_t total_hap = gt.hap_cnt[0] + gt.hap_cnt[1] + gt.hap_cnt[4] + gt.hap_cnt[5];
 		if(total_hap < settings.threshold_miss*rec->n_sample){
 			//std::cerr << "filter miss threshold=" << total_hap << "<" << settings.threshold_miss*rec->n_sample << std::endl;
@@ -248,6 +248,8 @@ public:
 		else twk.gt_phase = gt.phase_if_uniform;
 
 		//std::cerr << "phase -> mixed=" << (int)gt.mixed_phasing << ", uniform_phase=" << (int)gt.phase_if_uniform << std::endl;
+		twk.n_hom = gt.hap_cnt[5];
+		twk.n_het = gt.hap_cnt[1] + gt.hap_cnt[4];
 
 		switch(ret.ptype){
 		case(0): return GenotypeEncoder::Encode_<uint8_t> (rec, ret.cnt, twk, flip_allele && settings.flip_major_minor, gt.n_missing != 0);
@@ -331,6 +333,8 @@ public:
 		twk.ac = ac[1];
 		twk.an = ac[2];
 		//std::cerr << "hets=" << hets << std::endl;
+		//std::cerr << twk.pos << ":" << twk.n_het << "," << twk.n_hom << " and " << twk.ac << "," << twk.an << std::endl;
+
 
 		return true;
 	}

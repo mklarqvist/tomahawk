@@ -58,8 +58,8 @@ struct sstats {
 		this->total         += value;
 		this->total_squared += value*value;
 		this->n             += weight;
-		if(value < this->min) this->min = value;
-		if(value > this->max) this->max = value;
+		this->min = value < min ? value : min;
+		this->max = value > max ? value : max;
 	}
 
 	double GetStandardDeviation(const uint32_t cutoff = 2) const{
@@ -68,8 +68,8 @@ struct sstats {
 	}
 
 	// Accessor functions
-	inline double GetTotal(const uint32_t cutoff = 0) const{ return(this->total); }
-	inline double GetTotalSquared(const uint32_t cutoff = 0) const{ return(this->total_squared); }
+	inline double GetTotal(const uint32_t cutoff = 0) const{ return(total < cutoff ? 0 : total); }
+	inline double GetTotalSquared(const uint32_t cutoff = 0) const{ return(total_squared < cutoff ? 0 : total_squared); }
 	inline double GetMin(const uint32_t cutoff = 0) const{ return(this->min); }
 	inline double GetMax(const uint32_t cutoff = 0) const{ return(this->max); }
 
@@ -245,11 +245,13 @@ int aggregate(int argc, char** argv){
 	// Approach 1: Without dropping regions with no data.
 	uint64_t range = 0;
 	for(int i = 0; i < oreader.index.m_ent; ++i){
-		std::cerr << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
-		if(oreader.index.ent_meta[i].n)
+		if(oreader.index.ent_meta[i].n){
+			std::cerr << "index-" << i << ": " << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
 			range += (oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1;
+		}
 	}
 	std::cerr << "range=" << range << std::endl;
+	range = 0;
 
 	// Approach 2: Dropping regions with no data.
 	struct offset_tuple {
@@ -294,13 +296,18 @@ int aggregate(int argc, char** argv){
 			//writer.Add(*oreader.it.rcd);
 			//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
 			if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
-				std::cerr << "a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
+				std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
 				std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
 				exit(1);
 			}
+
+			//Todo: if data is unbalanced
+			//if(oreader.it.rcd->Bpos < rid_offsets[oreader.it.rcd->ridB].min) continue;
+
 			if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
-				std::cerr << "b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
+				std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
 				std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+				std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
 				exit(1);
 			}
 

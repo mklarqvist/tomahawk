@@ -235,7 +235,8 @@ struct twk1_igt_t : public twk1_gt_t {
 struct twk1_t {
 	twk1_t() :
 		gt_ptype(0), gt_flipped(0), gt_phase(0), gt_missing(0),
-		alleles(0), pos(0), ac(0), an(0), rid(0), gt(nullptr){}
+		alleles(0), pos(0), ac(0), an(0), rid(0),
+		n_het(0), n_hom(0), gt(nullptr){}
 	~twk1_t(){ delete gt; }
 
 	twk1_t& operator=(const twk1_t& other){
@@ -247,6 +248,8 @@ struct twk1_t {
 		ac = other.ac;
 		an = other.an;
 		rid = other.rid;
+		n_het = other.n_het;
+		n_hom = other.n_hom;
 		delete[] gt; gt = nullptr;
 		gt = other.gt->Clone();
 		return(*this);
@@ -261,6 +264,8 @@ struct twk1_t {
 		ac = other.ac;
 		an = other.an;
 		rid = other.rid;
+		n_het = other.n_het;
+		n_hom = other.n_hom;
 		delete[] gt; gt = nullptr;
 		other.gt->Move(gt);
 		other.gt = nullptr;
@@ -273,6 +278,7 @@ struct twk1_t {
 
 	void clear(){
 		gt_ptype = 0, gt_phase = 0, gt_missing = 0; alleles = 0; pos = 0; ac = 0; an = 0;
+		n_het = 0, n_hom = 0;
 		if(gt != nullptr) gt->clear();
 	}
 
@@ -285,6 +291,8 @@ struct twk1_t {
 		SerializePrimitive(self.ac, buffer);
 		SerializePrimitive(self.an, buffer);
 		SerializePrimitive(self.rid, buffer);
+		SerializePrimitive(self.n_het, buffer);
+		SerializePrimitive(self.n_hom, buffer);
 		buffer << *self.gt;
 		return(buffer);
 	}
@@ -302,6 +310,8 @@ struct twk1_t {
 		DeserializePrimitive(self.ac, buffer);
 		DeserializePrimitive(self.an, buffer);
 		DeserializePrimitive(self.rid, buffer);
+		DeserializePrimitive(self.n_het, buffer);
+		DeserializePrimitive(self.n_hom, buffer);
 		switch(self.gt_ptype){
 		case(1): self.gt = new twk1_igt_t<uint8_t>; break;
 		case(2): self.gt = new twk1_igt_t<uint16_t>; break;
@@ -316,7 +326,7 @@ struct twk1_t {
 
     uint8_t  gt_ptype: 5, gt_flipped: 1, gt_phase: 1, gt_missing: 1;
     uint8_t  alleles;
-    uint32_t pos, ac, an, rid;
+    uint32_t pos, ac, an, rid, n_het, n_hom;
     twk1_gt_t* gt;
 };
 
@@ -802,8 +812,8 @@ public:
 	inline void reset(void){ memset(this->data, 0, this->n*sizeof(uint64_t)); memset(this->mask, 0, this->n*sizeof(uint64_t)); }
 	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 64))); }
 	inline const bool get(const uint32_t p) const{ return(this->data[p/64] & (1L << (p % 64)));}
-	inline void set(const uint32_t p){ this->data[p/64] |= (1L << (p % 64)); }
-	inline void set(const uint32_t p, const bool val){ this->data[p/64] |= ((uint64_t)val << (p % 64)); }
+	inline void SetData(const uint32_t p){ this->data[p/64] |= (1L << (p % 64)); }
+	inline void SetData(const uint32_t p, const bool val){ this->data[p/64] |= ((uint64_t)val << (p % 64)); }
 
 	/**<
 	 *
@@ -819,7 +829,8 @@ public:
 			n = ceil((double)(n_samples*2)/64);
 			n += (n*64) % 128; // must be divisible by 128-bit register
 			data = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
-			mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
+			if(rec.gt_missing)
+				mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
 		}
 
 		memset(data, 0, n*sizeof(uint64_t));
@@ -835,8 +846,8 @@ public:
 			}
 
 			for(int j = 0; j < 2*len; j+=2){
-				if(refA != 0){ this->set(cumpos + j + 0); }
-				if(refB != 0){ this->set(cumpos + j + 1); }
+				if(refA != 0){ this->SetData(cumpos + j + 0); }
+				if(refB != 0){ this->SetData(cumpos + j + 1); }
 			}
 			cumpos += 2*len;
 		}
@@ -875,19 +886,40 @@ public:
 		const uint32_t byteAlignedEnd  = n / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
 
 		int j = 0;
-		// Search from left->right
-		for(; j < byteAlignedEnd; ++j){
-			if(this->data[j] != 0 || this->mask[j] != 0)
-				break;
-		}
-
-		// Front of zeroes
-		this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
-		if(j != byteAlignedEnd){
-			j = byteAlignedEnd - 1;
-			for(; j > 0; --j){
+		if(rec.gt_missing){
+			// Search from left->right
+			for(; j < byteAlignedEnd; ++j){
 				if(this->data[j] != 0 || this->mask[j] != 0)
 					break;
+			}
+
+			// Front of zeroes
+			this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
+			if(j != byteAlignedEnd){
+				j = byteAlignedEnd - 1;
+				for(; j > 0; --j){
+					if(this->data[j] != 0 || this->mask[j] != 0)
+						break;
+				}
+			}
+		}
+		// If no data is missing then we have no mask. Run this subroutine instead
+		// to avoid memory problems.
+		else {
+			// Search from left->right
+			for(; j < byteAlignedEnd; ++j){
+				if(this->data[j] != 0)
+					break;
+			}
+
+			// Front of zeroes
+			this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
+			if(j != byteAlignedEnd){
+				j = byteAlignedEnd - 1;
+				for(; j > 0; --j){
+					if(this->data[j] != 0)
+						break;
+				}
 			}
 		}
 
@@ -900,7 +932,7 @@ public:
 public:
 	uint32_t  n; // n bytes, m allocated entries
 	uint16_t front_zero; // leading zeros in aligned vector width
-	uint16_t tail_zero; // trailing zeros in aligned vector width
+	uint16_t tail_zero;  // trailing zeros in aligned vector width
 	uint64_t* data;
 	uint64_t* mask;
 };

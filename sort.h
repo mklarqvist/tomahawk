@@ -246,15 +246,19 @@ int sort(int argc, char** argv){
 	std::cerr << "oreader size=" << oreader.index.n << std::endl;
 	for(int i = 0; i < oreader.index.n; ++i){
 		b_unc += oreader.index.ent[i].b_unc;
-		std::cerr << oreader.index.ent[i].foff << " " << oreader.index.ent[i].b_cmp << " and " << oreader.index.ent[i].b_unc << std::endl;
+		//std::cerr << oreader.index.ent[i].foff << " " << oreader.index.ent[i].b_cmp << " and " << oreader.index.ent[i].b_unc << std::endl;
 	}
 	std::cerr << "uncompressed size=" << b_unc << std::endl;
+	if(b_unc == 0){
+		std::cerr << "cannot sort empty file" << std::endl;
+		return 1;
+	}
 
 	uint32_t n_threads = std::thread::hardware_concurrency();
 	if(oreader.index.n < n_threads) n_threads = oreader.index.n;
 	uint32_t b_unc_thread = b_unc / n_threads;
 	std::cerr << "bytes / thread = " << b_unc_thread << std::endl;
-	return(0);
+
 	std::vector< std::pair<uint32_t,uint32_t> > ranges;
 	uint32_t f = 0, t = 0, b_unc_tot = 0;
 	for(int i = 0; i < oreader.index.n; ++i){
@@ -274,13 +278,14 @@ int sort(int argc, char** argv){
 		f = t;
 	}
 	std::cerr << "ranges=" << ranges.size() << std::endl;
+	assert(ranges.back().second == oreader.index.n);
 
 	twk_sort_slave* slaves = new twk_sort_slave[n_threads];
 	std::cerr << "index=" << oreader.index.n << " -> " << oreader.index.n / n_threads << std::endl;
 	uint32_t range_thread = oreader.index.n / n_threads;
 	for(int i = 0; i < n_threads; ++i){
-		slaves[i].f = range_thread * i;
-		slaves[i].t = (i + 1 == n_threads ? oreader.index.n : (range_thread * (i+1)));
+		slaves[i].f = ranges[i].first;
+		slaves[i].t = ranges[i].second;
 		slaves[i].m_limit = memory_limit;
 		slaves[i].filename = in;
 

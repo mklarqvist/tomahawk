@@ -431,6 +431,10 @@ int view(int argc, char** argv){
 			}
 		}
 	} else {
+		if(oreader.index.state == TWK_IDX_SORTED){
+			std::cerr << "file is sorted, therefore output data is also sorted" << std::endl;
+			writer.oindex.state = TWK_IDX_SORTED;
+		}
 		while(oreader.NextRecord()){
 			if(settings.filter.Filter(oreader.it.rcd)){
 				writer.Add(*oreader.it.rcd);
