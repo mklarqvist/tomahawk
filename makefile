@@ -65,20 +65,6 @@ else
   INCLUDE_PATH += "-I/usr/src/linux-headers-$(UNAME_R)/include/linux/"
 endif
 
-
-# Try to deduce where OpenSSL is located
-OPENSSL_LIBRARY_PATH = 
-ifneq ("$(wildcard ./openssl/)","")
-  INCLUDE_PATH += -I./openssl/include/ 
-  OPENSSL_LIBRARY_PATH = -L./openssl/
-else ifneq ("$(wildcard /usr/local/include/openssl/)","")
-  INCLUDE_PATH += -I/usr/local/include/
-  #OPENSSL_LIBRARY_PATH = -L/usr/local/lib/
-else ifneq ("$(wildcard /usr/include/openssl/evp.h)","")
-  INCLUDE_PATH += -I/usr/include/
-  OPENSSL_LIBRARY_PATH = -L/usr/lib/x86_64-linux-gnu/
-endif
-
 # Try to deduce where HTSLib is located
 HSLIB_LIBRARY_PATH =
 ifneq ("$(wildcard ./htslib/)","")
@@ -86,7 +72,6 @@ ifneq ("$(wildcard ./htslib/)","")
   HSLIB_LIBRARY_PATH = -L./htslib/
 else ifneq ("$(wildcard /usr/local/include/htslib/)","")
   INCLUDE_PATH += -I/usr/local/include/
-  #OPENSSL_LIBRARY_PATH = -L/usr/local/lib/
 endif 
 
 # Sort the include_path vector of strings to remove duplicates. This doesn't have
@@ -96,7 +81,7 @@ endif
 INCLUDE_PATH := $(sort $(INCLUDE_PATH))
 
 # Library paths
-LIBRARY_PATHS := $(ZSTD_LIBRARY_PATH) $(OPENSSL_LIBRARY_PATH) $(HSLIB_LIBRARY_PATH) -L/usr/local/lib/
+LIBRARY_PATHS := $(ZSTD_LIBRARY_PATH) $(HSLIB_LIBRARY_PATH) -L/usr/local/lib/
 
 OPTFLAGS := -O3 -msse4.2
 # Legacy flags used
@@ -110,19 +95,20 @@ endif
 # see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
 ifneq ($(shell uname), Darwin)
 SHARED_EXT   = so
-LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)'
+LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)'
 else
 SHARED_EXT   = dylib
-LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/openssl,-rpath-link,$$ORIGIN/htslib'
+LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib'
 endif
 
 CXXFLAGS      = -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
 CFLAGS        = -std=c99   $(OPTFLAGS) $(DEBUG_FLAGS)
 CFLAGS_VENDOR = -std=c99   $(OPTFLAGS)
-BINARY_RPATHS = '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/openssl,-rpath,$$ORIGIN/htslib'
+BINARY_RPATHS = '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib'
 
 LIBS := -lzstd -lhts
-CXX_SOURCE = $(wildcard lib/*.cpp)
+CXX_SOURCE = $(wildcard lib/*.cpp) \
+             $(wildcard lib/ld/*.cpp)
 
 C_SOURCE = 
 

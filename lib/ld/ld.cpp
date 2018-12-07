@@ -6,6 +6,40 @@
 
 namespace tomahawk {
 
+twk_ld_settings::twk_ld_settings() :
+	square(true), window(false), low_memory(false), bitmaps(false),
+	force_phased(false), forced_unphased(false), force_cross_intervals(false),
+	c_level(1), bl_size(500), b_size(10000), l_window(1000000),
+	n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
+	ldd_load_type(TWK_LDD_ALL), out("-"),
+	minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
+	n_chunks(1), c_chunk(0)
+{}
+
+std::string twk_ld_settings::GetString() const{
+	std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
+				  + ",window=" + std::string((window ? "TRUE" : "FALSE"))
+				  + ",low_memory=" + std::string((low_memory ? "TRUE" : "FALSE"))
+				  + ",bitmaps=" + std::string((bitmaps ? "TRUE" : "FALSE"))
+				  + ",force_phased=" + std::string((force_phased ? "TRUE" : "FALSE"))
+				  + ",force_unphased=" + std::string((forced_unphased ? "TRUE" : "FALSE"))
+				  + ",compression_level=" + std::to_string(c_level)
+				  + ",block_size=" + std::to_string(bl_size)
+				  + ",output_block_size=" + std::to_string(b_size)
+				  + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
+				  + ",minP=" + std::to_string(minP)
+				  + ",minR2=" + std::to_string(minR2)
+				  + ",maxR2=" + std::to_string(maxR2)
+				  + ",minDprime=" + std::to_string(minDprime)
+				  + ",maxDprime=" + std::to_string(maxDprime)
+				  + ",n_chunks=" + std::to_string(n_chunks)
+				  + ",c_chunk=" + std::to_string(c_chunk)
+				  + ",n_threads=" + std::to_string(n_threads)
+				  + ",ldd_type=" + std::to_string((int)ldd_load_type)
+				  + ",cycle_threshold=" + std::to_string(cycle_threshold);
+	return(s);
+}
+
 twk_ld_simd::twk_ld_simd(void) :
 #if SIMD_AVAILABLE == 1
 	counters((uint64_t*)_mm_malloc(sizeof(uint64_t)*16, 16)),
@@ -40,10 +74,52 @@ twk_ld_simd::~twk_ld_simd(){
 #endif
 }
 
+twk_ld_count::twk_ld_count(): totalHaplotypeCounts(0)
+{
+	// Initialize counters to 0. This is generally not necessary as each
+	// function computing LD clears these. However, it is good practice.
+	memset(alleleCounts, 171, sizeof(uint64_t)*171);
+	memset(haplotypeCounts, 4, sizeof(uint64_t)*4);
+}
+twk_ld_count::~twk_ld_count(){}
+
+void twk_ld_count::ResetPhased(void){
+	this->alleleCounts[0]  = 0;
+	this->alleleCounts[1]  = 0;
+	this->alleleCounts[4]  = 0;
+	this->alleleCounts[5]  = 0;
+	haplotypeCounts[0] = 0;
+	haplotypeCounts[1] = 0;
+	haplotypeCounts[2] = 0;
+	haplotypeCounts[3] = 0;
+	// All other values can legally overflow
+	// They are not used
+}
+
+void twk_ld_count::ResetUnphased(void){
+	this->alleleCounts[0]  = 0;
+	this->alleleCounts[1]  = 0;
+	this->alleleCounts[4]  = 0;
+	this->alleleCounts[5]  = 0;
+	this->alleleCounts[16] = 0;
+	this->alleleCounts[17] = 0;
+	this->alleleCounts[20] = 0;
+	this->alleleCounts[21] = 0;
+	this->alleleCounts[64] = 0;
+	this->alleleCounts[65] = 0;
+	this->alleleCounts[68] = 0;
+	this->alleleCounts[69] = 0;
+	this->alleleCounts[80] = 0;
+	this->alleleCounts[81] = 0;
+	this->alleleCounts[84] = 0;
+	this->alleleCounts[85] = 0;
+	// All other values can legally overflow
+	// They are not used
+}
 
 //
 bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 	const twk_igt_list& ref = b1.list[p1];
 	const twk_igt_list& tgt = b2.list[p2];
 	const uint32_t n_cycles = ref.l_list < tgt.l_list ? ref.l_list : tgt.l_list;
@@ -96,7 +172,7 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const 
 }
 
 bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 
 	const twk_igt_list& refBV = b1.list[p1];
 	const twk_igt_list& tgtBV = b2.list[p2];
@@ -180,7 +256,7 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 }
 
 bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 	//const twk_igt_list::ilist_cont& ref = b1.list[p1].d;
 	//const twk_igt_list::ilist_cont& tgt = b2.list[p2].d;
 	const twk_igt_list& refBV = b1.list[p1];
@@ -388,7 +464,7 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 }
 
 bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 	const twk1_ldd_blk::bitmap_type& refB = b1.bitmap[p1];
 	const twk1_ldd_blk::bitmap_type& tgtB = b2.bitmap[p2];
 	// Debug timings
@@ -428,7 +504,7 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, 
 	}
 #endif
 
-	helper.resetPhased();
+	helper.ResetPhased();
 	helper_simd.counters[0] = 0;
 	helper_simd.counters[1] = 0;
 	helper_simd.counters[2] = 0;
@@ -556,7 +632,7 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, 
 }
 
 bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 	helper_simd.counters[TWK_LD_SIMD_ALTALT] = 0;
 
 	const twk_igt_vec& block1 = b1.vec[p1];
@@ -642,7 +718,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	}
 #endif
 
-	helper.resetUnphased();
+	helper.ResetUnphased();
 
 	helper_simd.counters[0] = 0;
 	helper_simd.counters[1] = 0;
@@ -794,7 +870,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 }
 
 bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetUnphased();
+	helper.ResetUnphased();
 
 	helper_simd.counters[0] = 0;
 	helper_simd.counters[1] = 0;
@@ -935,7 +1011,7 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 }
 
 bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetPhased();
+	helper.ResetPhased();
 #if SLAVE_DEBUG_MODE == 1
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();
@@ -1017,7 +1093,7 @@ bool twk_ld_engine::PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, c
 }
 
 bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
-	helper.resetUnphased();
+	helper.ResetUnphased();
 #if SLAVE_DEBUG_MODE == 1
 	typedef std::chrono::duration<double, typename std::chrono::high_resolution_clock::period> Cycle;
 	auto t0 = std::chrono::high_resolution_clock::now();

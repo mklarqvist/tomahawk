@@ -3,7 +3,6 @@
 
 #include <fstream>
 
-#include "core.h"
 #include "vcf_utils.h"
 #include "index.h"
 #include "zstd_codec.h"

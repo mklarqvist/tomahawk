@@ -12,6 +12,10 @@
 #include "writer.h"
 #include "intervals.h"
 
+#include "ld/ld_progress.h"
+#include "ld/ld_balancing.h"
+#include "ld/ld_unpacker.h"
+
 // Method 0: None
 // Method 1: Performance + no math
 // Method 2: Debug correctness
@@ -170,40 +174,11 @@ struct twk_ld_perf {
  * Settings/parameters for both `twk_ld` and `twk_ld_engine`.
  */
 struct twk_ld_settings {
-	twk_ld_settings() :
-		square(true), window(false), low_memory(false), bitmaps(false),
-		force_phased(false), forced_unphased(false), force_cross_intervals(false),
-		c_level(1), bl_size(500), b_size(10000), l_window(1000000),
-		n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
-		ldd_load_type(TWK_LDD_ALL), out("-"),
-		minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
-		n_chunks(1), c_chunk(0)
-	{}
+public:
+	twk_ld_settings();
+	std::string GetString() const;
 
-	std::string GetString() const{
-		std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
-		              + ",window=" + std::string((window ? "TRUE" : "FALSE"))
-		              + ",low_memory=" + std::string((low_memory ? "TRUE" : "FALSE"))
-		              + ",bitmaps=" + std::string((bitmaps ? "TRUE" : "FALSE"))
-		              + ",force_phased=" + std::string((force_phased ? "TRUE" : "FALSE"))
-		              + ",force_unphased=" + std::string((forced_unphased ? "TRUE" : "FALSE"))
-		              + ",compression_level=" + std::to_string(c_level)
-		              + ",block_size=" + std::to_string(bl_size)
-		              + ",output_block_size=" + std::to_string(b_size)
-		              + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
-		              + ",minP=" + std::to_string(minP)
-		              + ",minR2=" + std::to_string(minR2)
-		              + ",maxR2=" + std::to_string(maxR2)
-		              + ",minDprime=" + std::to_string(minDprime)
-		              + ",maxDprime=" + std::to_string(maxDprime)
-		              + ",n_chunks=" + std::to_string(n_chunks)
-		              + ",c_chunk=" + std::to_string(c_chunk)
-		              + ",n_threads=" + std::to_string(n_threads)
-		              + ",ldd_type=" + std::to_string((int)ldd_load_type)
-		              + ",cycle_threshold=" + std::to_string(cycle_threshold);
-		return(s);
-	}
-
+public:
 	bool square, window, low_memory, bitmaps; // using square compute, using window compute
 	bool force_phased, forced_unphased, force_cross_intervals;
 	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
@@ -212,330 +187,6 @@ struct twk_ld_settings {
 	double minP, minR2, maxR2, minDprime, maxDprime;
 	int32_t n_chunks, c_chunk;
 	std::vector<std::string> ival_strings; // unparsed interval strings
-};
-
-/**<
- * Load balancer for calculating linkage-disequilibrium. Partitions the total
- * problem into psuedo-balanced subproblems. The size and number of sub-problems
- * can be parameterized.
- */
-struct twk_ld_balancer {
-	twk_ld_balancer() : diag(false), n(0), p(0), c(0), fromL(0), toL(0), fromR(0), toR(0), n_m(0){}
-
-	bool BuildCrossSequence(uint32_t n_blocks,
-	                        uint32_t desired_parts,
-	                        uint32_t chosen_part)
-	{
-		// compare sections of blocks
-	}
-
-	/**<
-	 * Find the desired target subproblem range as a tuple (fromL,toL,fromR,toR).
-	 * @param n_blocks      Total number of blocks.
-	 * @param desired_parts Desired number of subproblems to solve.
-	 * @param chosen_part   Target subproblem we are interested in getting the ranges for.
-	 * @return              Return TRUE upon success or FALSE otherwise.
-	 */
-	bool Build(uint32_t n_blocks,
-	           uint32_t desired_parts,
-	           uint32_t chosen_part)
-	{
-		if(chosen_part >= desired_parts){
-			std::cerr << utility::timestamp("ERROR","BALANCER") << "Illegal chosen block: " << chosen_part << " >= " << desired_parts << std::endl;
-			return false;
-		}
-
-		n = n_blocks; p = desired_parts; c = chosen_part;
-		if(p > n){
-			std::cerr << utility::timestamp("ERROR","BALANCER") << "Illegal desired number of blocks! You are asking for more subproblems than there are blocks available (" << p << ">" << n << ")..." << std::endl;
-			return false;
-		}
-
-		if(p == 1){
-			p = 1; c = 0;
-			fromL = 0; toL = n_blocks; fromR = 0; toR = n_blocks;
-			n_m = n_blocks; diag = true;
-			return true;
-		}
-
-		uint32_t factor = 0;
-		for(uint32_t i = 1; i < desired_parts; ++i){
-			if( (((i*i) - i) / 2) + i == desired_parts ){
-				//std::cerr << "factor is " << i << std::endl;
-				factor = i;
-				break;
-			}
-		}
-
-		if(factor == 0){
-			std::cerr << utility::timestamp("ERROR","BALANCER") << "Could not partition into " << desired_parts << " number of subproblems. This number is not a function of x!2 + x..." << std::endl;
-			return false;
-		}
-
-		// cycle
-		uint32_t chunk_size = n / factor;
-		uint32_t fL = 0, tL = 0, fR = 0, tR = 0;
-		for(uint32_t i = 0, k = 0; i < factor; ++i){ // rows
-			for(uint32_t j = i; j < factor; ++j, ++k){ // cols
-				tR = (j + 1 == factor ? n_blocks : chunk_size*(j+1));
-				fR = tR - chunk_size;
-				tL = (i + 1 == factor ? n_blocks : chunk_size*(i+1));
-				fL = tL - chunk_size;
-
-				//std::cerr << fL << "-" << tL << "->" << fR << "-" << tR << " total=" << n_blocks << " chunk=" << chunk_size << "desired=" << desired_parts << std::endl;
-				if(k == chosen_part){
-					//std::cerr << "chosen part:" << std::endl;
-					fromL = fL; toL = tL; fromR = fR; toR = tR;
-					n_m = (toL - fromL) + (toR - fromR); diag = false;
-					if(i == j){ n_m = toL - fromL; diag = true; }
-					return true;
-				}
-			}
-		}
-		return true;
-	}
-
-public:
-	bool diag; // is selectd chunk diagonal
-	uint32_t n, p, c; // number of available blocks, desired parts, chosen part
-	uint32_t fromL, toL, fromR, toR;
-	uint32_t n_m; // actual blocks used
-};
-
-/**<
- * Work balancer for twk_ld_engine threads. Uses a non-blocking spinlock to produce a
- * tuple (from,to) of integers representing the start ref block and dst block.
- * This approach allows perfect load-balancing at a small overall CPU cost.
- */
-struct twk_ld_ticker {
-	typedef bool (twk_ld_ticker::*get_func)(uint32_t& from, uint32_t& to, uint8_t& type);
-
-	twk_ld_ticker() :
-		diag(false), window(false),
-		n_perf(0), i(0), j(0),
-		fL(0), tL(0), fR(0), tR(0), l_window(0),
-		ldd(nullptr),
-		_getfunc(&twk_ld_ticker::GetBlockPair)
-	{}
-	~twk_ld_ticker(){}
-
-	void operator=(const twk_ld_balancer& balancer){
-		diag = balancer.diag;
-		fL   = balancer.fromL;
-		tL   = balancer.toL;
-		fR   = balancer.fromR;
-		tR   = balancer.toR;
-		i    = balancer.fromL;
-		j    = balancer.fromR;
-	}
-
-	void operator=(const twk_ld_settings& settings){
-		window   = settings.window;
-		l_window = settings.l_window;
-		SetWindow(settings.window);
-	}
-
-	/**<
-	 * Parameterisation of window mode: should we check if blocks overlap given
-	 * some maximum distance between pairs? See function `GetBlockWindow` for
-	 * additional details.
-	 * @param yes Set or unset window mode.
-	 */
-	inline void SetWindow(const bool yes = true){
-		window = yes;
-		_getfunc = (window ? &twk_ld_ticker::GetBlockWindow : &twk_ld_ticker::GetBlockPair);
-	}
-
-	/**<
-	 * Indirection using functional pointer to actual function used. This
-	 * allows us to use a singular function without writing multiple
-	 * versions of downstream functions.
-	 * @param from Row position
-	 * @param to   Column position
-	 * @param type Diagonal (1) or square (0)
-	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
-	 */
-	inline bool Get(uint32_t& from, uint32_t& to, uint8_t& type){ return((this->*_getfunc)(from, to, type)); }
-
-	/**<
-	 * Retrieves (x,y)-coordinates from the selected load-balancing subproblem.
-	 * This variation also checks if the two blocks (x,y) can have any overlapping
-	 * regions given some parameterized maximum distance.
-	 * Uses a spin-lock to make this function thread-safe.
-	 * @param from Row position
-	 * @param to   Column position
-	 * @param type Diagonal (1) or square (0)
-	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
-	 */
-	bool GetBlockWindow(uint32_t& from, uint32_t& to, uint8_t& type){
-		spinlock.lock();
-
-		if(j == tR){
-			++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
-			if(i == tL){ spinlock.unlock(); return false; }
-			++n_perf;
-			spinlock.unlock();
-			return true;
-		}
-		if(i == tL){ spinlock.unlock(); return false; }
-
-		// First in tgt block - last in ref block
-		if(i != j){
-			// check if this (x,y) pair have any overlapping intervals.
-			if(ldd[j].blk->rcds[0].pos - ldd[i].blk->rcds[ldd[i].n_rec-1].pos > l_window){
-				++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
-				spinlock.unlock();
-				return true;
-			}
-		}
-
-		type = (i == j); from = i; to = j;
-		++j; ++n_perf;
-
-		spinlock.unlock();
-
-		return true;
-	}
-
-	/**<
-	 * Retrieves (x,y)-coordinates from the selected load-balancing subproblem.
-	 * Uses a spin-lock to make this function thread-safe.
-	 * @param from Row position
-	 * @param to   Column position
-	 * @param type Diagonal (1) or square (0)
-	 * @return     Returns TRUE if it is possible to retrieve a new (x,y)-pair or FALSE otherwise.
-	 */
-	bool GetBlockPair(uint32_t& from, uint32_t& to, uint8_t& type){
-		spinlock.lock();
-
-		if(j == tR){ // if current position is at the last column
-			++i; j = (diag ? i : fR); from = i; to = j; type = 1; ++j;
-			// if current position is at the last row
-			if(i == tL){ spinlock.unlock(); return false; }
-			++n_perf;
-			spinlock.unlock();
-			return true;
-		}
-		// if current position is at the last row
-		if(i == tL){ spinlock.unlock(); return false; }
-		type = (i == j); from = i; to = j;
-		++j; ++n_perf;
-
-		spinlock.unlock();
-
-		return true;
-	}
-
-public:
-	bool diag, window;
-	uint32_t n_perf, i,j;
-	uint32_t fL, tL, fR, tR, l_window;
-	twk1_ldd_blk* ldd;
-	get_func _getfunc;
-	SpinLock spinlock;
-};
-
-/**<
- * Progress ticker for calculating linkage-disequilbirium. Spawns and detaches
- * a thread to tick occasionally in the background. Slaves computing linkage-
- * disequilibrium send their progress to this ticker that collates and summarize
- * that data.
- */
-struct twk_ld_progress {
-	twk_ld_progress() :
-		is_ticking(false), n_s(0), n_cmps(0), n_var(0),
-		n_pair(0), n_out(0), b_out(0), thread(nullptr)
-	{}
-	~twk_ld_progress() = default;
-
-	/**<
-	 * Starts the progress ticker. Spawns a detached thread ticking every 30 seconds
-	 * in the background until the flag `is_ticking` is set to FALSE or the program
-	 * finishes.
-	 * @return Returns a pointer to the detached thread.
-	 */
-	std::thread* Start(){
-		delete thread;
-		is_ticking = true;
-		thread = new std::thread(&twk_ld_progress::StartTicking, this);
-		thread->detach();
-		return(thread);
-	}
-
-	/**<
-	 * Internal function displaying the progress message every 30 seconds. This
-	 * function is called exclusively by the detached thread.
-	 */
-	void StartTicking(){
-		timer.Start();
-
-		uint64_t variant_overflow = 99E9, genotype_overflow = 999E12;
-		uint8_t variant_width = 15, genotype_width = 20;
-
-		//char support_buffer[256];
-		std::cerr << utility::timestamp("PROGRESS")
-				<< std::setw(12) << "Time elapsed"
-				<< std::setw(variant_width) << "Variants"
-				<< std::setw(genotype_width) << "Genotypes"
-				<< std::setw(15) << "Output"
-				<< std::setw(10) << "Progress"
-				<< "\tEst. Time left" << std::endl;
-
-		std::this_thread::sleep_for(std::chrono::seconds(30)); // first sleep
-		while(is_ticking){
-			// Triggered every cycle (119 ms)
-			//if(this->Detailed)
-			//	this->GetElapsedTime();
-
-			//if(i % 252 == 0){ // Approximately every 30 sec (30e3 / 119 = 252)
-				//const double ComparisonsPerSecond = (double)n_var.load()/timer.Elapsed().count();
-				if(n_var.load() > variant_overflow){ variant_width += 3; variant_overflow *= 1e3; }
-				if(n_var.load() > genotype_overflow){ genotype_width += 3; genotype_overflow *= 1e3; }
-
-
-				//const uint32_t n_p = sprintf(&support_buffer[0], "%0.3f", 0);
-				//support_buffer[n_p] = '%';
-				if(n_cmps){
-					std::cerr << utility::timestamp("PROGRESS")
-							<< std::setw(12) << timer.ElapsedString()
-							<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
-							<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
-							<< std::setw(15) << utility::ToPrettyString(n_out.load())
-							<< std::setw(10) << (double)n_var.load()/n_cmps*100 << "%\t"
-							<< (double)0 << std::endl;
-				} else {
-					std::cerr << utility::timestamp("PROGRESS")
-							<< std::setw(12) << timer.ElapsedString()
-							<< std::setw(variant_width) << utility::ToPrettyString(n_var.load())
-							<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
-							<< std::setw(15) << utility::ToPrettyString(n_out.load())
-							<< std::setw(10) << 0 << '\t'
-							<< 0 << std::endl;
-				}
-			//}
-			std::this_thread::sleep_for(std::chrono::seconds(30));
-		}
-	}
-
-	/**<
-	 * Print out the final tally of time elapsed, number of variants computed,
-	 * and average throughput. This method cannot be made const as the function
-	 * ElapsedString in the Timer class internally updates a buffer for performance
-	 * reasons. This has no consequence as this function is ever only called once.
-	 */
-	void PrintFinal(){
-		std::cerr << utility::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t" << utility::ToPrettyString(n_var.load()) << "\t" << utility::ToPrettyString(n_var.load()*n_s) << "\t" << utility::ToPrettyString(n_out.load()) << std::endl;
-		std::cerr << utility::timestamp("PROGRESS") << utility::ToPrettyString((uint64_t)((double)n_var.load()/timer.Elapsed().count())) << "\t" << utility::ToPrettyString((uint64_t)(((double)n_var.load()*n_s)/timer.Elapsed().count())) << std::endl;
-		std::cerr << utility::timestamp("PROGRESS") << "Finished" << std::endl;
-	}
-
-public:
-	bool is_ticking;
-	uint32_t n_s; // number of samples
-	uint64_t n_cmps; // number of comparisons we estimate to perform
-	std::atomic<uint64_t> n_var, n_pair, n_out, b_out; // counters used by ld threads
-	std::thread* thread; // detached thread
-	Timer timer; // timer instance
 };
 
 
@@ -559,48 +210,11 @@ public:
  * total number of allele/haplotype counts.
  */
 struct twk_ld_count {
-	twk_ld_count(): totalHaplotypeCounts(0)
-	{
-		// Initialize counters to 0. This is generally not necessary as each
-		// function computing LD clears these. However, it is good practice.
-		memset(alleleCounts, 171, sizeof(uint64_t)*171);
-		memset(haplotypeCounts, 4, sizeof(uint64_t)*4);
-	}
-	~twk_ld_count(){}
+	twk_ld_count();
+	~twk_ld_count();
 
-	void resetPhased(void){
-		this->alleleCounts[0]  = 0;
-		this->alleleCounts[1]  = 0;
-		this->alleleCounts[4]  = 0;
-		this->alleleCounts[5]  = 0;
-		haplotypeCounts[0] = 0;
-		haplotypeCounts[1] = 0;
-		haplotypeCounts[2] = 0;
-		haplotypeCounts[3] = 0;
-		// All other values can legally overflow
-		// They are not used
-	}
-
-	void resetUnphased(void){
-		this->alleleCounts[0]  = 0;
-		this->alleleCounts[1]  = 0;
-		this->alleleCounts[4]  = 0;
-		this->alleleCounts[5]  = 0;
-		this->alleleCounts[16] = 0;
-		this->alleleCounts[17] = 0;
-		this->alleleCounts[20] = 0;
-		this->alleleCounts[21] = 0;
-		this->alleleCounts[64] = 0;
-		this->alleleCounts[65] = 0;
-		this->alleleCounts[68] = 0;
-		this->alleleCounts[69] = 0;
-		this->alleleCounts[80] = 0;
-		this->alleleCounts[81] = 0;
-		this->alleleCounts[84] = 0;
-		this->alleleCounts[85] = 0;
-		// All other values can legally overflow
-		// They are not used
-	}
+	void ResetPhased(void);
+	void ResetUnphased(void);
 
 	// Counters
 	uint64_t alleleCounts[171]; // equivalent to 10101010b = (MISS,MISS),(MISS,MISS)
@@ -681,9 +295,7 @@ public:
 	bool PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
-
 	bool PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
-
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
@@ -691,26 +303,6 @@ public:
 	bool UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
-
-	// Specialized hybrid functions
-	__attribute__((always_inline))
-	inline bool HybridUnphased(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr){
-		if(b1.blk->rcds[p1].gt->n + b2.blk->rcds[p2].gt->n < 40)
-			return(UnphasedRunlength(b1,p1,b2,p2,perf));
-		else return(UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf));
-	}
-
-	// Debugging function for invoking each algorithm on the same data.
-	inline bool AllAlgorithms(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr){
-		this->PhasedVectorized(b1,p1,b2,p2,perf);
-		this->PhasedVectorizedNoMissing(b1,p1,b2,p2,perf);
-		this->UnphasedVectorized(b1,p1,b2,p2,perf);
-		this->UnphasedVectorizedNoMissing(b1,p1,b2,p2,perf);
-		this->PhasedRunlength(b1,p1,b2,p2,perf);
-		this->PhasedList(b1,p1,b2,p2,perf);
-		this->UnphasedRunlength(b1,p1,b2,p2,perf);
-		return true;
-	}
 
 	// Unphased math
 	bool UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2);
@@ -756,7 +348,7 @@ struct twk_ld_slave {
 	twk_ld_slave() : n_s(0), n_total(0),
 		i_start(0), j_start(0), prev_i(0), prev_j(0), n_cycles(0),
 		ticker(nullptr), thread(nullptr), ldd(nullptr),
-		progress(nullptr), settings(nullptr), itree(nullptr)
+		progress(nullptr), settings(nullptr)
 	{}
 
 	~twk_ld_slave(){ delete thread; }
@@ -822,28 +414,20 @@ struct twk_ld_slave {
 		const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 
 		if(n_cycles == 0 || prev_i != from - i_start){
-			//std::cerr << "newA" << std::endl;
-			//delete[] blocks[0].vec;  blocks[0].vec = nullptr;
-			//delete[] blocks[0].list; blocks[0].list = nullptr;
 			blks[0] = ldd[from - i_start];
 			blks[0].Inflate(n_s, settings->ldd_load_type, true);
 		}
 		else {
 			blks[0].blk = ldd[from - i_start].blk;
 			blks[0].n_rec = ldd[from - i_start].blk->n;
-			//std::cerr << "recycleA" << std::endl;
 		}
 		if(n_cycles == 0 || prev_j != add + (to - j_start)){
-			//std::cerr << "newB" << std::endl;
-			//delete[] blks[1].vec;  blks[1].vec = nullptr;
-			//delete[] blks[1].list; blks[1].list = nullptr;
 			blks[1] = ldd[add + (to - j_start)];
 			blks[1].Inflate(n_s, settings->ldd_load_type, true);
 		}
 		else {
 			blks[1].blk = ldd[add + (to - j_start)].blk;
 			blks[1].n_rec = ldd[add + (to - j_start)].blk->n;
-			//std::cerr << "recycleB" << std::endl;
 		}
 
 		prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
@@ -1603,117 +1187,12 @@ public:
 	uint32_t n_s, n_total;
 	uint32_t i_start, j_start, prev_i, prev_j, n_cycles;
 
-	twk_ld_ticker* ticker;
+	twk_ld_dynamic_balancer* ticker;
 	std::thread* thread;
 	twk1_ldd_blk* ldd;
 	twk_ld_progress* progress;
 	twk_ld_settings* settings;
 	twk_ld_engine engine;
-	algorithm::IntervalTree<uint32_t, uint32_t>* itree;
-};
-
-// Parallel unpacker.
-struct twk_ld_unpacker {
-	std::thread* Start(const bool diag, const twk_ld_settings& settings){
-		load = settings.ldd_load_type;
-		this->diag = diag;
-
-		bit.stream = new std::ifstream(settings.in, std::ios::binary | std::ios::in);
-		if(bit.stream->good() == false){
-			std::cerr << "failed to open=" << settings.in << std::endl;
-			return nullptr;
-		}
-
-		if(diag) thread = new std::thread(&twk_ld_unpacker::UnpackDiagonal, this);
-		else thread = new std::thread(&twk_ld_unpacker::UnpackSquare, this);
-		return(thread);
-	}
-
-	bool UnpackDiagonal(){
-		bit.stream->seekg(rdr->index.ent[fL].foff);
-		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
-			return false;
-		}
-
-		//std::cerr << "in unpack diag (" << fL << "-" << tL << ")" << std::endl;
-		//std::cerr << "left-shift=" << lshift << std::endl;
-		for(int i = lshift; i < lshift + (tL-fL); ++i){
-			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
-			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-				return false;
-			}
-
-			ldd2[i] = std::move(bit.blk);
-			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-		}
-
-		std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
-		s->close();
-		bit.stream = nullptr;
-
-		return true;
-	}
-
-	bool UnpackSquare(){
-		bit.stream->seekg(rdr->index.ent[fL].foff);
-		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
-			return false;
-		}
-
-		//std::cerr << "in unpack square (" << fL << "-" << tL << ")(" << fR << "-" << tR << ")" << std::endl;
-		//std::cerr << "left-shift=" << lshift << std::endl;
-		for(int i = lshift; i < lshift + (tL-fL); ++i){
-			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
-			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-				return false;
-			}
-
-			ldd2[i] = std::move(bit.blk);
-			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-		}
-
-		bit.stream->seekg(rdr->index.ent[fR].foff); // seek absolute offset
-		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << std::endl;
-			return false;
-		}
-
-		// compute with local offset
-		//std::cerr << "left offset=" << loff << " and right=" << roff << std::endl;
-		//std::cerr << "offset=" << fR - loff << " and steps=" << loff + (tR - fR) << std::endl;
-		for(int i = loff + roff; i < loff + roff + (tR - fR); ++i){
-			//std::cerr << "at2=" << i << "/" << loff + roff + (tR - fR) << " with range=" << (tR - fR) << std::endl;
-			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-				return false;
-			}
-
-			ldd2[i] = std::move(bit.blk);
-			ldd[i].SetOwn(ldd2[i], rdr->hdr.GetNumberSamples());
-			ldd[i].Inflate(rdr->hdr.GetNumberSamples(),load, resize);
-		}
-
-		std::ifstream* s = reinterpret_cast<std::ifstream*>(bit.stream);
-		s->close();
-		bit.stream = nullptr;
-
-		return true;
-	}
-
-	bool resize, diag;
-	uint8_t load;
-	uint32_t fL, tL, fR, tR, loff, roff, lshift;
-	twk_reader* rdr;
-	std::thread* thread;
-	twk1_ldd_blk* ldd;
-	twk1_block_t* ldd2;
-	twk1_blk_iterator bit;
 };
 
 class twk_ld {
@@ -2061,7 +1540,7 @@ public:
 			//std::cerr << "range=" << slaves[i].fL << "->" << slaves[i].tL << " and " << slaves[i].fR << "->" << slaves[i].tR << std::endl;
 		}
 
-		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].Start(balancer.diag, settings);
+		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].Start(balancer.diag, settings.ldd_load_type, settings.in);
 		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].thread->join();
 		delete[] slaves;
 
@@ -2162,9 +1641,9 @@ public:
 		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
 		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_variants * n_variants - n_variants) / 2) << " variant comparisons..." << std::endl;
 
-		twk_ld_ticker ticker;
+		twk_ld_dynamic_balancer ticker;
 		ticker = balancer;
-		ticker = settings;
+		ticker.SetWindow(settings.window, settings.l_window);
 		ticker.ldd  = ldd;
 
 		twk_ld_progress progress;
@@ -2411,9 +1890,9 @@ public:
 				return false;
 			}
 
-			twk_ld_ticker ticker;
+			twk_ld_dynamic_balancer ticker;
 			ticker = balancer;
-			ticker = settings;
+			ticker.SetWindow(settings.window, settings.l_window);
 			ticker.ldd  = ldd;
 
 			timer.Start();
