@@ -695,6 +695,7 @@ public:
 			assert(cumpos == n_samples*2);
 			//std::cerr << "total bins=" << d.n << " with ac=" << twk.ac << std::endl;
 
+			// Register positions.
 			for(int i = 0; i < l_list; ++i){
 				if(r_pos.size()){
 					if(r_pos.back() != list[i] / 128)
@@ -702,17 +703,17 @@ public:
 				} else r_pos.push_back(list[i] / 128);
 			}
 
-			for(int i = 0; i < r_pos.size(); ++i) r_pos[i] *= 2;
+			// Convert register number into offset in 64-bit space.
+			// This step is required to guarantee memory aligned lookups when
+			// using SIMD instructions.
+			for(int i = 0; i < r_pos.size(); ++i) r_pos[i] *= 128 / 64;
 
 			//d.n = d.m;
 			//std::cerr << "size=" << d.n << " and " << d.m << std::endl;
 			//uint32_t divide = std::ceil((float)d.m / 2);
 			uint32_t divide = std::ceil((float)2*n_samples/128) + 1;
 			for(int i = 0; i < r_pos.size(); ++i){
-				//assert(d.data[i].bin/divide < 2);
 				assert(r_pos[i] / divide < 2);
-				//std::cerr << "binmap=" << i << ": " << d.data[i].bin << "/" << d.n << std::endl;
-				//bin_bitmap[d.data[i].bin/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(d.data[i].bin % divide) / divide)*64) ));
 				bin_bitmap[r_pos[i]/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(r_pos[i] % divide) / divide)*64) ));
 			}
 			//std::cerr << std::bitset<64>(bin_bitmap[0]) << " " << std::bitset<64>(bin_bitmap[1]) << std::endl;

@@ -7,7 +7,7 @@
 # Fast calculation of LD in large-scale cohorts
 Tomahawk is a machine-optimized library for computing [linkage-disequilibrium](https://en.wikipedia.org/wiki/Linkage_disequilibrium) from population-sized datasets. Tomahawk permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals on a standard laptop. All algorithms are embarrassingly parallel and have been successfully tested on datasets with up to _10 million individuals_ using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
-Tomahawk is unique in that it constructs complete haplotype/genotype contigency matrices for each comparison, perform statistical tests on the output data, and provide a framework for querying the resulting data. If your use-case has no need for this additional data then you can invoke fast-mode to skip the construction step for extreme performance.
+Tomahawk is unique in that it constructs complete haplotype/genotype contigency matrices for each comparison, perform statistical tests on the output data, and provide a framework for investigating the produced data.
 
 ## Installation
 For Ubuntu, Debian, and Mac systems, installation is easy: just run
