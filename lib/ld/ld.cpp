@@ -1170,6 +1170,7 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 		return false;
 	}
 
+	// Todo: temporary
 	if(helper.alleleCounts[0] < helper.alleleCounts[5]){
 		if(helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[0] < 5){
 			//std::cerr << "return=" << helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[5] << std::endl;

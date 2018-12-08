@@ -119,10 +119,12 @@ public:
 
 
 struct twk_two_writer_t : public twk_writer_t {
-	twk_two_writer_t() : mode('u'), n_blk_lim(10000), oblock(10000){
+	twk_two_writer_t() : mode('u'), c_level(1), n_blk_lim(10000), oblock(10000){
 		buf = std::cout.rdbuf();
 		stream.basic_ios<char>::rdbuf(buf);
 	}
+
+	inline void SetCompressionLevel(const int32_t level){ c_level = level; }
 
 	bool Open(const std::string& file){
 		if(file.size() == 0 || (file.size() == 1 && file[0] == '-')) return _OpenStream();
@@ -163,7 +165,7 @@ struct twk_two_writer_t : public twk_writer_t {
 		stream.write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
 		tomahawk::twk_buffer_t buf(256000);
 		buf << reader.hdr;
-		if(zcodec.Compress(buf, obuf, 1) == false){
+		if(zcodec.Compress(buf, obuf, c_level) == false){
 			std::cerr << "failed to compress" << std::endl;
 			return false;
 		}
@@ -199,7 +201,7 @@ struct twk_two_writer_t : public twk_writer_t {
 
 		buf << oindex;
 		//std::cerr << "index buf size =" << buf.size() << std::endl;
-		if(zcodec.Compress(buf, obuf, 1) == false){
+		if(zcodec.Compress(buf, obuf, c_level) == false){
 			std::cerr << "failed compression" << std::endl;
 			return false;
 		}
@@ -260,7 +262,7 @@ struct twk_two_writer_t : public twk_writer_t {
 			//twk_oblock_two_t b;
 			ubuf << oblock;
 
-			if(zcodec.Compress(ubuf, obuf, 1) == false){
+			if(zcodec.Compress(ubuf, obuf, c_level) == false){
 				std::cerr << "failed compression" << std::endl;
 				return false;
 			}
@@ -306,6 +308,7 @@ struct twk_two_writer_t : public twk_writer_t {
 	}
 
 	char mode;
+	int32_t c_level;
 	uint32_t n_blk_lim; // flush block limit
 	twk1_two_block_t oblock;
 	IndexEntryOutput ioentry;

@@ -33,7 +33,8 @@ void sort_usage(void){
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
-	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n\n";
+	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n";
+	"  -c INT    compression level 1-20 (default: 1)\n\n";
 }
 
 int sort(int argc, char** argv){
@@ -46,6 +47,7 @@ int sort(int argc, char** argv){
 		{"input",       required_argument, 0, 'i' },
 		{"output",      optional_argument, 0, 'o' },
 		{"memory-usage", optional_argument, 0, 'm' },
+		{"compression-level", optional_argument, 0, 'c' },
 
 
 		{0,0,0,0}
@@ -53,11 +55,12 @@ int sort(int argc, char** argv){
 
 	std::string in, out;
 	float memory_limit = 0.5;
+	int c_level = 1;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:m:?", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:m:c:?", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -80,8 +83,9 @@ int sort(int argc, char** argv){
 		case 'm':
 			memory_limit = atof(optarg);
 			break;
-
-
+		case 'c':
+			c_level = atoi(optarg);
+			break;
 		}
 	}
 
@@ -154,7 +158,7 @@ int sort(int argc, char** argv){
 
 						sort_helper rec;
 						rec.foff = ostream.tellp();
-						zcodec.InitStreamCompress(1);
+						zcodec.InitStreamCompress(c_level);
 						// Compress chunks of 10k records
 						int k = 0;
 						for(; k + 10000 < blk.n; k += 10000){
@@ -193,7 +197,7 @@ int sort(int argc, char** argv){
 
 				sort_helper rec;
 				rec.foff = ostream.tellp();
-				zcodec.InitStreamCompress(1);
+				zcodec.InitStreamCompress(c_level);
 				// Compress chunks of 10k records
 				int k = 0;
 				for(; k + 10000 < blk.n; k += 10000){
@@ -229,7 +233,7 @@ int sort(int argc, char** argv){
 
 		float m_limit;
 		uint32_t n; // limit in gb, number of entries that corresponds to
-		uint32_t f, t, bl_size; // (from,to)-tuple, flush block-size
+		uint32_t f, t, bl_size, c_level; // (from,to)-tuple, flush block-size
 		std::string filename, tmp_filename; // temporary filename
 		std::thread* thread;
 		std::ifstream stream;
@@ -289,6 +293,7 @@ int sort(int argc, char** argv){
 		slaves[i].t = ranges[i].second;
 		slaves[i].m_limit = memory_limit;
 		slaves[i].filename = in;
+		slaves[i].c_level = c_level;
 
 		std::string suffix    = tomahawk::twk_two_writer_t::RandomSuffix();
 		std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
@@ -504,6 +509,7 @@ int sort(int argc, char** argv){
 	}
 	owriter.mode = 'b';
 	owriter.oindex.state = TWK_IDX_SORTED;
+	owriter.SetCompressionLevel(c_level);
 	// Write header
 	std::string sort_string = "\n##tomahawk_sortVersion=" + std::string(VERSION) + "\n";
 	sort_string += "##tomahawk_sortCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + tomahawk::utility::datetime() + "\n";
