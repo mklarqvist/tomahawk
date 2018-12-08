@@ -34,7 +34,8 @@ void sort_usage(void){
 	"  -i FILE   input TWO file (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
 	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n";
-	"  -c INT    compression level 1-20 (default: 1)\n\n";
+	"  -c INT    compression level 1-20 (default: 1)\n";
+	"  -t INT    number of threads (default: maximum available)\n\n";
 }
 
 int sort(int argc, char** argv){
@@ -48,6 +49,7 @@ int sort(int argc, char** argv){
 		{"output",      optional_argument, 0, 'o' },
 		{"memory-usage", optional_argument, 0, 'm' },
 		{"compression-level", optional_argument, 0, 'c' },
+		{"threads", optional_argument, 0, 't' },
 
 
 		{0,0,0,0}
@@ -56,11 +58,12 @@ int sort(int argc, char** argv){
 	std::string in, out;
 	float memory_limit = 0.5;
 	int c_level = 1;
+	int n_threads = std::thread::hardware_concurrency();
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:o:m:c:?", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:m:c:t:?", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -85,6 +88,9 @@ int sort(int argc, char** argv){
 			break;
 		case 'c':
 			c_level = atoi(optarg);
+			break;
+		case 't':
+			n_threads = atoi(optarg);
 			break;
 		}
 	}
@@ -258,7 +264,7 @@ int sort(int argc, char** argv){
 		return 1;
 	}
 
-	uint32_t n_threads = std::thread::hardware_concurrency();
+	//uint32_t n_threads = std::thread::hardware_concurrency();
 	if(oreader.index.n < n_threads) n_threads = oreader.index.n;
 	uint64_t b_unc_thread = b_unc / n_threads;
 	std::cerr << "bytes / thread = " << b_unc_thread << std::endl;
