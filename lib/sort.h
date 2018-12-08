@@ -28,13 +28,13 @@ DEALINGS IN THE SOFTWARE.
 void sort_usage(void){
 	tomahawk::ProgramMessage();
 	std::cerr <<
-	"About:  Convert binary TWO->LD/TWO, subset and slice TWO data\n\n"
-	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " view [options] -i <in.two>\n\n"
+	"About:  Sort TWO files\n\n"
+	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " sort [options] -i <in.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
 	"  -o FILE   output file (- for stdout; default: -)\n"
-	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n";
-	"  -c INT    compression level 1-20 (default: 1)\n";
+	"  -m FLOAT  maximum memory usage per thread in GB (default: 0.5)\n"
+	"  -c INT    compression level 1-20 (default: 1)\n"
 	"  -t INT    number of threads (default: maximum available)\n\n";
 }
 
