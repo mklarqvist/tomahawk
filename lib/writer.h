@@ -192,7 +192,7 @@ struct twk_two_writer_t : public twk_writer_t {
 	}
 
 	bool WriteFinal(){
-		std::cerr << "in write final=" << stream.good() << " and mode=" << mode << std::endl;
+		//std::cerr << "in write final=" << stream.good() << " and mode=" << mode << std::endl;
 		if(stream.good() == false) return false;
 		if(WriteBlock() == false) return false;
 
@@ -208,13 +208,13 @@ struct twk_two_writer_t : public twk_writer_t {
 		//std::cerr << buf.size() << "->" << obuf.size() << " -> " << (float)buf.size()/obuf.size() << std::endl;
 
 		// temp write out index
-		for(int i = 0; i < oindex.n; ++i){
-			std::cerr << i << "/" << oindex.n << " " << oindex.ent[i].rid << ":" << oindex.ent[i].minpos << "-" << oindex.ent[i].maxpos << " offset=" << oindex.ent[i].foff << "-" << oindex.ent[i].fend << " brid=" << oindex.ent[i].ridB << std::endl;
-		}
+		//for(int i = 0; i < oindex.n; ++i){
+		//	std::cerr << i << "/" << oindex.n << " " << oindex.ent[i].rid << ":" << oindex.ent[i].minpos << "-" << oindex.ent[i].maxpos << " offset=" << oindex.ent[i].foff << "-" << oindex.ent[i].fend << " brid=" << oindex.ent[i].ridB << std::endl;
+		//}
 
-		for(int i = 0; i < oindex.m_ent; ++i){
-			std::cerr << "meta=" << i << "/" << oindex.m_ent << " " << oindex.ent_meta[i].rid << ":" << oindex.ent_meta[i].minpos << "-" << oindex.ent_meta[i].maxpos << " offset=" << oindex.ent_meta[i].foff << "-" << oindex.ent_meta[i].fend << std::endl;
-		}
+		//for(int i = 0; i < oindex.m_ent; ++i){
+		//	std::cerr << "meta=" << i << "/" << oindex.m_ent << " " << oindex.ent_meta[i].rid << ":" << oindex.ent_meta[i].minpos << "-" << oindex.ent_meta[i].maxpos << " offset=" << oindex.ent_meta[i].foff << "-" << oindex.ent_meta[i].fend << std::endl;
+		//}
 
 		const uint64_t offset_start_index = stream.tellp();
 		uint8_t marker = 0;

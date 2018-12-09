@@ -175,9 +175,14 @@ int concat(int argc, char** argv){
 
 	writer.WriteHeader(oreader);
 
+	// Loggers.
+	uint64_t n_b = 0, n_bc = 0;
+	uint64_t nt_b = 0, nt_bc = 0;
 
 	// Begin merge
 	// Step0: write out first file
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Appending " << in_list[0] << "... ";
+	std::cerr.flush();
 	uint32_t idx_offset = 0;
 	while(oreader.NextBlockRaw()){ // get raw uncompressed data
 		tomahawk::IndexEntryOutput rec = oreader.index.ent[idx_offset];
@@ -186,9 +191,14 @@ int concat(int argc, char** argv){
 		rec.fend = writer.stream.tellp();
 		rec.b_cmp = oreader.it.oblk.nc;
 		rec.b_unc = oreader.it.oblk.n;
+		n_b  += rec.b_unc;
+		n_bc += rec.b_cmp;
 		writer.oindex += rec;
 		++idx_offset;
 	}
+	std::cerr << tomahawk::utility::ToPrettyDiskString(n_b) << "/" << tomahawk::utility::ToPrettyDiskString(n_bc) << std::endl;
+	nt_b += n_b; nt_bc += n_bc;
+	n_b = 0, n_bc = 0;
 
 	for(int i = 1; i < in_list.size(); ++i){
 		tomahawk::two_reader rdr;
@@ -199,6 +209,9 @@ int concat(int argc, char** argv){
 			return 1;
 		}
 
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Appending " << in_list[i] << "... ";
+		std::cerr.flush();
+
 		idx_offset = 0;
 		while(rdr.NextBlockRaw()){ // get raw uncompressed data
 			tomahawk::IndexEntryOutput rec = rdr.index.ent[idx_offset];
@@ -207,10 +220,18 @@ int concat(int argc, char** argv){
 			rec.fend = writer.stream.tellp();
 			rec.b_cmp = rdr.it.oblk.nc;
 			rec.b_unc = rdr.it.oblk.n;
+			n_b  += rec.b_unc;
+			n_bc += rec.b_cmp;
 			writer.oindex += rec;
 			++idx_offset;
 		}
+		std::cerr << tomahawk::utility::ToPrettyDiskString(n_b) << "/" << tomahawk::utility::ToPrettyDiskString(n_bc) << std::endl;
+		nt_b += n_b; nt_bc += n_bc;
+		n_b = 0, n_bc = 0;
 	}
+
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished. Added " << in_list.size() << " files..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Total size: Uncompresed = " << tomahawk::utility::ToPrettyDiskString(nt_b) <<  " and compressed = " << tomahawk::utility::ToPrettyDiskString(nt_bc) << std::endl;
 
 	if(writer.mode == 'b') writer.WriteFinal();
 	else writer.WriteBlock();

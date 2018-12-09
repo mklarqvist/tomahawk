@@ -13,7 +13,7 @@ bool twk1_two_iterator::NextBlockRaw(){
 	uint8_t marker = 0;
 	DeserializePrimitive(marker, *stream);
 	if(marker == 0){
-		std::cerr << "0 marker found. stopping" << std::endl;
+		//std::cerr << "0 marker found. stopping" << std::endl;
 		return false;
 	}
 	//std::cerr << "marker=" << (int)marker << std::endl;
