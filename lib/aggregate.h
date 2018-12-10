@@ -25,6 +25,12 @@ DEALINGS IN THE SOFTWARE.
 #include "utility.h"
 #include "two_reader.h"
 
+struct offset_tuple {
+	offset_tuple() : range(0), min(0), max(0){}
+	uint64_t range;
+	uint32_t min, max;
+};
+
 struct sstats {
 	typedef void (sstats::*addfunc)(const tomahawk::twk1_two_t*);
 	typedef double (sstats::*redfunc)(const uint32_t) const;
@@ -238,94 +244,173 @@ int aggregate(int argc, char** argv){
 	// Step 4: Output data.
 	if(oreader.index.state != TWK_IDX_SORTED){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "The input file has to be sorted..." << std::endl;
-		return 1;
-	}
 
-	// Step 1: Calculate the landscape ranges (X and Y dimensions).
-	// Approach 1: Without dropping regions with no data.
-	uint64_t range = 0;
-	for(int i = 0; i < oreader.index.m_ent; ++i){
-		if(oreader.index.ent_meta[i].n){
-			std::cerr << "index-" << i << ": " << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
-			range += (oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1;
+
+		std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
+
+		// Step 1: iterate over index entries and find what contigs are used
+		std::cerr << "First pass over data." << std::endl;
+		// Todo: make parallel
+		while(oreader.NextRecord()){
+			contig_avail[oreader.it.rcd->ridA] = true;
+			contig_avail[oreader.it.rcd->ridB] = true;
 		}
-	}
-	std::cerr << "range=" << range << std::endl;
-	range = 0;
 
-	// Approach 2: Dropping regions with no data.
-	struct offset_tuple {
-		offset_tuple() : range(0), min(0), max(0){}
-		uint64_t range;
-		uint32_t min, max;
-	};
-	std::vector<offset_tuple> rid_offsets(oreader.index.m_ent);
-	for(int i = 0; i < oreader.index.m_ent; ++i){
-		std::cerr << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
-		if(oreader.index.ent_meta[i].n){
-			// Cumulative offset for the current rid equals the previous rid
-			if(oreader.index.ent_meta[i].rid != 0){
-				rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range + ((oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1);
-				range += (oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1;
-			}
+		for(int i = 0; i < contig_avail.size(); ++i){
+			if(contig_avail[i] == true)
+				std::cerr << "contig: " << oreader.hdr.GetContig(i)->name << " set" << std::endl;
+		}
 
+		// Step 2: Determine boundaries given the contigs that were set.
+		//         Calculate the landscape ranges (X and Y dimensions).
+		// Approach 2: Dropping regions with no data.
+		uint64_t range = 0;
+		std::vector<offset_tuple> rid_offsets(contig_avail.size());
+		if(contig_avail[0]){
+			rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
+			range += oreader.hdr.contigs_[0].n_bases;
 		} else {
-			if(oreader.index.ent_meta[i].rid != 0)
-				rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range;
+			rid_offsets[0].range = 0;
 		}
-		rid_offsets[oreader.index.ent_meta[i].rid].min = oreader.index.ent_meta[i].minpos;
-		rid_offsets[oreader.index.ent_meta[i].rid].max = oreader.index.ent_meta[i].maxpos;
-	}
-	std::cerr << "range=" << range << std::endl;
-	for(int i = 0; i < rid_offsets.size(); ++i){
-		std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
-	}
+		rid_offsets[0].min = 0;
+		rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
 
-	// Step 2: Prepare n-tensor for storing output data.
-	//         Matrix dimensions (1,2) correspond to pixel equivalents.
-	//         Tensor dimensions (3,..) correspond to summary statistics for
-	//         each bin (pixel).
-	uint32_t xrange = std::ceil((float)range / x_bins);
-	uint32_t yrange = std::ceil((float)range / y_bins);
+		for(int i = 1; i < contig_avail.size(); ++i){
+			if(contig_avail[i]){
+				// Cumulative offset for the current rid equals the previous rid
+				rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
+				range += oreader.hdr.contigs_[i].n_bases;
 
-	std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
-
-	std::cerr << "partition range=" << range / x_bins << " and " << range / y_bins << std::endl;
-	while(oreader.NextRecord()){
-		if(settings.filter.Filter(oreader.it.rcd)){
-			//writer.Add(*oreader.it.rcd);
-			//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-			if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
-				std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
-				std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-				exit(1);
+			} else {
+				rid_offsets[i].range = rid_offsets[i - 1].range;
 			}
+			rid_offsets[i].min = 0;
+			rid_offsets[i].max = oreader.hdr.contigs_[i].n_bases;
+		}
 
-			//Todo: if data is unbalanced
-			//if(oreader.it.rcd->Bpos < rid_offsets[oreader.it.rcd->ridB].min) continue;
+		std::cerr << "range=" << range << std::endl;
+		for(int i = 0; i < rid_offsets.size(); ++i){
+			std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
+		}
+		// Step 3: Second pass over data.
+		//         Prepare n-tensor for storing output data.
+		//         Matrix dimensions (1,2) correspond to pixel equivalents.
+		//         Tensor dimensions (3,..) correspond to summary statistics for
+		//         each bin (pixel).
+		uint32_t xrange = std::ceil((float)range / x_bins);
+		uint32_t yrange = std::ceil((float)range / y_bins);
 
-			if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
-				std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
-				std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-				std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
-				exit(1);
+		std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
+
+		std::cerr << "partition range=" << range / x_bins << " and " << range / y_bins << std::endl;
+		oreader.stream->seekg(oreader.index.ent[0].foff); // seek back to first block
+		while(oreader.NextRecord()){
+			if(settings.filter.Filter(oreader.it.rcd)){
+				//writer.Add(*oreader.it.rcd);
+				//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+				if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
+					std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
+					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+					exit(1);
+				}
+
+				if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
+					std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
+					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+					std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
+					exit(1);
+				}
+
+				// Invoke summary statistics function.
+				(mat[(oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange][(oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange].*f)(oreader.it.rcd);
 			}
-
-			// Invoke summary statistics function.
-			(mat[(oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange][(oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange].*f)(oreader.it.rcd);
 		}
-	}
-	std::cerr << "done" << std::endl;
+		std::cerr << "done" << std::endl;
 
-	for(int i = 0; i < x_bins; ++i){
-		std::cout << (mat[i][0].*r)(min_cutoff);
-		for(int j = 1; j < y_bins; ++j){
-			 std::cout << "\t" << (mat[i][j].*r)(min_cutoff);
+		for(int i = 0; i < x_bins; ++i){
+			std::cout << (mat[i][0].*r)(min_cutoff);
+			for(int j = 1; j < y_bins; ++j){
+				 std::cout << "\t" << (mat[i][j].*r)(min_cutoff);
+			}
+			std::cout << '\n';
 		}
-		std::cout << '\n';
+		std::cout.flush();
+		std::cerr << "done" << std::endl;
+
+		return 1;
+	} else {
+
+		// Step 1: Calculate the landscape ranges (X and Y dimensions).
+		// Approach 2: Dropping regions with no data.
+		uint64_t range = 0;
+		std::vector<offset_tuple> rid_offsets(oreader.index.m_ent);
+		for(int i = 0; i < oreader.index.m_ent; ++i){
+			std::cerr << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
+			if(oreader.index.ent_meta[i].n){
+				// Cumulative offset for the current rid equals the previous rid
+				if(oreader.index.ent_meta[i].rid != 0){
+					rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range + ((oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1);
+					range += (oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1;
+				}
+
+			} else {
+				if(oreader.index.ent_meta[i].rid != 0)
+					rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range;
+			}
+			rid_offsets[oreader.index.ent_meta[i].rid].min = oreader.index.ent_meta[i].minpos;
+			rid_offsets[oreader.index.ent_meta[i].rid].max = oreader.index.ent_meta[i].maxpos;
+		}
+		std::cerr << "range=" << range << std::endl;
+		for(int i = 0; i < rid_offsets.size(); ++i){
+			std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
+		}
+
+		// Step 2: Prepare n-tensor for storing output data.
+		//         Matrix dimensions (1,2) correspond to pixel equivalents.
+		//         Tensor dimensions (3,..) correspond to summary statistics for
+		//         each bin (pixel).
+		uint32_t xrange = std::ceil((float)range / x_bins);
+		uint32_t yrange = std::ceil((float)range / y_bins);
+
+		std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
+
+		std::cerr << "partition range=" << range / x_bins << " and " << range / y_bins << std::endl;
+		while(oreader.NextRecord()){
+			if(settings.filter.Filter(oreader.it.rcd)){
+				//writer.Add(*oreader.it.rcd);
+				//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+				if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
+					std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
+					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+					exit(1);
+				}
+
+				//Todo: if data is unbalanced
+				//if(oreader.it.rcd->Bpos < rid_offsets[oreader.it.rcd->ridB].min) continue;
+
+				if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
+					std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
+					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
+					std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
+					exit(1);
+				}
+
+				// Invoke summary statistics function.
+				(mat[(oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange][(oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange].*f)(oreader.it.rcd);
+			}
+		}
+		std::cerr << "done" << std::endl;
+
+		for(int i = 0; i < x_bins; ++i){
+			std::cout << (mat[i][0].*r)(min_cutoff);
+			for(int j = 1; j < y_bins; ++j){
+				 std::cout << "\t" << (mat[i][j].*r)(min_cutoff);
+			}
+			std::cout << '\n';
+		}
+		std::cout.flush();
+		std::cerr << "done" << std::endl;
 	}
-	std::cout.flush();
-	std::cerr << "done" << std::endl;
 
 	return 1;
 

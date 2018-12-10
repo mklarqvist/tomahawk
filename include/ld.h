@@ -12,6 +12,7 @@
 #include "writer.h"
 #include "intervals.h"
 
+// Make sure they are not in the API
 #include "ld/ld_progress.h"
 #include "ld/ld_balancing.h"
 #include "ld/ld_unpacker.h"

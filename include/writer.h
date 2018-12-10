@@ -3,9 +3,9 @@
 
 #include <ostream>
 #include "index.h"
-#include "spinlock.h"
 #include "core.h"
 #include "two_reader.h"
+#include "spinlock.h"
 
 namespace tomahawk {
 

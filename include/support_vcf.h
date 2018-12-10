@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2017-current Genome Research Ltd.
+Copyright (C) 2016-current Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

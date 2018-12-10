@@ -361,6 +361,12 @@ int view(int argc, char** argv){
 		return(1);
 	}
 
+	// Print message if not writing to stdout.
+	if(!(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-'))){
+		tomahawk::ProgramMessage();
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Calling view..." << std::endl;
+	}
+
 	// New instance of reader.
 	tomahawk::two_reader oreader;
 
@@ -396,7 +402,6 @@ int view(int argc, char** argv){
 	// Construct filters.
 	settings.filter.Build();
 
-	// todo: if data is sorted then only visit overlapping blocks
 	if(oreader.index.state == TWK_IDX_SORTED && settings.ivals.size()){
 		writer.oindex.state = TWK_IDX_SORTED;
 
@@ -431,10 +436,9 @@ int view(int argc, char** argv){
 			}
 		}
 	} else {
-		if(oreader.index.state == TWK_IDX_SORTED){
-			std::cerr << "file is sorted, therefore output data is also sorted" << std::endl;
+		if(oreader.index.state == TWK_IDX_SORTED)
 			writer.oindex.state = TWK_IDX_SORTED;
-		}
+
 		while(oreader.NextRecord()){
 			if(settings.filter.Filter(oreader.it.rcd)){
 				writer.Add(*oreader.it.rcd);

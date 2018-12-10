@@ -14,6 +14,7 @@ namespace tomahawk {
 
 class twk_two_filter {
 public:
+
 	typedef bool(twk_two_filter::*filter_func)(const twk1_two_t* rec) const;
 
 	twk_two_filter() :
