@@ -25,6 +25,8 @@ DEALINGS IN THE SOFTWARE.
 #include "utility.h"
 #include "two_reader.h"
 
+#include "sort_progress.h"
+
 void sort_usage(void){
 	tomahawk::ProgramMessage();
 	std::cerr <<
@@ -100,6 +102,11 @@ int sort(int argc, char** argv){
 		return(1);
 	}
 
+	// Print messages
+	tomahawk::ProgramMessage();
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling sort..." << std::endl;
+
+
 	tomahawk::two_reader oreader;
 
 	if(oreader.Open(in) == false){
@@ -170,12 +177,14 @@ int sort(int argc, char** argv){
 						for(; k + 10000 < blk.n; k += 10000){
 							for(int l = k; l < k + 10000; ++l) obuf << blk.rcds[l];
 							rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
+							progress->cmps += 10000;
 							obuf.reset(); obuf2.reset();
 						}
 
 						// Compress residual records
 						//std::cerr << "remainder=" << k << "/" << blk.n << std::endl;
 
+						progress->cmps += blk.n - k;
 						for(int l = k; l < blk.n; ++l) obuf << blk.rcds[l];
 						rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
 						obuf.reset(); obuf2.reset();
@@ -209,12 +218,14 @@ int sort(int argc, char** argv){
 				for(; k + 10000 < blk.n; k += 10000){
 					for(int l = k; l < k + 10000; ++l) obuf << blk.rcds[l];
 					rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
+					progress->cmps += 10000;
 					obuf.reset(); obuf2.reset();
 				}
 
 				// Compress residual records
 				//std::cerr << "remainder=" << k << "/" << blk.n << std::endl;
 
+				progress->cmps += blk.n - k;
 				for(int l = k; l < blk.n; ++l) obuf << blk.rcds[l];
 				rec.nc += zcodec.StreamCompress(obuf, obuf2, ostream, tomahawk::twk1_two_t::packed_size * 5000);
 				obuf.reset(); obuf2.reset();
@@ -230,8 +241,7 @@ int sort(int argc, char** argv){
 				blk.reset();
 			}
 			ostream.flush();
-			std::cerr << "Finished: " << tmp_filename << " with " << f << "-" << t << std::endl;
-			std::cerr << "Sorted n=" << tot << " variants with size=" << tomahawk::utility::ToPrettyDiskString((uint64_t)ostream.tellp()) << std::endl;
+			std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Finished: " << tmp_filename << " with " << f << "-" << t << ". Sorted n=" << tot << " variants with size=" << tomahawk::utility::ToPrettyDiskString((uint64_t)ostream.tellp()) << std::endl;
 			ostream.close();
 
 			return true;
@@ -249,16 +259,21 @@ int sort(int argc, char** argv){
 		std::vector<sort_helper> local_idx; // local offset index
 		tomahawk::ZSTDCodec zcodec;
 		tomahawk::twk_buffer_t obuf, obuf2;
+		tomahawk::twk_sort_progress* progress;
 	};
 
 	// Distrubution.
-	uint64_t b_unc = 0;
-	std::cerr << "oreader size=" << oreader.index.n << std::endl;
+	uint64_t b_unc = 0, n_recs = 0;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
 	for(int i = 0; i < oreader.index.n; ++i){
 		b_unc += oreader.index.ent[i].b_unc;
+		n_recs += oreader.index.ent[i].n;
 		//std::cerr << oreader.index.ent[i].foff << " " << oreader.index.ent[i].b_cmp << " and " << oreader.index.ent[i].b_unc << std::endl;
 	}
-	std::cerr << "uncompressed size=" << b_unc << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Sorting " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
+
+
 	if(b_unc == 0){
 		std::cerr << "cannot sort empty file" << std::endl;
 		return 1;
@@ -267,7 +282,7 @@ int sort(int argc, char** argv){
 	//uint32_t n_threads = std::thread::hardware_concurrency();
 	if(oreader.index.n < n_threads) n_threads = oreader.index.n;
 	uint64_t b_unc_thread = b_unc / n_threads;
-	std::cerr << "bytes / thread = " << b_unc_thread << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Data/thread: " << tomahawk::utility::ToPrettyDiskString(b_unc_thread) << std::endl;
 
 	std::vector< std::pair<uint32_t,uint32_t> > ranges;
 	uint64_t f = 0, t = 0, b_unc_tot = 0;
@@ -287,12 +302,16 @@ int sort(int argc, char** argv){
 		b_unc_tot = 0;
 		f = t;
 	}
-	std::cerr << "ranges=" << ranges.size() << std::endl;
+	//std::cerr << "ranges=" << ranges.size() << std::endl;
 	assert(ranges.back().second == oreader.index.n);
 	assert(ranges.size() <= n_threads);
 
+	tomahawk::twk_sort_progress progress_sort;
+	progress_sort.n_cmps = n_recs;
+	std::thread* psthread = progress_sort.Start();
+
 	twk_sort_slave* slaves = new twk_sort_slave[n_threads];
-	std::cerr << "index=" << oreader.index.n << " -> " << oreader.index.n / n_threads << std::endl;
+	//std::cerr << "index=" << oreader.index.n << " -> " << oreader.index.n / n_threads << std::endl;
 	uint32_t range_thread = oreader.index.n / n_threads;
 	for(int i = 0; i < n_threads; ++i){
 		slaves[i].f = ranges[i].first;
@@ -300,13 +319,14 @@ int sort(int argc, char** argv){
 		slaves[i].m_limit = memory_limit;
 		slaves[i].filename = in;
 		slaves[i].c_level = c_level;
+		slaves[i].progress = &progress_sort;
 
 		std::string suffix    = tomahawk::twk_two_writer_t::RandomSuffix();
 		std::string base_path = tomahawk::twk_two_writer_t::GetBasePath(out);
 		std::string base_name = tomahawk::twk_two_writer_t::GetBaseName(out);
 		std::string temp_out  = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
 		slaves[i].tmp_filename = temp_out;
-		std::cerr << "Slave-" << i << ": range=" << slaves[i].f << "->" << slaves[i].t << "/" << oreader.index.n << " and name " << slaves[i].tmp_filename << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Slave-" << i << ": range=" << slaves[i].f << "->" << slaves[i].t << "/" << oreader.index.n << " and name " << slaves[i].tmp_filename << std::endl;
 	}
 
 	for(int i = 0; i < n_threads; ++i){
@@ -322,12 +342,13 @@ int sort(int argc, char** argv){
 		slaves[i].it.buf.clear();
 		slaves[i].it.oblk.bytes.clear();
 	}
-
+	progress_sort.is_ticking = false;
+	progress_sort.PrintFinal();
 
 	uint32_t n_queues = 0;
 	for(int i = 0; i < n_threads; ++i){
 		for(int j = 0; j < slaves[i].local_idx.size(); ++j){
-			std::cerr << i << ": " << slaves[i].local_idx[j].foff << "->" << slaves[i].local_idx[j].fend << " " << slaves[i].local_idx[j].n << " " << slaves[i].local_idx[j].nc << std::endl;
+			//std::cerr << i << ": " << slaves[i].local_idx[j].foff << "->" << slaves[i].local_idx[j].fend << " " << slaves[i].local_idx[j].n << " " << slaves[i].local_idx[j].nc << std::endl;
 			++n_queues;
 		}
 	}
@@ -365,9 +386,9 @@ int sort(int argc, char** argv){
 			return true;
 		}
 
-		bool Next(tomahawk::twk1_two_t& rec){
+		bool Next(tomahawk::twk1_two_t& rec, const uint32_t b_read = 256000){
 			if(it == n){
-				if(NextBlock() == false)
+				if(NextBlock(b_read) == false)
 					return false;
 			}
 
@@ -376,7 +397,7 @@ int sort(int argc, char** argv){
 			return true;
 		}
 
-		bool NextBlock(uint32_t b_read = 256000){
+		bool NextBlock(const uint32_t b_read = 256000){
 			if(b_left == 0)
 				return false;
 
@@ -467,9 +488,13 @@ int sort(int argc, char** argv){
 	obuf2.resize(256000);
 
 	//uint32_t k = 0;
+	uint64_t maxmem_queue = memory_limit * n_threads * 1e9;
+	uint64_t mem_queue = maxmem_queue / n_queues;
+	mem_queue = mem_queue < sizeof(tomahawk::twk1_two_t) ? sizeof(tomahawk::twk1_two_t) : mem_queue;
+
 	std::priority_queue<two_queue_entry> queue;
 
-	std::cerr << "spawning=" << n_queues << " queues" << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Spawning=" << tomahawk::utility::ToPrettyString(n_queues) << " queues with " << tomahawk::utility::ToPrettyDiskString(mem_queue) << " each..." << std::endl;
 	twk_two_stream_iterator* its = new twk_two_stream_iterator[n_queues];
 	tomahawk::twk1_two_t rec;
 	uint64_t n_rec_total = 0;
@@ -477,7 +502,12 @@ int sort(int argc, char** argv){
 	for(int i = 0; i < n_threads; ++i){
 		for(int j = 0; j < slaves[i].local_idx.size(); ++j, ++local_queue){
 			// open iterators
-			if(its[local_queue].Open(slaves[i].tmp_filename, slaves[i].local_idx[j].foff, slaves[i].local_idx[j].fend, slaves[i].local_idx[j].n, slaves[i].local_idx[j].nc) == false){
+			if(its[local_queue].Open(slaves[i].tmp_filename,
+			                         slaves[i].local_idx[j].foff,
+			                         slaves[i].local_idx[j].fend,
+			                         slaves[i].local_idx[j].n,
+			                         slaves[i].local_idx[j].nc) == false)
+			{
 				std::cerr << "failed open" << std::endl;
 				return false;
 			}
@@ -486,12 +516,12 @@ int sort(int argc, char** argv){
 				std::cerr << "failed to get next" << std::endl;
 				return false;
 			}
-			std::cerr << "queue-" << local_queue << std::endl;
+			//std::cerr << "queue-" << local_queue << std::endl;
 			//rec.PrintLD(std::cerr);
 			queue.push(two_queue_entry(rec, local_queue));
 
 			n_rec_total += slaves[i].local_idx[j].n / tomahawk::twk1_two_t::packed_size;
-			std::cerr << "total=" << its[local_queue].n_tot << std::endl;
+			//std::cerr << "total=" << its[local_queue].n_tot << std::endl;
 		}
 	}
 
@@ -508,7 +538,7 @@ int sort(int argc, char** argv){
 
 	tomahawk::twk_two_writer_t owriter;
 	owriter.oindex.SetChroms(oreader.hdr.GetNumberContigs());
-	std::cerr << "opening=" << out << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG","WRITER") << "Opening \"" << out << "\"..." << std::endl;
 	if(owriter.Open(out) == false){
 		std::cerr << "failed top open" << std::endl;
 		return false;
@@ -525,12 +555,15 @@ int sort(int argc, char** argv){
 		return false;
 	}
 
-
 	// Reference
 	uint32_t ridA = queue.top().rec.ridA;
 
 	tomahawk::Timer timer; timer.Start();
 	uint64_t n_entries_out = 0;
+	tomahawk::twk_sort_progress progress;
+	progress.n_cmps = n_recs;
+	std::thread* pthread = progress.Start();
+
 	while(queue.empty() == false){
 		// peek at top entry in queue
 		const uint32_t id = queue.top().qid;
@@ -548,9 +581,10 @@ int sort(int argc, char** argv){
 		ridA = queue.top().rec.ridA;
 
 
-		++n_entries_out;
-		if(n_entries_out % 1000000 == 0)
-			std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
+		++progress.cmps;
+		//++n_entries_out;
+		//if(n_entries_out % 1000000 == 0)
+		//	std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
 
 		// remove this record from the queue
 		queue.pop();
@@ -573,28 +607,33 @@ int sort(int argc, char** argv){
 			owriter.Add(rec);
 			ridA = rec.ridA;
 
-			++n_entries_out;
-			if(n_entries_out % 1000000 == 0)
-				std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
+			++progress.cmps;
+			//++n_entries_out;
+			//if(n_entries_out % 1000000 == 0)
+			//	std::cerr << tomahawk::utility::timestamp("LOG") << tomahawk::utility::ToPrettyString(n_entries_out) << "/" << tomahawk::utility::ToPrettyString(n_rec_total) << std::endl;
 		}
 	}
+	progress.is_ticking = false;
+	progress.PrintFinal();
 
 	owriter.flush();
 	owriter.WriteFinal();
 	owriter.close();
-	std::cerr << "merge time=" << timer.ElapsedString() << std::endl;
-	std::cerr << "deleting intermediary" << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished merging! Time: " << timer.ElapsedString() << std::endl;
+	//std::cerr << "deleting intermediary" << std::endl;
 
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Deleting temp files..." << std::endl;
+	std::cerr.flush();
 	for(int i = 0; i < n_threads; ++i){
 	if( remove( slaves[i].tmp_filename.c_str() ) != 0 ){
-	    std::cerr << "Error deleting file=" << slaves[i].tmp_filename << std::endl;
-	    //return 1;
+	    std::cerr << tomahawk::utility::timestamp("ERROR") << "Error deleting file " << slaves[i].tmp_filename << "!" << std::endl;
 	} else {
-	    std::cerr << "File successfully deleted" << slaves[i].tmp_filename << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Deleted " << slaves[i].tmp_filename << std::endl;
 	  }
 	}
 
 	delete[] slaves;
 	delete[] its;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished!" << std::endl;
 	return 0;
 }

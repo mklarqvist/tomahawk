@@ -56,8 +56,8 @@ struct twk_ld_progress {
 
 		std::this_thread::sleep_for(std::chrono::seconds(30)); // first sleep
 		while(is_ticking){
-			if(n_var.load() > variant_overflow) { variant_width  += 3; variant_overflow  *= 1e3; }
-			if(n_var.load() > genotype_overflow){ genotype_width += 3; genotype_overflow *= 1e3; }
+			if(n_var.load() > variant_overflow)     { variant_width  += 3; variant_overflow  *= 1e3; }
+			if(n_var.load()*n_s > genotype_overflow){ genotype_width += 3; genotype_overflow *= 1e3; }
 
 			if(n_cmps){
 				std::cerr << utility::timestamp("PROGRESS")
@@ -66,7 +66,7 @@ struct twk_ld_progress {
 						<< std::setw(genotype_width) << utility::ToPrettyString(n_var.load()*n_s)
 						<< std::setw(15) << utility::ToPrettyString(n_out.load())
 						<< std::setw(10) << (double)n_var.load()/n_cmps*100 << "%\t"
-						<< (double)0 << std::endl;
+						<< utility::SecondsToTimestring((n_cmps - n_var.load()) / ((double)n_var.load()/timer.Elapsed().count())) << std::endl;
 			} else {
 				std::cerr << utility::timestamp("PROGRESS")
 						<< std::setw(12) << timer.ElapsedString()
