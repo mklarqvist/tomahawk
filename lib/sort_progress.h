@@ -72,7 +72,9 @@ struct twk_sort_progress {
 	 * reasons. This has no consequence as this function is ever only called once.
 	 */
 	void PrintFinal(){
-		std::cerr << utility::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t" << utility::ToPrettyString(cmps.load()) << "(" << utility::ToPrettyString((uint64_t)((double)cmps.load()/timer.Elapsed().count())) << " variants/s)" << std::endl;
+		std::cerr << utility::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t"
+				<< utility::ToPrettyString(cmps.load())
+		        << " (" << utility::ToPrettyString((uint64_t)((double)cmps.load()/timer.Elapsed().count())) << " variants/s)" << std::endl;
 		std::cerr << utility::timestamp("PROGRESS") << "Finished!" << std::endl;
 	}
 
