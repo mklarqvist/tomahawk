@@ -32,7 +32,7 @@ struct offset_tuple {
 };
 
 struct sstats {
-	typedef void (sstats::*addfunc)(const tomahawk::twk1_two_t*);
+	typedef void (sstats::*aggfunc)(const tomahawk::twk1_two_t*);
 	typedef double (sstats::*redfunc)(const uint32_t) const;
 
 	sstats() : n(0), total(0), total_squared(0), min(0), max(0){}
@@ -79,10 +79,191 @@ struct sstats {
 	inline double GetMin(const uint32_t cutoff = 0) const{ return(this->min); }
 	inline double GetMax(const uint32_t cutoff = 0) const{ return(this->max); }
 
+	void operator+=(const sstats& other){
+		n += other.n;
+		total += other.total;
+		total_squared += other.total_squared;
+		min = std::min(min, other.min);
+		max = std::max(max, other.max);
+	}
+
+public:
 	uint64_t n;
 	double total, total_squared;
 	double min, max;
 };
+
+namespace tomahawk {
+
+struct twk_agg_slave {
+public:
+	twk_agg_slave() : f(0), t(0), xrange(0), yrange(0), it(nullptr), thread(nullptr), progress(nullptr), aggregator(&sstats::AddR2), reductor(&sstats::GetMean){}
+	~twk_agg_slave(){ delete it; delete thread; }
+
+	/**<
+	 *
+	 * @param rdr Reference instance of a two reader.
+	 * @return    Returns a pointer to the spawned thread instance if successful or a nullptr otherwise.
+	 */
+	std::thread* StartFindRanges(two_reader& rdr){
+		if(f > t) return nullptr;
+		if(t - f == 0) return nullptr;
+
+		if(stream.good()) stream.close();
+
+		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+		if(stream.good() == false){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
+			return nullptr;
+		}
+
+		stream.seekg(rdr.index.ent[f].foff);
+		if(stream.good() == false){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
+			return nullptr;
+		}
+
+		delete it; it = nullptr;
+		it  = new twk1_two_iterator;
+		it->stream = &stream;
+
+		// Vector of contigs.
+		contig_avail.resize(rdr.hdr.GetNumberContigs(), false);
+
+		// New thread.
+		delete thread; thread = nullptr;
+		thread = new std::thread(&twk_agg_slave::FindRangesUnsorted, this);
+
+		return(thread);
+	}
+
+	/**<
+	 *
+	 * @param rdr Reference instance of a two reader.
+	 * @param agg Aggregation function pointer.
+	 * @param red Reduction function pointer.
+	 * @param x   Number of bins in X-dimension.
+	 * @param y   Number of bins in Y-dimension.
+	 * @param xr  Range of X.
+	 * @param yr  Range of Y.
+	 * @return    Returns a pointer to the spawned thread instance if successful or a nullptr otherwise.
+	 */
+	std::thread* StartBuildMatrix(two_reader& rdr,
+			sstats::aggfunc agg,
+			sstats::redfunc red,
+			uint32_t x, uint32_t y,
+			uint32_t xr, uint32_t yr)
+	{
+		if(f > t) return nullptr;
+		if(t - f == 0) return nullptr;
+
+		assert(agg != nullptr);
+		assert(red != nullptr);
+		aggregator = agg;
+		reductor = red;
+		xrange = xr;
+		yrange = yr;
+		//delete mat; mat = nullptr;
+		mat = std::vector< std::vector<sstats> >(x, std::vector<sstats>(y));
+
+		if(stream.good()) stream.close();
+
+		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+		if(stream.good() == false){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
+			return nullptr;
+		}
+
+		stream.seekg(rdr.index.ent[f].foff);
+		if(stream.good() == false){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
+			return nullptr;
+		}
+
+		delete it; it = nullptr;
+		it  = new twk1_two_iterator;
+		it->stream = &stream;
+
+		// New thread.
+		delete thread; thread = nullptr;
+		thread = new std::thread(&twk_agg_slave::BuildMatrix, this);
+
+		return(thread);
+	}
+
+	/**<
+	 * Investigate the presence of blocks mapping to unique chromosomes. This
+	 * information is needed to set the (X,Y)-coordinate system for the aggregation
+	 * space.
+	 * @param rdr Input reference reader.
+	 * @return    Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool FindRangesUnsorted(){
+		uint32_t tot = 0;
+		for(int i = f; i < t; ++i){
+			assert(it->NextBlock());
+			tot += it->GetBlock().n;
+			for(int j = 0; j < it->blk.n; ++j){
+				contig_avail[it->blk[j].ridA] = true;
+				contig_avail[it->blk[j].ridB] = true;
+			}
+			progress->cmps += it->GetBlock().n;
+		}
+
+		delete it; it = nullptr;
+		return true;
+	}
+
+	bool BuildMatrix(){
+		uint32_t tot = 0;
+		for(int i = f; i < t; ++i){
+			assert(it->NextBlock());
+			tot += it->GetBlock().n;
+			for(int j = 0; j < it->blk.n; ++j){
+				// Invoke aggregator function.
+				(mat[(it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min)/xrange][(it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min)/yrange].*aggregator)(&it->blk[j]);
+			}
+			progress->cmps += it->GetBlock().n;
+		}
+
+		delete it; it = nullptr;
+		return true;
+	}
+
+	// Reduction helper for matrices.
+	void AddMatrix(const twk_agg_slave& other){
+		for(int i = 0; i < mat.size(); ++i){
+			for(int j = 0; j < mat[i].size(); ++j)
+				mat[i][j] += other.mat[i][j];
+		}
+	}
+
+	void PrintMatrix(std::ostream& stream, uint32_t min_cutoff = 5) const{
+		for(int i = 0; i < mat.size(); ++i){
+			stream << (mat[i][0].*reductor)(min_cutoff);
+			for(int j = 1; j < mat[i].size(); ++j)
+				stream << '\t' << (mat[i][j].*reductor)(min_cutoff);
+			stream << '\n';
+		}
+		stream.flush();
+	}
+
+public:
+	uint32_t f, t; // (from,to)-tuple
+	uint32_t xrange, yrange; // (x,y)-tuple
+	std::ifstream stream;
+	twk1_two_iterator* it;
+	std::thread* thread;
+	twk_sort_progress* progress;
+	sstats::aggfunc aggregator; // aggregator function
+	sstats::redfunc reductor; // reductor function
+	std::string filename; // input filename
+	std::vector<bool> contig_avail;
+	std::vector<offset_tuple> rid_offsets; // mat offsets
+	std::vector< std::vector<sstats> > mat; // Output matrix
+};
+
+}
 
 void aggregate_usage(void){
 	tomahawk::ProgramMessage();
@@ -153,7 +334,7 @@ int aggregate(int argc, char** argv){
 		}
 	}
 
-	sstats::addfunc f = &sstats::AddR2;
+	sstats::aggfunc f = &sstats::AddR2;
 	sstats::redfunc r = &sstats::GetMean;
 
 	if(aggregate_func_name.size() == 0){
@@ -235,6 +416,11 @@ int aggregate(int argc, char** argv){
 	// Construct filters.
 	settings.filter.Build();
 
+	// Print messages
+	tomahawk::ProgramMessage();
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling aggregate..." << std::endl;
+
+
 	// Algorithmic overview.
 	// Step 1: Find maximum and minimum X and Y values.
 	// Step 2: Partition into (maxY-minY)/#bins and (maxX-minX)/#bins buckets.
@@ -243,30 +429,96 @@ int aggregate(int argc, char** argv){
 	// Step 3: Iterate over data and update summary statistics in buckets.
 	// Step 4: Output data.
 	if(oreader.index.state != TWK_IDX_SORTED){
-		std::cerr << tomahawk::utility::timestamp("ERROR") << "The input file has to be sorted..." << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "The input file is not sorted. Performing 2-pass over data..." << std::endl;
 
 
-		std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
+		//std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
 
 		// Step 1: iterate over index entries and find what contigs are used
-		std::cerr << "First pass over data." << std::endl;
-		// Todo: make parallel
-		while(oreader.NextRecord()){
-			contig_avail[oreader.it.rcd->ridA] = true;
-			contig_avail[oreader.it.rcd->ridB] = true;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
+		//
+		settings.n_threads = std::thread::hardware_concurrency();
+		// Distrubution.
+		uint64_t b_unc = 0, n_recs = 0;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
+		for(int i = 0; i < oreader.index.n; ++i){
+			b_unc  += oreader.index.ent[i].b_unc;
+			n_recs += oreader.index.ent[i].n;
+		}
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
+
+		if(b_unc == 0){
+			std::cerr << tomahawk::utility::timestamp("LOG") << "Cannot aggregate empty file..." << std::endl;
+			return false;
 		}
 
-		for(int i = 0; i < contig_avail.size(); ++i){
-			if(contig_avail[i] == true)
-				std::cerr << "contig: " << oreader.hdr.GetContig(i)->name << " set" << std::endl;
+		if(oreader.index.n < settings.n_threads) settings.n_threads = oreader.index.n;
+		uint64_t b_unc_thread = b_unc / settings.n_threads;
+		std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Data/thread: " << tomahawk::utility::ToPrettyDiskString(b_unc_thread) << std::endl;
+
+		std::vector< std::pair<uint32_t,uint32_t> > ranges;
+		uint64_t fR = 0, tR = 0, b_unc_tot = 0;
+		for(int i = 0; i < oreader.index.n; ++i){
+			if(b_unc_tot >= b_unc_thread){
+				ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
+				b_unc_tot = 0;
+				fR = tR;
+			}
+			b_unc_tot += oreader.index.ent[i].b_unc;
+			++tR;
+		}
+		if(fR != tR){
+			ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
+			b_unc_tot = 0;
+			fR = tR;
+		}
+		assert(ranges.back().second == oreader.index.n);
+		assert(ranges.size() <= settings.n_threads);
+
+		tomahawk::twk_sort_progress progress_sort;
+		progress_sort.n_cmps = n_recs;
+		std::thread* psthread = progress_sort.Start();
+
+		tomahawk::twk_agg_slave* slaves = new tomahawk::twk_agg_slave[settings.n_threads];
+		uint32_t range_thread = oreader.index.n / settings.n_threads;
+		for(int i = 0; i < settings.n_threads; ++i){
+			slaves[i].f = ranges[i].first;
+			slaves[i].t = ranges[i].second;
+			slaves[i].filename = settings.in;
+			slaves[i].progress = &progress_sort;
+			//std::cerr << "thread-" << i << " " << slaves[i].f << "-" << slaves[i].t << std::endl;
+		}
+
+		for(int i = 0; i < settings.n_threads; ++i){
+			if(slaves[i].StartFindRanges(oreader) == nullptr){
+				std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+				return false;
+			}
+		}
+		for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+		progress_sort.is_ticking = false;
+		progress_sort.PrintFinal();
+
+		// Reduce
+		for(int i = 1; i < settings.n_threads; ++i){
+			for(int j = 0; j < slaves[0].contig_avail.size(); ++j)
+				slaves[0].contig_avail[j] = std::max(slaves[0].contig_avail[j], slaves[i].contig_avail[j]);
+		}
+
+		// Print availability.
+		for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i]){
+				std::cerr << "contig-" << oreader.hdr.contigs_[i].name << " is set" << std::endl;
+			}
 		}
 
 		// Step 2: Determine boundaries given the contigs that were set.
 		//         Calculate the landscape ranges (X and Y dimensions).
 		// Approach 2: Dropping regions with no data.
 		uint64_t range = 0;
-		std::vector<offset_tuple> rid_offsets(contig_avail.size());
-		if(contig_avail[0]){
+		std::vector<offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+		if(slaves[0].contig_avail[0]){
 			rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
 			range += oreader.hdr.contigs_[0].n_bases;
 		} else {
@@ -275,8 +527,8 @@ int aggregate(int argc, char** argv){
 		rid_offsets[0].min = 0;
 		rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
 
-		for(int i = 1; i < contig_avail.size(); ++i){
-			if(contig_avail[i]){
+		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i]){
 				// Cumulative offset for the current rid equals the previous rid
 				rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
 				range += oreader.hdr.contigs_[i].n_bases;
@@ -299,6 +551,26 @@ int aggregate(int argc, char** argv){
 		//         each bin (pixel).
 		uint32_t xrange = std::ceil((float)range / x_bins);
 		uint32_t yrange = std::ceil((float)range / y_bins);
+
+
+		std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
+		for(int i = 0; i < settings.n_threads; ++i){
+			slaves[i].rid_offsets = rid_offsets;
+			if(slaves[i].StartBuildMatrix(oreader, f, r, x_bins, y_bins, xrange, yrange) == nullptr){
+				std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+				return false;
+			}
+		}
+		for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+		for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
+
+		// Print matrix
+		slaves[0].PrintMatrix(std::cout, min_cutoff);
+
+		std::cerr << "done" << std::endl;
+
+		delete[] slaves;
+		return 1;
 
 		std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
 

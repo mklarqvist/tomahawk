@@ -185,6 +185,7 @@ public:
 
 struct twk_two_settings {
 	char out_type;
+	int32_t n_threads;
 	std::string in, out;
 	std::vector<std::string> ivals; // unparsed interval strings
 	twk_intervals_two intervals;

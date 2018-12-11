@@ -378,7 +378,7 @@ public:
 		uint64_t b_unc = 0, n_recs = 0;
 		std::cerr << utility::timestamp("LOG") << "Blocks: " << utility::ToPrettyString(oreader.index.n) << std::endl;
 		for(int i = 0; i < oreader.index.n; ++i){
-			b_unc += oreader.index.ent[i].b_unc;
+			b_unc  += oreader.index.ent[i].b_unc;
 			n_recs += oreader.index.ent[i].n;
 		}
 		std::cerr << utility::timestamp("LOG") << "Uncompressed size: " << utility::ToPrettyDiskString(b_unc) << std::endl;
