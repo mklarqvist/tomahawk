@@ -279,7 +279,8 @@ void aggregate_usage(void){
 	"  -f   STRING aggregation function: can be one of (r2,r,d,dprime,dp,p,hets,alts,het,alt)(required)\n"
 	"  -r   STRING reduction function: can be one of (mean,count,n,min,max,sd)(required)\n"
 	"  -I   STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos\n"
-	"  -c   INT    min cut-off value used in reduction function: value < c will be set to 0 (default: 5)\n\n";
+	"  -c   INT    min cut-off value used in reduction function: value < c will be set to 0 (default: 5)\n"
+	"  -t   INT    number of parallel threads: each thread will use " << sizeof(sstats) << "(x*y) bytes\n" << std::endl;
 }
 
 int aggregate(int argc, char** argv){
@@ -296,7 +297,7 @@ int aggregate(int argc, char** argv){
 		{"min-cutoff",    optional_argument, 0, 'c' },
 		{"aggregate-function",    required_argument, 0, 'f' },
 		{"reduce-function",    required_argument, 0, 'r' },
-
+		{"threads",    optional_argument, 0, 't' },
 		{0,0,0,0}
 	};
 
@@ -308,7 +309,7 @@ int aggregate(int argc, char** argv){
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:I:x:y:f:r:c:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:I:x:y:f:r:c:t:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -331,6 +332,7 @@ int aggregate(int argc, char** argv){
 		case 'f': aggregate_func_name = std::string(optarg); break;
 		case 'r': reduce_func_name = std::string(optarg); break;
 		case 'c': min_cutoff = std::atoi(optarg); break;
+		case 't': settings.n_threads = std::atoi(optarg); break;
 		}
 	}
 
@@ -349,6 +351,11 @@ int aggregate(int argc, char** argv){
 
 	if(min_cutoff < 0){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have a min-cutoff (-c) < 0..." << std::endl;
+		return(1);
+	}
+
+	if(settings.n_threads <= 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have <= 0 threads (-t)..." << std::endl;
 		return(1);
 	}
 
@@ -437,7 +444,7 @@ int aggregate(int argc, char** argv){
 		// Step 1: iterate over index entries and find what contigs are used
 		std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
 		//
-		settings.n_threads = std::thread::hardware_concurrency();
+		//settings.n_threads = std::thread::hardware_concurrency();
 		// Distrubution.
 		uint64_t b_unc = 0, n_recs = 0;
 		std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
@@ -446,7 +453,6 @@ int aggregate(int argc, char** argv){
 			n_recs += oreader.index.ent[i].n;
 		}
 		std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
 
 		if(b_unc == 0){
 			std::cerr << tomahawk::utility::timestamp("LOG") << "Cannot aggregate empty file..." << std::endl;
@@ -554,20 +560,30 @@ int aggregate(int argc, char** argv){
 
 
 		std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(sstats)*x_bins*y_bins*settings.n_threads) << " for matrices..." << std::endl;
+
+		tomahawk::twk_sort_progress progress_sort_step2;
+		progress_sort_step2.n_cmps = n_recs;
+		psthread = progress_sort_step2.Start();
 		for(int i = 0; i < settings.n_threads; ++i){
 			slaves[i].rid_offsets = rid_offsets;
+			slaves[i].progress = &progress_sort_step2;
 			if(slaves[i].StartBuildMatrix(oreader, f, r, x_bins, y_bins, xrange, yrange) == nullptr){
 				std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
 				return false;
 			}
 		}
 		for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+		progress_sort_step2.is_ticking = false;
+		progress_sort_step2.PrintFinal();
 		for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
 
 		// Print matrix
 		slaves[0].PrintMatrix(std::cout, min_cutoff);
 
-		std::cerr << "done" << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregated " << tomahawk::utility::ToPrettyString(n_recs) << " records in " << tomahawk::utility::ToPrettyString(x_bins*y_bins) << " bins." << std::endl;
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Finished." << std::endl;
 
 		delete[] slaves;
 		return 1;
@@ -608,6 +624,7 @@ int aggregate(int argc, char** argv){
 		}
 		std::cout.flush();
 		std::cerr << "done" << std::endl;
+
 
 		return 1;
 	} else {

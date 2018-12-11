@@ -81,11 +81,11 @@ template <class T>
 std::string ToPrettyDiskString(const T value){
 	if(value == 0) return("0 b");
 	if(value > 1E9){
-		return(std::to_string((double)value/1e9) + " gb");
+		return(std::to_string((double)value/1e9) + " Gb");
 	} else if(value > 1E6){
-		return(std::to_string((double)value/1e6) + " mb");
+		return(std::to_string((double)value/1e6) + " Mb");
 	} else if(value > 1E3){
-		return(std::to_string((double)value/1e3) + " kb");
+		return(std::to_string((double)value/1e3) + " Kb");
 	} else
 		return(std::to_string(value) + " b");
 }
