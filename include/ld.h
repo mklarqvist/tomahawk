@@ -335,12 +335,12 @@ public:
 	uint32_t byte_width; // Number of bytes required per variant site
 	uint32_t byte_aligned_end; // End byte position
 	uint32_t vector_cycles; // Number of SIMD cycles (genotypes/2/vector width)
-	uint32_t phased_unbalanced_adjustment; // Modulus remainder
-	uint32_t unphased_unbalanced_adjustment; // Modulus remainder
+	uint32_t phased_unbalanced_adjustment; // Remainder in math
+	uint32_t unphased_unbalanced_adjustment; // Remainder in math
 	uint64_t t_out; // number of bytes written
 	uint64_t n_method[10];
 
-	uint64_t* mask_placeholder;
+	uint64_t* mask_placeholder; // placeholder all-0 mask.
 
 	IndexEntryOutput irecF, irecR;
 	ZSTDCodec zcodec; // reusable zstd codec instance with internal context.
@@ -351,7 +351,7 @@ public:
 	twk_ld_simd  helper_simd; // simd counters
 	twk_ld_count helper; // regular counters
 	twk1_two_t cur_rcd;
-	twk1_two_t cur_rcd2;
+	//twk1_two_t cur_rcd2;
 	IndexOutput* index;
 	twk_writer_t* writer;
 	twk_ld_progress* progress;

@@ -230,8 +230,6 @@ public:
 				++TWK_SITES_FILTERED[0];
 				//std::cerr << "removing ivariant site=" << rec->rid << ":" << rec->pos+1 << "..." << std::endl;
 				return false;
-			} else {
-				//std::cerr << "do nothing" << std::endl;
 			}
 		}
 
@@ -249,7 +247,6 @@ public:
 
 		if(gt.n_missing) twk.gt_missing = true;
 
-		//std::cerr << "phase -> mixed=" << (int)gt.mixed_phasing << ", uniform_phase=" << (int)gt.phase_if_uniform << std::endl;
 		twk.n_hom = gt.hap_cnt[5];
 		twk.n_het = gt.hap_cnt[1] + gt.hap_cnt[4];
 

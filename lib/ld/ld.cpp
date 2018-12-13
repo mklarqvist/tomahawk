@@ -867,38 +867,38 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 	auto t0 = std::chrono::high_resolution_clock::now();
 #endif
 
-#define ITER_BASE {										\
+#define ITER_BASE {                               \
 	a = _mm_load_si128( (__m128i*) &vectorA[i] ); \
 	b = _mm_load_si128( (__m128i*) &vectorB[i] ); \
-	refref  = PHASED_REFREF(a, b);	\
-	refalt  = PHASED_REFALT(a, b);	\
-	altref  = PHASED_ALTREF(a, b);	\
-	altalt  = PHASED_ALTALT(a, b);	\
-	i += 1;												\
+	refref  = PHASED_REFREF(a, b);                \
+	refalt  = PHASED_REFALT(a, b);                \
+	altref  = PHASED_ALTREF(a, b);                \
+	altalt  = PHASED_ALTALT(a, b);                \
+	i += 1;                                       \
 }
 
-#define ITER_SHORT {														\
-	ITER_BASE																\
-	__intermediate = FILTER_UNPHASED_SPECIAL(refref);						\
-	popcnt128(helper_simd.counters[0], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);	\
-	popcnt128(helper_simd.counters[1], __intermediate);				\
-	__intermediate = FILTER_UNPHASED(altref, altref);						\
-	popcnt128(helper_simd.counters[2], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);	\
-	popcnt128(helper_simd.counters[3], __intermediate);				\
-	__intermediate = FILTER_UNPHASED(refalt,refalt);						\
-	popcnt128(helper_simd.counters[6], __intermediate);				\
+#define ITER_SHORT {                                                      \
+	ITER_BASE                                                             \
+	__intermediate = FILTER_UNPHASED_SPECIAL(refref);                     \
+	popcnt128(helper_simd.counters[0], __intermediate);                   \
+	__intermediate = FILTER_UNPHASED_PAIR(refref,altref, altref,refref);  \
+	popcnt128(helper_simd.counters[1], __intermediate);                   \
+	__intermediate = FILTER_UNPHASED(altref, altref);                     \
+	popcnt128(helper_simd.counters[2], __intermediate);                   \
+	__intermediate = FILTER_UNPHASED_PAIR(refref,refalt, refalt,refref);  \
+	popcnt128(helper_simd.counters[3], __intermediate);                   \
+	__intermediate = FILTER_UNPHASED(refalt,refalt);                      \
+	popcnt128(helper_simd.counters[6], __intermediate);                   \
 }
 
-#define ITER_LONG {															\
-	ITER_SHORT																\
-	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref);	\
-	popcnt128(helper_simd.counters[5], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt);	\
-	popcnt128(helper_simd.counters[7], __intermediate);				\
-	__intermediate = FILTER_UNPHASED_SPECIAL(altalt);						\
-	popcnt128(helper_simd.counters[8], __intermediate);				\
+#define ITER_LONG {                                                        \
+	ITER_SHORT                                                             \
+	__intermediate = FILTER_UNPHASED_PAIR(altref,altalt, altalt,altref);   \
+	popcnt128(helper_simd.counters[5], __intermediate);                    \
+	__intermediate = FILTER_UNPHASED_PAIR(refalt, altalt, altalt, refalt); \
+	popcnt128(helper_simd.counters[7], __intermediate);                    \
+	__intermediate = FILTER_UNPHASED_SPECIAL(altalt);                      \
+	popcnt128(helper_simd.counters[8], __intermediate);                    \
 }
 
 	for( ; i < frontBonus; )                         ITER_SHORT
@@ -1158,21 +1158,21 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 	const double h0 = ((double)helper.alleleCounts[0] + helper.alleleCounts[4]) / (helper.totalHaplotypeCounts);
 	const double h1 = ((double)helper.alleleCounts[1] + helper.alleleCounts[5]) / (helper.totalHaplotypeCounts);
 
-	cur_rcd2.D = pA*qB - qA*pB;
-	cur_rcd2.R2 = cur_rcd2.D*cur_rcd2.D / (g0*g1*h0*h1);
-	if(cur_rcd2.R2 < settings.minR2 || cur_rcd2.R2 > settings.maxR2){
-		cur_rcd2.controller = 0;
+	cur_rcd.D = pA*qB - qA*pB;
+	cur_rcd.R2 = cur_rcd.D*cur_rcd.D / (g0*g1*h0*h1);
+	if(cur_rcd.R2 < settings.minR2 || cur_rcd.R2 > settings.maxR2){
+		cur_rcd.controller = 0;
 		return false;
 	}
 
 	double dmax = 0;
-	if(cur_rcd2.D >= 0) dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
+	if(cur_rcd.D >= 0) dmax = g0*h1 < h0*g1 ? g0*h1 : h0*g1;
 	else dmax = g0*g1 < h0*h1 ? -g0*g1 : -h0*h1;
 
-	cur_rcd2.Dprime = cur_rcd2.D / dmax;
+	cur_rcd.Dprime = cur_rcd.D / dmax;
 
-	if(cur_rcd2.Dprime < settings.minDprime || cur_rcd2.Dprime > settings.maxDprime){
-		cur_rcd2.controller = 0;
+	if(cur_rcd.Dprime < settings.minDprime || cur_rcd.Dprime > settings.maxDprime){
+		cur_rcd.controller = 0;
 		return false;
 	}
 
@@ -1185,38 +1185,38 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 					&left, &right, &both);
 
 	if(both > settings.minP){
-		cur_rcd2.controller = 0;
+		cur_rcd.controller = 0;
 		return false;
 	}
-	cur_rcd2.P = both;
-	cur_rcd2.R = sqrt(cur_rcd2.R2);
+	cur_rcd.P = both;
+	cur_rcd.R = sqrt(cur_rcd.R2);
 
-	cur_rcd2.Apos = b1.blk->rcds[p1].pos;
-	cur_rcd2.Bpos = b2.blk->rcds[p2].pos;
-	cur_rcd2.ridA = b1.blk->rcds[p1].rid;
-	cur_rcd2.ridB = b2.blk->rcds[p2].rid;
-	cur_rcd2[0] = helper.alleleCounts[0];
-	cur_rcd2[1] = helper.alleleCounts[1];
-	cur_rcd2[2] = helper.alleleCounts[4];
-	cur_rcd2[3] = helper.alleleCounts[5];
+	cur_rcd.Apos = b1.blk->rcds[p1].pos;
+	cur_rcd.Bpos = b2.blk->rcds[p2].pos;
+	cur_rcd.ridA = b1.blk->rcds[p1].rid;
+	cur_rcd.ridB = b2.blk->rcds[p2].rid;
+	cur_rcd[0] = helper.alleleCounts[0];
+	cur_rcd[1] = helper.alleleCounts[1];
+	cur_rcd[2] = helper.alleleCounts[4];
+	cur_rcd[3] = helper.alleleCounts[5];
 
-	cur_rcd2.SetLowACA(b1.blk->rcds[p1].ac < LOW_AC_THRESHOLD);
-	cur_rcd2.SetLowACB(b2.blk->rcds[p2].ac < LOW_AC_THRESHOLD);
-	cur_rcd2.SetCompleteLD(helper.alleleCounts[0] < 1 || helper.alleleCounts[1] < 1 || helper.alleleCounts[4] < 1 || helper.alleleCounts[5] < 1);
-	cur_rcd2.SetPerfectLD(cur_rcd2.R2 > 0.99);
-	cur_rcd2.SetHasMissingValuesA(b1.blk->rcds[p1].an);
-	cur_rcd2.SetHasMissingValuesB(b2.blk->rcds[p2].an);
+	cur_rcd.SetLowACA(b1.blk->rcds[p1].ac < LOW_AC_THRESHOLD);
+	cur_rcd.SetLowACB(b2.blk->rcds[p2].ac < LOW_AC_THRESHOLD);
+	cur_rcd.SetCompleteLD(helper.alleleCounts[0] < 1 || helper.alleleCounts[1] < 1 || helper.alleleCounts[4] < 1 || helper.alleleCounts[5] < 1);
+	cur_rcd.SetPerfectLD(cur_rcd.R2 > 0.99);
+	cur_rcd.SetHasMissingValuesA(b1.blk->rcds[p1].an);
+	cur_rcd.SetHasMissingValuesB(b2.blk->rcds[p2].an);
 	int32_t diff = (int32_t)b1.blk->rcds[p1].pos - b2.blk->rcds[p2].pos;
-	cur_rcd2.SetLongRange(abs(diff) > LONG_RANGE_THRESHOLD && (cur_rcd2.ridA == cur_rcd2.ridB));
-	cur_rcd2.SetUsedPhasedMath();
-	cur_rcd2.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
+	cur_rcd.SetLongRange(abs(diff) > LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
+	cur_rcd.SetUsedPhasedMath();
+	cur_rcd.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
 
 	// Calculate Chi-Sq CV from 2x2 contingency table
-	cur_rcd2.ChiSqModel = 0;
-	cur_rcd2.ChiSqFisher = helper.totalHaplotypeCounts * cur_rcd2.R2;
+	cur_rcd.ChiSqModel = 0;
+	cur_rcd.ChiSqFisher = helper.totalHaplotypeCounts * cur_rcd.R2;
 
 #if SLAVE_DEBUG_MODE == 3
-	if(cur_rcd2.R2 > 0.1){
+	if(cur_rcd.R2 > 0.1){
 		twk_debug_pos1 = b1.blk->rcds[p1].pos;
 		twk_debug_pos1_2 = b2.blk->rcds[p2].pos;
 //std::cout << "P\t" << b1.blk->rcds[p1].pos << "\t" << b2.blk->rcds[p2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
@@ -1224,34 +1224,34 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 #endif
 	// If the number of rcds written is equal to the flush limit then
 	// compress and write output.
-	if(n_out == n_lim || irecF.rid != cur_rcd2.ridA || irecR.rid != cur_rcd2.ridB){
+	if(n_out == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
 		if(this->CompressBlock() == false) return false;
-		irecF.rid    = cur_rcd2.ridA;
-		irecF.ridB   = cur_rcd2.ridB;
-		irecF.minpos = cur_rcd2.Apos;
-		irecF.maxpos = cur_rcd2.Apos;
-		irecR.rid    = cur_rcd2.ridB;
-		irecR.ridB   = cur_rcd2.ridA;
-		irecR.minpos = cur_rcd2.Bpos;
-		irecR.maxpos = cur_rcd2.Bpos;
+		irecF.rid    = cur_rcd.ridA;
+		irecF.ridB   = cur_rcd.ridB;
+		irecF.minpos = cur_rcd.Apos;
+		irecF.maxpos = cur_rcd.Apos;
+		irecR.rid    = cur_rcd.ridB;
+		irecR.ridB   = cur_rcd.ridA;
+		irecR.minpos = cur_rcd.Bpos;
+		irecR.maxpos = cur_rcd.Bpos;
 	}
 	// If ridB is mixed then set index value to -1.
-	if(irecF.ridB != cur_rcd2.ridB) irecF.ridB = -1;
-	if(irecR.ridB != cur_rcd2.ridA) irecR.ridB = -1;
+	if(irecF.ridB != cur_rcd.ridB) irecF.ridB = -1;
+	if(irecR.ridB != cur_rcd.ridA) irecR.ridB = -1;
 
 	// Update index
-	irecF.maxpos = cur_rcd2.Apos;
-	irecR.maxpos = cur_rcd2.Bpos;
+	irecF.maxpos = cur_rcd.Apos;
+	irecR.maxpos = cur_rcd.Bpos;
 
 	// Add forward.
-	blk_f += cur_rcd2;
+	blk_f += cur_rcd;
 	// Swap tuple (ridA:posA) with (ridB:posB).
-	uint32_t temp = cur_rcd2.Apos;
-	cur_rcd2.Apos = cur_rcd2.Bpos;
-	cur_rcd2.Bpos = temp;
-	std::swap(cur_rcd2.ridA,cur_rcd2.ridB);
+	uint32_t temp = cur_rcd.Apos;
+	cur_rcd.Apos = cur_rcd.Bpos;
+	cur_rcd.Bpos = temp;
+	std::swap(cur_rcd.ridA,cur_rcd.ridB);
 	// Add reverse.
-	blk_r += cur_rcd2;
+	blk_r += cur_rcd;
 	// Update tickers.
 	n_out += 2; n_out_tick += 2;
 
@@ -1259,7 +1259,7 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 	if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
 
 	// Reset controller.
-	cur_rcd2.controller = 0;
+	cur_rcd.controller = 0;
 
 	return true;
 }
@@ -1538,7 +1538,7 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 	cur_rcd.SetLowACA(b1.blk->rcds[pos1].ac < LOW_AC_THRESHOLD);
 	cur_rcd.SetLowACB(b2.blk->rcds[pos2].ac < LOW_AC_THRESHOLD);
 	cur_rcd.SetCompleteLD(cur_rcd[0] < 1 || cur_rcd[1] < 1 || cur_rcd[4] < 1 || cur_rcd[5] < 1);
-	cur_rcd.SetPerfectLD(cur_rcd2.R2 > 0.99);
+	cur_rcd.SetPerfectLD(cur_rcd.R2 > 0.99);
 	cur_rcd.SetHasMissingValuesA(b1.blk->rcds[pos1].an);
 	cur_rcd.SetHasMissingValuesB(b2.blk->rcds[pos2].an);
 	int32_t diff = (int32_t)b1.blk->rcds[pos1].pos - b2.blk->rcds[pos2].pos;
@@ -1553,7 +1553,7 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 		twk_debug_pos2   = b1.blk->rcds[pos1].pos;
 		twk_debug_pos2_2 = b2.blk->rcds[pos2].pos;
 		if(twk_debug_pos1 == twk_debug_pos2 && twk_debug_pos1_2 == twk_debug_pos2_2){
-			std::cout << "P\t" << cur_rcd2 << '\n';
+			std::cout << "P\t" << cur_rcd << '\n';
 			std::cout << "U\t" << cur_rcd << '\n';
 		}
 		//std::cout << "U\t" << b1.blk->rcds[pos1].pos << "\t" << b2.blk->rcds[pos2].pos << "\t" << helper.D << "\t" << helper.Dprime << "\t" << helper.R << "\t" << helper.R2 << '\n';
@@ -1614,8 +1614,10 @@ bool twk_ld_engine::CompressFwd(){
 		t_out += ibuf.size() / sizeof(twk1_two_t);
 		progress->b_out += ibuf.size();
 		//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
+		//writer->flush(); // flush to make sure offset is good.
 		irecF.foff = writer->stream.tellp();
 		writer->Add(ibuf.size(), obuf.size(), obuf);
+		//writer->flush(); // flush to make sure offset is good.
 		irecF.fend = writer->stream.tellp();
 		irecF.n = blk_f.n;
 		irecF.b_cmp = ibuf.size();
@@ -1642,8 +1644,10 @@ bool twk_ld_engine::CompressRev(){
 		t_out += ibuf.size() / sizeof(twk1_two_t);
 		progress->b_out += ibuf.size();
 		//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
+		//writer->flush(); // flush to make sure offset is good.
 		irecR.foff = writer->stream.tellp();
 		writer->Add(ibuf.size(), obuf.size(), obuf);
+		//writer->flush(); // flush to make sure offset is good.
 		irecR.fend = writer->stream.tellp();
 		irecR.n = blk_r.n;
 		irecR.b_cmp = ibuf.size();

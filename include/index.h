@@ -136,7 +136,7 @@ struct IndexEntryEntry : public IndexEntry {
 	}
 
 public:
-	uint32_t nn; // number of consecutive blocks
+	uint64_t nn; // number of consecutive blocks
 };
 
 class Index {
@@ -215,7 +215,7 @@ public:
 
 
 public:
-	uint32_t n, m, m_ent;
+	uint64_t n, m, m_ent;
 	IndexEntry* ent;
 	IndexEntryEntry* ent_meta;
 };
@@ -314,7 +314,7 @@ public:
 
 public:
 	uint8_t state; // sorted state of file
-	uint32_t n, m, m_ent;
+	uint64_t n, m, m_ent;
 	IndexEntryOutput* ent;
 	IndexEntryEntry* ent_meta;
 	SpinLock spinlock;

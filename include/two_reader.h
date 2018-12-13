@@ -174,7 +174,7 @@ public:
 	inline const twk1_two_block_t& GetBlock(void) const{ return(this->blk); }
 
 public:
-	uint32_t offset;
+	uint64_t offset;
 	ZSTDCodec zcodec; // support codec
 	twk_buffer_t buf; // support buffer
 	twk_oblock_two_t oblk;// block wrapper

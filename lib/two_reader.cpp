@@ -17,7 +17,11 @@ bool twk1_two_iterator::NextBlockRaw(){
 		return false;
 	}
 	//std::cerr << "marker=" << (int)marker << std::endl;
-	assert(marker == 1);
+	//assert(marker == 1);
+	if(marker != 1){
+		std::cerr << "Marker!=1 is " << (int)marker << " @ " << stream->tellg() << " good=" << stream->good() << std::endl;
+		exit(1);
+	}
 
 	*stream >> oblk;
 	if(stream->good() == false){
