@@ -412,16 +412,16 @@ int aggregate(int argc, char** argv){
 	}
 
 	// Build intervals data structures if any are available.
-	if(settings.intervals.Build(settings.ivals,
+	/*if(settings.intervals.Build(settings.ivals,
 	                            oreader.hdr.GetNumberContigs(),
 	                            oreader.index,
 	                            oreader.hdr) == false)
 	{
 		return 1;
-	}
+	}*/
 
 	// Construct filters.
-	settings.filter.Build();
+	//settings.filter.Build();
 
 	// Print messages
 	tomahawk::ProgramMessage();
@@ -435,314 +435,157 @@ int aggregate(int argc, char** argv){
 	//      b: Interval (from,to)-tuple.
 	// Step 3: Iterate over data and update summary statistics in buckets.
 	// Step 4: Output data.
-	if(oreader.index.state != TWK_IDX_SORTED){
-		std::cerr << tomahawk::utility::timestamp("LOG") << "The input file is not sorted. Performing 2-pass over data..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Performing 2-pass over data..." << std::endl;
 
 
-		//std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
+	//std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
 
-		// Step 1: iterate over index entries and find what contigs are used
-		std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
-		//
-		//settings.n_threads = std::thread::hardware_concurrency();
-		// Distrubution.
-		uint64_t b_unc = 0, n_recs = 0;
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
-		for(int i = 0; i < oreader.index.n; ++i){
-			b_unc  += oreader.index.ent[i].b_unc;
-			n_recs += oreader.index.ent[i].n;
-		}
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
+	// Step 1: iterate over index entries and find what contigs are used
+	std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
+	//
+	//settings.n_threads = std::thread::hardware_concurrency();
+	// Distrubution.
+	uint64_t b_unc = 0, n_recs = 0;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
+	for(int i = 0; i < oreader.index.n; ++i){
+		b_unc  += oreader.index.ent[i].b_unc;
+		n_recs += oreader.index.ent[i].n;
+	}
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
 
-		if(b_unc == 0){
-			std::cerr << tomahawk::utility::timestamp("LOG") << "Cannot aggregate empty file..." << std::endl;
-			return false;
-		}
+	if(b_unc == 0){
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Cannot aggregate empty file..." << std::endl;
+		return false;
+	}
 
-		if(oreader.index.n < settings.n_threads) settings.n_threads = oreader.index.n;
-		uint64_t b_unc_thread = b_unc / settings.n_threads;
-		std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Data/thread: " << tomahawk::utility::ToPrettyDiskString(b_unc_thread) << std::endl;
+	if(oreader.index.n < settings.n_threads) settings.n_threads = oreader.index.n;
+	uint64_t b_unc_thread = b_unc / settings.n_threads;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Data/thread: " << tomahawk::utility::ToPrettyDiskString(b_unc_thread) << std::endl;
 
-		std::vector< std::pair<uint32_t,uint32_t> > ranges;
-		uint64_t fR = 0, tR = 0, b_unc_tot = 0;
-		for(int i = 0; i < oreader.index.n; ++i){
-			if(b_unc_tot >= b_unc_thread){
-				ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
-				b_unc_tot = 0;
-				fR = tR;
-			}
-			b_unc_tot += oreader.index.ent[i].b_unc;
-			++tR;
-		}
-		if(fR != tR){
+	std::vector< std::pair<uint32_t,uint32_t> > ranges;
+	uint64_t fR = 0, tR = 0, b_unc_tot = 0;
+	for(int i = 0; i < oreader.index.n; ++i){
+		if(b_unc_tot >= b_unc_thread){
 			ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
 			b_unc_tot = 0;
 			fR = tR;
 		}
-		assert(ranges.back().second == oreader.index.n);
-		assert(ranges.size() <= settings.n_threads);
+		b_unc_tot += oreader.index.ent[i].b_unc;
+		++tR;
+	}
+	if(fR != tR){
+		ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
+		b_unc_tot = 0;
+		fR = tR;
+	}
+	assert(ranges.back().second == oreader.index.n);
+	assert(ranges.size() <= settings.n_threads);
 
-		tomahawk::twk_sort_progress progress_sort;
-		progress_sort.n_cmps = n_recs;
-		std::thread* psthread = progress_sort.Start();
+	tomahawk::twk_sort_progress progress_sort;
+	progress_sort.n_cmps = n_recs;
+	std::thread* psthread = progress_sort.Start();
 
-		tomahawk::twk_agg_slave* slaves = new tomahawk::twk_agg_slave[settings.n_threads];
-		uint32_t range_thread = oreader.index.n / settings.n_threads;
-		for(int i = 0; i < settings.n_threads; ++i){
-			slaves[i].f = ranges[i].first;
-			slaves[i].t = ranges[i].second;
-			slaves[i].filename = settings.in;
-			slaves[i].progress = &progress_sort;
-			//std::cerr << "thread-" << i << " " << slaves[i].f << "-" << slaves[i].t << std::endl;
+	tomahawk::twk_agg_slave* slaves = new tomahawk::twk_agg_slave[settings.n_threads];
+	uint32_t range_thread = oreader.index.n / settings.n_threads;
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].f = ranges[i].first;
+		slaves[i].t = ranges[i].second;
+		slaves[i].filename = settings.in;
+		slaves[i].progress = &progress_sort;
+		//std::cerr << "thread-" << i << " " << slaves[i].f << "-" << slaves[i].t << std::endl;
+	}
+
+	for(int i = 0; i < settings.n_threads; ++i){
+		if(slaves[i].StartFindRanges(oreader) == nullptr){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+			return false;
 		}
+	}
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+	progress_sort.is_ticking = false;
+	progress_sort.PrintFinal();
 
-		for(int i = 0; i < settings.n_threads; ++i){
-			if(slaves[i].StartFindRanges(oreader) == nullptr){
-				std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
-				return false;
-			}
+	// Reduce
+	for(int i = 1; i < settings.n_threads; ++i){
+		for(int j = 0; j < slaves[0].contig_avail.size(); ++j)
+			slaves[0].contig_avail[j] = std::max(slaves[0].contig_avail[j], slaves[i].contig_avail[j]);
+	}
+
+	// Print availability.
+	/*for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
+		if(slaves[0].contig_avail[i]){
+			std::cerr << "contig-" << oreader.hdr.contigs_[i].name << " is set" << std::endl;
 		}
-		for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
-		progress_sort.is_ticking = false;
-		progress_sort.PrintFinal();
+	}*/
 
-		// Reduce
-		for(int i = 1; i < settings.n_threads; ++i){
-			for(int j = 0; j < slaves[0].contig_avail.size(); ++j)
-				slaves[0].contig_avail[j] = std::max(slaves[0].contig_avail[j], slaves[i].contig_avail[j]);
-		}
+	// Step 2: Determine boundaries given the contigs that were set.
+	//         Calculate the landscape ranges (X and Y dimensions).
+	// Approach 2: Dropping regions with no data.
+	uint64_t range = 0;
+	std::vector<offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+	if(slaves[0].contig_avail[0]){
+		rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
+		range += oreader.hdr.contigs_[0].n_bases;
+	} else {
+		rid_offsets[0].range = 0;
+	}
+	rid_offsets[0].min = 0;
+	rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
 
-		// Print availability.
-		for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
-			if(slaves[0].contig_avail[i]){
-				std::cerr << "contig-" << oreader.hdr.contigs_[i].name << " is set" << std::endl;
-			}
-		}
+	for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+		if(slaves[0].contig_avail[i]){
+			// Cumulative offset for the current rid equals the previous rid
+			rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
+			range += oreader.hdr.contigs_[i].n_bases;
 
-		// Step 2: Determine boundaries given the contigs that were set.
-		//         Calculate the landscape ranges (X and Y dimensions).
-		// Approach 2: Dropping regions with no data.
-		uint64_t range = 0;
-		std::vector<offset_tuple> rid_offsets(slaves[0].contig_avail.size());
-		if(slaves[0].contig_avail[0]){
-			rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
-			range += oreader.hdr.contigs_[0].n_bases;
 		} else {
-			rid_offsets[0].range = 0;
+			rid_offsets[i].range = rid_offsets[i - 1].range;
 		}
-		rid_offsets[0].min = 0;
-		rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
-
-		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
-			if(slaves[0].contig_avail[i]){
-				// Cumulative offset for the current rid equals the previous rid
-				rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
-				range += oreader.hdr.contigs_[i].n_bases;
-
-			} else {
-				rid_offsets[i].range = rid_offsets[i - 1].range;
-			}
-			rid_offsets[i].min = 0;
-			rid_offsets[i].max = oreader.hdr.contigs_[i].n_bases;
-		}
-
-		std::cerr << "range=" << range << std::endl;
-		for(int i = 0; i < rid_offsets.size(); ++i){
-			std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
-		}
-		// Step 3: Second pass over data.
-		//         Prepare n-tensor for storing output data.
-		//         Matrix dimensions (1,2) correspond to pixel equivalents.
-		//         Tensor dimensions (3,..) correspond to summary statistics for
-		//         each bin (pixel).
-		uint32_t xrange = std::ceil((float)range / x_bins);
-		uint32_t yrange = std::ceil((float)range / y_bins);
-
-
-		std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
-		std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(sstats)*x_bins*y_bins*settings.n_threads) << " for matrices..." << std::endl;
-
-		tomahawk::twk_sort_progress progress_sort_step2;
-		progress_sort_step2.n_cmps = n_recs;
-		psthread = progress_sort_step2.Start();
-		for(int i = 0; i < settings.n_threads; ++i){
-			slaves[i].rid_offsets = rid_offsets;
-			slaves[i].progress = &progress_sort_step2;
-			if(slaves[i].StartBuildMatrix(oreader, f, r, x_bins, y_bins, xrange, yrange) == nullptr){
-				std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
-				return false;
-			}
-		}
-		for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
-		progress_sort_step2.is_ticking = false;
-		progress_sort_step2.PrintFinal();
-		for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
-
-		// Print matrix
-		slaves[0].PrintMatrix(std::cout, min_cutoff);
-
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregated " << tomahawk::utility::ToPrettyString(n_recs) << " records in " << tomahawk::utility::ToPrettyString(x_bins*y_bins) << " bins." << std::endl;
-		std::cerr << tomahawk::utility::timestamp("LOG") << "Finished." << std::endl;
-
-		delete[] slaves;
-		return 1;
-
-		std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
-
-		std::cerr << "partition range=" << range / x_bins << " and " << range / y_bins << std::endl;
-		oreader.stream->seekg(oreader.index.ent[0].foff); // seek back to first block
-		while(oreader.NextRecord()){
-			if(settings.filter.Filter(oreader.it.rcd)){
-				//writer.Add(*oreader.it.rcd);
-				//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-				if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
-					std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
-					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-					exit(1);
-				}
-
-				if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
-					std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
-					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-					std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
-					exit(1);
-				}
-
-				// Invoke summary statistics function.
-				(mat[(oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange][(oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange].*f)(oreader.it.rcd);
-			}
-		}
-		std::cerr << "done" << std::endl;
-
-		for(int i = 0; i < x_bins; ++i){
-			std::cout << (mat[i][0].*r)(min_cutoff);
-			for(int j = 1; j < y_bins; ++j){
-				 std::cout << "\t" << (mat[i][j].*r)(min_cutoff);
-			}
-			std::cout << '\n';
-		}
-		std::cout.flush();
-		std::cerr << "done" << std::endl;
-
-
-		return 1;
-	} else {
-
-		// Step 1: Calculate the landscape ranges (X and Y dimensions).
-		// Approach 2: Dropping regions with no data.
-		uint64_t range = 0;
-		std::vector<offset_tuple> rid_offsets(oreader.index.m_ent);
-		for(int i = 0; i < oreader.index.m_ent; ++i){
-			std::cerr << oreader.index.ent_meta[i].rid << ":" << oreader.index.ent_meta[i].minpos << "-" << oreader.index.ent_meta[i].maxpos << " and n=" << oreader.index.ent_meta[i].n << "," << oreader.index.ent_meta[i].nn << std::endl;
-			if(oreader.index.ent_meta[i].n){
-				// Cumulative offset for the current rid equals the previous rid
-				if(oreader.index.ent_meta[i].rid != 0){
-					rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range + ((oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1);
-					range += (oreader.index.ent_meta[i].maxpos - oreader.index.ent_meta[i].minpos) + 1;
-				}
-
-			} else {
-				if(oreader.index.ent_meta[i].rid != 0)
-					rid_offsets[oreader.index.ent_meta[i].rid].range = rid_offsets[oreader.index.ent_meta[i].rid - 1].range;
-			}
-			rid_offsets[oreader.index.ent_meta[i].rid].min = oreader.index.ent_meta[i].minpos;
-			rid_offsets[oreader.index.ent_meta[i].rid].max = oreader.index.ent_meta[i].maxpos;
-		}
-		std::cerr << "range=" << range << std::endl;
-		for(int i = 0; i < rid_offsets.size(); ++i){
-			std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
-		}
-
-		// Step 2: Prepare n-tensor for storing output data.
-		//         Matrix dimensions (1,2) correspond to pixel equivalents.
-		//         Tensor dimensions (3,..) correspond to summary statistics for
-		//         each bin (pixel).
-		uint32_t xrange = std::ceil((float)range / x_bins);
-		uint32_t yrange = std::ceil((float)range / y_bins);
-
-		std::vector< std::vector<sstats> > mat(x_bins, std::vector<sstats>(y_bins));
-
-		std::cerr << "partition range=" << range / x_bins << " and " << range / y_bins << std::endl;
-		while(oreader.NextRecord()){
-			if(settings.filter.Filter(oreader.it.rcd)){
-				//writer.Add(*oreader.it.rcd);
-				//std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-				if((oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange >= x_bins){
-					std::cerr << "oob a=" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min) << "->" << (oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange << "/" << xrange << std::endl;
-					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-					exit(1);
-				}
-
-				//Todo: if data is unbalanced
-				//if(oreader.it.rcd->Bpos < rid_offsets[oreader.it.rcd->ridB].min) continue;
-
-				if((oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange >= y_bins){
-					std::cerr << "oob b=" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min) << "->" << (oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/range << "/" << yrange << std::endl;
-					std::cerr << oreader.it.rcd->Apos << "->" << oreader.it.rcd->Bpos << "\t" << (oreader.it.rcd->Apos/xrange) << "," << (oreader.it.rcd->Bpos/yrange) << "/" << x_bins << std::endl;
-					std::cerr << "min=" << rid_offsets[oreader.it.rcd->ridB].min << std::endl;
-					exit(1);
-				}
-
-				// Invoke summary statistics function.
-				(mat[(oreader.it.rcd->Apos - rid_offsets[oreader.it.rcd->ridA].min)/xrange][(oreader.it.rcd->Bpos - rid_offsets[oreader.it.rcd->ridB].min)/yrange].*f)(oreader.it.rcd);
-			}
-		}
-		std::cerr << "done" << std::endl;
-
-		for(int i = 0; i < x_bins; ++i){
-			std::cout << (mat[i][0].*r)(min_cutoff);
-			for(int j = 1; j < y_bins; ++j){
-				 std::cout << "\t" << (mat[i][j].*r)(min_cutoff);
-			}
-			std::cout << '\n';
-		}
-		std::cout.flush();
-		std::cerr << "done" << std::endl;
+		rid_offsets[i].min = 0;
+		rid_offsets[i].max = oreader.hdr.contigs_[i].n_bases;
 	}
 
-	return 1;
+	/*std::cerr << "range=" << range << std::endl;
+	for(int i = 0; i < rid_offsets.size(); ++i){
+		std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
+	}*/
+
+	// Step 3: Second pass over data.
+	//         Prepare n-tensor for storing output data.
+	//         Matrix dimensions (1,2) correspond to pixel equivalents.
+	//         Tensor dimensions (3,..) correspond to summary statistics for
+	//         each bin (pixel).
+	uint32_t xrange = std::ceil((float)range / x_bins);
+	uint32_t yrange = std::ceil((float)range / y_bins);
 
 
-	// todo: if data is sorted then only visit over*/lapping blocks
-	if(settings.ivals.size()){
-		std::cerr << settings.intervals.overlap_blocks.size() << std::endl;
-		for(int i = 0; i < settings.intervals.overlap_blocks.size(); ++i){
-			oreader.stream->seekg(settings.intervals.overlap_blocks[i]->foff);
-			if(oreader.NextBlock() == false){
-				std::cerr << "failed to get next block" << std::endl;
-				return 1;
-			}
+	std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(sstats)*x_bins*y_bins*settings.n_threads) << " for matrices..." << std::endl;
 
-			for(int j = 0; j < oreader.it.blk.n; ++j){
-				assert(oreader.NextRecord());
-				//oreader.it.rcd->PrintLD(std::cerr);
-				if(settings.intervals.FilterInterval(*oreader.it.rcd)){
-					continue;
-				}
-
-				if(settings.filter.Filter(oreader.it.rcd)){
-					//writer.Add(*oreader.it.rcd);
-				}
-			}
-		}
-	} else if(settings.ivals.size()){
-		while(oreader.NextRecord()){
-			if(settings.intervals.FilterInterval(*oreader.it.rcd)){
-				continue;
-			}
-
-			if(settings.filter.Filter(oreader.it.rcd)){
-				//writer.Add(*oreader.it.rcd);
-			}
-		}
-	} else {
-		while(oreader.NextRecord()){
-			if(settings.filter.Filter(oreader.it.rcd)){
-				//writer.Add(*oreader.it.rcd);
-			}
+	tomahawk::twk_sort_progress progress_sort_step2;
+	progress_sort_step2.n_cmps = n_recs;
+	psthread = progress_sort_step2.Start();
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].rid_offsets = rid_offsets;
+		slaves[i].progress = &progress_sort_step2;
+		if(slaves[i].StartBuildMatrix(oreader, f, r, x_bins, y_bins, xrange, yrange) == nullptr){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+			return false;
 		}
 	}
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+	progress_sort_step2.is_ticking = false;
+	progress_sort_step2.PrintFinal();
+	for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
+
+	// Print matrix
+	slaves[0].PrintMatrix(std::cout, min_cutoff);
+
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregated " << tomahawk::utility::ToPrettyString(n_recs) << " records in " << tomahawk::utility::ToPrettyString(x_bins*y_bins) << " bins." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished." << std::endl;
+
+	delete[] slaves;
 
 	return(0);
 }

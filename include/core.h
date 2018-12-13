@@ -538,12 +538,12 @@ public:
 				}
 
 				for(int j = 0; j < 2*len; j+=2){
-					if(refA != 0){
+					if(refA == 1){
 						list[l_list++] = cumpos + j + 0;
 						//d.Add(cumpos + j + 0);
 						//x += cumpos + j + 0;
 					}
-					if(refB != 0){
+					if(refB == 1){
 						list[l_list++] = cumpos + j + 1;
 						//d.Add(cumpos + j + 1);
 						//x += cumpos + j + 1;
@@ -674,6 +674,8 @@ public:
 	inline const bool get(const uint32_t p) const{ return(this->data[p/64] & (1L << (p % 64)));}
 	inline void SetData(const uint32_t p){ this->data[p/64] |= (1L << (p % 64)); }
 	inline void SetData(const uint32_t p, const bool val){ this->data[p/64] |= ((uint64_t)val << (p % 64)); }
+	inline void SetMask(const uint32_t p){ this->mask[p/64] |= (1L << (p % 64)); }
+	inline void SetMask(const uint32_t p, const bool val){ this->mask[p/64] |= ((uint64_t)val << (p % 64)); }
 
 	/**<
 	 *
@@ -689,8 +691,9 @@ public:
 			n = ceil((double)(n_samples*2)/64);
 			n += (n*64) % 128; // must be divisible by 128-bit register
 			data = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
-			if(rec.gt_missing)
+			if(rec.gt_missing){
 				mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
+			}
 		}
 
 		memset(data, 0, n*sizeof(uint64_t));
@@ -706,42 +709,14 @@ public:
 			}
 
 			for(int j = 0; j < 2*len; j+=2){
-				if(refA != 0){ this->SetData(cumpos + j + 0); }
-				if(refB != 0){ this->SetData(cumpos + j + 1); }
+				if(refA == 1){ this->SetData(cumpos + j + 0); }
+				if(refB == 1){ this->SetData(cumpos + j + 1); }
+				if(refA == 2){ this->SetMask(cumpos + j + 0); }
+				if(refB == 2){ this->SetMask(cumpos + j + 1); }
 			}
 			cumpos += 2*len;
 		}
 		assert(cumpos == n_samples*2);
-
-		/*
-		const uint32_t bytes = ceil((double)n_samples/4);
-
-		if(data == nullptr){
-			#if SIMD_AVAILABLE == 1
-				data = (uint8_t*)_mm_malloc(bytes, SIMD_ALIGNMENT);
-				mask = (uint8_t*)_mm_malloc(bytes, SIMD_ALIGNMENT);
-			#else
-				data = new uint8_t[bytes];
-				mask = new uint8_t[bytes];
-			#endif
-		}
-		memset(this->data, 0, bytes);
-		memset(this->mask, 0, bytes);
-
-		const uint8_t* lookup_d = rec.gt->miss ? &TWK_GT_BV_DATA_MISS_LOOKUP[0] : &TWK_GT_BV_DATA_LOOKUP[0];
-		const uint8_t* lookup_m = rec.gt->miss ? &TWK_GT_BV_MASK_MISS_LOOKUP[0] : &TWK_GT_BV_MASK_LOOKUP[0];
-
-		GenotypeBitPacker packerA(this->data, 2);
-		GenotypeBitPacker packerB(this->mask, 2);
-
-		// Cycle over runs in container
-		for(uint32_t j = 0; j < rec.gt->n; ++j){
-			const uint32_t len = rec.gt->GetLength(j);
-			const uint8_t ref  = rec.gt->GetRefByte(j);
-			packerA.Add(lookup_d[ref], len);
-			packerB.Add(lookup_m[ref], len);
-		}
-		 */
 
 		const uint32_t byteAlignedEnd  = n / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
 

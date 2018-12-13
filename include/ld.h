@@ -39,9 +39,9 @@ namespace tomahawk {
 #define TWK_HAP_FREQ(A,POS) ((double)(A).alleleCounts[POS] / (A).totalHaplotypeCounts)
 
 #if SLAVE_DEBUG_MODE == 3
-static uint32_t twk_debug_pos1 = 0;
+static uint32_t twk_debug_pos1   = 0;
 static uint32_t twk_debug_pos1_2 = 0;
-static uint32_t twk_debug_pos2 = 0;
+static uint32_t twk_debug_pos2   = 0;
 static uint32_t twk_debug_pos2_2 = 0;
 #endif
 
@@ -247,12 +247,13 @@ public:
 		n_samples(0), n_out(0), n_lim(10000), n_out_tick(250),
 		byte_width(0), byte_aligned_end(0), vector_cycles(0),
 		phased_unbalanced_adjustment(0), unphased_unbalanced_adjustment(0), t_out(0),
+		mask_placeholder(nullptr),
 		index(nullptr), writer(nullptr), progress(nullptr), list_out(nullptr)
 	{
 		memset(n_method, 0, sizeof(uint64_t)*10);
 	}
 
-	~twk_ld_engine(){ delete[] list_out; }
+	~twk_ld_engine(){ delete[] list_out; aligned_free(mask_placeholder); }
 
 	/**<
 	 * Set the number of samples in the target file. This function is mandatory
@@ -268,6 +269,10 @@ public:
 		vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
 		phased_unbalanced_adjustment   = (samples*2)%8;
 		unphased_unbalanced_adjustment = samples%4;
+
+		uint32_t n = ceil((double)(n_samples*2)/64);
+		n += (n*64) % 128; // must be divisible by 128-bit register
+		mask_placeholder = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
 	}
 
 	void SetBlocksize(const uint32_t s){
@@ -329,6 +334,8 @@ public:
 	uint64_t t_out; // number of bytes written
 	uint64_t n_method[10];
 
+	uint64_t* mask_placeholder;
+
 	IndexEntryOutput irecF, irecR;
 	ZSTDCodec zcodec; // reusable zstd codec instance with internal context.
 
@@ -360,7 +367,7 @@ struct twk_ld_slave {
 	 * @return Returns a pointer to the spawned slave thread.
 	 */
 	std::thread* Start(){
-		delete thread;
+		delete thread; thread = nullptr;
 
 		if(settings->force_phased && settings->low_memory && settings->bitmaps)
 			if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this, nullptr);

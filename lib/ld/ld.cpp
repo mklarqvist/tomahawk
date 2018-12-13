@@ -514,8 +514,8 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, 
 	const twk_igt_vec& block2 = b2.vec[p2];
 	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
 	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
-	const uint8_t* const arrayA_mask = (const uint8_t* const)block1.mask;
-	const uint8_t* const arrayB_mask = (const uint8_t* const)block2.mask;
+	const uint8_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint8_t* const)block1.mask : (const uint8_t* const)mask_placeholder;
+	const uint8_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint8_t* const)block2.mask : (const uint8_t* const)mask_placeholder;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -736,8 +736,8 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	const twk_igt_vec& block2 = b2.vec[p2];
 	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
 	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
-	const uint8_t* const arrayA_mask = (const uint8_t* const)block1.mask;
-	const uint8_t* const arrayB_mask = (const uint8_t* const)block2.mask;
+	const uint8_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint8_t* const)block1.mask : (const uint8_t* const)mask_placeholder;
+	const uint8_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint8_t* const)block2.mask : (const uint8_t* const)mask_placeholder;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -859,8 +859,6 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	          << "," << helper.alleleCounts[16] << "," << helper.alleleCounts[17] << "," << helper.alleleCounts[21]
 	          << "," << helper.alleleCounts[80] << "," << helper.alleleCounts[81] << "," << helper.alleleCounts[85] << std::endl;
 #endif
-	//this->setFLAGs(block1, block2);
-	//return(this->CalculateLDUnphasedMath());
 
 #if SLAVE_DEBUG_MODE != 1
 	return(UnphasedMath(b1,p1,b2,p2));
