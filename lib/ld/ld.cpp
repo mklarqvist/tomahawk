@@ -41,37 +41,13 @@ std::string twk_ld_settings::GetString() const{
 }
 
 twk_ld_simd::twk_ld_simd(void) :
-#if SIMD_AVAILABLE == 1
-	counters((uint64_t*)_mm_malloc(sizeof(uint64_t)*16, 16)),
-	scalarA((uint8_t*)_mm_malloc(sizeof(uint8_t)*8, 16)),
-	scalarB((uint8_t*)_mm_malloc(sizeof(uint8_t)*8, 16)),
-	scalarC((uint8_t*)_mm_malloc(sizeof(uint8_t)*8, 16)),
-	scalarD((uint8_t*)_mm_malloc(sizeof(uint8_t)*8, 16))
-#else
-	counters(new uint64_t[16]),
-	scalarA(new uint8_t[8]),
-	scalarB(new uint8_t[8]),
-	scalarC(new uint8_t[8]),
-	scalarD(new uint8_t[8])
-#endif
+	counters((uint64_t*)_mm_malloc(sizeof(uint64_t)*16, 16))
 {
 	memset(this->counters, 0, sizeof(uint64_t)*16);
 }
 
 twk_ld_simd::~twk_ld_simd(){
-#if SIMD_AVAILABLE == 1
 	_mm_free(this->counters);
-	_mm_free(this->scalarA);
-	_mm_free(this->scalarB);
-	_mm_free(this->scalarC);
-	_mm_free(this->scalarD);
-#else
-	delete [] this->counters;
-	delete [] this->scalarA;
-	delete [] this->scalarB;
-	delete [] this->scalarC;
-	delete [] this->scalarD;
-#endif
 }
 
 twk_ld_count::twk_ld_count(): totalHaplotypeCounts(0)
@@ -512,10 +488,10 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, 
 	// Data
 	const twk_igt_vec& block1 = b1.vec[p1];
 	const twk_igt_vec& block2 = b2.vec[p2];
-	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
-	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
-	const uint8_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint8_t* const)block1.mask : (const uint8_t* const)mask_placeholder;
-	const uint8_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint8_t* const)block2.mask : (const uint8_t* const)mask_placeholder;
+	const uint64_t* const arrayA = (const uint64_t* const)block1.data;
+	const uint64_t* const arrayB = (const uint64_t* const)block2.data;
+	const uint64_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint64_t* const)block1.mask : (const uint64_t* const)mask_placeholder;
+	const uint64_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint64_t* const)block2.mask : (const uint64_t* const)mask_placeholder;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -578,27 +554,16 @@ bool twk_ld_engine::PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, 
 	uint32_t k = 0;
 #endif
 
-	uint8_t mask;
-	for(; k+8 < this->byte_width; k += 8){
-		for(uint32_t l = 0; l < 8; ++l){
-			mask = ~(arrayA_mask[k+l] | arrayB_mask[k+l]);
-			helper_simd.scalarA[l] = (arrayA[k+l] & arrayB[k+l]) & mask;
-			helper_simd.scalarB[l] = ((~arrayA[k+l]) & (~arrayB[k+l])) & mask;
-			helper_simd.scalarC[l] = ((arrayA[k+l] ^ arrayB[k+l]) & arrayA[k+l]) & mask;
-			helper_simd.scalarD[l] = ((arrayA[k+l] ^ arrayB[k+l]) & arrayB[k+l]) & mask;
-		}
-		helper_simd.counters[TWK_LD_SIMD_REFREF] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarB));
-		helper_simd.counters[TWK_LD_SIMD_REFALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarC));
-		helper_simd.counters[TWK_LD_SIMD_ALTREF] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarD));
-		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarA));
-	}
-
+	uint64_t b_altalt, b_refref, b_refalt, b_altref;
 	for(; k < this->byte_width; ++k){
-		mask = ~(arrayA_mask[k] | arrayB_mask[k]);
-		helper_simd.counters[TWK_LD_SIMD_REFREF] += POPCOUNT_ITER(((~arrayA[k]) & (~arrayB[k])) & mask);
-		helper_simd.counters[TWK_LD_SIMD_REFALT] += POPCOUNT_ITER(((arrayA[k] ^ arrayB[k]) & arrayA[k]) & mask);
-		helper_simd.counters[TWK_LD_SIMD_ALTREF] += POPCOUNT_ITER(((arrayA[k] ^ arrayB[k]) & arrayB[k]) & mask);
-		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER((arrayA[k] & arrayB[k]) & mask);
+		b_altalt  = (arrayA[k] & arrayB[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
+		b_refref  = ((~arrayA[k]) & (~arrayB[k])) & ~(arrayA_mask[k] | arrayB_mask[k]);
+		b_altref  = ((arrayA[k] ^ arrayB[k]) & arrayA[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
+		b_refalt  = ((arrayA[k] ^ arrayB[k]) & arrayB[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
+		helper_simd.counters[TWK_LD_SIMD_REFREF] += POPCOUNT_ITER(b_refalt);
+		helper_simd.counters[TWK_LD_SIMD_REFALT] += POPCOUNT_ITER(b_refalt);
+		helper_simd.counters[TWK_LD_SIMD_ALTREF] += POPCOUNT_ITER(b_altref);
+		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER(b_altalt);
 	}
 
 	helper.alleleCounts[1] = helper_simd.counters[TWK_LD_SIMD_ALTREF];
@@ -637,8 +602,8 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 
 	const twk_igt_vec& block1 = b1.vec[p1];
 	const twk_igt_vec& block2 = b2.vec[p2];
-	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
-	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
+	const uint64_t* const arrayA = (const uint64_t* const)block1.data;
+	const uint64_t* const arrayB = (const uint64_t* const)block2.data;
 
 	// Debug timings
 #if SLAVE_DEBUG_MODE == 1
@@ -672,18 +637,11 @@ bool twk_ld_engine::PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint
 	uint32_t k = 0;
 #endif
 
-	//std::cerr << "k=" << k << "/" << this->byte_width << std::endl;
-	for(; k+8 < this->byte_width; k += 8){
-		for(uint32_t l = 0; l < 8; ++l)
-			helper_simd.scalarA[l] = (arrayA[k+l] & arrayB[k+l]);
-		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER(*reinterpret_cast<const uint64_t* const>(helper_simd.scalarA));
-	}
-
+	uint64_t b_altalt, b_refref, b_refalt, b_altref;
 	for(; k < this->byte_width; ++k){
-		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER(arrayA[k] & arrayB[k]);
+		b_altalt  = (arrayA[k] & arrayB[k]);
+		helper_simd.counters[TWK_LD_SIMD_ALTALT] += POPCOUNT_ITER(b_altalt);
 	}
-	//helper.alleleCounts[5] = helper_simd.counters[TWK_LD_SIMD_REFREF] + (tailSmallest + frontSmallest) * GENOTYPE_TRIP_COUNT*2 - this->phased_unbalanced_adjustment;
-
 	helper.alleleCounts[5] = helper_simd.counters[TWK_LD_SIMD_ALTALT];
 	helper.alleleCounts[4] = b1.blk->rcds[p1].ac - helper.alleleCounts[5];
 	helper.alleleCounts[1] = b2.blk->rcds[p2].ac - helper.alleleCounts[5];
@@ -734,10 +692,10 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	// Data
 	const twk_igt_vec& block1 = b1.vec[p1];
 	const twk_igt_vec& block2 = b2.vec[p2];
-	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
-	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
-	const uint8_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint8_t* const)block1.mask : (const uint8_t* const)mask_placeholder;
-	const uint8_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint8_t* const)block2.mask : (const uint8_t* const)mask_placeholder;
+	const uint64_t* const arrayA = (const uint64_t* const)block1.data;
+	const uint64_t* const arrayB = (const uint64_t* const)block2.data;
+	const uint64_t* const arrayA_mask = b1.blk->rcds[p1].gt_missing ? (const uint64_t* const)block1.mask : (const uint64_t* const)mask_placeholder;
+	const uint64_t* const arrayB_mask = b2.blk->rcds[p2].gt_missing ? (const uint64_t* const)block2.mask : (const uint64_t* const)mask_placeholder;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -805,6 +763,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	for( ; i < frontBonus; ) 					  	 ITER_SHORT
 	for( ; i < this->vector_cycles - tailBonus; )  	 ITER_LONG
 	for( ; i < this->vector_cycles - tailSmallest; ) ITER_SHORT
+	//for( ; i < this->vector_cycles; )  	 ITER_LONG
 
 #undef ITER_LONG
 #undef ITER_SHORT
@@ -815,25 +774,27 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 	uint32_t k = 0;
 #endif
 
-	uint8_t b_altalt, b_refref, b_refalt, b_altref;
+	//k=0;
+	uint64_t b_altalt, b_refref, b_refalt, b_altref;
 	for(; k < this->byte_width; ++k){
 		b_altalt  = (arrayA[k] & arrayB[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
 		b_refref  = ((~arrayA[k]) & (~arrayB[k])) & ~(arrayA_mask[k] | arrayB_mask[k]);
 		b_altref  = ((arrayA[k] ^ arrayB[k]) & arrayA[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
 		b_refalt  = ((arrayA[k] ^ arrayB[k]) & arrayB[k]) & ~(arrayA_mask[k] | arrayB_mask[k]);
 
-		helper_simd.counters[0] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_SPECIAL(b_refref));
-		helper_simd.counters[1] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_refalt, b_refalt, b_refref));
-		helper_simd.counters[2] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE(b_refalt, b_refalt));
-		helper_simd.counters[3] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_altref, b_altref, b_refref));
-		helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_altalt, b_altalt, b_refref));
-		helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refalt, b_altref, b_altref, b_refalt));
-		helper_simd.counters[5] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refalt, b_altalt, b_altalt, b_refalt));
-		helper_simd.counters[6] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE(b_altref, b_altref));
-		helper_simd.counters[7] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_altref, b_altalt, b_altalt, b_altref));
-		helper_simd.counters[8] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_SPECIAL(b_altalt));
+		helper_simd.counters[0] += POPCOUNT_ITER(FILTER_UNPHASED_64_SPECIAL(b_refref));
+		helper_simd.counters[1] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refref, b_refalt, b_refalt, b_refref));
+		helper_simd.counters[2] += POPCOUNT_ITER(FILTER_UNPHASED_64(b_refalt, b_refalt));
+		helper_simd.counters[3] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refref, b_altref, b_altref, b_refref));
+		helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refref, b_altalt, b_altalt, b_refref));
+		helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refalt, b_altref, b_altref, b_refalt));
+		helper_simd.counters[5] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refalt, b_altalt, b_altalt, b_refalt));
+		helper_simd.counters[6] += POPCOUNT_ITER(FILTER_UNPHASED_64(b_altref, b_altref));
+		helper_simd.counters[7] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_altref, b_altalt, b_altalt, b_altref));
+		helper_simd.counters[8] += POPCOUNT_ITER(FILTER_UNPHASED_64_SPECIAL(b_altalt));
 	}
 
+	//std::cerr << "0 count=" << helper_simd.counters[0] << " adjust=" << unphased_unbalanced_adjustment << std::endl;
 	helper.alleleCounts[0]  = helper_simd.counters[0] - this->unphased_unbalanced_adjustment;
 	helper.alleleCounts[0] += (frontSmallest + tailSmallest) * GENOTYPE_TRIP_COUNT;
 	helper.alleleCounts[1]  = helper_simd.counters[1];
@@ -855,7 +816,7 @@ bool twk_ld_engine::UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1
 #endif
 
 #if SLAVE_DEBUG_MODE == 2
-	std::cerr << "miss1=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[5]
+	std::cerr << "vum =" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[5]
 	          << "," << helper.alleleCounts[16] << "," << helper.alleleCounts[17] << "," << helper.alleleCounts[21]
 	          << "," << helper.alleleCounts[80] << "," << helper.alleleCounts[81] << "," << helper.alleleCounts[85] << std::endl;
 #endif
@@ -884,8 +845,8 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 	// Data
 	const twk_igt_vec& block1 = b1.vec[p1];
 	const twk_igt_vec& block2 = b2.vec[p2];
-	const uint8_t* const arrayA = (const uint8_t* const)block1.data;
-	const uint8_t* const arrayB = (const uint8_t* const)block2.data;
+	const uint64_t* const arrayA = (const uint64_t* const)block1.data;
+	const uint64_t* const arrayB = (const uint64_t* const)block2.data;
 
 #if SIMD_AVAILABLE == 1
 	const uint32_t frontSmallest = block1.front_zero < block2.front_zero ? block1.front_zero : block2.front_zero;
@@ -953,24 +914,26 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 	uint32_t k = 0;
 #endif
 
-	uint8_t b_altalt, b_refref, b_refalt, b_altref;
+	//k = 0;
+	//std::cerr << "at=" << byte_aligned_end << "/" << byte_width << " " << "vector cycles=" << vector_cycles << std::endl;
+	uint64_t b_altalt, b_refref, b_refalt, b_altref;
 	for(; k < this->byte_width; ++k){
 		b_altalt  = (arrayA[k] & arrayB[k]);
 		b_refref  = ((~arrayA[k]) & (~arrayB[k]));
 		b_altref  = ((arrayA[k] ^ arrayB[k]) & arrayA[k]);
 		b_refalt  = ((arrayA[k] ^ arrayB[k]) & arrayB[k]);
 
-		helper_simd.counters[0] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_SPECIAL(b_refref));
-		helper_simd.counters[1] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_refalt, b_refalt, b_refref));
-		helper_simd.counters[2] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE(b_refalt, b_refalt));
-		helper_simd.counters[3] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_altref, b_altref, b_refref));
+		helper_simd.counters[0] += POPCOUNT_ITER(FILTER_UNPHASED_64_SPECIAL(b_refref));
+		helper_simd.counters[1] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refref, b_refalt, b_refalt, b_refref));
+		helper_simd.counters[2] += POPCOUNT_ITER(FILTER_UNPHASED_64(b_refalt, b_refalt));
+		helper_simd.counters[3] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refref, b_altref, b_altref, b_refref));
 		//helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refref, b_altalt, b_altalt, b_refref));
 		//helper_simd.counters[4] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refalt, b_altref, b_altref, b_refalt));
 
-		helper_simd.counters[5] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_refalt, b_altalt, b_altalt, b_refalt));
-		helper_simd.counters[6] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE(b_altref, b_altref));
-		helper_simd.counters[7] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_PAIR(b_altref, b_altalt, b_altalt, b_altref));
-		helper_simd.counters[8] += POPCOUNT_ITER(FILTER_UNPHASED_BYTE_SPECIAL(b_altalt));
+		helper_simd.counters[5] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_refalt, b_altalt, b_altalt, b_refalt));
+		helper_simd.counters[6] += POPCOUNT_ITER(FILTER_UNPHASED_64(b_altref, b_altref));
+		helper_simd.counters[7] += POPCOUNT_ITER(FILTER_UNPHASED_64_PAIR(b_altref, b_altalt, b_altalt, b_altref));
+		helper_simd.counters[8] += POPCOUNT_ITER(FILTER_UNPHASED_64_SPECIAL(b_altalt));
 	}
 
 	helper.alleleCounts[0]  = helper_simd.counters[0] - this->unphased_unbalanced_adjustment;
@@ -995,9 +958,9 @@ bool twk_ld_engine::UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const ui
 #endif
 
 #if SLAVE_DEBUG_MODE == 2
-	std::cerr << "miss2=" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[5]
-		          << "," << helper.alleleCounts[16] << "," << helper.alleleCounts[17] << "," << helper.alleleCounts[21]
-		          << "," << helper.alleleCounts[80] << "," << helper.alleleCounts[81] << "," << helper.alleleCounts[85] << std::endl;
+	std::cerr << "vu  =" << helper.alleleCounts[0] << "," << helper.alleleCounts[1] << "," << helper.alleleCounts[5]
+		      << "," << helper.alleleCounts[16] << "," << helper.alleleCounts[17] << "," << helper.alleleCounts[21]
+		      << "," << helper.alleleCounts[80] << "," << helper.alleleCounts[81] << "," << helper.alleleCounts[85] << std::endl;
 #endif
 
 	//this->setFLAGs(block1, block2);

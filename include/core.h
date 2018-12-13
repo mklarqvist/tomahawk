@@ -95,36 +95,43 @@ inline void aligned_free(void *ptr) {
 #define SIMD_VERSION	6
 #define SIMD_ALIGNMENT	64
 #define GENOTYPE_TRIP_COUNT	256
+#define SIMD_WIDTH      512
 #elif defined(__AVX2__) && __AVX2__ == 1
 #define SIMD_AVAILABLE	1
 #define SIMD_VERSION	5
 #define SIMD_ALIGNMENT	32
 #define GENOTYPE_TRIP_COUNT	128
+#define SIMD_WIDTH      256
 #elif defined(__AVX__) && __AVX__ == 1
 #define SIMD_AVAILABLE	1
 #define SIMD_VERSION	4
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
+#define SIMD_WIDTH      128
 #elif defined(__SSE4_1__) && __SSE4_1__ == 1
 #define SIMD_AVAILABLE	1
 #define SIMD_VERSION	3
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
+#define SIMD_WIDTH      128
 #elif defined(__SSE2__) && __SSE2__ == 1
 #define SIMD_AVAILABLE	1
 #define SIMD_VERSION	2
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
+#define SIMD_WIDTH      128
 #elif defined(__SSE__) && __SSE__ == 1
 #define SIMD_AVAILABLE	0 // unsupported version
 #define SIMD_VERSION	1
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
+#define SIMD_WIDTH      0
 #else
 #define SIMD_AVAILABLE	0
 #define SIMD_VERSION	0
 #define SIMD_ALIGNMENT	16
 #define GENOTYPE_TRIP_COUNT	64
+#define SIMD_WIDTH      0
 #endif
 
 /****************************
@@ -697,6 +704,9 @@ public:
 		}
 
 		memset(data, 0, n*sizeof(uint64_t));
+		if(rec.gt_missing)
+			memset(mask, 0, n*sizeof(uint64_t));
+
 		uint32_t cumpos = 0;
 		for(int i = 0; i < rec.gt->n; ++i){
 			const uint32_t len  = rec.gt->GetLength(i);
@@ -711,14 +721,22 @@ public:
 			for(int j = 0; j < 2*len; j+=2){
 				if(refA == 1){ this->SetData(cumpos + j + 0); }
 				if(refB == 1){ this->SetData(cumpos + j + 1); }
-				if(refA == 2){ this->SetMask(cumpos + j + 0); }
-				if(refB == 2){ this->SetMask(cumpos + j + 1); }
+				if(refA == 2){ this->SetMask(cumpos + j + 0); this->SetMask(cumpos + j + 1); }
+				if(refB == 2){ this->SetMask(cumpos + j + 0); this->SetMask(cumpos + j + 1); }
 			}
 			cumpos += 2*len;
 		}
+
+		if(rec.gt_missing){
+			// Invert mask
+			/*for(int i = 0; i < n; ++i){
+				mask[i] = ~mask[i];
+			}*/
+		}
 		assert(cumpos == n_samples*2);
 
-		const uint32_t byteAlignedEnd  = n / (GENOTYPE_TRIP_COUNT/4) * (GENOTYPE_TRIP_COUNT/4);
+
+		const uint32_t byteAlignedEnd  = (2*n_samples/SIMD_WIDTH) * (SIMD_WIDTH / 64);
 
 		int j = 0;
 		if(rec.gt_missing){

@@ -56,11 +56,13 @@ static uint32_t twk_debug_pos2_2 = 0;
 #define POPCOUNT_ITER	__builtin_popcountll
 #endif
 
-#define UNPHASED_UPPER_MASK	170  // 10101010b
-#define UNPHASED_LOWER_MASK	85   // 01010101b
-#define FILTER_UNPHASED_BYTE(A, B)            ((((((A) & UNPHASED_UPPER_MASK) | ((B) & UNPHASED_LOWER_MASK)) & UNPHASED_LOWER_MASK) << 1) & (A))
-#define FILTER_UNPHASED_BYTE_PAIR(A, B, C, D) ((FILTER_UNPHASED_BYTE((A), (B)) >> 1) | FILTER_UNPHASED_BYTE((C), (D)))
-#define FILTER_UNPHASED_BYTE_SPECIAL(A)       ((((A) >> 1) & (A)) & UNPHASED_LOWER_MASK)
+#define UNPHASED_UPPER_MASK     (uint64_t)170  // 10101010b
+#define UNPHASED_LOWER_MASK     (uint64_t)85   // 01010101b
+#define UNPHASED_UPPER_MASK_64  ((UNPHASED_UPPER_MASK << 56) | (UNPHASED_UPPER_MASK << 48) | (UNPHASED_UPPER_MASK << 40) | (UNPHASED_UPPER_MASK << 32) | (UNPHASED_UPPER_MASK << 24) | (UNPHASED_UPPER_MASK << 16) | (UNPHASED_UPPER_MASK << 8) | (UNPHASED_UPPER_MASK))  // 10101010 10101010 10101010 10101010b
+#define UNPHASED_LOWER_MASK_64  ((UNPHASED_LOWER_MASK << 56) | (UNPHASED_LOWER_MASK << 48) | (UNPHASED_LOWER_MASK << 40) | (UNPHASED_LOWER_MASK << 32) | (UNPHASED_LOWER_MASK << 24) | (UNPHASED_LOWER_MASK << 16) | (UNPHASED_LOWER_MASK << 8) | (UNPHASED_LOWER_MASK))  // 01010101 01010101 01010101 01010101b
+#define FILTER_UNPHASED_64(A, B)            ((((((A) & UNPHASED_UPPER_MASK_64) | ((B) & UNPHASED_LOWER_MASK_64)) & UNPHASED_LOWER_MASK_64) << 1) & (A))
+#define FILTER_UNPHASED_64_PAIR(A, B, C, D) ((FILTER_UNPHASED_64((A), (B)) >> 1) | FILTER_UNPHASED_64((C), (D)))
+#define FILTER_UNPHASED_64_SPECIAL(A)       ((((A) >> 1) & (A)) & UNPHASED_LOWER_MASK_64)
 
 #if SIMD_VERSION == 6 // AVX-512: UNTESTED
 #define VECTOR_TYPE	__m512i
@@ -202,7 +204,6 @@ public:
 
 public:
 	uint64_t *counters;
-	uint8_t  *scalarA, *scalarB, *scalarC, *scalarD;
 } __attribute__((aligned(16)));
 
 /**<
@@ -264,15 +265,20 @@ public:
 	 */
 	void SetSamples(const uint32_t samples){
 		n_samples  = samples;
-		byte_width = ceil((double)samples/4);
-		byte_aligned_end = byte_width/(GENOTYPE_TRIP_COUNT/4)*(GENOTYPE_TRIP_COUNT/4);
-		vector_cycles    = byte_aligned_end*4/GENOTYPE_TRIP_COUNT;
-		phased_unbalanced_adjustment   = (samples*2)%8;
-		unphased_unbalanced_adjustment = samples%4;
+
+		byte_width       = std::ceil(2.0f*samples/64);
+		vector_cycles    = 2*samples/SIMD_WIDTH; // integer division
+		byte_aligned_end = vector_cycles * (SIMD_WIDTH / 64);
+		phased_unbalanced_adjustment   = (byte_width*64 - 2*samples) / 2;
+		unphased_unbalanced_adjustment = (byte_width*64 - 2*samples) / 2;
+
+		//std::cerr << byte_width << "," << vector_cycles << "," << byte_aligned_end << "," << phased_unbalanced_adjustment << "," << unphased_unbalanced_adjustment << std::endl;
+		//exit(1);
 
 		uint32_t n = ceil((double)(n_samples*2)/64);
-		n += (n*64) % 128; // must be divisible by 128-bit register
+		n += (n*64) % SIMD_WIDTH; // must be divisible by 128-bit register
 		mask_placeholder = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
+		memset(mask_placeholder, 0, n*sizeof(uint64_t));
 	}
 
 	void SetBlocksize(const uint32_t s){
@@ -609,6 +615,15 @@ struct twk_ld_slave {
 						continue;
 					}
 
+#if(SLAVE_DEBUG_MODE == 2)
+					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+						engine.UnphasedRunlength(blocks[0],i,blocks[0],j,perf);
+						engine.UnphasedVectorizedNoMissing(blocks[0],i,blocks[0],j,perf);
+					} else {
+						engine.UnphasedRunlength(blocks[0],i,blocks[0],j,perf);
+						engine.UnphasedVectorized(blocks[0],i,blocks[0],j,perf);
+					}
+#else
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
 						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 							engine.UnphasedRunlength(blocks[0],i,blocks[0],j,perf);
@@ -621,6 +636,7 @@ struct twk_ld_slave {
 						else
 							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,perf);
 					}
+#endif
 				}
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
@@ -640,6 +656,15 @@ struct twk_ld_slave {
 							}
 
 							//std::cerr << ii << "/" << n_blocks1 << "," << jj << "/" << n_blocks2 << "," << i << "/" << ii+bsize << "," << j << "/" << jj+bsize << " bsize=" << bsize << std::endl;
+#if(SLAVE_DEBUG_MODE == 2)
+							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+								engine.UnphasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
+							} else {
+								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+								engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
+							}
+#else
 							if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
 								if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 									engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -652,6 +677,7 @@ struct twk_ld_slave {
 								else
 									engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 							}
+#endif
 						}
 						//std::cerr << "end j" << std::endl;
 					}
@@ -665,6 +691,15 @@ struct twk_ld_slave {
 							continue;
 						}
 
+#if(SLAVE_DEBUG_MODE == 2)
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+							engine.UnphasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
+						} else {
+							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
+						}
+#else
 						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
 							if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -677,6 +712,7 @@ struct twk_ld_slave {
 							else
 								engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 						}
+#endif
 
 					}
 				}
@@ -692,6 +728,15 @@ struct twk_ld_slave {
 						continue;
 					}
 
+#if(SLAVE_DEBUG_MODE == 2)
+					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+						engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+						engine.UnphasedVectorizedNoMissing(blocks[0],i,blocks[1],j,perf);
+					} else {
+						engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
+						engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
+					}
+#else
 					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
 						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
@@ -704,6 +749,7 @@ struct twk_ld_slave {
 						else
 							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 					}
+#endif
 
 				}
 			}
