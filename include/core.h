@@ -67,6 +67,13 @@ inline void aligned_free(void *ptr) {
 
 }
 
+// Unpacking types
+#define TWK_LDD_NONE   0
+#define TWK_LDD_VEC    1
+#define TWK_LDD_LIST   2
+#define TWK_LDD_BITMAP 4
+#define TWK_LDD_ALL  ((TWK_LDD_VEC) | (TWK_LDD_LIST) | (TWK_LDD_BITMAP))
+
 /****************************
 *  SIMD definitions
 ****************************/
@@ -1113,6 +1120,26 @@ public:
 public:
 	uint32_t n, m;
 	twk1_two_t* rcds;
+};
+
+/**<
+ * Settings/parameters for both `twk_ld` and `twk_ld_engine`. Placed in this header
+ * to circumvent linkage problems in headers.
+ */
+struct twk_ld_settings {
+public:
+	twk_ld_settings();
+	std::string GetString() const;
+
+public:
+	bool square, window, low_memory, bitmaps; // using square compute, using window compute
+	bool force_phased, forced_unphased, force_cross_intervals;
+	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
+	int32_t n_threads, cycle_threshold, ldd_load_type;
+	std::string in, out; // input file, output file/cout
+	double minP, minR2, maxR2, minDprime, maxDprime;
+	int32_t n_chunks, c_chunk;
+	std::vector<std::string> ival_strings; // unparsed interval strings
 };
 
 }

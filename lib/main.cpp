@@ -12,6 +12,7 @@ std::string tomahawk::INTERPRETED_COMMAND;
 #include "sort.h"
 #include "aggregate.h"
 #include "stats.h"
+#include "haplotype.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::utility::IsBigEndian()){
@@ -60,6 +61,9 @@ int main(int argc, char** argv){
 	}
 	else if(strncmp(&argv[1][0], "aggregate", 8) == 0){
 		return(aggregate(argc, argv));
+	}
+	else if(strncmp(&argv[1][0], "haplotype", 9) == 0){
+		return(haplotype(argc, argv));
 	}
 
 	else if(strcmp(&argv[1][0], "--version") == 0 || strcmp(&argv[1][0], "version") == 0){

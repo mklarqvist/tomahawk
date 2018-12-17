@@ -37,16 +37,10 @@ public:
  *    1) bit-index lists;
  *    2) uncompressed bitvectors;
  *    3) compressed run-length encoded genotypes;
- *    4) compressed bitmaps (EWAH);
+ *    4) compressed hybrid bitmaps (EWAH);
  * What data to pre-process is determined by passing the appropriate `TWK_LDD_`-prefixed
  * macro-definied value: TWK_LDD_NONE, TWK_LDD_VEC, TWK_LDD_LIST, and TWK_LDD_ALL.
  */
-#define TWK_LDD_NONE   0
-#define TWK_LDD_VEC    1
-#define TWK_LDD_LIST   2
-#define TWK_LDD_BITMAP 4
-#define TWK_LDD_ALL  ((TWK_LDD_VEC) | (TWK_LDD_LIST) | (TWK_LDD_BITMAP))
-
 struct twk1_ldd_blk {
 	typedef EWAHBoolArray<uint64_t> bitmap_type;
 
@@ -85,10 +79,7 @@ public:
 class twk_reader {
 public:
 	twk_reader() : buf(nullptr), stream(nullptr){}
-	~twk_reader(){
-		//delete rstream;
-		delete stream;
-	}
+	~twk_reader(){ delete stream; }
 
 	/**<
 	 * Open a target twk file. File header, index, and footer will be read
@@ -101,9 +92,9 @@ public:
 
 public:
 	std::streambuf* buf;
-	std::istream*  stream;
-	std::ifstream fstream;
-	io::VcfHeader hdr;
+	std::istream*   stream;
+	std::ifstream   fstream;
+	io::VcfHeader   hdr;
 	Index index;
 };
 

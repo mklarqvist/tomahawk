@@ -240,10 +240,9 @@ void twk1_ldd_blk::Inflate(const uint32_t n_samples,
 *  twk_reader
 ****************************/
 bool twk_reader::Open(std::string file){
-
 	fstream.open(file, std::ios::in|std::ios::binary|std::ios::ate);
 	if(!fstream.good()){
-		std::cerr << "failed to open: " << file << std::endl;
+		std::cerr << utility::timestamp("ERROR","TWK") << "Failed to open \"" << file << "\"!" << std::endl;
 		return false;
 	}
 	buf = fstream.rdbuf();
@@ -257,7 +256,7 @@ bool twk_reader::Open(std::string file){
 	char magic[TOMAHAWK_MAGIC_HEADER_LENGTH];
 	stream->read(magic, TOMAHAWK_MAGIC_HEADER_LENGTH);
 	if(strncmp(magic, TOMAHAWK_MAGIC_HEADER.data(), TOMAHAWK_MAGIC_HEADER_LENGTH) != 0){
-		std::cerr << "failed to read maagic" << std::endl;
+		std::cerr << utility::timestamp("ERROR","TWK") << "Failed to read MAGIC!" << std::endl;
 		return false;
 	}
 
@@ -272,7 +271,7 @@ bool twk_reader::Open(std::string file){
 
 	ZSTDCodec zcodec;
 	if(zcodec.Decompress(obuf, buf) == false){
-		std::cerr << "failed to decompress header" << std::endl;
+		std::cerr << utility::timestamp("ERROR","TWK") << "Failed to decompress header!" << std::endl;
 		return false;
 	}
 	//std::cerr << "bufs=" << buf.size() << "==" << buf_size << std::endl;
@@ -290,7 +289,7 @@ bool twk_reader::Open(std::string file){
 	//std::cerr << "seek offset=" << offset_start_index << "/" << filesize << std::endl;
 	stream->seekg(offset_start_index);
 	if(stream->good() == false){
-		std::cerr << "failed seek" << std::endl;
+		std::cerr << utility::timestamp("ERROR","TWK") << "Failed to seek in file!" << std::endl;
 		return false;
 	}
 	//std::cerr << "seek good=" << stream->tellg() << "/" << filesize << std::endl;
@@ -307,11 +306,12 @@ bool twk_reader::Open(std::string file){
 
 
 	if(zcodec.Decompress(obuf, buf) == false){
-		std::cerr << "failed to decompress" << std::endl;
+		std::cerr << utility::timestamp("ERROR","TWK") << "Failed to decompress index!" << std::endl;
 		return false;
 	}
 	buf >> index;
 
+	// Seek back to start of data.
 	stream->seekg(data_start);
 
 	return true;

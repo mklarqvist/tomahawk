@@ -1,4 +1,5 @@
 #include "core.h"
+#include <thread>
 
 namespace tomahawk {
 
@@ -181,6 +182,42 @@ std::istream& operator>>(std::istream& stream, twk_oblock_t& self){
 	stream.read(self.bytes.data(), self.nc);
 	self.bytes.n_chars_ = self.nc;
 	return(stream);
+}
+
+//
+
+twk_ld_settings::twk_ld_settings() :
+	square(true), window(false), low_memory(false), bitmaps(false),
+	force_phased(false), forced_unphased(false), force_cross_intervals(false),
+	c_level(1), bl_size(500), b_size(10000), l_window(1000000),
+	n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
+	ldd_load_type(TWK_LDD_ALL), out("-"),
+	minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
+	n_chunks(1), c_chunk(0)
+{}
+
+std::string twk_ld_settings::GetString() const{
+	std::string s =  "square=" + std::string((square ? "TRUE" : "FALSE"))
+				  + ",window=" + std::string((window ? "TRUE" : "FALSE"))
+				  + ",low_memory=" + std::string((low_memory ? "TRUE" : "FALSE"))
+				  + ",bitmaps=" + std::string((bitmaps ? "TRUE" : "FALSE"))
+				  + ",force_phased=" + std::string((force_phased ? "TRUE" : "FALSE"))
+				  + ",force_unphased=" + std::string((forced_unphased ? "TRUE" : "FALSE"))
+				  + ",compression_level=" + std::to_string(c_level)
+				  + ",block_size=" + std::to_string(bl_size)
+				  + ",output_block_size=" + std::to_string(b_size)
+				  + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
+				  + ",minP=" + std::to_string(minP)
+				  + ",minR2=" + std::to_string(minR2)
+				  + ",maxR2=" + std::to_string(maxR2)
+				  + ",minDprime=" + std::to_string(minDprime)
+				  + ",maxDprime=" + std::to_string(maxDprime)
+				  + ",n_chunks=" + std::to_string(n_chunks)
+				  + ",c_chunk=" + std::to_string(c_chunk)
+				  + ",n_threads=" + std::to_string(n_threads)
+				  + ",ldd_type=" + std::to_string((int)ldd_load_type)
+				  + ",cycle_threshold=" + std::to_string(cycle_threshold);
+	return(s);
 }
 
 }

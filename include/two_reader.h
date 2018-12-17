@@ -2,6 +2,7 @@
 #define TWO_READER_H_
 
 #include <fstream>
+#include <thread>
 
 #include "buffer.h"
 #include "core.h"
@@ -184,6 +185,8 @@ public:
 };
 
 struct twk_two_settings {
+	twk_two_settings() : out_type('b'), n_threads(std::thread::hardware_concurrency()){}
+
 	char out_type;
 	int32_t n_threads;
 	std::string in, out;

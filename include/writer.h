@@ -44,6 +44,25 @@ struct twk_writer_t {
 		obuf.reset();
 	}
 
+	void Add(const uint32_t b_unc, const uint32_t b_comp, twk_buffer_t& obuf, IndexEntryOutput& entry){
+		spinlock.lock();
+		stream.flush();
+
+		entry.foff = stream.tellp();
+
+		uint8_t marker = 1; // non-termination marker
+		SerializePrimitive(marker, stream);
+		SerializePrimitive(b_unc,  stream); // uncompressed size
+		SerializePrimitive(b_comp, stream); // compressed size
+		stream.write(obuf.data(), obuf.size()); // actual data
+		//std::cerr << "wrote=" << b_unc << "->" << b_comp << " " << (float)b_unc/b_comp << " -> " << obuf.size() << std::endl;
+		stream.flush();
+		entry.fend = stream.tellp();
+
+		spinlock.unlock();
+		obuf.reset();
+	}
+
 	static std::string RandomSuffix() {
 		 std::string name1 = std::tmpnam(nullptr);
 		 std::vector<std::string> ret = utility::split(name1, '/');

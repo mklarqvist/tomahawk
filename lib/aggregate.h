@@ -26,7 +26,7 @@ DEALINGS IN THE SOFTWARE.
 #include "two_reader.h"
 
 struct offset_tuple {
-	offset_tuple() : range(0), min(0), max(0){}
+	offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
 	uint64_t range;
 	uint32_t min, max;
 };
@@ -97,6 +97,14 @@ namespace tomahawk {
 
 struct twk_agg_slave {
 public:
+	struct range_helper {
+		range_helper() : set(false), min(std::numeric_limits<uint32_t>::max()), max(0){}
+
+		bool set;
+		uint32_t min, max;
+	};
+
+public:
 	twk_agg_slave() : f(0), t(0), xrange(0), yrange(0), it(nullptr), thread(nullptr), progress(nullptr), aggregator(&sstats::AddR2), reductor(&sstats::GetMean){}
 	~twk_agg_slave(){ delete it; delete thread; }
 
@@ -128,7 +136,7 @@ public:
 		it->stream = &stream;
 
 		// Vector of contigs.
-		contig_avail.resize(rdr.hdr.GetNumberContigs(), false);
+		contig_avail.resize(rdr.hdr.GetNumberContigs());
 
 		// New thread.
 		delete thread; thread = nullptr;
@@ -163,7 +171,6 @@ public:
 		reductor = red;
 		xrange = xr;
 		yrange = yr;
-		//delete mat; mat = nullptr;
 		mat = std::vector< std::vector<sstats> >(x, std::vector<sstats>(y));
 
 		if(stream.good()) stream.close();
@@ -204,8 +211,12 @@ public:
 			assert(it->NextBlock());
 			tot += it->GetBlock().n;
 			for(int j = 0; j < it->blk.n; ++j){
-				contig_avail[it->blk[j].ridA] = true;
-				contig_avail[it->blk[j].ridB] = true;
+				contig_avail[it->blk[j].ridA].set = true;
+				contig_avail[it->blk[j].ridB].set = true;
+				contig_avail[it->blk[j].ridA].min = std::min(it->blk[j].Apos, contig_avail[it->blk[j].ridA].min);
+				contig_avail[it->blk[j].ridA].max = std::max(it->blk[j].Apos, contig_avail[it->blk[j].ridA].max);
+				contig_avail[it->blk[j].ridB].min = std::min(it->blk[j].Bpos, contig_avail[it->blk[j].ridB].min);
+				contig_avail[it->blk[j].ridB].max = std::max(it->blk[j].Bpos, contig_avail[it->blk[j].ridB].max);
 			}
 			progress->cmps += it->GetBlock().n;
 		}
@@ -221,7 +232,9 @@ public:
 			tot += it->GetBlock().n;
 			for(int j = 0; j < it->blk.n; ++j){
 				// Invoke aggregator function.
-				(mat[(it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min)/xrange][(it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min)/yrange].*aggregator)(&it->blk[j]);
+				// Position: cumulative offset up to chromosome + left-adjusted position
+				// Position: (chromosome_offset.range - chromosome_offset.max) + (Apos - smallest_in_chr)
+				(mat[((rid_offsets[it->blk[j].ridA].range - rid_offsets[it->blk[j].ridA].max) + (it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min))/xrange][((rid_offsets[it->blk[j].ridB].range - rid_offsets[it->blk[j].ridB].max) + (it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min))/yrange].*aggregator)(&it->blk[j]);
 			}
 			progress->cmps += it->GetBlock().n;
 		}
@@ -258,7 +271,7 @@ public:
 	sstats::aggfunc aggregator; // aggregator function
 	sstats::redfunc reductor; // reductor function
 	std::string filename; // input filename
-	std::vector<bool> contig_avail;
+	std::vector<range_helper> contig_avail;
 	std::vector<offset_tuple> rid_offsets; // mat offsets
 	std::vector< std::vector<sstats> > mat; // Output matrix
 };
@@ -437,13 +450,8 @@ int aggregate(int argc, char** argv){
 	// Step 4: Output data.
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Performing 2-pass over data..." << std::endl;
 
-
-	//std::vector<bool> contig_avail(oreader.hdr.GetNumberContigs(), false);
-
 	// Step 1: iterate over index entries and find what contigs are used
 	std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
-	//
-	//settings.n_threads = std::thread::hardware_concurrency();
 	// Distrubution.
 	uint64_t b_unc = 0, n_recs = 0;
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(oreader.index.n) << std::endl;
@@ -505,44 +513,80 @@ int aggregate(int argc, char** argv){
 	progress_sort.is_ticking = false;
 	progress_sort.PrintFinal();
 
-	// Reduce
+	// Reduce.
 	for(int i = 1; i < settings.n_threads; ++i){
-		for(int j = 0; j < slaves[0].contig_avail.size(); ++j)
-			slaves[0].contig_avail[j] = std::max(slaves[0].contig_avail[j], slaves[i].contig_avail[j]);
+		for(int j = 0; j < slaves[0].contig_avail.size(); ++j){
+			slaves[0].contig_avail[j].set = std::max(slaves[0].contig_avail[j].set, slaves[i].contig_avail[j].set);
+			slaves[0].contig_avail[j].min = std::min(slaves[0].contig_avail[j].min, slaves[i].contig_avail[j].min);
+			slaves[0].contig_avail[j].max = std::max(slaves[0].contig_avail[j].max, slaves[i].contig_avail[j].max);
+		}
 	}
 
-	// Print availability.
-	/*for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
-		if(slaves[0].contig_avail[i]){
-			std::cerr << "contig-" << oreader.hdr.contigs_[i].name << " is set" << std::endl;
-		}
-	}*/
+	// Reduce.
+	uint32_t n_chrom_set = slaves[0].contig_avail[0].set;
+	for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
+		n_chrom_set += slaves[0].contig_avail[i].set;
+	}
+	//std::cerr << "chrom set=" << n_chrom_set << std::endl;
 
 	// Step 2: Determine boundaries given the contigs that were set.
 	//         Calculate the landscape ranges (X and Y dimensions).
 	// Approach 2: Dropping regions with no data.
 	uint64_t range = 0;
 	std::vector<offset_tuple> rid_offsets(slaves[0].contig_avail.size());
-	if(slaves[0].contig_avail[0]){
-		rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
-		range += oreader.hdr.contigs_[0].n_bases;
-	} else {
-		rid_offsets[0].range = 0;
-	}
-	rid_offsets[0].min = 0;
-	rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
 
-	for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
-		if(slaves[0].contig_avail[i]){
-			// Cumulative offset for the current rid equals the previous rid
-			rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
-			range += oreader.hdr.contigs_[i].n_bases;
+	/**<
+	 * If there is only chromosome set then restrict the (X,Y) landscape to the
+	 * available data range. This is in contrast to cases where N > 1, where we
+	 * consider the entire genomic range of the affected chromosomes irrespective
+	 * of how much range is actually used.
+	 */
+	if(n_chrom_set == 1){
+		if(slaves[0].contig_avail[0].set){
+			rid_offsets[0].range = slaves[0].contig_avail[0].max - slaves[0].contig_avail[0].min + 1;
+			range += slaves[0].contig_avail[0].max - slaves[0].contig_avail[0].min + 1;
+		} else
+			rid_offsets[0].range = 0;
 
-		} else {
-			rid_offsets[i].range = rid_offsets[i - 1].range;
+		rid_offsets[0].min = slaves[0].contig_avail[0].min;
+		rid_offsets[0].max = slaves[0].contig_avail[0].max;
+
+		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i].set){
+				// Cumulative offset for the current rid equals the previous rid
+				rid_offsets[i].range = rid_offsets[i - 1].range + (slaves[0].contig_avail[i].max - slaves[0].contig_avail[i].min + 1);
+				range += (slaves[0].contig_avail[i].max - slaves[0].contig_avail[i].min + 1);
+			} else {
+				rid_offsets[i].range = rid_offsets[i - 1].range;
+			}
+			rid_offsets[i].min = slaves[0].contig_avail[i].min;
+			rid_offsets[i].max = slaves[0].contig_avail[i].max;
 		}
-		rid_offsets[i].min = 0;
-		rid_offsets[i].max = oreader.hdr.contigs_[i].n_bases;
+
+	}
+	// If there is data from n>1 chromosomes.
+	else {
+		if(slaves[0].contig_avail[0].set){
+			rid_offsets[0].range = oreader.hdr.contigs_[0].n_bases;
+			range += oreader.hdr.contigs_[0].n_bases;
+		} else
+			rid_offsets[0].range = 0;
+
+		rid_offsets[0].min = 0;
+		rid_offsets[0].max = oreader.hdr.contigs_[0].n_bases;
+
+		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i].set){
+				// Cumulative offset for the current rid equals the previous rid
+				rid_offsets[i].range = rid_offsets[i - 1].range + oreader.hdr.contigs_[i].n_bases;
+				range += oreader.hdr.contigs_[i].n_bases;
+
+			} else {
+				rid_offsets[i].range = rid_offsets[i - 1].range;
+			}
+			rid_offsets[i].min = 0;
+			rid_offsets[i].max = oreader.hdr.contigs_[i].n_bases;
+		}
 	}
 
 	/*std::cerr << "range=" << range << std::endl;
@@ -566,6 +610,7 @@ int aggregate(int argc, char** argv){
 	tomahawk::twk_sort_progress progress_sort_step2;
 	progress_sort_step2.n_cmps = n_recs;
 	psthread = progress_sort_step2.Start();
+	std::cerr << "range=" << range << " x,y = " << xrange << " and " << yrange << std::endl;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].rid_offsets = rid_offsets;
 		slaves[i].progress = &progress_sort_step2;

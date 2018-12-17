@@ -28,7 +28,7 @@ struct twk_ld_unpacker {
 
 		bit.stream = new std::ifstream(in, std::ios::binary | std::ios::in);
 		if(bit.stream->good() == false){
-			std::cerr << "failed to open=" << in << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << in << "\"!" << std::endl;
 			return nullptr;
 		}
 
@@ -44,7 +44,7 @@ struct twk_ld_unpacker {
 	bool UnpackDiagonal(){
 		bit.stream->seekg(rdr->index.ent[fL].foff);
 		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << "!" << std::endl;
 			return false;
 		}
 
@@ -53,7 +53,7 @@ struct twk_ld_unpacker {
 		for(int i = lshift; i < lshift + (tL-fL); ++i){
 			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
 			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "!" << std::endl;
 				return false;
 			}
 
@@ -76,7 +76,7 @@ struct twk_ld_unpacker {
 	bool UnpackSquare(){
 		bit.stream->seekg(rdr->index.ent[fL].foff);
 		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to seek to index offset " << fL << " -> " << rdr->index.ent[fL].foff << "!" << std::endl;
 			return false;
 		}
 
@@ -85,7 +85,7 @@ struct twk_ld_unpacker {
 		for(int i = lshift; i < lshift + (tL-fL); ++i){
 			//std::cerr << "at1=" << i << "/" << lshift + (tL-fL) << std::endl;
 			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "!" << std::endl;
 				return false;
 			}
 
@@ -96,7 +96,7 @@ struct twk_ld_unpacker {
 
 		bit.stream->seekg(rdr->index.ent[fR].foff); // seek absolute offset
 		if(bit.stream->good() == false){
-			std::cerr << "failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << std::endl;
+			std::cerr << utility::timestamp("ERROR") << "Failed to seek to index offset " << fR << " -> " << rdr->index.ent[fR].foff << "!" << std::endl;
 			return false;
 		}
 
@@ -106,7 +106,7 @@ struct twk_ld_unpacker {
 		for(int i = loff + roff; i < loff + roff + (tR - fR); ++i){
 			//std::cerr << "at2=" << i << "/" << loff + roff + (tR - fR) << " with range=" << (tR - fR) << std::endl;
 			if(bit.NextBlock() == false){
-				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+				std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "!" << std::endl;
 				return false;
 			}
 
