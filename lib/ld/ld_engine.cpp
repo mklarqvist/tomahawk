@@ -23,37 +23,13 @@ twk_ld_count::twk_ld_count(): totalHaplotypeCounts(0)
 twk_ld_count::~twk_ld_count(){}
 
 void twk_ld_count::ResetPhased(void){
-	this->alleleCounts[0]  = 0;
-	this->alleleCounts[1]  = 0;
-	this->alleleCounts[4]  = 0;
-	this->alleleCounts[5]  = 0;
-	haplotypeCounts[0] = 0;
-	haplotypeCounts[1] = 0;
-	haplotypeCounts[2] = 0;
-	haplotypeCounts[3] = 0;
-	// All other values can legally overflow
-	// They are not used
+	memset(alleleCounts, 0, sizeof(uint64_t)*5);
+	memset(haplotypeCounts, 0, sizeof(uint64_t)*4);
 }
 
 void twk_ld_count::ResetUnphased(void){
-	this->alleleCounts[0]  = 0;
-	this->alleleCounts[1]  = 0;
-	this->alleleCounts[4]  = 0;
-	this->alleleCounts[5]  = 0;
-	this->alleleCounts[16] = 0;
-	this->alleleCounts[17] = 0;
-	this->alleleCounts[20] = 0;
-	this->alleleCounts[21] = 0;
-	this->alleleCounts[64] = 0;
-	this->alleleCounts[65] = 0;
-	this->alleleCounts[68] = 0;
-	this->alleleCounts[69] = 0;
-	this->alleleCounts[80] = 0;
-	this->alleleCounts[81] = 0;
-	this->alleleCounts[84] = 0;
-	this->alleleCounts[85] = 0;
-	// All other values can legally overflow
-	// They are not used
+	memset(alleleCounts, 0, sizeof(uint64_t)*171);
+	memset(haplotypeCounts, 0, sizeof(uint64_t)*4);
 }
 
 //
@@ -1096,9 +1072,11 @@ bool twk_ld_engine::UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1,
 			lenB = gt2.GetLength(++offsetB);
 		}
 		helper.alleleCounts[currentMix] += add;
+		//std::cerr << "adding: " << std::bitset<8>(currentMix) << std::endl;
+		assert(currentMix < 171);
 
 		// Exit condition
-		if(offsetA == gt1.n || offsetB == gt2.n){
+		if(offsetA == gt1.n && offsetB == gt2.n){
 			if(offsetA != gt1.n || offsetB != gt2.n){
 				std::cerr << utility::timestamp("FATAL") << "Failed to exit equally!\n" << offsetA << "/" << gt1.n << " and " << offsetB << "/" << gt2.n << std::endl;
 				exit(1);
@@ -1146,11 +1124,13 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 	if(helper.alleleCounts[TWK_LD_REFREF] < helper.alleleCounts[TWK_LD_ALTALT]){
 		if(helper.alleleCounts[TWK_LD_REFALT] + helper.alleleCounts[TWK_LD_ALTREF] + helper.alleleCounts[TWK_LD_REFREF] < 5){
 			//std::cerr << "return=" << helper.alleleCounts[TWK_LD_REFALT] + helper.alleleCounts[TWK_LD_ALTREF] + helper.alleleCounts[TWK_LD_ALTALT] << std::endl;
+			cur_rcd.controller = 0;
 			return false;
 		}
 	} else {
 		if(helper.alleleCounts[TWK_LD_ALTALT] + helper.alleleCounts[TWK_LD_REFALT] + helper.alleleCounts[TWK_LD_ALTREF] < 5){
 			//std::cerr << "return=" << helper.alleleCounts[TWK_LD_REFALT] + helper.alleleCounts[TWK_LD_ALTREF] + helper.alleleCounts[TWK_LD_ALTALT] << std::endl;
+			cur_rcd.controller = 0;
 			return false;
 		}
 	}
@@ -1277,10 +1257,11 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 
 bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2){
 	// Total amount of non-missing alleles
-	helper.totalHaplotypeCounts = helper.alleleCounts[TWK_LD_REFREF]  + helper.alleleCounts[TWK_LD_REFALT]  + helper.alleleCounts[TWK_LD_ALTREF]  + helper.alleleCounts[TWK_LD_ALTALT]
-	     + helper.alleleCounts[16] + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[21]
-	     + helper.alleleCounts[64] + helper.alleleCounts[65] + helper.alleleCounts[68] + helper.alleleCounts[69]
-	     + helper.alleleCounts[80] + helper.alleleCounts[81] + helper.alleleCounts[84] + helper.alleleCounts[85];
+	helper.totalHaplotypeCounts =
+		  helper.alleleCounts[0]  + helper.alleleCounts[1]  + helper.alleleCounts[4]  + helper.alleleCounts[5]
+	    + helper.alleleCounts[16] + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[21]
+	    + helper.alleleCounts[64] + helper.alleleCounts[65] + helper.alleleCounts[68] + helper.alleleCounts[69]
+	    + helper.alleleCounts[80] + helper.alleleCounts[81] + helper.alleleCounts[84] + helper.alleleCounts[85];
 
 	// All values are missing or too few
 	//if(helper.totalHaplotypeCounts < MINIMUM_ALLOWED_ALLELES){
@@ -1297,15 +1278,31 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 	// Use phased math
 #if TWK_SLAVE_DEBUG_MODE != 2
 	if(number_of_hets == 0){
-		const uint64_t p0 = 2*helper.alleleCounts[TWK_LD_REFREF] + helper.alleleCounts[TWK_LD_REFALT]  + helper.alleleCounts[TWK_LD_ALTREF]    + helper.alleleCounts[16] + helper.alleleCounts[64];
-		const uint64_t q0 = helper.alleleCounts[16]  + helper.alleleCounts[64] + 2*helper.alleleCounts[80] + helper.alleleCounts[81] + helper.alleleCounts[84];
-		const uint64_t p1 = helper.alleleCounts[TWK_LD_REFALT]   + helper.alleleCounts[TWK_LD_ALTREF]  + 2*helper.alleleCounts[TWK_LD_ALTALT]  + helper.alleleCounts[21] + helper.alleleCounts[69];
-		const uint64_t q1 = helper.alleleCounts[21]  + helper.alleleCounts[69] + helper.alleleCounts[81]   + helper.alleleCounts[84] + 2*helper.alleleCounts[85];
+		const uint64_t P0 = 2*helper.alleleCounts[0]  + helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[16]  + helper.alleleCounts[64];
+		const uint64_t Q0 = 2*helper.alleleCounts[5]  + helper.alleleCounts[4]  + helper.alleleCounts[1]  + helper.alleleCounts[21] + helper.alleleCounts[69];
+		const uint64_t P1 = 2*helper.alleleCounts[80] + helper.alleleCounts[64] + helper.alleleCounts[16] + helper.alleleCounts[81] + helper.alleleCounts[84];
+		const uint64_t Q1 = 2*helper.alleleCounts[85] + helper.alleleCounts[84] + helper.alleleCounts[81] + helper.alleleCounts[69] + helper.alleleCounts[21];
 
-		helper.alleleCounts[TWK_LD_REFREF] = p0;
-		helper.alleleCounts[TWK_LD_REFALT] = p1;
-		helper.alleleCounts[TWK_LD_ALTREF] = q0;
-		helper.alleleCounts[TWK_LD_ALTALT] = q1;
+		if(b1.blk->rcds[p1].gt_missing == 0 && b2.blk->rcds[p2].gt_missing == 0){
+			if(P0+P1+Q0+Q1 != 2*n_samples){
+				std::cerr << "fail inner=" << (int)b1.blk->rcds[p1].gt_missing << "," << (int)b2.blk->rcds[p2].gt_missing << std::endl;
+				std::cerr << "fail=" << P0+P1+Q0+Q1 << "/" << 2*n_samples << " avail=" << helper.totalHaplotypeCounts << " -> " << P0 << "," << P1 << "," << Q0 << "," << Q1 << std::endl;
+				uint32_t sum = 0;
+				for(int i = 0; i < 171; ++i){
+					sum += helper.alleleCounts[i];
+					if(helper.alleleCounts[i]) std::cerr << std::bitset<8>(i) << ": " << helper.alleleCounts[i] << std::endl;
+				}
+				std::cerr << "total avail=" << sum << " with hets=" << number_of_hets << std::endl;
+
+				exit(1);
+			}
+		}
+
+		helper.alleleCounts[TWK_LD_REFREF] = P0;
+		helper.alleleCounts[TWK_LD_REFALT] = P1;
+		helper.alleleCounts[TWK_LD_ALTREF] = Q0;
+		helper.alleleCounts[TWK_LD_ALTALT] = Q1;
+
 
 		// Update counter
 		//++this->no_uncertainty;
@@ -1318,14 +1315,57 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 	}
 #endif
 
-	const double p = ((helper.alleleCounts[TWK_LD_REFREF] + helper.alleleCounts[TWK_LD_REFALT]  + helper.alleleCounts[TWK_LD_ALTREF]  + helper.alleleCounts[TWK_LD_ALTALT])*2.0
+	/*double n1111 = helper.alleleCounts[0]; // 0
+	double n1112 = helper.alleleCounts[1] + helper.alleleCounts[4]; // 1+4
+	double n1122 = helper.alleleCounts[5]; // 5
+	double n1211 = helper.alleleCounts[16] + helper.alleleCounts[64]; // 16 + 64
+	double n1212 = helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68]; // 17 + 20 + 65 + 68
+	double n1222 = helper.alleleCounts[21] + helper.alleleCounts[69]; // 21 + 69
+	double n2211 = helper.alleleCounts[80]; // 80
+	double n2212 = helper.alleleCounts[81] + helper.alleleCounts[84]; // 81 + 84
+	double n2222 = helper.alleleCounts[85]; // 85
+	*/
+	//double n = (n1111 + n1112 + n1122 + n1211 + n1212 + n1222 + n2211 + n2212 + n2222);
+	//double n = helper.totalHaplotypeCounts;
+	const double P = ((helper.alleleCounts[0]+helper.alleleCounts[1] + helper.alleleCounts[4]+helper.alleleCounts[5])*2.0+(helper.alleleCounts[16] + helper.alleleCounts[64]+helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68]+helper.alleleCounts[21] + helper.alleleCounts[69]))/(2.0 * helper.totalHaplotypeCounts);
+	const double Q = ((helper.alleleCounts[0]+helper.alleleCounts[16] + helper.alleleCounts[64]+helper.alleleCounts[80])*2.0+(helper.alleleCounts[1] + helper.alleleCounts[4]+helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68]+helper.alleleCounts[81] + helper.alleleCounts[84]))/(2.0 * helper.totalHaplotypeCounts);
+	const double n11 = (2.0*helper.alleleCounts[0] + helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[16] + helper.alleleCounts[64]);
+	const double n12 = (2.0*helper.alleleCounts[5] + helper.alleleCounts[1] + helper.alleleCounts[4] + helper.alleleCounts[21] + helper.alleleCounts[69]);
+	const double n21 = (2.0*helper.alleleCounts[80] + helper.alleleCounts[81] + helper.alleleCounts[84] + helper.alleleCounts[16] + helper.alleleCounts[64]);
+	const double n22 = (2.0*helper.alleleCounts[85] + helper.alleleCounts[81] + helper.alleleCounts[84] + helper.alleleCounts[21] + helper.alleleCounts[69]);
+	const double minhap = n11 / (2.0 * helper.totalHaplotypeCounts);
+	const double maxhap = (n11 + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68]) / (2.0 * n);
+	//std::cerr << "haps=" << n11 << "," << n << "," << n1212 << std::endl;
+	const double dee = -n11*P*Q;
+	const double c = -n11*(1.0 - 2.0*P - 2.0*Q) - (helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68])*(1.0 - P - Q) + 2.0*n*P*Q;
+	const double b = 2.0*helper.totalHaplotypeCounts*(1.0 - 2.0*P - 2.0*Q) - 2.0*n11 - (helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68]);
+	const double a = 4.0 * helper.totalHaplotypeCounts;
+
+	/*std::cerr << n1111 << "\t" << n1112 << "\t" << n1122 << "\n"
+			  << n1211 << "\t" << n1212 << "\t" << n1222 << "\n"
+			  << n2211 << "\t" << n2212 << "\t" << n2222 << std::endl;
+	std::cerr << "vals = " << n << "," << P << "," << Q << " haps= " << minhap << "-" << maxhap << "\t" << n11 << "," << n12 << "," << n21 << "," << n22 << std::endl;
+	std::cerr << "vals2= " << a0 << "," << a1 << "," << a2 << "," << a3 << std::endl;
+*/
+	/*double a   = a3;
+	double b   = a2;
+	double c   = a1;
+	double dee = a0;*/
+
+	const double xN  = -b/(3.0*a);
+	const double d2  = (pow(b,2)-3.0*a*c) / (9*pow(a,2));
+	const double yN  = a * pow(xN,3) + b * pow(xN,2) + c * xN + dee;
+	const double yN2 = pow(yN,2);
+	const double h2  = 4 * pow(a,2) * pow(d2,3);
+
+	/*const double p = ((helper.alleleCounts[TWK_LD_REFREF] + helper.alleleCounts[TWK_LD_REFALT]  + helper.alleleCounts[TWK_LD_ALTREF]  + helper.alleleCounts[TWK_LD_ALTALT])*2.0
 				   + (helper.alleleCounts[16] + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[21] + helper.alleleCounts[64] + helper.alleleCounts[65] + helper.alleleCounts[68] + helper.alleleCounts[69]))
 				   / (2.0 * helper.totalHaplotypeCounts);
 	const double q = ((helper.alleleCounts[TWK_LD_REFREF] + helper.alleleCounts[16] + helper.alleleCounts[64] + helper.alleleCounts[80])*2.0
 				   + (helper.alleleCounts[TWK_LD_REFALT]  + helper.alleleCounts[TWK_LD_ALTREF]  + helper.alleleCounts[17] + helper.alleleCounts[20] + helper.alleleCounts[65] + helper.alleleCounts[68] + helper.alleleCounts[81] + helper.alleleCounts[84]))
 				   / (2.0 * helper.totalHaplotypeCounts);
 	const double n11 = 2.0* helper.alleleCounts[TWK_LD_REFREF] + helper.alleleCounts[TWK_LD_REFALT] + helper.alleleCounts[TWK_LD_ALTREF] + helper.alleleCounts[16] + helper.alleleCounts[64];
-
+*/
 	// Not used for anything
 	//const double n12 = (2.0*helper[5]  + helper[1]  + helper[4]  + helper[21] + helper[69]);
 	//const double n21 = (2.0*helper[80] + helper[81] + helper[84] + helper[16] + helper[64]);
@@ -1335,7 +1375,7 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 	// Cubic function: a3x^3 + a2x^2 + a1x + d = 0 <==> ax^3 + bx^2 + cx + d = 0
 	// Cubic constants
 	////////////////////////*/
-	const double G   = 1.0 - 2.0*p - 2.0*q;
+	/*const double G   = 1.0 - 2.0*p - 2.0*q;
 	const double dee = -n11*p*q;
 	const double c   = -n11*G - number_of_hets*(1.0 - p - q) + 2.0*helper.totalHaplotypeCounts*p*q;
 	const double b   = 2.0*helper.totalHaplotypeCounts*G - 2.0*n11 - number_of_hets;
@@ -1350,41 +1390,64 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 	const double d2  = (pow(b,2) - 3.0*a*c) / (9*pow(a,2));
 	const double yN  = a * pow(xN,3) + b * pow(xN,2) + c * xN + dee;
 	const double yN2 = pow(yN,2);
-	const double h2  = 4 * pow(a,2) * pow(d2,3);
+	const double h2  = 4 * pow(a,2) * pow(d2,3);*/
 
 	// Difference between yN2 and h2
 	const double __diff = yN2 - h2;
 
+	/*std::cerr << "choose=" << yN2 << "," << h2 << " and " << abs(yN2-h2) << std::endl;
+	if(abs(yN2-h2) <= 0.0000001){
+		std::cerr << "no solution" << std::endl;
+	}
+	std::cerr << "pick=" << ((yN2 - h2) < 0) << ", " << ((yN2 - h2) > 0) << ", " << ((yN2 - h2) == 0) << std::endl;
+*/
 	// Begin cases
 	if(__diff < 0) { // Yn2 < h2
-		const double theta    = acos(-yN / sqrt(h2)) / 3.0;
-		const double constant = 2.0 * sqrt(d2);
-		const double alpha    = xN + constant * cos(theta);
-		const double beta     = xN + constant * cos(2.0*M_PI/3.0 + theta);
-		const double gamma    = xN + constant * cos(4.0*M_PI/3.0 + theta);
+		//option 3
+		double h = pow(h2, 0.5);
+		double theta = ((acos(-yN/h))/3.0);
+		//delta = math.pow((yN/2.0*a),(1.0/3.0)) # is it correct to reuse this?
+		double delta = pow(d2,0.5);
+		double alpha = xN + 2.0 * delta * cos(theta);
+		double beta  = xN + 2.0 * delta * cos(2.0 * M_PI/3.0 + theta);
+		double gamma = xN + 2.0 * delta * cos(4.0 * M_PI/3.0 + theta);
+		//result["p"] = p
+		//result["q"] = q
+		//result["pq"] = p * q
+
+		//const double theta    = acos(-yN / sqrt(h2)) / 3.0;
+		//const double constant = 2.0 * sqrt(d2);
+		//const double alpha    = xN + constant * cos(theta);
+		//const double beta     = xN + constant * cos(2.0*M_PI/3.0 + theta);
+		//const double gamma    = xN + constant * cos(4.0*M_PI/3.0 + theta);
 
 		uint8_t biologically_possible = 0;
-		cur_rcd.ChiSqModel = std::numeric_limits<float>::max();
-		const double* chosen = &alpha;
+		cur_rcd.ChiSqModel = std::numeric_limits<double>::max();
+		double chosen = alpha;
 		if(alpha >= minhap - TWK_ALLOWED_ROUNDING_ERROR && alpha <= maxhap + TWK_ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
-			chosen = &alpha;
+			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, P, Q);
+			//chosen = &alpha;
+			//std::cerr << "testing and chosing alpha: " << alpha << std::endl;
 		}
 
 		if(beta >= minhap - TWK_ALLOWED_ROUNDING_ERROR && beta <= maxhap + TWK_ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(beta, p, q) < cur_rcd.ChiSqModel){
-				chosen = &beta;
-				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(beta, p, q);
+			//std::cerr << "testing beta" << std::endl;
+			if(this->ChiSquaredUnphasedTable(beta, P, Q) < cur_rcd.ChiSqModel){
+				chosen = beta;
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(beta, P, Q);
+				//std::cerr << "chosen beta" << std::endl;
 			}
 		}
 
 		if(gamma >= minhap - TWK_ALLOWED_ROUNDING_ERROR && gamma <= maxhap + TWK_ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(gamma, p, q) < cur_rcd.ChiSqModel){
-				chosen = &gamma;
-				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
+			//std::cerr << "testing gamma" << std::endl;
+			if(this->ChiSquaredUnphasedTable(gamma, P, Q) < cur_rcd.ChiSqModel){
+				chosen = gamma;
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, P, Q); // implicit
+				//std::cerr << "chosen gamma" << std::endl;
 			}
 		}
 
@@ -1397,28 +1460,30 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 			cur_rcd.SetMultipleRoots();
 
 		//++this->possible;
-		return(this->ChooseF11Calculate(b1,p1,b2,p2,*chosen, p, q));
+		return(this->ChooseF11Calculate(b1,p1,b2,p2,chosen, P, Q));
 
 	} else if(__diff > 0){ // Yn2 > h2
-		const double constant = sqrt(yN2 - h2);
-		double left, right;
-		if(1.0/(2.0*a)*(-yN + constant) < 0)
-			 left = -pow(-1.0/(2.0*a)*(-yN + constant), 1.0/3.0);
-		else left =  pow( 1.0/(2.0*a)*(-yN + constant), 1.0/3.0);
-		if(1.0/(2.0*a)*(-yN - constant) < 0)
-			 right = -pow(-1.0/(2.0*a)*(-yN - constant), 1.0/3.0);
-		else right =  pow( 1.0/(2.0*a)*(-yN - constant), 1.0/3.0);
+		double number1 = 0.0;
+		double number2 = 0.0;
+		if((1.0/(2.0*a)*(-yN + pow((yN2 - h2),0.5))) < 0)
+			 number1 = -pow(-(1.0/(2.0*a)*(-yN + pow((yN2 - h2),0.5))),1.0/3.0);
+		else number1 = pow((1.0/(2.0*a)*(-yN + pow((yN2 - h2),0.5))),1.0/3.0);
+		if((1.0/(2.0*a)*(-yN - pow((yN2 - h2),0.5))) < 0)
+			 number2 = -pow(-(1.0/(2.0*a)*(-yN - pow((yN2 - h2),0.5))),1.0/3.0);
+		else number2 = pow((1.0/(2.0*a)*(-yN - pow((yN2 - h2),0.5))),1.0/3.0);
 
-		const double alpha = xN + right + left;
+		double alpha = xN + number1 + number2;
+
 		if(!(alpha >= minhap - TWK_ALLOWED_ROUNDING_ERROR && alpha <= maxhap + TWK_ALLOWED_ROUNDING_ERROR)){
 			//++this->impossible;
 			return false;
 		}
 
-		cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
+		//std::cerr << "chosen alpha: only available" << std::endl;
+		cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, P, Q);
 		//++this->possible;
 
-		return(this->ChooseF11Calculate(b1,p1,b2,p2,alpha, p, q));
+		return(this->ChooseF11Calculate(b1,p1,b2,p2,alpha, P, Q));
 
 	} else { // Yn2 == h2
 		const double delta = pow((yN/2.0*a),(1.0/3.0));
@@ -1432,18 +1497,21 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 
 		uint8_t biologically_possible = 0;
 		cur_rcd.ChiSqModel = std::numeric_limits<float>::max();
-		const double* chosen = &alpha;
+		double chosen = alpha;
 		if(alpha >= minhap - TWK_ALLOWED_ROUNDING_ERROR && alpha <= maxhap + TWK_ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, p, q);
-			chosen = &alpha;
+			cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(alpha, P, Q);
+			//chosen = &alpha;
+			//std::cerr << "testing and chosing alpha/beta" << std::endl;
 		}
 
 		if(gamma >= minhap - TWK_ALLOWED_ROUNDING_ERROR && gamma <= maxhap + TWK_ALLOWED_ROUNDING_ERROR){
 			++biologically_possible;
-			if(this->ChiSquaredUnphasedTable(gamma, p, q) < cur_rcd.ChiSqModel){
-				chosen = &gamma;
-				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, p, q); // implicit
+			//std::cerr << "testing gamma" << std::endl;
+			if(this->ChiSquaredUnphasedTable(gamma, P, Q) < cur_rcd.ChiSqModel){
+				chosen = gamma;
+				cur_rcd.ChiSqModel = this->ChiSquaredUnphasedTable(gamma, P, Q); // implicit
+				//std::cerr << "choisng gamma" << std::endl;
 			}
 		}
 
@@ -1453,7 +1521,7 @@ bool twk_ld_engine::UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, cons
 		}
 
 		//++this->possible;
-		return(this->ChooseF11Calculate(b1,p1,b2,p2,*chosen, p, q));
+		return(this->ChooseF11Calculate(b1,p1,b2,p2,chosen, P, Q));
 	}
 	return(false);
 }
@@ -1491,15 +1559,27 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
                                        const double target,
                                        const double p, const double q)
 {
-	const double p1 = target;
+	/*const double p1 = target;
 	const double p2 = p - p1;
 	const double q1 = q - p1;
 	const double q2 = (1-(p1+p2+q1) < 0 ? 0 : 1-(p1+p2+q1));
+*/
+	double f11 = target;
+	double f12 = p - f11;
+	double f21 = q - f11;
+	double f22 = 1 - (f11 + f12 + f21);
+	double D = (f11 * f22) - (f12 * f21);
+	double Dmax = 0;
+	if(D >= 0.0) Dmax = std::min(p * (1.0-q), q * (1.0-p));
+	else Dmax = std::min(p*q,(1-p)*(1-q));
+	double Dprime = D / Dmax;
+	double rsquared = (D * D) / (p * (1-p) * q * (1-q));
 
-	//std::cerr << "unphased-choose=" << p1 << "," << p2 << "," << q1 << "," << q2 << " with p=" << p << " q=" << q  << std::endl;
+	cur_rcd.D  = D;
+	cur_rcd.R2 = rsquared;
 
-	cur_rcd.D  = p1*q2 - p2*q1;
-	cur_rcd.R2 = cur_rcd.D*cur_rcd.D / (p*(1-p)*q*(1-q));
+	//std::cerr << "unphased-choose=" << p1 << "," << p2 << "," << q1 << "," << q2 << " with p=" << p << " q=" << q << " R2=" << cur_rcd.R2  << std::endl;
+	//if(rsquared > 0.5) exit(1);
 
 	if(cur_rcd.R2 < settings.minR2 || cur_rcd.R2 > settings.maxR2){
 		cur_rcd.controller = 0;
@@ -1508,17 +1588,25 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 
 	cur_rcd.R  = sqrt(cur_rcd.R2);
 
-	cur_rcd[TWK_LD_SIMD_REFREF] = p1 * 2*helper.totalHaplotypeCounts;
-	cur_rcd[TWK_LD_SIMD_REFALT] = p2 * 2*helper.totalHaplotypeCounts;
-	cur_rcd[TWK_LD_SIMD_ALTREF] = q1 * 2*helper.totalHaplotypeCounts;
-	cur_rcd[TWK_LD_SIMD_ALTALT] = q2 * 2*helper.totalHaplotypeCounts;
+	cur_rcd[TWK_LD_SIMD_REFREF] = f11 * 2*helper.totalHaplotypeCounts;
+	cur_rcd[TWK_LD_SIMD_REFALT] = f12 * 2*helper.totalHaplotypeCounts;
+	cur_rcd[TWK_LD_SIMD_ALTREF] = f21 * 2*helper.totalHaplotypeCounts;
+	cur_rcd[TWK_LD_SIMD_ALTALT] = f22 * 2*helper.totalHaplotypeCounts;
 
 	//std::cerr << p1 << "," << p2 << "," << q1 << "," << q2 << " and " << cur_rcd[TWK_LD_SIMD_REFREF] << "," << cur_rcd[TWK_LD_SIMD_REFALT] << "," << cur_rcd[TWK_LD_SIMD_ALTREF] << "," << cur_rcd[TWK_LD_SIMD_ALTALT] << " with R2=" << cur_rcd.R2 << std::endl;
 
-	if(cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] + cur_rcd[TWK_LD_SIMD_ALTALT] <= 2){
-		//std::cerr << "filter out=" << cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] + cur_rcd[TWK_LD_SIMD_ALTALT] << " when " << b1[pos1].ac << "," << b2[pos2].ac << std::endl;
-		cur_rcd.controller = 0;
-		return false;
+	if(cur_rcd[TWK_LD_SIMD_REFREF] < cur_rcd[TWK_LD_SIMD_ALTALT]){
+		if(cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] + cur_rcd[TWK_LD_SIMD_REFREF] < 5){
+			//std::cerr << "return=" << cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] + cur_rcd[TWK_LD_SIMD_ALTALT] << std::endl;
+			cur_rcd.controller = 0;
+			return false;
+		}
+	} else {
+		if(cur_rcd[TWK_LD_SIMD_ALTALT] + cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] < 5){
+			//std::cerr << "return=" << cur_rcd[TWK_LD_SIMD_REFALT] + cur_rcd[TWK_LD_SIMD_ALTREF] + cur_rcd[TWK_LD_SIMD_ALTALT] << std::endl;
+			cur_rcd.controller = 0;
+			return false;
+		}
 	}
 
 	double dmax = 0;
@@ -1558,7 +1646,6 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 	cur_rcd.SetHasMissingValuesB(b2.blk->rcds[pos2].an);
 	int32_t diff = (int32_t)b1.blk->rcds[pos1].pos - b2.blk->rcds[pos2].pos;
 	cur_rcd.SetLongRange(abs(diff) > TWK_LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
-	cur_rcd.SetUsedPhasedMath();
 	cur_rcd.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
 
 	//if(helper.R2 > 0.5) exit(1);
@@ -1771,7 +1858,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 					continue;
 				}
 
-				if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+				if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 					engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
 				} else {
 					if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
@@ -1800,7 +1887,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 						}
 
 						//std::cerr << ii << "/" << n_blocks1 << "," << jj << "/" << n_blocks2 << "," << i << "/" << ii+bsize << "," << j << "/" << jj+bsize << " bsize=" << bsize << std::endl;
-						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+						if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 						} else {
 							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
@@ -1821,7 +1908,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 						continue;
 					}
 
-					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+					if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 						engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 					} else {
 						if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
@@ -1844,7 +1931,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 					continue;
 				}
 
-				if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+				if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 					engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
 				} else {
 					if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
@@ -1886,7 +1973,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 					engine.UnphasedVectorized(blocks[0],i,blocks[0],j,perf);
 				}
 #else
-				if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+				if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 					if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 						engine.UnphasedRunlength(blocks[0],i,blocks[0],j,perf);
 					else {
@@ -1928,7 +2015,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 						}
 #else
-						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+						if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 							if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 								engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
 							else {
@@ -1963,7 +2050,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 						engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 					}
 #else
-					if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+					if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 						if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
 						else {
@@ -2000,7 +2087,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 					engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 				}
 #else
-				if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+				if(rcds0[i].gt_missing == false && rcds1[j].gt_missing == false){
 					if(std::min(rcds0[i].ac, rcds0[j].ac) < thresh_nomiss)
 						engine.UnphasedRunlength(blocks[0],i,blocks[1],j,perf);
 					else {
@@ -2076,7 +2163,7 @@ bool twk_ld_slave::CalculateUnphased(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
-		// Compute unphased math
+		// Compute unphased
 		Unphased(rcds0, rcds1, blocks, type, perf);
 	}
 	//std::cerr << "done" << std::endl;

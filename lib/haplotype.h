@@ -34,7 +34,8 @@ void haplotype_usage(void){
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " haplotype [options] -i <in.twk> -I <interval>\n\n"
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
-	"  -I STRING interval string for target region\n\n";
+	"  -I STRING interval string for target region\n"
+	"  -m        output haplotypes in tab-delimited matrix form\n\n";
 }
 
 int haplotype(int argc, char** argv){
@@ -47,6 +48,7 @@ int haplotype(int argc, char** argv){
 		{"input",       required_argument, 0, 'i' },
 		{"intervals",   required_argument, 0, 'I' },
 		{"numeric",     optional_argument, 0, 'n' },
+		{"matrix",      no_argument,       0, 'm' },
 		{0,0,0,0}
 	};
 
@@ -54,11 +56,12 @@ int haplotype(int argc, char** argv){
 	std::string input;
 	std::vector<std::string> intervals;
 	bool output_numeric_encoding = false;
+	bool output_matrix_form = false;
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:I:n?", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:I:mn?", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -80,6 +83,9 @@ int haplotype(int argc, char** argv){
 			break;
 		case 'n':
 			output_numeric_encoding = true;
+			break;
+		case 'm':
+			output_matrix_form = true;
 			break;
 		}
 	}
@@ -163,12 +169,26 @@ int haplotype(int argc, char** argv){
 	}
 
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Number of haplotypes: " << haps.size() << " over " << haps[0].size() << " sites..." << std::endl;
-	for(int p = 0; p < haps.size(); ++p){
-		std::cout << ">" << rdr.hdr.samples_[p/2] << "_" << (p%2) << "\n";
-		for(int i = 0; i < haps[p].size(); ++i){
-			std::cout << haps[p][i];
+	if(output_matrix_form == false){
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Writing FASTA..." << std::endl;
+
+		for(int p = 0; p < haps.size(); ++p){
+			std::cout << ">" << rdr.hdr.samples_[p/2] << "_" << (p%2) << "\n";
+			for(int i = 0; i < haps[p].size(); ++i){
+				std::cout << haps[p][i];
+			}
+			std::cout.put('\n');
 		}
-		std::cout.put('\n');
+	} else {
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Writing output matrix..." << std::endl;
+
+		for(int p = 0; p < haps.size(); ++p){
+			std::cout << ">" << rdr.hdr.samples_[p/2] << "_" << (p%2) << "\t";
+			for(int i = 0; i < haps[p].size(); ++i){
+				std::cout << '\t' << haps[p][i];
+			}
+			std::cout.put('\n');
+		}
 	}
 	std::cout.flush();
 

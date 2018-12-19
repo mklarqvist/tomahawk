@@ -94,7 +94,7 @@ int relationship(int argc, char** argv){
 
 	// Print messages
 	tomahawk::ProgramMessage();
-	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling haplotype..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling relationship..." << std::endl;
 
 	tomahawk::twk_reader rdr;
 	if(rdr.Open(input) == false){
@@ -123,22 +123,30 @@ int relationship(int argc, char** argv){
 	// Output matrix of size N^2.
 	struct kinship_el {
 		kinship_el() : n(0), c(0){}
+		/*kinship_el& operator=(const kinship_el& other){
+			n = other.n.load();
+			c = other.c.load();
+			return(*this);
+		}*/
+
+		//std::atomic<uint32_t> n, c;
 		uint32_t n, c;
 	};
-	//kinship_el** kin = new kinship_el*[rdr.hdr.GetNumberSamples()];
-	//for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i)
-	//	kin[i] = new kinship_el[rdr.hdr.GetNumberSamples()];
+	kinship_el** kin = new kinship_el*[rdr.hdr.GetNumberSamples()];
+	for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i)
+		kin[i] = new kinship_el[rdr.hdr.GetNumberSamples()];
 
 	tomahawk::twk1_blk_iterator bit;
 	bit.stream = rdr.stream;
 	uint32_t n_variants = 0;
 
+	// Todo: split matrix into N/t submatrices. One submatrix per worker thread.
+
 	// If both are the same then add 1.0 -> 2
 	// If both are different add 0.0 -> 0
 	// If both have the same het layout at 0.5 -> 1
 	// Divide end by 2
-	//uint32_t score[16] = {0}
-
+	tomahawk::Timer timer;
 	for(int i = 0; i < n_blks; ++i){
 		bit.stream->seekg(ivals.overlap_blocks[i]->foff);
 		if(bit.NextBlock() == false){
@@ -146,10 +154,17 @@ int relationship(int argc, char** argv){
 			return false;
 		}
 
-		std::cerr << i << "/" << n_blks << "/" << rdr.index.n << ": " << bit.blk.n << std::endl;
-		n_variants += bit.blk.n;
+		timer.Start();
+		//n_variants += bit.blk.n;
+		uint32_t score = 0;
+
 		// Foreach record.
 		for(int j = 0; j < bit.blk.n; ++j){
+			if(ivals.itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos, bit.blk.rcds[j].pos).size() == 0)
+				continue;
+
+			++n_variants;
+
 			// Foreach RLE object against ever other (except self)
 			// First loop over all, second loop over non-diagonal
 			uint32_t sample_col = 0;
@@ -157,9 +172,11 @@ int relationship(int argc, char** argv){
 				// Self
 				//std::cerr << "outer=" << sample_col << "-" << sample_col + bit.blk.rcds[j].gt->GetLength(k) << std::endl;
 				// Start a 1 because i==j then sample individual.
-				for(int z = 1; z < bit.blk.rcds[j].gt->GetLength(k); ++z){
-					// Add 2 for all these samples.
-					// kin[sample_col + z]
+				for(int c = 0; c < bit.blk.rcds[j].gt->GetLength(k); ++c){
+					for(int z = c + 1; z < bit.blk.rcds[j].gt->GetLength(k); ++z){
+						// Add 2 for all these samples.
+						kin[sample_col + c][sample_col + z].n += 2;
+					}
 				}
 
 				uint32_t sample_row = sample_col + bit.blk.rcds[j].gt->GetLength(k);
@@ -173,18 +190,15 @@ int relationship(int argc, char** argv){
 						continue;
 					}
 
-					//std::cerr << "add=" << ((refA == 0 && refB == 0) || (refA == 5 && refB == 5) ? 2 : 1) << std::endl;
+					score = ((refA == 0 && refB == 0) || (refA == 5 && refB == 5) ? 2 : 1);
 
 					// Sample col range (sample_col +c)
 					for(int c = 0; c < bit.blk.rcds[j].gt->GetLength(k); ++c){
 						// Sample row range (smaple_row + z)
 						for(int z = 1; z < bit.blk.rcds[j].gt->GetLength(l); ++z){
-							// Add for
-							//kin[sample_col + c][sample_row + z];
+							kin[sample_col + c][sample_row + z].n += score;
 						}
 					}
-					//std::cerr << "inner=" << sample_col << "-" << sample_col + bit.blk.rcds[j].gt->GetLength(k) << " and " << sample_row << "-" << sample_row + bit.blk.rcds[j].gt->GetLength(l) << std::endl;
-
 					sample_row += bit.blk.rcds[j].gt->GetLength(l);
 				}
 				assert(sample_row == rdr.hdr.GetNumberSamples());
@@ -192,10 +206,31 @@ int relationship(int argc, char** argv){
 			}
 			assert(sample_col == rdr.hdr.GetNumberSamples());
 		}
+		std::cerr << tomahawk::utility::timestamp("PROGRESS") << i << "/" << n_blks << "/" << rdr.index.n << ": " << bit.blk.n << " in " << timer.ElapsedString() << " (" << tomahawk::utility::ToPrettyString((uint64_t)((bit.blk.n*bit.blk.n*rdr.hdr.GetNumberSamples())/timer.Elapsed().count())) << " cmps/s)" << std::endl;
 	}
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Number of individuals: " << rdr.hdr.GetNumberSamples() << " over " << n_variants << " sites..." << std::endl;
 
+	// Add diagonal and add in lower triangular values.
+	for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i) kin[i][i].n = 2*n_variants;
+	for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i){
+		for(int j = 1; j < rdr.hdr.GetNumberSamples(); ++j){
+			kin[j][i] = kin[i][j];
+		}
+	}
+
+
+	for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i){
+		std::cout << (double)kin[i][0].n / n_variants / 2;
+		for(int j = 1; j < rdr.hdr.GetNumberSamples(); ++j){
+			std::cout << '\t' << (double)kin[i][j].n / n_variants / 2;
+		}
+		std::cout.put('\n');
+	}
 	std::cout.flush();
+
+	for(int i = 0; i < rdr.hdr.GetNumberSamples(); ++i)
+		delete[] kin[i];
+	delete[] kin;
 
 	return 0;
 }

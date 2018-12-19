@@ -14,6 +14,7 @@ std::string tomahawk::INTERPRETED_COMMAND;
 #include "stats.h"
 #include "haplotype.h"
 #include "relationship.h"
+#include "decay.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::utility::IsBigEndian()){
@@ -69,7 +70,9 @@ int main(int argc, char** argv){
 	else if(strncmp(&argv[1][0], "relationship", 9) == 0){
 		return(relationship(argc, argv));
 	}
-
+	else if(strncmp(&argv[1][0], "decay", 5) == 0){
+		return(decay(argc, argv));
+	}
 	else if(strcmp(&argv[1][0], "--version") == 0 || strcmp(&argv[1][0], "version") == 0){
 		tomahawk::ProgramMessage(false);
 		return(0);

@@ -209,8 +209,17 @@ public:
 		uint32_t tot = 0;
 		for(int i = f; i < t; ++i){
 			assert(it->NextBlock());
+			// Todo: bugfix this case
+			if(it->blk.n < 5) continue;
+
 			tot += it->GetBlock().n;
+			//std::cerr << "here" << std::endl;
+
 			for(int j = 0; j < it->blk.n; ++j){
+				//std::cerr << j << "/" << it->blk.n << "\t" << it->blk[j].ridA << "/" << contig_avail.size() << std::endl;
+				assert(it->blk[j].ridA < contig_avail.size());
+				assert(it->blk[j].ridB < contig_avail.size());
+
 				contig_avail[it->blk[j].ridA].set = true;
 				contig_avail[it->blk[j].ridB].set = true;
 				contig_avail[it->blk[j].ridA].min = std::min(it->blk[j].Apos, contig_avail[it->blk[j].ridA].min);
@@ -229,12 +238,16 @@ public:
 		uint32_t tot = 0;
 		for(int i = f; i < t; ++i){
 			assert(it->NextBlock());
+			// Todo: bugfix this case
+			if(it->blk.n < 5) continue;
+
 			tot += it->GetBlock().n;
 			for(int j = 0; j < it->blk.n; ++j){
 				// Invoke aggregator function.
 				// Position: cumulative offset up to chromosome + left-adjusted position
-				// Position: (chromosome_offset.range - chromosome_offset.max) + (Apos - smallest_in_chr)
-				(mat[((rid_offsets[it->blk[j].ridA].range - rid_offsets[it->blk[j].ridA].max) + (it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min))/xrange][((rid_offsets[it->blk[j].ridB].range - rid_offsets[it->blk[j].ridB].max) + (it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min))/yrange].*aggregator)(&it->blk[j]);
+				// Position: (chromosome_offset.range - chromosome_offset.max - chromoosme_offset.min) + (Apos - smallest_in_chr)
+				//std::cerr << (rid_offsets[it->blk[j].ridA].range - (rid_offsets[it->blk[j].ridA].max - rid_offsets[it->blk[j].ridA].min)) << "," << (rid_offsets[it->blk[j].ridB].range - (rid_offsets[it->blk[j].ridB].max - rid_offsets[it->blk[j].ridB].min)) << std::endl;
+				(mat[((rid_offsets[it->blk[j].ridA].range - (rid_offsets[it->blk[j].ridA].max - rid_offsets[it->blk[j].ridA].min)) + (it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min))/xrange][((rid_offsets[it->blk[j].ridB].range - (rid_offsets[it->blk[j].ridB].max - rid_offsets[it->blk[j].ridB].min)) + (it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min))/yrange].*aggregator)(&it->blk[j]);
 			}
 			progress->cmps += it->GetBlock().n;
 		}
@@ -589,10 +602,10 @@ int aggregate(int argc, char** argv){
 		}
 	}
 
-	/*std::cerr << "range=" << range << std::endl;
+	std::cerr << "range=" << range << std::endl;
 	for(int i = 0; i < rid_offsets.size(); ++i){
 		std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
-	}*/
+	}
 
 	// Step 3: Second pass over data.
 	//         Prepare n-tensor for storing output data.

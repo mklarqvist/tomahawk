@@ -32,7 +32,7 @@ namespace tomahawk {
 #define TWK_LOW_AC_THRESHOLD        5
 #define TWK_LONG_RANGE_THRESHOLD    500e3
 #define TWK_MINIMUM_ALLOWED_ALLELES 5		// Minimum number of alleles required for math to work out in the unphased case
-#define TWK_ALLOWED_ROUNDING_ERROR  0.001
+#define TWK_ALLOWED_ROUNDING_ERROR  0.00001
 
 #define TWK_HAP_FREQ(A,POS) ((double)(A).alleleCounts[POS] / (A).totalHaplotypeCounts)
 
@@ -198,7 +198,7 @@ struct twk_ld_count {
 	void ResetUnphased(void);
 
 	// Counters
-	uint64_t alleleCounts[171]; // equivalent to 10101010b = (MISS,MISS),(MISS,MISS)
+	uint64_t alleleCounts[171]; // equivalent to 1010,1010b = (MISS,MISS),(MISS,MISS)
 	uint64_t haplotypeCounts[4]; // haplotype counts
 	uint64_t totalHaplotypeCounts; // Total number of alleles
 };
