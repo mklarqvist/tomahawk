@@ -391,6 +391,7 @@ struct twk_ld_slave {
 	bool CalculatePhasedBitmap(twk_ld_perf* perf = nullptr);
 	bool CalculatePhasedBitmapWindow(twk_ld_perf* perf = nullptr);
 	bool CalculatePhasedWindow(twk_ld_perf* perf = nullptr);
+	bool CalculateUnphasedWindow(twk_ld_perf* perf = nullptr);
 	bool Calculate(twk_ld_perf* perf = nullptr);
 	bool CalculatePerformance(twk_ld_engine::func f, twk_ld_perf* perf = nullptr);
 
