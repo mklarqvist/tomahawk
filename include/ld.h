@@ -1,3 +1,25 @@
+/*
+Copyright (C) 2016-current Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+==============================================================================*/
 #ifndef TWK_LD_H_
 #define TWK_LD_H_
 
@@ -6,28 +28,20 @@
 
 #include "core.h"
 #include "twk_reader.h"
-#include "fisher_math.h"
-#include "spinlock.h"
-#include "timer.h"
 #include "writer.h"
 #include "intervals.h"
-#include "ld/ld_engine.h"
-
 
 namespace tomahawk {
+
+struct twk_ld_balancer; // forward declare balancer
 
 /****************************
 *  LD handler
 ****************************/
 class twk_ld {
 public:
-	twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr)
-	{
-	}
-
-	~twk_ld(){
-		delete[] ldd; delete[] ldd2;;
-	}
+	twk_ld();
+	~twk_ld();
 
 	/**<
 	 * Wrapper function for parsing interval strings.
@@ -39,52 +53,8 @@ public:
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
 	// move out
-	bool WriteHeader(twk_writer_t* writer, twk_reader& reader) const{
-		if(writer == nullptr)
-			return false;
-
-		tomahawk::ZSTDCodec zcodec;
-		writer->write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
-		tomahawk::twk_buffer_t buf(256000), obuf(256000);
-		buf << reader.hdr;
-		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-			std::cerr << "failed to compress" << std::endl;
-			return false;
-		}
-
-		writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
-		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-		writer->write(obuf.data(),obuf.size());
-		writer->stream.flush();
-		buf.reset();
-
-		return(writer->good());
-	}
-
-	// write out
-	bool WriteFinal(twk_writer_t* writer, IndexOutput& index) const {
-		if(writer == nullptr) return false;
-
-		tomahawk::twk_buffer_t buf(256000), obuf(256000);
-		tomahawk::ZSTDCodec zcodec;
-
-		buf << index;
-		if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-			std::cerr << "failed compression" << std::endl;
-			return false;
-		}
-
-		const uint64_t offset_start_index = writer->stream.tellp();
-		uint8_t marker = 0;
-		writer->write(reinterpret_cast<const char*>(&marker),     sizeof(uint8_t));
-		writer->write(reinterpret_cast<const char*>(&buf.size()), sizeof(uint64_t));
-		writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-		writer->write(obuf.data(),obuf.size());
-		writer->write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
-		writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
-		writer->stream.flush();
-		return(writer->good());
-	}
+	bool WriteHeader(twk_writer_t* writer, twk_reader& reader) const;
+	bool WriteFinal(twk_writer_t* writer, IndexOutput& index) const;
 
 	/**<
 	 * Reads the desired tomahawk blocks given the balancer intervals. Internally
@@ -97,13 +67,9 @@ public:
 	 * @return
 	 */
 	bool LoadBlocks(twk_reader& reader,
-			twk1_blk_iterator& bit,
-			const twk_ld_balancer& balancer,
-			const twk_ld_settings& settings)
-	{
-		if(intervals.overlap_blocks.size()) return(this->LoadTargetBlocks(reader, bit, balancer, settings));
-		return(this->LoadAllBlocks(reader, bit, balancer, settings));
-	}
+	                twk1_blk_iterator& bit,
+	                const twk_ld_balancer& balancer,
+	                const twk_ld_settings& settings);
 
 	/**<
 	 * Loading twk blocks for a single variant and its surrounding variants within
@@ -117,26 +83,9 @@ public:
 	 * @return
 	 */
 	bool LoadTargetSingle(twk_reader& reader,
-			twk1_blk_iterator& bit,
-			const twk_ld_balancer& balancer,
-			const uint8_t load)
-	{
-		if(settings.ival_strings.size() == 0){ // if have interval strings
-			return false;
-		}
-
-		this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
-		if(this->ParseIntervalStrings(reader) == false)
-			return false;
-
-		if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
-			return false;
-		}
-
-		// First block has only 1 variant: the reference.
-		// All other blocks
-		return true;
-	}
+	                      twk1_blk_iterator& bit,
+	                      const twk_ld_balancer& balancer,
+	                      const uint8_t load);
 
 	/**<
 	 * Construct interval container and trees given the pre-provided interval
@@ -146,27 +95,7 @@ public:
 	 * @param load
 	 * @return
 	 */
-	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit)
-	{
-		if(settings.ival_strings.size() == 0){ // if have interval strings
-			return false;
-		}
-
-		this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
-		// Parse the literal interval strings into actual interval tuples.
-		if(this->ParseIntervalStrings(reader) == false)
-			return false;
-
-		// Construct interval trees and find overlaps.
-		if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
-			return false;
-		}
-
-		// Number of blocks available to iterate over.
-		this->n_blks = this->intervals.overlap_blocks.size();
-
-		return true;
-	}
+	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit);
 
 	/**<
 	 * Loads only the target blocks that overlap with the given vector of interval
@@ -178,95 +107,9 @@ public:
 	 * @return         Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool LoadTargetBlocks(twk_reader& reader,
-			twk1_blk_iterator& bit,
-			const twk_ld_balancer& balancer,
-			const twk_ld_settings& settings)
-	{
-		if(intervals.overlap_blocks.size() == 0){ // if have interval strings
-			return false;
-		}
-
-		// src1 and src2 blocks are the same: e.g. (5,5) or (10,10).
-		if(balancer.diag){
-			//std::cerr << "is diag" << std::endl;
-			//std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
-
-			n_blks = balancer.toR - balancer.fromR;
-			m_blks = balancer.toR - balancer.fromR;
-			ldd    = new twk1_ldd_blk[m_blks];
-			ldd2   = new twk1_block_t[m_blks];
-		}
-		// Computation is square: e.g. (5,6) or (10,21).
-		else {
-			//std::cerr << "is square" << std::endl;
-			//std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
-
-			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-			ldd    = new twk1_ldd_blk[m_blks];
-			ldd2   = new twk1_block_t[m_blks];
-		}
-
-		if(settings.low_memory)
-			std::cerr << utility::timestamp("LOG") << "Running in restriced memory mode..." << std::endl;
-		else
-			std::cerr << utility::timestamp("LOG") << "Running in standard mode. Pre-computing data..." << std::endl;
-
-	#if SIMD_AVAILABLE == 1
-			std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-	#else
-			std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-	#endif
-			std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE... ";
-
-			Timer timer; timer.Start();
-			if(balancer.diag){
-				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
-				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[i] = std::move(bit.blk);
-					ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-					ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
-				}
-			} else {
-				uint32_t offset = 0;
-				bit.stream->seekg(intervals.overlap_blocks[balancer.fromL]->foff);
-				for(int i = 0; i < (balancer.toL - balancer.fromL); ++i){
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[offset] = std::move(bit.blk);
-					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-					++offset;
-				}
-
-				bit.stream->seekg(intervals.overlap_blocks[balancer.fromR]->foff);
-				for(int i = 0; i < (balancer.toR - balancer.fromR); ++i){
-					if(bit.NextBlock() == false){
-						std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
-						return false;
-					}
-
-					ldd2[offset] = std::move(bit.blk);
-					ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-					ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
-					++offset;
-				}
-			}
-
-			std::cerr << "Done! " << timer.ElapsedString() << std::endl;
-			//std::cerr << "ldd2=" << n_blks << "/" << m_blks << std::endl;
-			return(true);
-
-		return true;
-	}
+	                      twk1_blk_iterator& bit,
+	                      const twk_ld_balancer& balancer,
+	                      const twk_ld_settings& settings);
 
 	/**<
 	 * Loads all available twk blocks into memory. Internally spawns the maximum
@@ -278,101 +121,9 @@ public:
 	 * @return         Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool LoadAllBlocks(twk_reader& reader,
-			twk1_blk_iterator& bit,
-			const twk_ld_balancer& balancer,
-			const twk_ld_settings& settings)
-	{
-		if(reader.index.n == 0)
-			return false;
-
-		// Delete old
-		delete[] ldd; delete[] ldd2;
-		ldd = nullptr; ldd2 = nullptr;
-
-		if(balancer.diag){
-			//std::cerr << "is diag" << std::endl;
-			//std::cerr << "load range=" << balancer.toR - balancer.fromR << std::endl;
-
-			n_blks = balancer.toR - balancer.fromR;
-			m_blks = balancer.toR - balancer.fromR;
-			std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
-
-			ldd  = new twk1_ldd_blk[m_blks];
-			ldd2 = new twk1_block_t[m_blks];
-		} else {
-			//std::cerr << "is square" << std::endl;
-			//std::cerr << "load range=" << (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR) << std::endl;
-
-			n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-			m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-			std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
-
-			ldd  = new twk1_ldd_blk[m_blks];
-			ldd2 = new twk1_block_t[m_blks];
-		}
-
-		if(settings.low_memory)
-			std::cerr << utility::timestamp("LOG") << "Running in restriced memory mode..." << std::endl;
-		else
-			std::cerr << utility::timestamp("LOG") << "Running in standard mode. Pre-computing data..." << std::endl;
-
-#if SIMD_AVAILABLE == 1
-		std::cerr << utility::timestamp("LOG","SIMD") << "Vectorized instructions available: " << TWK_SIMD_MAPPING[SIMD_VERSION] << "..." << std::endl;
-#else
-		std::cerr << utility::timestamp("LOG","SIMD") << "No vectorized instructions available..." << std::endl;
-#endif
-
-		// Distribute unpacking across multiple thread slaves.
-		// This has insignificant performance impact on small files and/or
-		// files with small number of samples (n<10,000). It has considerable
-		// impact of large files when hundreds to thousands of samples and/or
-		// a large number of variant blocks.
-		const uint32_t rangeL = balancer.toL - balancer.fromL;
-		const uint32_t rangeR = balancer.toR - balancer.fromR;
-		uint32_t unpack_threads = settings.n_threads;
-		uint32_t ppthreadL = std::ceil((float)(balancer.toL - balancer.fromL) / unpack_threads);
-		// Assert blocks are balanced.
-		assert(balancer.toL - balancer.fromL == balancer.toR - balancer.fromR);
-
-		if(ppthreadL == 0){
-			unpack_threads = rangeL;
-			//std::cerr << "changing unpack threads=" << settings.n_threads << "->" << unpack_threads << std::endl;
-		} else {
-			if(ppthreadL * unpack_threads > rangeL){
-				unpack_threads = rangeL / ppthreadL;
-				//std::cerr << "changing unpack threads=" << settings.n_threads << "->" << unpack_threads << std::endl;
-			}
-		}
-
-		//std::cerr << "balance=" << (balancer.toL - balancer.fromL) << " and " << (balancer.toL - balancer.fromL) / unpack_threads << " -> " << ppthreadL << std::endl;
-		std::cerr << utility::timestamp("LOG") << "Constructing list, vector, RLE..." << std::endl;
-		std::cerr << utility::timestamp("LOG","THREAD") << "Unpacking using " << unpack_threads << " threads: ";
-
-		Timer timer; timer.Start();
-		twk_ld_unpacker* slaves = new twk_ld_unpacker[unpack_threads];
-		for(uint32_t i = 0; i < unpack_threads; ++i){
-			slaves[i].ldd  = ldd;
-			slaves[i].ldd2 = ldd2;
-			slaves[i].rdr  = &reader;
-			slaves[i].resize = true;
-			slaves[i].fL = balancer.fromL + ppthreadL*i; // from-left
-			slaves[i].tL = i+1 == unpack_threads ? balancer.fromL+rangeL : balancer.fromL+(ppthreadL*(i+1)); // to-left
-			slaves[i].fR = balancer.fromR + ppthreadL*i; // from-right
-			slaves[i].tR = i+1 == unpack_threads ? balancer.fromR+rangeR : balancer.fromR+(ppthreadL*(i+1)); // to-right
-			slaves[i].loff   = balancer.toL - balancer.fromL; // offset from left
-			slaves[i].lshift = slaves[i].fL - balancer.fromL; // offset from right
-			slaves[i].roff   = slaves[i].fR - balancer.fromR;
-			std::cerr << '.'; std::cerr.flush();
-			//std::cerr << "range=" << slaves[i].fL << "->" << slaves[i].tL << " and " << slaves[i].fR << "->" << slaves[i].tR << std::endl;
-		}
-
-		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].Start(balancer.diag, settings.ldd_load_type, settings.in);
-		for(uint32_t i = 0; i < unpack_threads; ++i) slaves[i].thread->join();
-		delete[] slaves;
-
-		std::cerr << " Done! " << timer.ElapsedString() << std::endl;
-		return(true);
-	}
+	                   twk1_blk_iterator& bit,
+	                   const twk_ld_balancer& balancer,
+	                   const twk_ld_settings& settings);
 
 	/**<
 	 * Helper function to call Compute subroutine when passing a new settings
@@ -380,392 +131,22 @@ public:
 	 * @param settings Src settings objects.
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
-	bool Compute(const twk_ld_settings& settings){
-		this->settings = settings;
-		return(Compute());
-	}
+	bool Compute(const twk_ld_settings& settings);
 
 	/**<
 	 * Main subroutine for computing linkage-disequilibrium as contextually
 	 * determined given the user-defined parameters.
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
-	bool Compute(){
-		//return(ComputePerformance());
-
-		if(settings.in.size() == 0){
-			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
-			return false;
-		}
-
-		if(settings.window && settings.n_chunks != 1){
-			std::cerr << utility::timestamp("ERROR") << "Cannot use chunking in window mode!" << std::endl;
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
-
-		twk_reader reader;
-		if(reader.Open(settings.in) == false){
-			std::cerr << utility::timestamp("ERROR") << "Failed to open file: " << settings.in << "..." << std::endl;
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
-
-		twk1_blk_iterator bit;
-		bit.stream = reader.stream;
-
-		Timer timer;
-
-		//settings.ldd_load_type = TWK_LDD_ALL;
-		if(settings.low_memory && settings.force_phased && settings.bitmaps){
-			settings.ldd_load_type = TWK_LDD_BITMAP;
-		} else if(settings.low_memory && settings.force_phased){
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		} else if(settings.force_phased){
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		} else if(settings.forced_unphased){
-			settings.ldd_load_type = TWK_LDD_VEC;
-		} else {
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		}
-
-		if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
-		else {
-			if(this->BuildIntervals(reader, bit) == false)
-				return false;
-		}
-
-		if(settings.window) settings.c_chunk = 0;
-
-		twk_ld_balancer balancer;
-		if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
-
-		if(this->LoadBlocks(reader, bit, balancer, settings) == false){
-			return false;
-		}
-
-		if(this->n_blks == 0){
-			std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
-			return true;
-		}
-
-		// Compute workload for progress monitoring.
-		uint32_t n_variants = 0;
-		uint64_t n_comparisons = 0;
-		if(balancer.diag){
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-			n_comparisons = ((uint64_t)n_variants * n_variants - n_variants) / 2;
-			std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
-		} else {
-			uint32_t n_variants_left = 0, n_variants_right = 0;
-			for(int i = balancer.fromL; i < balancer.toL; ++i){
-				n_variants += reader.index.ent[i].n;
-				n_variants_left += reader.index.ent[i].n;
-			}
-			for(int i = balancer.fromR; i < balancer.toR; ++i){
-				n_variants += reader.index.ent[i].n;
-				n_variants_left += reader.index.ent[i].n;
-			}
-			n_comparisons = n_variants_left * n_variants_right;
-			std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants (" << utility::ToPrettyString(n_variants_left) << "," << utility::ToPrettyString(n_variants_right) << ") from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
-		}
-		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
-		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_comparisons) << " variant comparisons..." << std::endl;
-
-		twk_ld_dynamic_balancer ticker;
-		ticker = balancer;
-		ticker.SetWindow(settings.window, settings.l_window);
-		ticker.ldd  = ldd;
-
-		twk_ld_progress progress;
-		progress.n_s = reader.hdr.GetNumberSamples();
-		if(settings.window == false){
-			progress.n_cmps = n_comparisons;
-		}
-		twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
-		std::vector<std::thread*> threads(settings.n_threads);
-
-		// Start writing file.
-		twk_writer_t* writer = nullptr;
-		if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
-			std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
-			writer = new twk_writer_stream;
-		} else {
-			std::string base_path = twk_writer_t::GetBasePath(settings.out);
-			std::string base_name = twk_writer_t::GetBaseName(settings.out);
-			std::string extension = twk_writer_t::GetExtension(settings.out);
-			if(extension.length() == 3){
-				if(strncasecmp(&extension[0], "two", 3) != 0){
-					settings.out =  (base_path.size() ? base_path + "/" : "") + base_name + ".two";
-				}
-			} else {
-				 settings.out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
-			}
-
-			std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
-			writer = new twk_writer_file;
-			if(writer->Open(settings.out) == false){
-				std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
-				delete writer;
-				return false;
-			}
-		}
-
-		// Append literal string.
-		std::string calc_string = "\n##tomahawk_calcVersion=" + std::string(VERSION) + "\n";
-		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
-		reader.hdr.literals_ += calc_string;
-
-		if(this->WriteHeader(writer, reader) == false){
-			std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write header!" << std::endl;
-			return false;
-		}
-		// end start write
-
-		// New index
-		IndexOutput index(reader.hdr.GetNumberContigs());
-
-		timer.Start();
-		std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
-		for(int i = 0; i < settings.n_threads; ++i){
-			slaves[i].ldd    = ldd;
-			slaves[i].n_s    = reader.hdr.GetNumberSamples();
-			slaves[i].ticker = &ticker;
-			slaves[i].engine.SetSamples(reader.hdr.GetNumberSamples());
-			slaves[i].engine.SetBlocksize(settings.b_size);
-			slaves[i].engine.progress = &progress;
-			slaves[i].engine.writer   = writer;
-			slaves[i].engine.index    = &index;
-			slaves[i].engine.settings = settings;
-			slaves[i].progress = &progress;
-			slaves[i].settings = &settings;
-			threads[i] = slaves[i].Start();
-			std::cerr << ".";
-		}
-		std::cerr << std::endl;
-
-		progress.Start();
-
-		for(int i = 0; i < settings.n_threads; ++i) threads[i]->join();
-		for(int i = 0; i < settings.n_threads; ++i) slaves[i].engine.CompressBlock();
-		progress.is_ticking = false;
-		progress.PrintFinal();
-		writer->stream.flush();
-
-		std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
-		for(int i = 0; i < settings.n_threads; ++i){
-			std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
-			for(int j = 0; j < 8; ++j){
-				std::cerr << "\t" << utility::ToPrettyString(slaves[i].engine.n_method[j]);
-			}
-			std::cerr << std::endl;
-		}
-
-		//std::cerr << "performed=" << ticker.n_perf << std::endl;
-		if(this->WriteFinal(writer, index) == false){
-			std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write final block!" << std::endl;
-			return false;
-		}
-
-		delete[] slaves; delete writer;
-		std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
-
-		return true;
-	}
-
-	bool ComputePerformance(){
-		if(TWK_SLAVE_DEBUG_MODE != 1){
-			std::cerr << utility::timestamp("ERROR","COMPILATION") << "Cannot run performance mode without compiling SLAVE_DEBUG_MODE set to 1!" << std::endl;
-			return false;
-		}
-
-		if(settings.in.size() == 0){
-			std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
-			return false;
-		}
-
-		if(settings.window && settings.n_chunks != 1){
-			std::cerr << utility::timestamp("ERROR") << "Cannot use chunking in window mode!" << std::endl;
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
-
-		twk_reader reader;
-		if(reader.Open(settings.in) == false){
-			std::cerr << utility::timestamp("ERROR") << "Failed to open file: " << settings.in << "..." << std::endl;
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
-
-		twk1_blk_iterator bit;
-		bit.stream = reader.stream;
-
-		Timer timer;
-
-		//settings.ldd_load_type = TWK_LDD_ALL;
-		if(settings.low_memory && settings.force_phased && settings.bitmaps){
-			settings.ldd_load_type = TWK_LDD_BITMAP;
-		} else if(settings.low_memory && settings.force_phased){
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		} else if(settings.force_phased){
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		} else if(settings.forced_unphased){
-			settings.ldd_load_type = TWK_LDD_VEC;
-		} else {
-			settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
-		}
-
-		if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
-		else {
-			if(this->BuildIntervals(reader, bit) == false)
-				return false;
-		}
-
-		if(settings.window) settings.c_chunk = 0;
-
-		twk_ld_balancer balancer;
-		if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
-			return false;
-		}
-
-		std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
-
-		if(this->n_blks == 0){
-			std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
-			return true;
-		}
-
-		uint32_t n_variants = 0;
-		if(balancer.diag){
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-		} else {
-			for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
-			for(int i = balancer.fromR; i < balancer.toR; ++i) n_variants += reader.index.ent[i].n;
-		}
-
-		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
-		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
-		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(((uint64_t)n_variants * n_variants - n_variants) / 2) << " variant comparisons..." << std::endl;
-
-		twk_ld_progress progress;
-		progress.n_s = reader.hdr.GetNumberSamples();
-		if(settings.window == false){
-			if(balancer.diag)
-				progress.n_cmps = ((uint64_t)n_variants * n_variants - n_variants) / 2;
-			else {
-
-			}
-		}
-
-		// Append literal string.
-		std::string calc_string = "\n##tomahawk_calcVersion=" + std::string(VERSION) + "\n";
-		calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
-		reader.hdr.literals_ += calc_string;
-
-		// New index
-		IndexOutput index(reader.hdr.GetNumberContigs());
-
-		twk_ld_engine::ep f; // function pointer array
-		f[0] = &twk_ld_engine::PhasedVectorized;
-		f[1] = &twk_ld_engine::PhasedVectorizedNoMissing;
-		f[2] = &twk_ld_engine::UnphasedVectorized;
-		f[3] = &twk_ld_engine::UnphasedVectorizedNoMissing;
-		f[4] = &twk_ld_engine::PhasedRunlength;
-		f[5] = &twk_ld_engine::PhasedList;
-		f[6] = &twk_ld_engine::UnphasedRunlength;
-		f[7] = &twk_ld_engine::PhasedBitmap;
-		f[8] = &twk_ld_engine::PhasedListSpecial;
-		f[9] = &twk_ld_engine::PhasedListVector;
-
-		const std::vector<std::string> method_names = {"PhasedVectorized",
-				"PhasedVectorizedNoMissing",
-				"UnphasedVectorized",
-				"UnphasedVectorizedNoMissing",
-				"PhasedRunlength",
-				"PhasedList",
-				"UnphasedRunlength",
-				"PhasedBitmap",
-				"PhasedListSpecial",
-				"PhasedListBV"};
-
-		uint8_t unpack_list[10];
-		memset(unpack_list, TWK_LDD_VEC, 10);
-		unpack_list[4] = TWK_LDD_NONE;
-		unpack_list[5] = TWK_LDD_LIST;
-		unpack_list[6] = TWK_LDD_NONE;
-		unpack_list[7] = TWK_LDD_BITMAP;
-		unpack_list[8] = TWK_LDD_VEC | TWK_LDD_LIST;
-		unpack_list[9] = TWK_LDD_VEC | TWK_LDD_LIST;
-
-		twk_ld_perf perfs[10];
-		uint32_t perf_size = reader.hdr.GetNumberSamples()*4 + 2;
-		for(int i = 0; i < 10; ++i){
-			perfs[i].cycles = new uint64_t[perf_size];
-			perfs[i].freq   = new uint64_t[perf_size];
-			memset(perfs[i].cycles, 0, perf_size*sizeof(uint64_t));
-			memset(perfs[i].freq,   0, perf_size*sizeof(uint64_t));
-		}
-
-		//prepare_shuffling_dictionary();
-		for(int method = 8; method < 10; ++method){
-			if(method == 2 || method == 3 || method == 4 || method == 6) continue;
-			std::cerr << utility::timestamp("LOG","PROGRESS") << "Starting method: " << method_names[method] << "..." << std::endl;
-			settings.ldd_load_type = unpack_list[method];
-			if(this->LoadBlocks(reader, bit, balancer, settings) == false){
-				return false;
-			}
-
-			twk_ld_dynamic_balancer ticker;
-			ticker = balancer;
-			ticker.SetWindow(settings.window, settings.l_window);
-			ticker.ldd  = ldd;
-
-			timer.Start();
-			twk_ld_slave s;
-			s.ldd    = ldd;
-			s.n_s    = reader.hdr.GetNumberSamples();
-			s.ticker = &ticker;
-			s.engine.SetSamples(reader.hdr.GetNumberSamples());
-			s.engine.SetBlocksize(settings.b_size);
-			s.engine.progress = &progress;
-			//s.engine.writer   = writer;
-			s.engine.index    = &index;
-			s.engine.settings = settings;
-			s.progress = &progress;
-			s.settings = &settings;
-
-			s.CalculatePerformance(f[method], &perfs[method]);
-
-			std::cerr << utility::timestamp("LOG","PROGRESS") << "Finished method: " << method_names[method] << ". Elapsed time=" << timer.ElapsedString() << std::endl;
-			//std::cerr << "m=" << method << " " << utility::ToPrettyString(1) << " " << utility::ToPrettyString((uint64_t)((float)1/timer.Elapsed().count())) << "/s " << utility::ToPrettyString((uint64_t)((float)1*reader.hdr.GetNumberSamples()/timer.Elapsed().count())) << "/gt/s " << timer.ElapsedString() << " " << utility::ToPrettyString(1) << std::endl;
-		}
-
-		for(int i = 0; i < 10; ++i){
-			for(int j = 0; j < perf_size; ++j){
-				// Print if non-zero
-				if(perfs[i].freq[j] != 0)
-					std::cout << i << "\t" << j << "\t" << (double)perfs[i].cycles[j]/perfs[i].freq[j] << "\t" << perfs[i].freq[j] << "\t" << perfs[i].cycles[j] << '\n';
-			}
-			delete[] perfs[i].cycles;
-		}
-
-		return true;
-	}
+	bool Compute();
+	bool ComputePerformance();
 
 public:
 	uint32_t n_blks, m_blks, n_vnts, n_tree;
 	twk1_ldd_blk* ldd;
 	twk1_block_t* ldd2;
 	twk_ld_settings settings;
-	twk_intervals_twk intervals;
+	twk_intervals intervals;
 };
 
 }

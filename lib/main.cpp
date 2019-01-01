@@ -3,7 +3,6 @@
 #include "tomahawk.h"
 std::string tomahawk::LITERAL_COMMAND_LINE;
 std::string tomahawk::INTERPRETED_COMMAND;
-#include "program_utils.h"
 
 #include "import.h"
 #include "calc.h"

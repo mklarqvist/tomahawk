@@ -1,34 +1,12 @@
-/*
-Copyright (C) 2016-current Genome Research Ltd.
-Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-==============================================================================*/
-#ifndef TOMAHAWK_SUPPORT_VCF_H_
-#define TOMAHAWK_SUPPORT_VCF_H_
+#ifndef TWK_VCFUTILS_H_
+#define TWK_VCFUTILS_H_
 
 #include <iostream>
-#include <cmath>
 #include <vector>
 #include <string>
+#include <memory>
+#include <unordered_map>
 
-#include "htslib/vcf.h"
 #include "buffer.h"
 
 #define TWK_BYTE_MISSING   INT8_MIN
@@ -43,14 +21,14 @@ DEALINGS IN THE SOFTWARE.
 #define TWK_BCF_GT_MISSING 0
 
 // taken from htslib vcf.c and renamed for convenience
-static inline int yon_float_is_missing(float f)
+static inline int twk_float_is_missing(float f)
 {
     union { uint32_t i; float f; } u;
     u.f = f;
     return u.i==TWK_FLOAT_MISSING ? 1 : 0;
 }
 
-static inline int yon_float_is_vector_end(float f)
+static inline int twk_float_is_vector_end(float f)
 {
     union { uint32_t i; float f; } u;
     u.f = f;
@@ -100,8 +78,8 @@ struct VcfGenotype {
 
 template<>
 struct VcfType<float> {
-  static bool IsMissing(float v)  { return yon_float_is_missing(v); }
-  static bool IsVectorEnd(float v){ return yon_float_is_vector_end(v); }
+  static bool IsMissing(float v)  { return twk_float_is_missing(v); }
+  static bool IsVectorEnd(float v){ return twk_float_is_vector_end(v); }
 };
 
 
@@ -172,7 +150,7 @@ public:
 	std::vector< std::pair<std::string, std::string> > extra;
 };
 
-struct VcfInfo{
+struct VcfInfo {
 public:
 	VcfInfo();
 	~VcfInfo() = default;
@@ -211,7 +189,7 @@ public:
 	std::string version;
 };
 
-struct VcfFormat{
+struct VcfFormat {
 public:
 	VcfFormat();
 	~VcfFormat() = default;
@@ -238,7 +216,7 @@ public:
 	std::string description;
 };
 
-struct VcfFilter{
+struct VcfFilter {
 public:
 	VcfFilter();
 	~VcfFilter() = default;
@@ -264,7 +242,7 @@ public:
 // ##pedigreeDB=http://url_of_pedigrees
 // The VcfExtra message would represent this with key="pedigreeDB",
 // value="http://url_of_pedigrees".
-struct VcfExtra{
+struct VcfExtra {
 public:
 	VcfExtra() = default;
 	VcfExtra(const std::string& key, const std::string& value);
@@ -290,7 +268,7 @@ public:
 // ##META=<ID=Assay,Type=String,Number=.,Values=[WholeGenome, Exome]>
 // The VcfStructuredExtra message would represent this with key="META",
 // and fields mapping "ID" -> "Assay", "Type" -> "String", etc.
-struct VcfStructuredExtra{
+struct VcfStructuredExtra {
 public:
 	VcfStructuredExtra() = default;
 	~VcfStructuredExtra() = default;
@@ -309,6 +287,114 @@ public:
 	std::vector<VcfExtra> fields;
 };
 
+class VcfHeader {
+public:
+	typedef VcfHeader self_type;
+	typedef VcfContig contig_type;
+	//typedef bcf_hdr_t hts_vcf_header;
+	typedef VcfFormat format_type;
+	typedef VcfInfo   info_type;
+	typedef VcfFilter filter_type;
+	typedef VcfStructuredExtra structured_extra_type;
+	typedef VcfExtra  extra_type;
+	typedef std::unordered_map<std::string, uint32_t> map_type;
+	typedef std::unordered_map<uint32_t, uint32_t>    map_reverse_type;
+
+public:
+	VcfHeader() = default;
+	VcfHeader(const VcfHeader& other);
+	~VcfHeader() = default;
+
+	inline size_t GetNumberSamples(void) const{ return(this->samples_.size()); }
+	inline size_t GetNumberContigs(void) const{ return(this->contigs_.size()); }
+
+	VcfContig* GetContig(const std::string& name);
+	VcfContig* GetContig(const int& idx);
+	VcfInfo* GetInfo(const std::string& name);
+	VcfInfo* GetInfo(const int& idx);
+	VcfFormat* GetFormat(const std::string& name);
+	VcfFormat* GetFormat(const int& idx);
+	VcfFilter* GetFilter(const std::string& name);
+	VcfFilter* GetFilter(const int& idx);
+	std::string* GetSample(const std::string& name);
+
+	const VcfContig* GetContig(const std::string& name) const;
+	const VcfContig* GetContig(const int& idx) const;
+	const VcfInfo* GetInfo(const std::string& name) const;
+	const VcfInfo* GetInfo(const int& idx) const;
+	const VcfFormat* GetFormat(const std::string& name) const;
+	const VcfFormat* GetFormat(const int& idx) const;
+	const VcfFilter* GetFilter(const std::string& name) const;
+	const VcfFilter* GetFilter(const int& idx) const;
+	const std::string* GetSample(const std::string& name) const;
+
+	bool BuildReverseMaps(void);
+	bool BuildMaps(void);
+
+	// Append a string to the literal string
+	inline void AppendLiteralString(const std::string& literal_addition){ this->literals_ += literal_addition; }
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const self_type& self);
+	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, self_type& self);
+
+public:
+	// VCF file version string.
+	std::string fileformat_string_;
+	// Literal string for VcfHeader data. Contains all of the Vcf header data up
+	// to the start of the main header line ("#CHROM"...). As such, sample names
+	// are not available in this string and needs to be appended before converting
+	// back into a htslib vcf header.
+	std::string literals_;
+
+	// Vcf header lines parse into:
+	// Samples:   Individual sample names.
+	// VcfContig: Information relating to the interpretation of a contig. Data
+	//            include its name, length in bases, its internal index identifier
+	//            and optional additional information.
+	// VcfInfo:   Data specifying a given INFO field
+	// VcfFormat: Data specifying a given FORMAT field
+	// VcfFilter: Data specifying a given FILTER field
+	// VcfStructuredExtra:
+	std::vector<std::string>        samples_;
+	std::vector<VcfContig>          contigs_;
+	// Not written out: used during Import procedure only.
+	std::vector<VcfInfo>            info_fields_;
+	std::vector<VcfFormat>          format_fields_;
+	std::vector<VcfFilter>          filter_fields_;
+	std::vector<VcfStructuredExtra> structured_extra_fields_;
+	std::vector<VcfExtra>           extra_fields_;
+
+	// Utility members
+	//
+	// Hash tables allowing the mapping from the unique identifier string
+	// (such as contig name) to the relative index offset of that object.
+	// This approach requires another layer of indirection when mapping
+	// from the index to the actual target. For example:
+	//
+	// contigs[contigs_map_["chr20"].second] <- maps to the actual target
+	//
+	// The reverse maps allows the mapping from a unique IDX identifier
+	// to the relative index offset of that object. As above, this requires
+	// an addition indirect lookup to access the desired object. For example
+	// mapping the first occuring FORMAT field to its name:
+	//
+	// reader->vcf_header_.format_fields_[reader->vcf_header_.format_fields_reverse_map_[container.at(0)->d.fmt[0].id]].id
+	//
+	// map_type hash tables permits mapping string name -> index offset
+	// map_reverse_type hash tables permits mapping integer IDX -> index offset
+	map_type samples_map_;
+	map_type contigs_map_;
+	map_type info_fields_map_;
+	map_type format_fields_map_;
+	map_type filter_fields_map_;
+	map_reverse_type contigs_reverse_map_;       // map IDX -> index offset
+	map_reverse_type info_fields_reverse_map_;   // map IDX -> index offset
+	map_reverse_type format_fields_reverse_map_; // map IDX -> index offset
+	map_reverse_type filter_fields_reverse_map_; // map IDX -> index offset
+};
+
 }
 
-#endif /* UTILITY_SUPPORT_VCF_H_ */
+
+
+#endif /* TWK_VCFUTILS_H_ */

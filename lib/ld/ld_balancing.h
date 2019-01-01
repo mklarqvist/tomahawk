@@ -1,9 +1,8 @@
-#ifndef LIB_LD_LD_BALANCING_H_
-#define LIB_LD_LD_BALANCING_H_
+#ifndef TWK_LD_BALANCING_H_
+#define TWK_LD_BALANCING_H_
 
 #include "utility.h"
 #include "spinlock.h"
-#include "twk_reader.h"
 
 namespace tomahawk {
 

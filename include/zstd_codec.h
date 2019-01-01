@@ -1,8 +1,6 @@
 #ifndef ALGORITHM_COMPRESSION_ZSTD_CODEC_H_
 #define ALGORITHM_COMPRESSION_ZSTD_CODEC_H_
 
-#include "zstd.h"
-#include "zstd_errors.h"
 #include <cstdint>
 
 #include "buffer.h"
@@ -10,14 +8,14 @@
 namespace tomahawk {
 
 class ZSTDCodec{
-private:
-	typedef        ZSTDCodec   self_type;
-	typedef struct ZSTD_CCtx_s ZSTD_CCtx;
-	typedef struct ZSTD_DCtx_s ZSTD_DCtx;
-
 public:
+	class ZSTDCodecInternal;
+
 	ZSTDCodec();
 	~ZSTDCodec();
+
+	ZSTDCodec(const ZSTDCodec& other) = delete;
+	ZSTDCodec& operator=(const ZSTDCodec& other) = delete;
 
 	bool InitStreamCompress(const int compression_level);
 	bool StopStreamCompress();
@@ -28,13 +26,11 @@ public:
 	bool Compress(const twk_buffer_t& src, twk_buffer_t& dst, const int compression_level);
 	bool Decompress(const twk_buffer_t& src, twk_buffer_t& dst);
 
+	std::ostream& WriteOutbuf(std::ostream& ostream);
+	size_t GetOutputSize() const;
+
 public:
-	ZSTD_inBuffer_s inbuf;
-	ZSTD_outBuffer_s outbuf;
-	ZSTD_CCtx* compression_context_; // recycle contexts
-	ZSTD_DCtx* decompression_context_; // recycle contexts
-	ZSTD_CStream* cstream_context;
-	ZSTD_DStream* dstream_context;
+	ZSTDCodecInternal* mImpl;
 };
 
 }

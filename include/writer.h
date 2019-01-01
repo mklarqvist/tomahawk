@@ -5,6 +5,7 @@
 #include "index.h"
 #include "core.h"
 #include "two_reader.h"
+// Todo: move out
 #include "spinlock.h"
 
 namespace tomahawk {

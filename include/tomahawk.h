@@ -65,6 +65,12 @@ const std::string TOMAHAWK_FILE_EOF = "a4f54f39f5e251a6993796f48164ccf554f1b680c
 const uint32_t    TOMAHAWK_FILE_EOF_LENGTH = 32;
 const uint64_t    TOMAHAWK_INDEX_START_MARKER = 1954702206512158641;
 
+/*------   Library and CLI strings   ------*/
+std::string LibrariesString();
+void ProgramMessage(const bool separator = true);
+void ProgramHelp(void);
+void ProgramHelpDetailed(void);
+
 }
 
 #endif

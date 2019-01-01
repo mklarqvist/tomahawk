@@ -103,8 +103,13 @@ int decay(int argc, char** argv){
 	}
 
 	// Build intervals data structures if any are available.
-	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
+	if(settings.intervals.Build(settings.ivals,
+	                            oreader.hdr.GetNumberContigs(),
+	                            oreader.index,
+	                            oreader.hdr) == false)
+	{
 		return 1;
+	}
 
 	uint64_t n_range = 10e6;
 	uint32_t n_bins  = 1000;

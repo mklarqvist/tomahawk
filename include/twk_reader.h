@@ -4,9 +4,10 @@
 #include <fstream>
 
 #include "core.h"
-#include "vcf_utils.h"
+#include "header.h"
 #include "index.h"
 #include "zstd_codec.h"
+#include "third_party/ewah.h"
 
 namespace tomahawk {
 
@@ -94,7 +95,7 @@ public:
 	std::streambuf* buf;
 	std::istream*   stream;
 	std::ifstream   fstream;
-	io::VcfHeader   hdr;
+	VcfHeader   hdr;
 	Index index;
 };
 

@@ -15,6 +15,7 @@
 #include "zstd_codec.h"
 #include "timer.h"
 #include "writer.h"
+#include "header_internal.h"
 
 namespace tomahawk {
 
@@ -31,7 +32,7 @@ bool twk_variant_importer::Import(void){
 		std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.input << "..." << std::endl;
 
 	// Retrieve a unique VcfReader.
-	std::unique_ptr<tomahawk::io::VcfReader> vcf = tomahawk::io::VcfReader::FromFile(settings.input, std::thread::hardware_concurrency());
+	std::unique_ptr<VcfReader> vcf = tomahawk::VcfReader::FromFile(settings.input, std::thread::hardware_concurrency());
 	if(vcf == nullptr){
 		std::cerr << "failed to get vcfreader" << std::endl;
 		return false;

@@ -2,10 +2,15 @@
 #define IO_VCF_READER_H_
 
 #include "utility.h"
-#include "vcf_utils.h"
+#include "header.h"
+#include "header_internal.h"
+
+// htslib dependencies.
+#include "htslib/kstring.h"
+#include "htslib/vcf.h"
+#include "htslib/hts.h"
 
 namespace tomahawk{
-namespace io{
 
 class VcfReader {
 public:
@@ -114,6 +119,8 @@ private:
     	this->vcf_header_.fileformat_string_ = std::string(this->header_->hrec[0]->key);
     }
 
+    VcfHeaderInternal* hdr = reinterpret_cast<VcfHeaderInternal*>(&vcf_header_);
+
     // Fill in the contig info for each contig in the VCF header. Directly
     // accesses the low-level C struct because there are no indirection
     // macros/functions by htslib API.
@@ -121,7 +128,7 @@ private:
     const int n_contigs = this->header_->n[BCF_DT_CTG];
     for (int i = 0; i < n_contigs; ++i) {
         const bcf_idpair_t& idPair = this->header_->id[BCF_DT_CTG][i];
-        this->vcf_header_.AddContigInfo(idPair);
+        hdr->AddContigInfo(idPair);
     }
 
     // Iterate through all hrecs (except the first, which was 'fileformat') to
@@ -134,19 +141,19 @@ private:
 			// bcf_idinfo_t* structure.
 			break;
 		case BCF_HL_FLT:
-			this->vcf_header_.AddFilterInfo(hrec0);
+			hdr->AddFilterInfo(hrec0);
 			break;
 		case BCF_HL_INFO:
-			this->vcf_header_.AddInfo(hrec0);
+			hdr->AddInfo(hrec0);
 			break;
 		case BCF_HL_FMT:
-			this->vcf_header_.AddFormatInfo(hrec0);
+			hdr->AddFormatInfo(hrec0);
 			break;
 		case BCF_HL_STR:
-			this->vcf_header_.AddStructuredExtra(hrec0);
+			hdr->AddStructuredExtra(hrec0);
 			break;
 		case BCF_HL_GEN:
-			this->vcf_header_.AddExtra(hrec0);
+			hdr->AddExtra(hrec0);
 			break;
 		default:
 			std::cerr << utility::timestamp("ERROR") << "Unknown hrec0->type: " << hrec0->type << std::endl;
@@ -157,7 +164,7 @@ private:
     // Populate samples info.
     int n_samples = bcf_hdr_nsamples(this->header_);
     for (int i = 0; i < n_samples; i++)
-    	this->vcf_header_.AddSample(std::string(this->header_->samples[i]));
+    	hdr->AddSample(std::string(this->header_->samples[i]));
 
     this->vcf_header_.BuildReverseMaps();
 
@@ -194,7 +201,6 @@ public:
 	bcf1_t* bcf1_;
 };
 
-}
 }
 
 #endif /* IO_VCF_READER_H_ */

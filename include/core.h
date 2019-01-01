@@ -27,7 +27,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "tomahawk.h"
 #include "buffer.h"
-#include "third_party/ewah.h"
 
 namespace tomahawk {
 
@@ -284,9 +283,6 @@ public:
 	typedef const value_type*  const_pointer;
 	typedef std::ptrdiff_t     difference_type;
 	typedef std::size_t        size_type;
-
-    typedef yonRawIterator<value_type>       iterator;
-   	typedef yonRawIterator<const value_type> const_iterator;
 
 public:
 	twk1_block_t();
@@ -1022,9 +1018,6 @@ public:
 	typedef const value_type*  const_pointer;
 	typedef std::ptrdiff_t     difference_type;
 	typedef std::size_t        size_type;
-
-    typedef yonRawIterator<value_type>       iterator;
-   	typedef yonRawIterator<const value_type> const_iterator;
 
 public:
    	twk1_two_block_t() : n(0), m(0), rcds(nullptr){}

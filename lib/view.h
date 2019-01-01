@@ -405,9 +405,9 @@ int view(int argc, char** argv){
 	if(oreader.index.state == TWK_IDX_SORTED && settings.ivals.size()){
 		writer.oindex.state = TWK_IDX_SORTED;
 
-		std::cerr << settings.intervals.overlap_blocks.size() << std::endl;
-		for(int i = 0; i < settings.intervals.overlap_blocks.size(); ++i){
-			oreader.stream->seekg(settings.intervals.overlap_blocks[i]->foff);
+		//std::cerr << settings.intervals.overlap_blocks.size() << std::endl;
+		for(int i = 0; i < settings.intervals.GetOverlapSize(); ++i){
+			oreader.stream->seekg(settings.intervals.GetOverlapBlock(i)->foff);
 			if(oreader.NextBlock() == false){
 				std::cerr << "failed to get next block" << std::endl;
 				return 1;

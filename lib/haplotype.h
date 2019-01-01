@@ -52,7 +52,7 @@ int haplotype(int argc, char** argv){
 		{0,0,0,0}
 	};
 
-	tomahawk::twk_intervals_twk ivals;
+	tomahawk::twk_intervals ivals;
 	std::string input;
 	std::vector<std::string> intervals;
 	bool output_numeric_encoding = false;

@@ -1,3 +1,25 @@
+/*
+Copyright (C) 2016-current Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+==============================================================================*/
 #ifndef TOMAHAWK_INDEX_H_
 #define TOMAHAWK_INDEX_H_
 
@@ -7,6 +29,7 @@
 
 #include "core.h"
 #include "buffer.h"
+// Todo: move out
 #include "spinlock.h"
 
 namespace tomahawk {
@@ -39,6 +62,7 @@ struct IndexEntry {
 		return(buffer);
 	}
 
+public:
 	int32_t rid;
 	uint32_t n, minpos, maxpos;
 	uint32_t b_unc, b_cmp;
@@ -179,7 +203,7 @@ public:
 		ent = new IndexEntry[m*2];
 		for(int i = 0; i < n; ++i) ent[i] = std::move(temp[i]); // move records over
 		delete[] temp;
-		m*=2;
+		m *= 2;
 	}
 
 	uint64_t GetTotalVariants() const{

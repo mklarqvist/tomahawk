@@ -113,8 +113,9 @@ struct twk_sort_slave {
 
 					zcodec.StopStreamCompress();
 					//std::cerr << "after stop=" << zcodec.outbuf.pos << "/" << zcodec.outbuf.size << std::endl;
-					ostream.write((const char*)zcodec.outbuf.dst, zcodec.outbuf.pos);
-					rec.nc += zcodec.outbuf.pos;
+					zcodec.WriteOutbuf(ostream);
+					//ostream.write((const char*)zcodec.outbuf.dst, zcodec.outbuf.pos);
+					rec.nc += zcodec.GetOutputSize();
 					rec.n = blk->n * twk1_two_t::packed_size;
 					rec.fend = ostream.tellp();
 					local_idx.push_back(rec);
@@ -178,8 +179,8 @@ struct twk_sort_slave {
 
 			zcodec.StopStreamCompress();
 			//std::cerr << "after stop=" << zcodec.outbuf.pos << "/" << zcodec.outbuf.size << std::endl;
-			ostream.write((const char*)zcodec.outbuf.dst, zcodec.outbuf.pos);
-			rec.nc += zcodec.outbuf.pos;
+			zcodec.WriteOutbuf(ostream);
+			rec.nc += zcodec.GetOutputSize();
 			rec.n = blk->n * twk1_two_t::packed_size;
 			rec.fend = ostream.tellp();
 			local_idx.push_back(rec);

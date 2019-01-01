@@ -1701,7 +1701,7 @@ bool twk_ld_engine::CompressFwd(){
 		//writer->flush(); // flush to make sure offset is good.
 		//irecF.fend = writer->stream.tellp();
 		irecF.n = blk_f.n;
-		irecF.b_cmp = ibuf.size();
+		irecF.b_cmp = obuf.size();
 		irecF.b_unc = twk1_two_t::packed_size * irecF.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecF);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
@@ -1731,7 +1731,7 @@ bool twk_ld_engine::CompressRev(){
 		//writer->flush(); // flush to make sure offset is good.
 		//irecR.fend = writer->stream.tellp();
 		irecR.n = blk_r.n;
-		irecR.b_cmp = ibuf.size();
+		irecR.b_cmp = obuf.size();
 		irecR.b_unc = twk1_two_t::packed_size * irecR.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecR);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;

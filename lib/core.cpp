@@ -1,5 +1,6 @@
-#include "core.h"
 #include <thread>
+
+#include "core.h"
 
 namespace tomahawk {
 

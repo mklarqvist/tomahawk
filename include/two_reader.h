@@ -7,9 +7,10 @@
 #include "buffer.h"
 #include "core.h"
 #include "index.h"
-#include "zstd_codec.h"
-#include "vcf_utils.h"
+#include "header.h"
 #include "intervals.h"
+//
+#include "zstd_codec.h"
 
 namespace tomahawk {
 
@@ -160,6 +161,7 @@ public:
 	double mhc_min, mhc_max;
 	double minChi, maxChi, minChiModel, maxChiModel;
 	uint32_t flag_include, flag_exclude;
+
 private:
 	std::vector<filter_func> funcs;
 };
@@ -220,7 +222,7 @@ public:
 	std::streambuf* buf;
 	std::istream* stream;
 	std::ifstream fstream;
-	io::VcfHeader hdr;
+	VcfHeader hdr;
 	IndexOutput index;
 
 	twk_two_filter filter;

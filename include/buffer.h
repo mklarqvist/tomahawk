@@ -32,7 +32,6 @@ DEALINGS IN THE SOFTWARE.
 #include <cassert>
 
 #include "utility.h"
-#include "generic_iterator.h"
 
 namespace tomahawk {
 
@@ -46,9 +45,6 @@ public:
     typedef const value_type* const_pointer;
     typedef std::ptrdiff_t    difference_type;
     typedef std::size_t       size_type;
-
-    typedef yonRawIterator<value_type>       iterator;
-	typedef yonRawIterator<const value_type> const_iterator;
 
 public:
 	twk_buffer_t();
@@ -65,14 +61,6 @@ public:
 	inline reference front(void){ return(this->buffer_[0]); }
 	inline const_reference back(void) const{ return(this->buffer_[this->n_chars_-1]); }
 	inline const_reference front(void) const{ return(this->buffer_[0]); }
-
-	// Iterator
-	inline iterator begin(){ return iterator(&this->buffer_[0]); }
-	inline iterator end()  { return iterator(&this->buffer_[this->n_chars_]); }
-	inline const_iterator begin()  const{ return const_iterator(&this->buffer_[0]); }
-	inline const_iterator end()    const{ return const_iterator(&this->buffer_[this->n_chars_]); }
-	inline const_iterator cbegin() const{ return const_iterator(&this->buffer_[0]); }
-	inline const_iterator cend()   const{ return const_iterator(&this->buffer_[this->n_chars_]); }
 
 	inline void set(const size_t size);
 	inline void set(const size_t size, char* target);
