@@ -68,7 +68,7 @@ bool twk1_two_iterator::NextRecord(){
 bool two_reader::Open(std::string file){
 	fstream.open(file, std::ios::in|std::ios::binary|std::ios::ate);
 	if(!fstream.good()){
-		std::cerr << utility::timestamp("ERROR") << "Failed to open: " << file << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << file << "\"..." << std::endl;
 		return false;
 	}
 	buf = fstream.rdbuf();
@@ -81,7 +81,7 @@ bool two_reader::Open(std::string file){
 	char magic[TOMAHAWK_LD_MAGIC_HEADER_LENGTH];
 	stream->read(magic, TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
 	if(strncmp(magic, TOMAHAWK_LD_MAGIC_HEADER.data(), TOMAHAWK_LD_MAGIC_HEADER_LENGTH) != 0){
-		std::cerr << utility::timestamp("ERROR") << "Failed to read TWO magic string!" << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed to read TWO magic string! Incorrect file format!" << std::endl;
 		return false;
 	}
 
@@ -95,7 +95,7 @@ bool two_reader::Open(std::string file){
 	obuf.n_chars_ = obuf_size;
 
 	if(zcodec.Decompress(obuf, buf) == false){
-		std::cerr << utility::timestamp("ERROR") << "Failed to decompress header!" << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed to decompress header! Corrupted file!" << std::endl;
 		return false;
 	}
 	assert(buf.size() == buf_size);
@@ -114,7 +114,7 @@ bool two_reader::Open(std::string file){
 	// Seek to start of offst
 	stream->seekg(offset_start_index);
 	if(stream->good() == false){
-		std::cerr << utility::timestamp("ERROR") << "Failed seek in file!" << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed seek in file! Corrupted file!" << std::endl;
 		return false;
 	}
 
@@ -128,7 +128,7 @@ bool two_reader::Open(std::string file){
 	obuf.n_chars_ = obuf_size;
 
 	if(zcodec.Decompress(obuf, buf) == false){
-		std::cerr << utility::timestamp("ERROR") << "Failed to decompress!" << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed to decompress! Corrupted file!" << std::endl;
 		return false;
 	}
 	buf >> index;
@@ -155,8 +155,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	}
 
 	// File reader.
-	two_reader oreader;
-	if(oreader.Open(settings.in) == false){
+	if(Open(settings.in) == false){
 		std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << settings.in << "\"..."  << std::endl;
 		return false;
 	}
@@ -166,10 +165,10 @@ bool two_reader::Sort(two_sorter_settings& settings){
 
 	// Distrubution.
 	uint64_t b_unc = 0, n_recs = 0;
-	std::cerr << utility::timestamp("LOG") << "Blocks: " << utility::ToPrettyString(oreader.index.n) << std::endl;
-	for(int i = 0; i < oreader.index.n; ++i){
-		b_unc  += oreader.index.ent[i].b_unc;
-		n_recs += oreader.index.ent[i].n;
+	std::cerr << utility::timestamp("LOG") << "Blocks: " << utility::ToPrettyString(index.n) << std::endl;
+	for(int i = 0; i < index.n; ++i){
+		b_unc  += index.ent[i].b_unc;
+		n_recs += index.ent[i].n;
 	}
 	std::cerr << utility::timestamp("LOG") << "Uncompressed size: " << utility::ToPrettyDiskString(b_unc) << std::endl;
 	std::cerr << utility::timestamp("LOG") << "Sorting " << utility::ToPrettyString(n_recs) << " records..." << std::endl;
@@ -179,19 +178,19 @@ bool two_reader::Sort(two_sorter_settings& settings){
 		return false;
 	}
 
-	if(oreader.index.n < settings.n_threads) settings.n_threads = oreader.index.n;
+	if(index.n < settings.n_threads) settings.n_threads = index.n;
 	uint64_t b_unc_thread = b_unc / settings.n_threads;
 	std::cerr << utility::timestamp("LOG","THREAD") << "Data/thread: " << utility::ToPrettyDiskString(b_unc_thread) << std::endl;
 
 	std::vector< std::pair<uint32_t,uint32_t> > ranges;
 	uint64_t f = 0, t = 0, b_unc_tot = 0;
-	for(int i = 0; i < oreader.index.n; ++i){
+	for(int i = 0; i < index.n; ++i){
 		if(b_unc_tot >= b_unc_thread){
 			ranges.push_back(std::pair<uint32_t,uint32_t>(f, t));
 			b_unc_tot = 0;
 			f = t;
 		}
-		b_unc_tot += oreader.index.ent[i].b_unc;
+		b_unc_tot += index.ent[i].b_unc;
 		++t;
 	}
 	if(f != t){
@@ -199,7 +198,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 		b_unc_tot = 0;
 		f = t;
 	}
-	assert(ranges.back().second == oreader.index.n);
+	assert(ranges.back().second == index.n);
 	assert(ranges.size() <= settings.n_threads);
 
 	twk_sort_progress progress_sort;
@@ -207,7 +206,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	std::thread* psthread = progress_sort.Start();
 
 	twk_sort_slave* slaves = new twk_sort_slave[settings.n_threads];
-	uint32_t range_thread = oreader.index.n / settings.n_threads;
+	uint32_t range_thread = index.n / settings.n_threads;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].f = ranges[i].first;
 		slaves[i].t = ranges[i].second;
@@ -221,11 +220,11 @@ bool two_reader::Sort(two_sorter_settings& settings){
 		std::string base_name = twk_two_writer_t::GetBaseName(settings.out);
 		std::string temp_out  = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
 		slaves[i].tmp_filename = temp_out;
-		std::cerr << utility::timestamp("LOG","THREAD") << "Slave-" << i << ": range=" << slaves[i].f << "->" << slaves[i].t << "/" << oreader.index.n << " and name " << slaves[i].tmp_filename << std::endl;
+		std::cerr << utility::timestamp("LOG","THREAD") << "Slave-" << i << ": range=" << slaves[i].f << "->" << slaves[i].t << "/" << index.n << " and name " << slaves[i].tmp_filename << std::endl;
 	}
 
 	for(int i = 0; i < settings.n_threads; ++i){
-		if(slaves[i].Start(oreader.index) == nullptr){
+		if(slaves[i].Start(index) == nullptr){
 			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
 			return false;
 		}
@@ -302,7 +301,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	}
 
 	twk_two_writer_t owriter;
-	owriter.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+	owriter.oindex.SetChroms(hdr.GetNumberContigs());
 	if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out == "-")){
 		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to stdout..." << std::endl;
 	} else {
@@ -323,8 +322,8 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	// Write header
 	std::string sort_string = "\n##tomahawk_sortVersion=" + std::string(VERSION) + "\n";
 	sort_string += "##tomahawk_sortCommand=" + LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
-	oreader.hdr.literals_ += sort_string;
-	if(owriter.WriteHeader(oreader) == false){
+	hdr.literals_ += sort_string;
+	if(owriter.WriteHeader(*this) == false){
 		std::cerr << "failed to write header" << std::endl;
 		return false;
 	}
@@ -397,6 +396,123 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	delete[] its;
 	std::cerr << utility::timestamp("LOG") << "Finished!" << std::endl;
 	return true;
+}
+
+bool two_reader::Decay(twk_two_settings& settings, int64_t window_bp, int32_t n_bins){
+	if(window_bp <= 0){
+		std::cerr << utility::timestamp("ERROR") << "Window size cannot be <= 0 (provided " << window_bp << ")..." << std::endl;
+		return false;
+	}
+
+	if(n_bins <= 0){
+		std::cerr << utility::timestamp("ERROR") << "Number of bins cannot be <= 0 (provided " << n_bins << ")..." << std::endl;
+		return false;
+	}
+
+	if(settings.in.length() == 0){
+		std::cerr << utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+		return false;
+	}
+
+	// File reader.
+	if(Open(settings.in) == false){
+		std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << settings.in << "\"..."  << std::endl;
+		return false;
+	}
+
+	// Build intervals data structures if any are available.
+	if(settings.intervals.Build(settings.ivals, hdr.GetNumberContigs(),
+								index, hdr) == false)
+	{
+		return false;
+	}
+
+	const uint32_t n_bins_i = n_bins - 1;
+	uint32_t n_range_bin = window_bp / n_bins;
+	std::vector< std::pair<double, uint64_t> > decay(n_bins, {0,0});
+
+	while(NextRecord()){
+		// Same contig only.
+		if(it.rcd->ridA == it.rcd->ridB){
+			// Upper trig only.
+			if(it.rcd->Apos < it.rcd->Bpos){
+				decay[std::min((it.rcd->Bpos - it.rcd->Apos) / n_range_bin, n_bins_i)].first += it.rcd->R2;
+				++decay[std::min((it.rcd->Bpos - it.rcd->Apos) / n_range_bin, n_bins_i)].second;
+			}
+		}
+	}
+
+	std::cout << "From\tTo\tMean\tFrequency\n";
+	for(int i = 0; i < decay.size(); ++i){
+		std::cout << (i*n_range_bin) << '\t' << ((i+1)*n_range_bin) << '\t' << decay[i].first/std::max(decay[i].second,(uint64_t)1) << '\t' << decay[i].second << '\n';
+	}
+	std::cout.flush();
+
+	return true;
+}
+
+bool two_reader::PositionalDecay(twk_two_settings& settings){
+    if(settings.in.length() == 0){
+        std::cerr << utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+        return false;
+    }
+
+    // File reader.
+    if(Open(settings.in) == false){
+        std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << settings.in << "\"..."  << std::endl;
+        return false;
+    }
+
+    // Build intervals data structures if any are available.
+    if(settings.intervals.Build(settings.ivals, hdr.GetNumberContigs(),
+                                index, hdr) == false)
+    {
+        return false;
+    }
+
+    if(NextRecord() == false){
+        std::cerr << utility::timestamp("ERROR") << "Failed to get a record..."  << std::endl;
+        return false;
+    }
+
+    //
+    struct twk_sstats_pos : public twk_sstats {
+        twk_sstats_pos() : rid(0), pos(0){}
+        twk_sstats_pos(uint32_t chrom, uint32_t position) : rid(chrom), pos(position){}
+
+        void operator+=(const twk1_two_t* rec){
+            if(rec->ridA == rec->ridB)
+                Add(rec->Bpos, 1);
+        }
+
+        uint32_t rid, pos;
+    };
+    //
+
+    uint32_t rid_prev = it.rcd->ridA;
+    uint32_t pos_prev = it.rcd->Apos;
+    std::vector<twk_sstats_pos> variants;
+    variants.push_back(twk_sstats_pos(it.rcd->ridA, it.rcd->Apos));
+
+    while(NextRecord()){
+        if(settings.intervals.FilterInterval(*it.rcd)) continue;
+
+        if(it.rcd->ridA != rid_prev || it.rcd->Apos != pos_prev){
+            variants.push_back(twk_sstats_pos(it.rcd->ridA, it.rcd->Apos));
+            rid_prev = it.rcd->ridA;
+            pos_prev = it.rcd->Apos;
+        }
+
+        variants.back() += it.rcd;
+    }
+
+    std::cerr << "variants = " << variants.size() << std::endl;
+    for(int i = 0; i < variants.size(); ++i){
+        std::cout << variants[i].rid << '\t' << variants[i].pos << '\t' << variants[i].n << '\t' << variants[i].GetMean() << '\n';
+    }
+    std::cout.flush();
+
+    return true;
 }
 
 }

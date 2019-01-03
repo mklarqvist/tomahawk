@@ -98,10 +98,8 @@ int stats(int argc, char** argv){
 	tomahawk::two_reader oreader;
 
 	// Open file handle.
-	if(oreader.Open(settings.in) == false){
-		std::cerr << "failed to open" << std::endl;
-		return 1;
-	}
+	if(oreader.Open(settings.in) == false) return 1;
+
 
 	std::vector< pair<double> > r2(101);
 	std::vector< uint64_t > stats(16, 0);
@@ -110,12 +108,17 @@ int stats(int argc, char** argv){
 	std::vector< uint64_t > h3(2*oreader.hdr.GetNumberSamples(), 0);
 	std::vector< uint64_t > h4(2*oreader.hdr.GetNumberSamples(), 0);
 
+	// Contig-contig matrix.
+	std::vector< std::vector<uint64_t> > cmatrix(oreader.hdr.GetNumberContigs(), std::vector<uint64_t>());
+	for(int i = 0; i < oreader.hdr.GetNumberContigs(); ++i) cmatrix[i].resize(oreader.hdr.GetNumberContigs());
+
 	while(oreader.NextRecord()){
 		r2[uint32_t(oreader.it.rcd->R2 * 100)] += oreader.it.rcd->R2;
 		++h1[oreader.it.rcd->cnt[0]];
 		++h2[oreader.it.rcd->cnt[1]];
 		++h3[oreader.it.rcd->cnt[2]];
 		++h4[oreader.it.rcd->cnt[3]];
+		++cmatrix[oreader.it.rcd->ridA][oreader.it.rcd->ridB];
 
 		for(int j = 0; j < 16; ++j){
 			stats[j] += (oreader.it.rcd->controller & (1 << j)) != 0;
@@ -131,6 +134,21 @@ int stats(int argc, char** argv){
 	for(int i = 0; i < h1.size(); ++i){
 		std::cout << i << "\t" << h1[i] << "\t" << h2[i] << "\t" << h3[i] << "\t" << h4[i] << '\n';
 	}
+
+	std::cout << "contig";
+	for(int i = 0; i < oreader.hdr.GetNumberContigs(); ++i){
+	    std::cout << '\t' << oreader.hdr.GetContig(i)->name;
+	}
+	 std::cout.put('\n');
+
+	for(int i = 0; i < oreader.hdr.GetNumberContigs(); ++i){
+	    std::cout << oreader.hdr.GetContig(i)->name;
+	    for(int j = 0; j < oreader.hdr.GetNumberContigs(); ++j){
+	        std::cout << '\t' << cmatrix[i][j];
+	    }
+	    std::cout.put('\n');
+	}
+
 	std::cout.flush();
 
 	return 0;

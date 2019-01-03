@@ -26,76 +26,17 @@ DEALINGS IN THE SOFTWARE.
 #include "two_reader.h"
 #include "sort_progress.h"
 
-struct offset_tuple {
-	offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
-	uint64_t range;
-	uint32_t min, max;
-};
-
-struct sstats {
-	typedef void (sstats::*aggfunc)(const tomahawk::twk1_two_t*);
-	typedef double (sstats::*redfunc)(const uint32_t) const;
-
-	sstats() : n(0), total(0), total_squared(0), min(0), max(0){}
-
-	void AddR2(const tomahawk::twk1_two_t* rec){ Add(rec->R2); }
-	void AddR(const tomahawk::twk1_two_t* rec){ Add(rec->R); }
-	void AddD(const tomahawk::twk1_two_t* rec){ Add(rec->D); }
-	void AddDprime(const tomahawk::twk1_two_t* rec){ Add(rec->Dprime); }
-	void AddP(const tomahawk::twk1_two_t* rec){ Add(rec->P); }
-	void AddHets(const tomahawk::twk1_two_t* rec){
-		Add((rec->cnt[1] + rec->cnt[2]) / (rec->cnt[0] + rec->cnt[1] + rec->cnt[2] + rec->cnt[3]));
-	}
-
-	void AddAlts(const tomahawk::twk1_two_t* rec){
-		Add((rec->cnt[3]) / (rec->cnt[0] + rec->cnt[1] + rec->cnt[2] + rec->cnt[3]));
-	}
-
-	double GetMean(const uint32_t min = 0) const {
-		if(n < min) return(0);
-		return(total / n);
-	}
-
-	double GetCount(const uint32_t min = 0) const {
-		if(n < min) return(0);
-		return(n);
-	}
-
-	template <class T> void Add(const T value, const double weight = 1){
-		this->total         += value;
-		this->total_squared += value*value;
-		this->n             += weight;
-		this->min = value < min ? value : min;
-		this->max = value > max ? value : max;
-	}
-
-	double GetStandardDeviation(const uint32_t cutoff = 2) const{
-		if(this->n < cutoff) return(0);
-		return(sqrt(this->total_squared/this->n - (this->total / this->n)*(this->total / this->n)));
-	}
-
-	// Accessor functions
-	inline double GetTotal(const uint32_t cutoff = 0) const{ return(total < cutoff ? 0 : total); }
-	inline double GetTotalSquared(const uint32_t cutoff = 0) const{ return(total_squared < cutoff ? 0 : total_squared); }
-	inline double GetMin(const uint32_t cutoff = 0) const{ return(this->min); }
-	inline double GetMax(const uint32_t cutoff = 0) const{ return(this->max); }
-
-	void operator+=(const sstats& other){
-		n += other.n;
-		total += other.total;
-		total_squared += other.total_squared;
-		min = std::min(min, other.min);
-		max = std::max(max, other.max);
-	}
-
-public:
-	uint64_t n;
-	double total, total_squared;
-	double min, max;
-};
-
 namespace tomahawk {
 
+struct offset_tuple {
+    offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
+    uint64_t range;
+    uint32_t min, max;
+};
+
+/**<
+ *
+ */
 struct twk_agg_slave {
 public:
 	struct range_helper {
@@ -106,7 +47,10 @@ public:
 	};
 
 public:
-	twk_agg_slave() : f(0), t(0), xrange(0), yrange(0), it(nullptr), thread(nullptr), progress(nullptr), aggregator(&sstats::AddR2), reductor(&sstats::GetMean){}
+	twk_agg_slave() : f(0), t(0), xrange(0), yrange(0), it(nullptr),
+	    thread(nullptr), progress(nullptr),
+	    aggregator(&twk_sstats::AddR2), reductor(&twk_sstats::GetMean)
+	{}
 	~twk_agg_slave(){ delete it; delete thread; }
 
 	/**<
@@ -122,13 +66,13 @@ public:
 
 		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
 		if(stream.good() == false){
-			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
+			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
 			return nullptr;
 		}
 
 		stream.seekg(rdr.index.ent[f].foff);
 		if(stream.good() == false){
-			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
+			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
 			return nullptr;
 		}
 
@@ -158,8 +102,8 @@ public:
 	 * @return    Returns a pointer to the spawned thread instance if successful or a nullptr otherwise.
 	 */
 	std::thread* StartBuildMatrix(two_reader& rdr,
-			sstats::aggfunc agg,
-			sstats::redfunc red,
+			twk_sstats::aggfunc agg,
+			twk_sstats::redfunc red,
 			uint32_t x, uint32_t y,
 			uint32_t xr, uint32_t yr)
 	{
@@ -172,19 +116,19 @@ public:
 		reductor = red;
 		xrange = xr;
 		yrange = yr;
-		mat = std::vector< std::vector<sstats> >(x, std::vector<sstats>(y));
+		mat = std::vector< std::vector<twk_sstats> >(x, std::vector<twk_sstats>(y));
 
 		if(stream.good()) stream.close();
 
 		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
 		if(stream.good() == false){
-			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
+			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
 			return nullptr;
 		}
 
 		stream.seekg(rdr.index.ent[f].foff);
 		if(stream.good() == false){
-			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
+			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to seek to position " << rdr.index.ent[f].foff << " in \""  << filename << "\"..." << std::endl;
 			return nullptr;
 		}
 
@@ -256,7 +200,11 @@ public:
 		return true;
 	}
 
-	// Reduction helper for matrices.
+	/**<
+	 * Reduction helper for matrices. Adds the data from the matrix in the passed
+	 * slave instance to the current instance.
+	 * @param other Reference to other slave instance.
+	 */
 	void AddMatrix(const twk_agg_slave& other){
 		for(int i = 0; i < mat.size(); ++i){
 			for(int j = 0; j < mat[i].size(); ++j)
@@ -264,6 +212,11 @@ public:
 		}
 	}
 
+	/**<
+	 * Simple print subroutine for the internal matrix.
+	 * @param stream     Target output stream to print to.
+	 * @param min_cutoff Minimum number of elements require to output a value. If the observed frequency is smaller than this value then we emit 0.
+	 */
 	void PrintMatrix(std::ostream& stream, uint32_t min_cutoff = 5) const{
 		for(int i = 0; i < mat.size(); ++i){
 			stream << (mat[i][0].*reductor)(min_cutoff);
@@ -281,12 +234,12 @@ public:
 	twk1_two_iterator* it;
 	std::thread* thread;
 	twk_sort_progress* progress;
-	sstats::aggfunc aggregator; // aggregator function
-	sstats::redfunc reductor; // reductor function
+	twk_sstats::aggfunc aggregator; // aggregator function
+	twk_sstats::redfunc reductor; // reductor function
 	std::string filename; // input filename
 	std::vector<range_helper> contig_avail;
 	std::vector<offset_tuple> rid_offsets; // mat offsets
-	std::vector< std::vector<sstats> > mat; // Output matrix
+	std::vector< std::vector<twk_sstats> > mat; // Output matrix
 };
 
 }
@@ -306,7 +259,7 @@ void aggregate_usage(void){
 	"  -r   STRING reduction function: can be one of (mean,count,n,min,max,sd)(required)\n"
 	"  -I   STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos\n"
 	"  -c   INT    min cut-off value used in reduction function: value < c will be set to 0 (default: 5)\n"
-	"  -t   INT    number of parallel threads: each thread will use " << sizeof(sstats) << "(x*y) bytes\n" << std::endl;
+	"  -t   INT    number of parallel threads: each thread will use " << sizeof(tomahawk::twk_sstats) << "(x*y) bytes\n" << std::endl;
 }
 
 int aggregate(int argc, char** argv){
@@ -362,8 +315,8 @@ int aggregate(int argc, char** argv){
 		}
 	}
 
-	sstats::aggfunc f = &sstats::AddR2;
-	sstats::redfunc r = &sstats::GetMean;
+	tomahawk::twk_sstats::aggfunc f = &tomahawk::twk_sstats::AddR2;
+	tomahawk::twk_sstats::redfunc r = &tomahawk::twk_sstats::GetMean;
 
 	if(aggregate_func_name.size() == 0){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "No aggregation function (-f) provided..." << std::endl;
@@ -385,41 +338,45 @@ int aggregate(int argc, char** argv){
 		return(1);
 	}
 
+	// Transform string of aggregation function name into lower then try to map
+	// name to existing function names.
 	std::transform(aggregate_func_name.begin(), aggregate_func_name.end(), aggregate_func_name.begin(), ::tolower);
-	if(aggregate_func_name == "r2"){ f = &sstats::AddR2; }
-	else if(aggregate_func_name == "r"){ f = &sstats::AddR; }
-	else if(aggregate_func_name == "d"){ f = &sstats::AddD; }
-	else if(aggregate_func_name == "dprime"){ f = &sstats::AddDprime; }
-	else if(aggregate_func_name == "dp"){ f = &sstats::AddDprime; }
-	else if(aggregate_func_name == "p"){ f = &sstats::AddP; }
-	else if(aggregate_func_name == "hets"){ f = &sstats::AddHets; }
-	else if(aggregate_func_name == "alts"){ f = &sstats::AddAlts; }
-	else if(aggregate_func_name == "het"){ f = &sstats::AddHets; }
-	else if(aggregate_func_name == "alt"){ f = &sstats::AddAlts; }
+	if(aggregate_func_name == "r2")         { f = &tomahawk::twk_sstats::AddR2;   }
+	else if(aggregate_func_name == "r")     { f = &tomahawk::twk_sstats::AddR;    }
+	else if(aggregate_func_name == "d")     { f = &tomahawk::twk_sstats::AddD;    }
+	else if(aggregate_func_name == "dprime"){ f = &tomahawk::twk_sstats::AddDprime; }
+	else if(aggregate_func_name == "dp")    { f = &tomahawk::twk_sstats::AddDprime; }
+	else if(aggregate_func_name == "p")     { f = &tomahawk::twk_sstats::AddP;    }
+	else if(aggregate_func_name == "hets")  { f = &tomahawk::twk_sstats::AddHets; }
+	else if(aggregate_func_name == "alts")  { f = &tomahawk::twk_sstats::AddAlts; }
+	else if(aggregate_func_name == "het")   { f = &tomahawk::twk_sstats::AddHets; }
+	else if(aggregate_func_name == "alt")   { f = &tomahawk::twk_sstats::AddAlts; }
 	else {
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "Unknown aggregation function \"" << aggregate_func_name << "\"..." << std::endl;
 		return(1);
 	}
 
+	// Transform string of reduction function name into lower then try to map
+    // name to existing function names.
 	std::transform(reduce_func_name.begin(), reduce_func_name.end(), reduce_func_name.begin(), ::tolower);
-	if(reduce_func_name == "mean"){ r = &sstats::GetMean; }
-		else if(reduce_func_name == "max"){ r = &sstats::GetMax; }
-		else if(reduce_func_name == "min"){ r = &sstats::GetMin; }
-		else if(reduce_func_name == "count"){ r = &sstats::GetTotal; }
-		else if(reduce_func_name == "n"){ r = &sstats::GetTotal; }
-		else if(reduce_func_name == "sd"){ r = &sstats::GetStandardDeviation; }
+	if(reduce_func_name == "mean")          { r = &tomahawk::twk_sstats::GetMean;  }
+		else if(reduce_func_name == "max")  { r = &tomahawk::twk_sstats::GetMax;   }
+		else if(reduce_func_name == "min")  { r = &tomahawk::twk_sstats::GetMin;   }
+		else if(reduce_func_name == "count"){ r = &tomahawk::twk_sstats::GetTotal; }
+		else if(reduce_func_name == "n")    { r = &tomahawk::twk_sstats::GetTotal; }
+		else if(reduce_func_name == "sd")   { r = &tomahawk::twk_sstats::GetStandardDeviation; }
 		else {
 			std::cerr << tomahawk::utility::timestamp("ERROR") << "Unknown reduce function \"" << reduce_func_name << "\"..." << std::endl;
 			return(1);
 		}
 
 	if(x_bins < 5){
-		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of x-bins cannot be < 5" << std::endl;
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of x-bins cannot be < 5!" << std::endl;
 		return(1);
 	}
 
 	if(y_bins < 5){
-		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of y-bins cannot be < 5" << std::endl;
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of y-bins cannot be < 5!" << std::endl;
 		return(1);
 	}
 
@@ -432,10 +389,8 @@ int aggregate(int argc, char** argv){
 	tomahawk::two_reader oreader;
 
 	// Open file handle.
-	if(oreader.Open(settings.in) == false){
-		std::cerr << "failed to open" << std::endl;
-		return 1;
-	}
+	if(oreader.Open(settings.in) == false) return 1;
+
 
 	// Build intervals data structures if any are available.
 	/*if(settings.intervals.Build(settings.ivals,
@@ -546,7 +501,7 @@ int aggregate(int argc, char** argv){
 	//         Calculate the landscape ranges (X and Y dimensions).
 	// Approach 2: Dropping regions with no data.
 	uint64_t range = 0;
-	std::vector<offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+	std::vector<tomahawk::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
 
 	/**<
 	 * If there is only chromosome set then restrict the (X,Y) landscape to the
@@ -618,12 +573,12 @@ int aggregate(int argc, char** argv){
 
 	std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
-	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(sstats)*x_bins*y_bins*settings.n_threads) << " for matrices..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(tomahawk::twk_sstats)*x_bins*y_bins*settings.n_threads) << " for matrices..." << std::endl;
 
 	tomahawk::twk_sort_progress progress_sort_step2;
 	progress_sort_step2.n_cmps = n_recs;
 	psthread = progress_sort_step2.Start();
-	std::cerr << "range=" << range << " x,y = " << xrange << " and " << yrange << std::endl;
+	std::cerr << "range=" << range << " x,y = " << xrange << " bp/pixel " << " and " << yrange << " bp/pixel" << std::endl;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].rid_offsets = rid_offsets;
 		slaves[i].progress = &progress_sort_step2;

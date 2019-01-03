@@ -1173,6 +1173,72 @@ public:
 	std::vector<std::string> ival_strings; // unparsed interval strings
 };
 
+/**<
+ * Standard summary statistics object.
+ */
+struct twk_sstats {
+    // Functional pointer definitions used in reduce/aggregate subroutines.
+    typedef void (twk_sstats::*aggfunc)(const twk1_two_t*);
+    typedef double (twk_sstats::*redfunc)(const uint32_t) const;
+
+    twk_sstats() : n(0), total(0), total_squared(0), min(0), max(0){}
+
+    template <class T> void Add(const T value, const double weight = 1){
+        this->total         += value;
+        this->total_squared += value*value;
+        this->n             += weight;
+        this->min = value < min ? value : min;
+        this->max = value > max ? value : max;
+    }
+
+    void AddR2(const twk1_two_t* rec){ Add(rec->R2); }
+    void AddR(const twk1_two_t* rec){ Add(rec->R); }
+    void AddD(const twk1_two_t* rec){ Add(rec->D); }
+    void AddDprime(const twk1_two_t* rec){ Add(rec->Dprime); }
+    void AddP(const twk1_two_t* rec){ Add(rec->P); }
+    void AddHets(const twk1_two_t* rec){
+        Add((rec->cnt[1] + rec->cnt[2]) / (rec->cnt[0] + rec->cnt[1] + rec->cnt[2] + rec->cnt[3]));
+    }
+
+    void AddAlts(const twk1_two_t* rec){
+        Add((rec->cnt[3]) / (rec->cnt[0] + rec->cnt[1] + rec->cnt[2] + rec->cnt[3]));
+    }
+
+    double GetMean(const uint32_t min = 0) const {
+        if(n < min) return(0);
+        return(total / n);
+    }
+
+    double GetCount(const uint32_t min = 0) const {
+        if(n < min) return(0);
+        return(n);
+    }
+
+    double GetStandardDeviation(const uint32_t cutoff = 2) const{
+        if(this->n < cutoff) return(0);
+        return(sqrt(this->total_squared/this->n - (this->total / this->n)*(this->total / this->n)));
+    }
+
+    // Accessor functions
+    inline double GetTotal(const uint32_t cutoff = 0) const{ return(total < cutoff ? 0 : total); }
+    inline double GetTotalSquared(const uint32_t cutoff = 0) const{ return(total_squared < cutoff ? 0 : total_squared); }
+    inline double GetMin(const uint32_t cutoff = 0) const{ return(this->min); }
+    inline double GetMax(const uint32_t cutoff = 0) const{ return(this->max); }
+
+    void operator+=(const twk_sstats& other){
+        n += other.n;
+        total += other.total;
+        total_squared += other.total_squared;
+        min = std::min(min, other.min);
+        max = std::max(max, other.max);
+    }
+
+public:
+    uint64_t n;
+    double total, total_squared;
+    double min, max;
+};
+
 }
 
 #endif /* TWK_CORE_H_ */

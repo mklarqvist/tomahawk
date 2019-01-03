@@ -231,10 +231,13 @@ public:
 
 	bool Sort();
 	bool Sort(two_sorter_settings& settings);
+	// Todo: fix return values.
+	bool Decay(twk_two_settings& settings, int64_t window_bp = 1000000, int32_t n_bins = 100);
+	bool PositionalDecay(twk_two_settings& settings);
+    bool Stats(twk_two_settings& settings);
+
 	// Todo
-	bool Aggregate(twk_two_settings& settings);
-	bool Decay(twk_two_settings& settings);
-	bool Stats(twk_two_settings& settings);
+	bool Aggregate(twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5);
 
 public:
 	std::streambuf* buf;

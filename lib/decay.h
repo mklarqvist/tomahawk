@@ -54,10 +54,9 @@ int decay(int argc, char** argv){
 	};
 
 	tomahawk::twk_two_settings settings;
-	std::vector<std::string> intervals;
 
-	uint64_t n_range = 10e6;
-	uint32_t n_bins  = 1000;
+	int64_t n_range = 10e6;
+	int32_t n_bins  = 1000;
 
 	int c = 0;
 	int long_index = 0;
@@ -80,7 +79,7 @@ int decay(int argc, char** argv){
 			settings.in = std::string(optarg);
 			break;
 		case 'I':
-			intervals.push_back(std::string(optarg));
+			settings.ivals.push_back(std::string(optarg));
 			break;
 		case 'w':
 			n_range = atoi(optarg); break;
@@ -94,7 +93,7 @@ int decay(int argc, char** argv){
 		return(1);
 	}
 
-	if(intervals.size() == 0){
+	if(settings.ivals.size() == 0){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "No interval(s) provided..." << std::endl;
 		return(1);
 	}
@@ -105,41 +104,7 @@ int decay(int argc, char** argv){
 
 	// New instance of reader.
 	tomahawk::two_reader oreader;
-
-	// Open file handle.
-	if(oreader.Open(settings.in) == false){
-		std::cerr << "failed to open" << std::endl;
-		return 1;
-	}
-
-	// Build intervals data structures if any are available.
-	if(settings.intervals.Build(settings.ivals,
-	                            oreader.hdr.GetNumberContigs(),
-	                            oreader.index,
-	                            oreader.hdr) == false)
-	{
-		return 1;
-	}
-
-	uint32_t n_range_bin = n_range/n_bins;
-	std::vector<std::pair<double,uint64_t>> decay(n_bins,{0,0});
-
-	while(oreader.NextRecord()){
-		// Same contig only.
-		if(oreader.it.rcd->ridA == oreader.it.rcd->ridB){
-			// Upper trig only.
-			if(oreader.it.rcd->Apos < oreader.it.rcd->Bpos){
-				decay[std::min((oreader.it.rcd->Bpos - oreader.it.rcd->Apos) / n_range_bin, n_bins)].first += oreader.it.rcd->R2;
-				++decay[std::min((oreader.it.rcd->Bpos - oreader.it.rcd->Apos) / n_range_bin, n_bins)].second;
-			}
-		}
-	}
-
-	std::cout << "From\tTo\tMean\tFrequency\n";
-	for(int i = 0; i < decay.size(); ++i){
-		std::cout << (i*n_range_bin) << '\t' << ((i+1)*n_range_bin) << '\t' << decay[i].first/std::max(decay[i].second,(uint64_t)1) << '\t' << decay[i].second << '\n';
-	}
-	std::cout.flush();
-
+	//if(oreader.Decay(settings, n_range, n_bins) == false) return 1;
+	if(oreader.PositionalDecay(settings) == false) return 1;
 	return 0;
 }

@@ -131,18 +131,15 @@ int concat(int argc, char** argv){
 	tomahawk::two_reader oreader;
 
 	// open first
-	if(oreader.Open(in_list[0]) == false){
-		std::cerr << "failed to open" << std::endl;
-		return 1;
-	}
+	if(oreader.Open(in_list[0]) == false) return 1;
 
-	// Open each and peek the headers
+	// Open each file and peek at the headers to check the files are possible to merge.
 	for(int i = 1; i < in_list.size(); ++i){
 		tomahawk::two_reader rdr;
 
 		// open first
 		if(rdr.Open(in_list[i]) == false){
-			std::cerr << "failed to open=" << in_list[i] << std::endl;
+		    std::cerr << tomahawk::utility::timestamp("ERROR") << "Failed to open \"" << in_list[i] << "\"..." << std::endl;
 			return 1;
 		}
 
