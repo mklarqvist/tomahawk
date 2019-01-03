@@ -52,10 +52,6 @@ public:
 
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
 
-	// move out
-	bool WriteHeader(twk_writer_t* writer, twk_reader& reader) const;
-	bool WriteFinal(twk_writer_t* writer, IndexOutput& index) const;
-
 	/**<
 	 * Reads the desired tomahawk blocks given the balancer intervals. Internally
 	 * decides if the block slicing is based on the universal set of blocks or a
@@ -141,12 +137,15 @@ public:
 	bool Compute();
 	bool ComputePerformance();
 
-public:
+private:
+	class twk_ld_impl;
+
 	uint32_t n_blks, m_blks, n_vnts, n_tree;
-	twk1_ldd_blk* ldd;
+	//twk1_ldd_blk* ldd;
 	twk1_block_t* ldd2;
 	twk_ld_settings settings;
 	twk_intervals intervals;
+	twk_ld_impl* mImpl;
 };
 
 }

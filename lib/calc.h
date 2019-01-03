@@ -30,7 +30,7 @@ void calc_usage(void){
 	std::cerr <<
 	"About:  Calculate linkage disequilibrium\n"
 	"        Force phased -p or unphased -u for faster calculations if\n"
-	"        all variant sites are guaranteed to have the given phasing.\n"
+	"        all variant sites are guaranteed to have the given phasing.\n\n"
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " calc [options] -i <in.twk> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
@@ -46,7 +46,7 @@ void calc_usage(void){
 	"  -I STRING filter interval <contig>:pos-pos (see manual)\n"
 	"  -p        force computations to use phased math\n"
 	"  -u        force computations to use unphased math\n"
-	"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
+	//"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
 	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"

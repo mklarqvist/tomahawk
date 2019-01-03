@@ -2,7 +2,6 @@
 #define TWK_LD_BALANCING_H_
 
 #include "utility.h"
-#include "spinlock.h"
 
 namespace tomahawk {
 

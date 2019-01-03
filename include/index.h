@@ -29,8 +29,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "core.h"
 #include "buffer.h"
-// Todo: move out
-#include "spinlock.h"
 
 namespace tomahawk {
 

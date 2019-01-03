@@ -7,7 +7,6 @@
 
 #include "tomahawk.h"
 #include "vcf_reader.h"
-#include "generic_iterator.h"
 #include "buffer.h"
 #include "genotype_encoder.h"
 #include "core.h"

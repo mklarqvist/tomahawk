@@ -16,7 +16,7 @@ namespace tomahawk {
 
 class twk_two_filter {
 public:
-
+	// Function pointer definition
 	typedef bool(twk_two_filter::*filter_func)(const twk1_two_t* rec) const;
 
 	twk_two_filter() :
@@ -166,6 +166,9 @@ private:
 	std::vector<filter_func> funcs;
 };
 
+/**<
+ * Basic record iterator for twk1_two_t records.
+ */
 class twk1_two_iterator {
 public:
 	twk1_two_iterator() : offset(0), stream(nullptr), rcd(nullptr){}
@@ -197,6 +200,14 @@ struct twk_two_settings {
 	twk_two_filter filter;
 };
 
+struct two_sorter_settings {
+	two_sorter_settings() : memory_limit(0.5), c_level(1), n_threads(std::thread::hardware_concurrency()){}
+
+	std::string in, out;
+	float memory_limit;
+	int c_level, n_threads;
+};
+
 /**<
  * Reader of twk output files.
  */
@@ -217,6 +228,13 @@ public:
 	inline bool NextBlock(){ return(it.NextBlock()); }
 	inline bool NextBlockRaw(){ return(it.NextBlockRaw()); }
 	inline bool NextRecord(){ return(it.NextRecord()); }
+
+	bool Sort();
+	bool Sort(two_sorter_settings& settings);
+	// Todo
+	bool Aggregate(twk_two_settings& settings);
+	bool Decay(twk_two_settings& settings);
+	bool Stats(twk_two_settings& settings);
 
 public:
 	std::streambuf* buf;

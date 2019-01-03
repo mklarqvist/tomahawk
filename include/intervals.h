@@ -52,7 +52,7 @@ public:
 	bool Build(const uint32_t n_contigs, const Index& index);
 
 	/**<
-	 * Convenince wrapper for interval strings. Iterate over a vector of unparsed
+	 * Convenience wrapper for interval strings. Iterate over a vector of unparsed
 	 * interval strings and parse them.
 	 * @param ivals  Source vector of unparsed interval strings.
 	 * @param reader Reference instance of twk_reader object.
@@ -107,6 +107,15 @@ public:
 	           const VcfHeader& hdr);
 
 	/**<
+	 * Convenience wrapper for interval strings. Iterate over a vector of unparsed
+	 * interval strings and parse them.
+	 * @param ivals  Source vector of unparsed interval strings.
+	 * @param reader Reference instance of twk_reader object.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool ParseIntervalStrings(std::vector<std::string>& ivals, VcfHeader& hdr);
+
+	/**<
 	 * Internal function for parsing a source interval string into a (rid,posA,posB)
 	 * tuple. Input string has to match any of the following patterns:
 	 *    1) ^rid$
@@ -147,7 +156,7 @@ public:
 	size_t GetOverlapSize() const{ return(this->overlap_blocks.size()); }
 	IndexEntryOutput* GetOverlapBlock(const uint32_t p){ return(overlap_blocks[p]); }
 
-private:
+public:
 	uint32_t n_c;
 	std::vector< std::vector< interval > > ivecs; // vector of vectors of intervals
 	std::vector< std::vector< interval > > ivecs_internal; // deduped for finding overlapping indices

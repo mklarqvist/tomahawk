@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #include <getopt.h>
 
 #include "utility.h"
-#include "two_sorter.h"
+#include "two_reader.h"
 
 void sort_usage(void){
 	tomahawk::ProgramMessage();
@@ -114,7 +114,7 @@ int sort(int argc, char** argv){
 	tomahawk::ProgramMessage();
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling sort..." << std::endl;
 
-	tomahawk::two_sorter sorter;
+	tomahawk::two_reader sorter;
 	if(sorter.Sort(settings) == false) return 1;
 	return 0;
 }

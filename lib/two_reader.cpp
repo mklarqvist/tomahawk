@@ -1,4 +1,8 @@
+#include <queue>
+
 #include "two_reader.h"
+#include "writer.h"
+#include "two_sorter_structs.h"
 
 namespace tomahawk {
 
@@ -136,6 +140,263 @@ bool two_reader::Open(std::string file){
 	it.stream = stream;
 
 	return(stream->good());
+}
+
+bool two_reader::Sort(){
+	two_sorter_settings settings;
+	//this->settings = settings;
+	return(Sort(settings));
+}
+
+bool two_reader::Sort(two_sorter_settings& settings){
+	if(settings.in.length() == 0){
+		std::cerr << utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+		return false;
+	}
+
+	// File reader.
+	two_reader oreader;
+	if(oreader.Open(settings.in) == false){
+		std::cerr << utility::timestamp("ERROR") << "Failed to open \"" << settings.in << "\"..."  << std::endl;
+		return false;
+	}
+
+	twk1_two_block_t blk2;
+	twk_buffer_t obuf, obuf2;
+
+	// Distrubution.
+	uint64_t b_unc = 0, n_recs = 0;
+	std::cerr << utility::timestamp("LOG") << "Blocks: " << utility::ToPrettyString(oreader.index.n) << std::endl;
+	for(int i = 0; i < oreader.index.n; ++i){
+		b_unc  += oreader.index.ent[i].b_unc;
+		n_recs += oreader.index.ent[i].n;
+	}
+	std::cerr << utility::timestamp("LOG") << "Uncompressed size: " << utility::ToPrettyDiskString(b_unc) << std::endl;
+	std::cerr << utility::timestamp("LOG") << "Sorting " << utility::ToPrettyString(n_recs) << " records..." << std::endl;
+
+	if(b_unc == 0){
+		std::cerr << utility::timestamp("ERROR") << "Cannot sort empty file..." << std::endl;
+		return false;
+	}
+
+	if(oreader.index.n < settings.n_threads) settings.n_threads = oreader.index.n;
+	uint64_t b_unc_thread = b_unc / settings.n_threads;
+	std::cerr << utility::timestamp("LOG","THREAD") << "Data/thread: " << utility::ToPrettyDiskString(b_unc_thread) << std::endl;
+
+	std::vector< std::pair<uint32_t,uint32_t> > ranges;
+	uint64_t f = 0, t = 0, b_unc_tot = 0;
+	for(int i = 0; i < oreader.index.n; ++i){
+		if(b_unc_tot >= b_unc_thread){
+			ranges.push_back(std::pair<uint32_t,uint32_t>(f, t));
+			b_unc_tot = 0;
+			f = t;
+		}
+		b_unc_tot += oreader.index.ent[i].b_unc;
+		++t;
+	}
+	if(f != t){
+		ranges.push_back(std::pair<uint32_t,uint32_t>(f, t));
+		b_unc_tot = 0;
+		f = t;
+	}
+	assert(ranges.back().second == oreader.index.n);
+	assert(ranges.size() <= settings.n_threads);
+
+	twk_sort_progress progress_sort;
+	progress_sort.n_cmps = n_recs;
+	std::thread* psthread = progress_sort.Start();
+
+	twk_sort_slave* slaves = new twk_sort_slave[settings.n_threads];
+	uint32_t range_thread = oreader.index.n / settings.n_threads;
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].f = ranges[i].first;
+		slaves[i].t = ranges[i].second;
+		slaves[i].m_limit = settings.memory_limit;
+		slaves[i].filename = settings.in;
+		slaves[i].c_level = settings.c_level;
+		slaves[i].progress = &progress_sort;
+
+		std::string suffix    = twk_two_writer_t::RandomSuffix();
+		std::string base_path = twk_two_writer_t::GetBasePath(settings.out);
+		std::string base_name = twk_two_writer_t::GetBaseName(settings.out);
+		std::string temp_out  = (base_path.size() ? base_path + "/" : "") + base_name + "_" + suffix + ".two";
+		slaves[i].tmp_filename = temp_out;
+		std::cerr << utility::timestamp("LOG","THREAD") << "Slave-" << i << ": range=" << slaves[i].f << "->" << slaves[i].t << "/" << oreader.index.n << " and name " << slaves[i].tmp_filename << std::endl;
+	}
+
+	for(int i = 0; i < settings.n_threads; ++i){
+		if(slaves[i].Start(oreader.index) == nullptr){
+			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+			return false;
+		}
+	}
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+	progress_sort.is_ticking = false;
+	progress_sort.PrintFinal();
+
+	// temp
+	for(int i = 0; i < settings.n_threads; ++i){
+		std::cerr << i << "\t" << slaves[i].run_ivals.size() << std::endl;
+		for(int j = 0; j < slaves[i].run_ivals.size(); ++j){
+			std::cerr << "\tblock-" << j << ": " << slaves[i].run_ivals[j].size() << "\t(" << slaves[i].run_ivals[j][0].ref_rid << "," << slaves[i].run_ivals[j][0].n_run << "," << slaves[i].run_ivals[j][0].minp << "-" << slaves[i].run_ivals[j][0].maxp << ")";
+			for(int k = 1; k < slaves[i].run_ivals[j].size(); ++k){
+				std::cerr << ", (" << slaves[i].run_ivals[j][k].ref_rid << "," << slaves[i].run_ivals[j][k].n_run << "," << slaves[i].run_ivals[j][k].minp << "-" << slaves[i].run_ivals[j][k].maxp << ")";
+			}
+			std::cerr << std::endl;
+		}
+	}
+	//
+
+	uint32_t n_queues = 0;
+	for(int i = 0; i < settings.n_threads; ++i){
+		for(int j = 0; j < slaves[i].local_idx.size(); ++j){
+			++n_queues;
+		}
+	}
+
+
+	// Merge
+	obuf.reset(); obuf2.reset();
+	obuf.resize(256000);
+	obuf2.resize(256000);
+
+	//uint32_t k = 0;
+	uint64_t maxmem_queue = settings.memory_limit * settings.n_threads * 1e9 / 15; // assume compression ratio is 15
+	uint64_t mem_queue = maxmem_queue / n_queues;
+	mem_queue = mem_queue < sizeof(twk1_two_t) ? sizeof(twk1_two_t) : mem_queue;
+
+	std::priority_queue<two_queue_entry> queue;
+
+	std::cerr << utility::timestamp("LOG") << "Spawning " << utility::ToPrettyString(n_queues) << " queues with " << utility::ToPrettyDiskString(mem_queue) << " each..." << std::endl;
+	twk_two_stream_iterator* its = new twk_two_stream_iterator[n_queues];
+	twk1_two_t rec;
+	uint64_t n_rec_total = 0;
+	uint32_t local_queue = 0;
+	for(int i = 0; i < settings.n_threads; ++i){
+		for(int j = 0; j < slaves[i].local_idx.size(); ++j, ++local_queue){
+			// open iterators
+			if(its[local_queue].Open(slaves[i].tmp_filename,
+									 slaves[i].local_idx[j].foff,
+									 slaves[i].local_idx[j].fend,
+									 slaves[i].local_idx[j].n,
+									 slaves[i].local_idx[j].nc) == false)
+			{
+				std::cerr << utility::timestamp("ERROR") << "Failed open \"" << slaves[i].tmp_filename << "\"..." << std::endl;
+				return false;
+			}
+
+			if(its[local_queue].Next(rec, mem_queue) == false){
+				std::cerr << utility::timestamp("ERROR") << "Failed to get next" << std::endl;
+				return false;
+			}
+
+			queue.push(two_queue_entry(rec, local_queue));
+
+			n_rec_total += slaves[i].local_idx[j].n / twk1_two_t::packed_size;
+		}
+	}
+
+	if(queue.empty()){
+		std::cerr << utility::timestamp("ERROR","SORT") << "No data in queue..." << std::endl;
+		return false;
+	}
+
+	twk_two_writer_t owriter;
+	owriter.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+	if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out == "-")){
+		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to stdout..." << std::endl;
+	} else {
+		std::string extension = twk_two_writer_t::GetExtension(settings.out);
+		if(extension != "two"){
+			settings.out += ".two";
+		}
+		std::cerr << utility::timestamp("LOG","WRITER") << "Opening \"" << settings.out << "\"..." << std::endl;
+	}
+
+	if(owriter.Open(settings.out) == false){
+		std::cerr << utility::timestamp("ERROR") << "Failed top open \"" << settings.out << "\"..." << std::endl;
+		return false;
+	}
+	owriter.mode = 'b';
+	owriter.oindex.state = TWK_IDX_SORTED;
+	owriter.SetCompressionLevel(settings.c_level);
+	// Write header
+	std::string sort_string = "\n##tomahawk_sortVersion=" + std::string(VERSION) + "\n";
+	sort_string += "##tomahawk_sortCommand=" + LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
+	oreader.hdr.literals_ += sort_string;
+	if(owriter.WriteHeader(oreader) == false){
+		std::cerr << "failed to write header" << std::endl;
+		return false;
+	}
+
+	// Reference
+	uint32_t ridA = queue.top().rec.ridA;
+
+	Timer timer; timer.Start();
+	uint64_t n_entries_out = 0;
+	twk_sort_progress progress;
+	progress.n_cmps = n_recs;
+	std::thread* pthread = progress.Start();
+
+	while(queue.empty() == false){
+		// peek at top entry in queue
+		const uint32_t id = queue.top().qid;
+
+		if(queue.top().rec.ridA != ridA){
+			if(owriter.WriteBlock() == false){
+				std::cerr << utility::timestamp("ERROR") << "Failed to flush block..." << std::endl;
+				return false;
+			}
+		}
+		owriter.Add(queue.top().rec);
+		ridA = queue.top().rec.ridA;
+
+		++progress.cmps;
+
+		// remove this record from the queue
+		queue.pop();
+
+		while(its[id].Next(rec, mem_queue)){
+			if(!(rec < queue.top().rec)){
+				queue.push( two_queue_entry(rec, id) );
+				break;
+			}
+
+			if(rec.ridA != ridA){
+				if(owriter.WriteBlock() == false){
+					std::cerr << utility::timestamp("ERROR") << "Failed to flush block..." << std::endl;
+					return false;
+				}
+			}
+			owriter.Add(rec);
+			ridA = rec.ridA;
+
+			++progress.cmps;
+		}
+	}
+	progress.is_ticking = false;
+	progress.PrintFinal();
+
+	owriter.flush();
+	owriter.WriteFinal();
+	owriter.close();
+	std::cerr << utility::timestamp("LOG") << "Finished merging! Time: " << timer.ElapsedString() << std::endl;
+	//std::cerr << "deleting intermediary" << std::endl;
+
+	std::cerr << utility::timestamp("LOG") << "Deleting temp files..." << std::endl;
+	std::cerr.flush();
+	for(int i = 0; i < settings.n_threads; ++i){
+	if( remove( slaves[i].tmp_filename.c_str() ) != 0 ){
+		std::cerr << utility::timestamp("ERROR") << "Error deleting file " << slaves[i].tmp_filename << "!" << std::endl;
+	} else {
+		std::cerr << utility::timestamp("LOG") << "Deleted " << slaves[i].tmp_filename << std::endl;
+	  }
+	}
+
+	delete[] slaves;
+	delete[] its;
+	std::cerr << utility::timestamp("LOG") << "Finished!" << std::endl;
+	return true;
 }
 
 }

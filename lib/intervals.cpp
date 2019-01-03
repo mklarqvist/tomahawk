@@ -203,6 +203,17 @@ bool twk_intervals_two::Build(std::vector<std::string>& strings,
 	return(true);
 }
 
+bool twk_intervals_two::ParseIntervalStrings(std::vector<std::string>& ivals, VcfHeader& hdr){
+	if(ivals.size() == 0)
+		return true;
+
+	for(int i = 0; i < ivals.size(); ++i){
+		if(this->ParseIntervalString(ivals[i], hdr) == false)
+			return false;
+	}
+	return true;
+}
+
 bool twk_intervals_two::ParseIntervalString(const std::string& s, const VcfHeader& hdr){
 	if(s.size() == 0)
 		return false;

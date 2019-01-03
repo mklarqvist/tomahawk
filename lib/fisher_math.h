@@ -1,5 +1,5 @@
-#ifndef MATH_FISHER_MATH_H_
-#define MATH_FISHER_MATH_H_
+#ifndef TWK_FISHER_MATH_H_
+#define TWK_FISHER_MATH_H_
 
 
 /* Log gamma function
@@ -55,11 +55,10 @@ inline const double chi_squared(const double& n11, const double& n12, const doub
 	const double n_total = n11 + n12 + n21 + n22;
 
 	// Expected
-	return(      pow(n11 - (marginA_R*marginA_B / n_total), 2) / (marginA_R*marginA_B / n_total) +
-			     pow(n12 - (marginA_R*marginB_B / n_total), 2) / (marginA_R*marginB_B / n_total) +
-				 pow(n21 - (marginB_R*marginA_B / n_total), 2) / (marginB_R*marginA_B / n_total) +
-				 pow(n22 - (marginB_R*marginB_B / n_total), 2) / (marginB_R*marginB_B / n_total)
-				 );
+	return(pow(n11 - (marginA_R*marginA_B / n_total), 2) / (marginA_R*marginA_B / n_total) +
+	       pow(n12 - (marginA_R*marginB_B / n_total), 2) / (marginA_R*marginB_B / n_total) +
+	       pow(n21 - (marginB_R*marginA_B / n_total), 2) / (marginB_R*marginA_B / n_total) +
+	       pow(n22 - (marginB_R*marginB_B / n_total), 2) / (marginB_R*marginB_B / n_total));
 }
 
-#endif /* MATH_FISHER_MATH_H_ */
+#endif /* TWK_FISHER_MATH_H_ */

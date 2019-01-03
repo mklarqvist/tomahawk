@@ -4,64 +4,31 @@
 #include "ld.h"
 #include "fisher_math.h"
 #include "ld/ld_engine.h"
-#include "spinlock.h"
 #include "timer.h"
 
 namespace tomahawk {
 
-twk_ld::twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr)
+// Implementation to hide ldd from users. This approach allows
+// us to not having to include third party headers in our releases.
+class twk_ld::twk_ld_impl {
+public:
+	twk_ld_impl() : ldd(nullptr){}
+	~twk_ld_impl(){ delete[] ldd; }
+
+	twk1_ldd_blk* ldd;
+};
+
+
+/****************************
+*  twk_ld
+****************************/
+twk_ld::twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd2(nullptr), mImpl(new twk_ld_impl)
 {
 }
 
 twk_ld::~twk_ld(){
-	delete[] ldd; delete[] ldd2;;
-}
-
-bool twk_ld::WriteHeader(twk_writer_t* writer, twk_reader& reader) const{
-	if(writer == nullptr)
-		return false;
-
-	tomahawk::ZSTDCodec zcodec;
-	writer->write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
-	tomahawk::twk_buffer_t buf(256000), obuf(256000);
-	buf << reader.hdr;
-	if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-		std::cerr << "failed to compress" << std::endl;
-		return false;
-	}
-
-	writer->write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
-	writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-	writer->write(obuf.data(),obuf.size());
-	writer->stream.flush();
-	buf.reset();
-
-	return(writer->good());
-}
-
-// write out
-bool twk_ld::WriteFinal(twk_writer_t* writer, IndexOutput& index) const {
-	if(writer == nullptr) return false;
-
-	tomahawk::twk_buffer_t buf(256000), obuf(256000);
-	tomahawk::ZSTDCodec zcodec;
-
-	buf << index;
-	if(zcodec.Compress(buf, obuf, settings.c_level) == false){
-		std::cerr << "failed compression" << std::endl;
-		return false;
-	}
-
-	const uint64_t offset_start_index = writer->stream.tellp();
-	uint8_t marker = 0;
-	writer->write(reinterpret_cast<const char*>(&marker),     sizeof(uint8_t));
-	writer->write(reinterpret_cast<const char*>(&buf.size()), sizeof(uint64_t));
-	writer->write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
-	writer->write(obuf.data(),obuf.size());
-	writer->write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
-	writer->write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
-	writer->stream.flush();
-	return(writer->good());
+	delete[] ldd2;
+	delete mImpl;
 }
 
 bool twk_ld::LoadBlocks(twk_reader& reader,
@@ -133,7 +100,7 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 
 		n_blks = balancer.toR - balancer.fromR;
 		m_blks = balancer.toR - balancer.fromR;
-		ldd    = new twk1_ldd_blk[m_blks];
+		mImpl->ldd = new twk1_ldd_blk[m_blks];
 		ldd2   = new twk1_block_t[m_blks];
 	}
 	// Computation is square: e.g. (5,6) or (10,21).
@@ -143,7 +110,7 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 
 		n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 		m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-		ldd    = new twk1_ldd_blk[m_blks];
+		mImpl->ldd    = new twk1_ldd_blk[m_blks];
 		ldd2   = new twk1_block_t[m_blks];
 	}
 
@@ -169,8 +136,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[i] = std::move(bit.blk);
-				ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-				ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
+				mImpl->ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
+				mImpl->ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
 			}
 		} else {
 			uint32_t offset = 0;
@@ -182,8 +149,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[offset] = std::move(bit.blk);
-				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
+				mImpl->ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				mImpl->ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 
@@ -195,8 +162,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[offset] = std::move(bit.blk);
-				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
+				mImpl->ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				mImpl->ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 		}
@@ -217,8 +184,8 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		return false;
 
 	// Delete old
-	delete[] ldd; delete[] ldd2;
-	ldd = nullptr; ldd2 = nullptr;
+	delete[] mImpl->ldd; delete[] ldd2;
+	mImpl->ldd = nullptr; ldd2 = nullptr;
 
 	if(balancer.diag){
 		//std::cerr << "is diag" << std::endl;
@@ -228,7 +195,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		m_blks = balancer.toR - balancer.fromR;
 		std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
 
-		ldd  = new twk1_ldd_blk[m_blks];
+		mImpl->ldd  = new twk1_ldd_blk[m_blks];
 		ldd2 = new twk1_block_t[m_blks];
 	} else {
 		//std::cerr << "is square" << std::endl;
@@ -238,7 +205,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 		std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
 
-		ldd  = new twk1_ldd_blk[m_blks];
+		mImpl->ldd  = new twk1_ldd_blk[m_blks];
 		ldd2 = new twk1_block_t[m_blks];
 	}
 
@@ -282,7 +249,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 	Timer timer; timer.Start();
 	twk_ld_unpacker* slaves = new twk_ld_unpacker[unpack_threads];
 	for(uint32_t i = 0; i < unpack_threads; ++i){
-		slaves[i].ldd  = ldd;
+		slaves[i].ldd  = mImpl->ldd;
 		slaves[i].ldd2 = ldd2;
 		slaves[i].rdr  = &reader;
 		slaves[i].resize = true;
@@ -401,7 +368,7 @@ bool twk_ld::Compute(){
 	twk_ld_dynamic_balancer ticker;
 	ticker = balancer;
 	ticker.SetWindow(settings.window, settings.l_window);
-	ticker.ldd  = ldd;
+	ticker.ldd  = mImpl->ldd;
 
 	twk_ld_progress progress;
 	progress.n_s = reader.hdr.GetNumberSamples();
@@ -412,10 +379,10 @@ bool twk_ld::Compute(){
 	std::vector<std::thread*> threads(settings.n_threads);
 
 	// Start writing file.
-	twk_writer_t* writer = nullptr;
+	twk_two_writer_t* writer = nullptr;
 	if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
 		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
-		writer = new twk_writer_stream;
+		writer = new twk_two_writer_t;
 	} else {
 		std::string base_path = twk_writer_t::GetBasePath(settings.out);
 		std::string base_name = twk_writer_t::GetBaseName(settings.out);
@@ -429,7 +396,7 @@ bool twk_ld::Compute(){
 		}
 
 		std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
-		writer = new twk_writer_file;
+		writer = new twk_two_writer_t;
 		if(writer->Open(settings.out) == false){
 			std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
 			delete writer;
@@ -442,7 +409,7 @@ bool twk_ld::Compute(){
 	calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 	reader.hdr.literals_ += calc_string;
 
-	if(this->WriteHeader(writer, reader) == false){
+	if(writer->WriteHeaderBinary(reader) == false){
 		std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write header!" << std::endl;
 		return false;
 	}
@@ -454,7 +421,7 @@ bool twk_ld::Compute(){
 	timer.Start();
 	std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
 	for(int i = 0; i < settings.n_threads; ++i){
-		slaves[i].ldd    = ldd;
+		slaves[i].ldd    = mImpl->ldd;
 		slaves[i].n_s    = reader.hdr.GetNumberSamples();
 		slaves[i].ticker = &ticker;
 		slaves[i].engine.SetSamples(reader.hdr.GetNumberSamples());
@@ -488,7 +455,7 @@ bool twk_ld::Compute(){
 	}
 
 	//std::cerr << "performed=" << ticker.n_perf << std::endl;
-	if(this->WriteFinal(writer, index) == false){
+	if(writer->WriteFinal(index) == false){
 		std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write final block!" << std::endl;
 		return false;
 	}
@@ -602,8 +569,8 @@ bool twk_ld::ComputePerformance(){
 	f[5] = &twk_ld_engine::PhasedList;
 	f[6] = &twk_ld_engine::UnphasedRunlength;
 	f[7] = &twk_ld_engine::PhasedBitmap;
-	f[8] = &twk_ld_engine::PhasedListSpecial;
-	f[9] = &twk_ld_engine::PhasedListVector;
+	//f[8] = &twk_ld_engine::PhasedListSpecial;
+	f[8] = &twk_ld_engine::PhasedListVector;
 
 	const std::vector<std::string> method_names = {"PhasedVectorized",
 			"PhasedVectorizedNoMissing",
@@ -616,18 +583,18 @@ bool twk_ld::ComputePerformance(){
 			"PhasedListSpecial",
 			"PhasedListBV"};
 
-	uint8_t unpack_list[10];
-	memset(unpack_list, TWK_LDD_VEC, 10);
+	uint8_t unpack_list[9];
+	memset(unpack_list, TWK_LDD_VEC, 9);
 	unpack_list[4] = TWK_LDD_NONE;
 	unpack_list[5] = TWK_LDD_LIST;
 	unpack_list[6] = TWK_LDD_NONE;
 	unpack_list[7] = TWK_LDD_BITMAP;
 	unpack_list[8] = TWK_LDD_VEC | TWK_LDD_LIST;
-	unpack_list[9] = TWK_LDD_VEC | TWK_LDD_LIST;
+	//unpack_list[9] = TWK_LDD_VEC | TWK_LDD_LIST;
 
 	twk_ld_perf perfs[10];
 	uint32_t perf_size = reader.hdr.GetNumberSamples()*4 + 2;
-	for(int i = 0; i < 10; ++i){
+	for(int i = 0; i < 9; ++i){
 		perfs[i].cycles = new uint64_t[perf_size];
 		perfs[i].freq   = new uint64_t[perf_size];
 		memset(perfs[i].cycles, 0, perf_size*sizeof(uint64_t));
@@ -635,7 +602,7 @@ bool twk_ld::ComputePerformance(){
 	}
 
 	//prepare_shuffling_dictionary();
-	for(int method = 8; method < 10; ++method){
+	for(int method = 8; method < 9; ++method){
 		if(method == 2 || method == 3 || method == 4 || method == 6) continue;
 		std::cerr << utility::timestamp("LOG","PROGRESS") << "Starting method: " << method_names[method] << "..." << std::endl;
 		settings.ldd_load_type = unpack_list[method];
@@ -646,11 +613,11 @@ bool twk_ld::ComputePerformance(){
 		twk_ld_dynamic_balancer ticker;
 		ticker = balancer;
 		ticker.SetWindow(settings.window, settings.l_window);
-		ticker.ldd  = ldd;
+		ticker.ldd  = mImpl->ldd;
 
 		timer.Start();
 		twk_ld_slave s;
-		s.ldd    = ldd;
+		s.ldd    = mImpl->ldd;
 		s.n_s    = reader.hdr.GetNumberSamples();
 		s.ticker = &ticker;
 		s.engine.SetSamples(reader.hdr.GetNumberSamples());
@@ -668,7 +635,7 @@ bool twk_ld::ComputePerformance(){
 		//std::cerr << "m=" << method << " " << utility::ToPrettyString(1) << " " << utility::ToPrettyString((uint64_t)((float)1/timer.Elapsed().count())) << "/s " << utility::ToPrettyString((uint64_t)((float)1*reader.hdr.GetNumberSamples()/timer.Elapsed().count())) << "/gt/s " << timer.ElapsedString() << " " << utility::ToPrettyString(1) << std::endl;
 	}
 
-	for(int i = 0; i < 10; ++i){
+	for(int i = 0; i < 9; ++i){
 		for(int j = 0; j < perf_size; ++j){
 			// Print if non-zero
 			if(perfs[i].freq[j] != 0)

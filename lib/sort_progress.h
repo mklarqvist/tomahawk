@@ -2,6 +2,7 @@
 #define LIB_SORT_PROGRESS_H_
 
 #include <thread>
+#include <atomic>
 
 #include "utility.h"
 #include "timer.h"

@@ -33,6 +33,8 @@ void decay_usage(void){
 	"Options:\n"
 	"  -i FILE   input TWO file (required)\n"
 	"  -I STRING interval string for target region\n"
+	"  -w INT    window size in base bairs (default: 10Mb)\n"
+	"  -b INT    number of bins each window is separated into\n"
 	"  -m        output haplotypes in tab-delimited matrix form\n\n";
 }
 
@@ -45,7 +47,8 @@ int decay(int argc, char** argv){
 	static struct option long_options[] = {
 		{"input",       required_argument, 0, 'i' },
 		{"intervals",   required_argument, 0, 'I' },
-		{"numeric",     optional_argument, 0, 'n' },
+		{"window",      optional_argument, 0, 'w' },
+		{"bins",        optional_argument, 0, 'b' },
 		{"matrix",      no_argument,       0, 'm' },
 		{0,0,0,0}
 	};
@@ -53,10 +56,13 @@ int decay(int argc, char** argv){
 	tomahawk::twk_two_settings settings;
 	std::vector<std::string> intervals;
 
+	uint64_t n_range = 10e6;
+	uint32_t n_bins  = 1000;
+
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:I:?", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:I:w:b:?", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -76,6 +82,10 @@ int decay(int argc, char** argv){
 		case 'I':
 			intervals.push_back(std::string(optarg));
 			break;
+		case 'w':
+			n_range = atoi(optarg); break;
+		case 'b':
+			n_bins = atoi(optarg); break;
 		}
 	}
 
@@ -111,10 +121,8 @@ int decay(int argc, char** argv){
 		return 1;
 	}
 
-	uint64_t n_range = 10e6;
-	uint32_t n_bins  = 1000;
-	uint32_t n_range_bin = 10e6/1000;
-	std::vector<std::pair<double,uint64_t>> decay(n_range_bin+1,{0,0});
+	uint32_t n_range_bin = n_range/n_bins;
+	std::vector<std::pair<double,uint64_t>> decay(n_bins,{0,0});
 
 	while(oreader.NextRecord()){
 		// Same contig only.

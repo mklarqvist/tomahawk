@@ -134,6 +134,54 @@ bool twk_ld_engine::PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const 
 #endif
 }
 
+bool twk_ld_engine::UnphasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
+	helper.ResetUnphased();
+
+	const twk_igt_list& refBV = b1.list[p1];
+	const twk_igt_list& tgtBV = b2.list[p2];
+
+	// Step 1: count (alt,alt),(alt,alt) tuples
+	// Step 2: count (het,het) tuples
+	// Step 3: infer remainder
+
+	// g(A) = popcount(((A >> 1) & A) & low_mask)
+	// g(A) = popcnt128(helper.alleleCounts[TWK_LD_ALTALT], _mm_and_si128(_mm_and_si128(_mm_slli_epi64(PHASED_ALTALT(vectorA,vectorB), 1), PHASED_ALTALT(vectorA,vectorB)), maskUnphasedLow))
+	// x = PHASED_ALTALT(vectorA,vectorB)
+
+	// Compute joint alts and alt refs
+	if(refBV.r_aa.size() < tgtBV.r_aa.size()){
+		for(uint32_t i = 0; i < refBV.r_pos.size(); ++i){
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[refBV.r_aa[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[refBV.r_aa[i]]);
+			popcnt128(helper.alleleCounts[85], _mm_and_si128(_mm_and_si128(_mm_slli_epi64(PHASED_ALTALT(vectorA,vectorB), 1), PHASED_ALTALT(vectorA,vectorB)), maskUnphasedLow));
+		}
+	} else {
+		for(uint32_t i = 0; i < tgtBV.r_aa.size(); ++i){
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[tgtBV.r_aa[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[tgtBV.r_aa[i]]);
+			popcnt128(helper.alleleCounts[85], _mm_and_si128(_mm_and_si128(_mm_slli_epi64(PHASED_ALTALT(vectorA,vectorB), 1), PHASED_ALTALT(vectorA,vectorB)), maskUnphasedLow));
+		}
+	}
+
+	// Compute hets any and joint hets
+	if(refBV.r_het.size() < tgtBV.r_het.size()){
+		for(uint32_t i = 0; i < refBV.r_het.size(); ++i){
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[refBV.r_het[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[refBV.r_het[i]]);
+			popcnt128(helper.alleleCounts[TWK_LD_ALTALT], _mm_and_si128(vectorA,vectorB));
+		}
+	} else {
+		for(uint32_t i = 0; i < tgtBV.r_het.size(); ++i){
+			const VECTOR_TYPE vectorA = _mm_load_si128((const VECTOR_TYPE*)&refBV.bv[tgtBV.r_het[i]]);
+			const VECTOR_TYPE vectorB = _mm_load_si128((const VECTOR_TYPE*)&tgtBV.bv[tgtBV.r_het[i]]);
+			popcnt128(helper.alleleCounts[TWK_LD_ALTALT], _mm_and_si128(vectorA,vectorB));
+		}
+	}
+
+
+	return false;
+}
+
 bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.ResetPhased();
 
@@ -218,6 +266,7 @@ bool twk_ld_engine::PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, 
 #endif
 }
 
+/*
 bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.ResetPhased();
 	//const twk_igt_list::ilist_cont& ref = b1.list[p1].d;
@@ -313,7 +362,7 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 
 					//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
 					if(i == refBV.x.data[reg].n || j == tgtBV.x.data[reg].n) break;
-				}*/
+				}*\/
 				//std::cerr << "overlap=" << helper.alleleCounts[TWK_LD_ALTALT] << std::endl;
 			//}
 			//else {
@@ -368,7 +417,7 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 
 					//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
 					if(i == refBV.x.data[reg].n || j == tgtBV.x.data[reg].n) break;
-				}*/
+				}*\/
 				//std::cerr << "overlap=" << helper.alleleCounts[TWK_LD_ALTALT] << std::endl;
 			//}
 			//else {
@@ -399,7 +448,7 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 
 		//std::cerr << i << "/" << ref.n << " and " << j << "/" << tgt.n << std::endl;
 		if(i == ref.n || j == tgt.n) break;
-	}*/
+	}*\/
 
 #if TWK_SLAVE_DEBUG_MODE == 1
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -425,6 +474,7 @@ bool twk_ld_engine::PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1,
 	return(true);
 #endif
 }
+*/
 
 bool twk_ld_engine::PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf){
 	helper.ResetPhased();

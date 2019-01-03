@@ -6,6 +6,7 @@
 #include "writer.h"
 
 // Make sure they are not in the API
+#include "ld/ld_structs.h"
 #include "ld/ld_progress.h"
 #include "ld/ld_balancing.h"
 #include "ld/ld_unpacker.h"
@@ -203,6 +204,7 @@ struct twk_ld_count {
 	uint64_t totalHaplotypeCounts; // Total number of alleles
 };
 
+
 /**<
  * Internal engine for computing linkage-disequilibrium. Invocation of these
  * functions are generally performed outside of this class in the spawned
@@ -268,7 +270,7 @@ public:
 	bool PhasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedListVector(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
-	bool PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
+	//bool PhasedListSpecial(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool PhasedBitmap(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
@@ -276,6 +278,7 @@ public:
 	bool UnphasedRunlength(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool UnphasedVectorized(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 	bool UnphasedVectorizedNoMissing(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
+	bool UnphasedList(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2, twk_ld_perf* perf = nullptr);
 
 	// Unphased math.
 	bool UnphasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const twk1_ldd_blk& b2, const uint32_t p2);

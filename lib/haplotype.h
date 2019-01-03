@@ -33,7 +33,7 @@ void haplotype_usage(void){
 	"        genotype-sample matrix. Outputs a FASTA file with 2N haplotype strings.\n\n"
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " haplotype [options] -i <in.twk> -I <interval>\n\n"
 	"Options:\n"
-	"  -i FILE   input TWO file (required)\n"
+	"  -i FILE   input TWK file (required)\n"
 	"  -I STRING interval string for target region\n"
 	"  -m        output haplotypes in tab-delimited matrix form\n\n";
 }

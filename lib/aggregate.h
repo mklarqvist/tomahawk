@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "utility.h"
 #include "two_reader.h"
+#include "sort_progress.h"
 
 struct offset_tuple {
 	offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
@@ -246,7 +247,6 @@ public:
 				// Invoke aggregator function.
 				// Position: cumulative offset up to chromosome + left-adjusted position
 				// Position: (chromosome_offset.range - chromosome_offset.max - chromoosme_offset.min) + (Apos - smallest_in_chr)
-				//std::cerr << (rid_offsets[it->blk[j].ridA].range - (rid_offsets[it->blk[j].ridA].max - rid_offsets[it->blk[j].ridA].min)) << "," << (rid_offsets[it->blk[j].ridB].range - (rid_offsets[it->blk[j].ridB].max - rid_offsets[it->blk[j].ridB].min)) << std::endl;
 				(mat[((rid_offsets[it->blk[j].ridA].range - (rid_offsets[it->blk[j].ridA].max - rid_offsets[it->blk[j].ridA].min)) + (it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min))/xrange][((rid_offsets[it->blk[j].ridB].range - (rid_offsets[it->blk[j].ridB].max - rid_offsets[it->blk[j].ridB].min)) + (it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min))/yrange].*aggregator)(&it->blk[j]);
 			}
 			progress->cmps += it->GetBlock().n;

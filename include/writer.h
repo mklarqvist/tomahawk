@@ -2,11 +2,11 @@
 #define TWK_WRITER_H_
 
 #include <ostream>
+
 #include "index.h"
 #include "core.h"
+#include "twk_reader.h"
 #include "two_reader.h"
-// Todo: move out
-#include "spinlock.h"
 
 namespace tomahawk {
 
@@ -199,6 +199,25 @@ struct twk_two_writer_t : public twk_writer_t {
 		return(stream.good());
 	}
 
+	bool WriteHeaderBinary(twk_reader& reader){
+		tomahawk::ZSTDCodec zcodec;
+		stream.write(tomahawk::TOMAHAWK_LD_MAGIC_HEADER.data(), tomahawk::TOMAHAWK_LD_MAGIC_HEADER_LENGTH);
+		tomahawk::twk_buffer_t buf(256000), obuf(256000);
+		buf << reader.hdr;
+		if(zcodec.Compress(buf, obuf, c_level) == false){
+			std::cerr << "failed to compress" << std::endl;
+			return false;
+		}
+
+		stream.write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		stream.write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		stream.write(obuf.data(),obuf.size());
+		stream.flush();
+		buf.reset();
+
+		return(stream.good());
+	}
+
 	bool WriteHeaderReadable(two_reader& reader) {
 		if(stream.good() == false)
 			return false;
@@ -240,6 +259,28 @@ struct twk_two_writer_t : public twk_writer_t {
 		uint8_t marker = 0;
 		stream.write(reinterpret_cast<const char*>(&marker),sizeof(uint8_t));
 		stream.write(reinterpret_cast<const char*>(&buf.size()),sizeof(uint64_t));
+		stream.write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
+		stream.write(obuf.data(),obuf.size());
+		stream.write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
+		stream.write(tomahawk::TOMAHAWK_FILE_EOF.data(), tomahawk::TOMAHAWK_FILE_EOF_LENGTH);
+		stream.flush();
+		return(stream.good());
+	}
+
+	bool WriteFinal(IndexOutput& index) {
+		tomahawk::twk_buffer_t buf(256000), obuf(256000);
+		tomahawk::ZSTDCodec zcodec;
+
+		buf << index;
+		if(zcodec.Compress(buf, obuf, c_level) == false){
+			std::cerr << "failed compression" << std::endl;
+			return false;
+		}
+
+		const uint64_t offset_start_index = stream.tellp();
+		uint8_t marker = 0;
+		stream.write(reinterpret_cast<const char*>(&marker),     sizeof(uint8_t));
+		stream.write(reinterpret_cast<const char*>(&buf.size()), sizeof(uint64_t));
 		stream.write(reinterpret_cast<const char*>(&obuf.size()),sizeof(uint64_t));
 		stream.write(obuf.data(),obuf.size());
 		stream.write(reinterpret_cast<const char*>(&offset_start_index),sizeof(uint64_t));
@@ -327,6 +368,7 @@ struct twk_two_writer_t : public twk_writer_t {
 		return true;
 	}
 
+public:
 	char mode;
 	int32_t c_level;
 	uint32_t n_blk_lim; // flush block limit

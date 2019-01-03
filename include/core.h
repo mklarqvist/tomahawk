@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #define TWK_CORE_H_
 
 #include <cstdint>
+#include <atomic>
 
 #include "tomahawk.h"
 #include "buffer.h"
@@ -65,6 +66,18 @@ inline void aligned_free(void *ptr) {
     #endif
 
 }
+
+class SpinLock{
+public:
+    void lock(){
+        while(lck.test_and_set(std::memory_order_acquire))
+        {}
+    }
+    void unlock(){lck.clear(std::memory_order_release);}
+
+private:
+    std::atomic_flag lck = ATOMIC_FLAG_INIT;
+};
 
 // Unpacking types
 #define TWK_LDD_NONE   0
@@ -472,8 +485,9 @@ public:
 	};
 
 	twk_igt_list() :
-		own(1), n(0), m(0), l_list(0),
-		list(nullptr), bv(nullptr), x_bins(0),
+		own(1), n(0), m(0), l_list(0), l_aa(0), l_het(0),
+		list(nullptr), list_aa(nullptr), list_het(nullptr), bv(nullptr),
+		x_bins(0),
 		bin_bitmap(reinterpret_cast<uint64_t*>(aligned_malloc(2*sizeof(uint64_t), SIMD_ALIGNMENT)))
 	{
 		memset(bin_bitmap, 0, sizeof(uint64_t)*2);
@@ -481,6 +495,8 @@ public:
 
 	~twk_igt_list(){
 		delete[] this->list;
+		delete[] this->list_aa;
+		delete[] this->list_het;
 		if(own) delete[] this->bv;
 		aligned_free(bin_bitmap);
 	}
@@ -495,6 +511,8 @@ public:
 			if(resizeable){ m = twk.ac; }
 			else { m = n_samples*2; }
 			delete[] list; list = new uint32_t[m];
+			delete[] list_aa; list_aa = new uint32_t[m];
+			delete[] list_het; list_het = new uint32_t[m];
 			if(own){
 				bv = new uint64_t[n];
 			}
@@ -506,13 +524,15 @@ public:
 			//std::cerr << "resize=" << twk.ac << ">" << m << std::endl;
 			m = twk.ac;
 			delete[] list; list = new uint32_t[m];
+			delete[] list_aa; list_aa = new uint32_t[m];
+			delete[] list_het; list_het = new uint32_t[m];
 		}
 
 		if(own){
 			memset(bv, 0, n*sizeof(uint64_t));
 		}
 
-		l_list = 0;
+		l_list = 0; l_aa = 0; l_het = 0;
 		uint32_t cumpos = 0;
 		if(own){
 			for(int i = 0; i < twk.gt->n; ++i){
@@ -528,6 +548,8 @@ public:
 				for(int j = 0; j < 2*len; j+=2){
 					if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
 					if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
+					if(refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
+					if((refA == 0 && refB == 1) || (refA == 1 && refB == 0)){ list_het[l_het++] = cumpos + j + 0; }
 				}
 				cumpos += 2*len;
 			}
@@ -548,16 +570,10 @@ public:
 				}
 
 				for(int j = 0; j < 2*len; j+=2){
-					if(refA == 1){
-						list[l_list++] = cumpos + j + 0;
-						//d.Add(cumpos + j + 0);
-						//x += cumpos + j + 0;
-					}
-					if(refB == 1){
-						list[l_list++] = cumpos + j + 1;
-						//d.Add(cumpos + j + 1);
-						//x += cumpos + j + 1;
-					}
+					if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
+					if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
+					if(refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
+					if((refA == 0 && refB == 1) || (refA == 1 && refB == 0)){ list_het[l_het++] = cumpos + j + 0; }
 				}
 				cumpos += 2*len;
 			}
@@ -565,12 +581,31 @@ public:
 			//std::cerr << "total bins=" << d.n << " with ac=" << twk.ac << std::endl;
 
 			// Register positions.
+			r_pos.clear();
 			for(int i = 0; i < l_list; ++i){
 				if(r_pos.size()){
 					if(r_pos.back() != list[i] / 128)
 						r_pos.push_back(list[i] / 128);
 				} else r_pos.push_back(list[i] / 128);
 			}
+
+			r_aa.clear();
+			for(int i = 0; i < l_aa; ++i){
+				if(r_aa.size()){
+					if(r_aa.back() != list_aa[i] / 128)
+						r_aa.push_back(list_aa[i] / 128);
+				} else r_aa.push_back(list_aa[i] / 128);
+			}
+
+			r_het.clear();
+			for(int i = 0; i < l_het; ++i){
+				if(r_het.size()){
+					if(r_het.back() != list_het[i] / 128)
+						r_het.push_back(list_het[i] / 128);
+				} else r_het.push_back(list_het[i] / 128);
+			}
+			//std::cerr << l_list << "," << l_het << "," << l_aa << " and " << r_pos.size() << "," << r_aa.size() << "," << r_het.size() << std::endl;
+
 
 			// Convert register number into offset in 64-bit space.
 			// This step is required to guarantee memory aligned lookups when
@@ -605,32 +640,35 @@ public:
 
 			x.cleanup();*/
 		}
+
+		// Delete list as we use registers
+		delete[] list; list = nullptr;
+		delete[] list_aa; list_aa = nullptr;
+		delete[] list_het; list_het = nullptr;
+		//l_list = 0;
+
+
 		return true;
 	}
 
 	inline void reset(void){ memset(this->bv, 0, this->n*sizeof(uint64_t)); delete[] list; l_list = 0; }
 	//inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 8))); }
-	/**<
-	 * p >> 3 = p/8
-	 * p % 8 = p & (8 - 1)
-	 * @param p
-	 * @return
-	 */
+
 	__attribute__((always_inline)) inline const bool get(const uint32_t p) const{ return(this->bv[(p >> 6)] & (1L << ( p & (64 - 1) )));}
 	inline void set(const uint32_t p){ this->bv[p/64] |= (1L << (p % 64)); }
 	//inline void set(const uint32_t p, const bool val){ this->bv[p/64] |= ((uint64_t)1 << (p % 64)); }
 
 public:
 	uint32_t own: 1, n: 31;
-	uint32_t m, l_list; // n bytes, m allocated list entries
-	uint32_t* list; // list entries
+	uint32_t m, l_list, l_aa, l_het; // n bytes, m allocated list entries
+	uint32_t* list, *list_aa, *list_het; // list entries
 	uint64_t* bv; // bit-vector
-	ilist_cont d;
-	ilist_cont_bins x;
+	//ilist_cont d;
+	//ilist_cont_bins x;
 	uint32_t x_bins;
 	// higher level bitmap checks
 	uint64_t* bin_bitmap;
-	std::vector<uint32_t> r_pos;
+	std::vector<uint32_t> r_pos, r_aa, r_het;
 };
 
 /**<
