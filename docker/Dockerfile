@@ -25,7 +25,7 @@ FROM ubuntu:16.04
 
 ################## METADATA ######################
 LABEL base_image="ubuntu:16.04"
-LABEL version="1"
+LABEL version="1.0"
 LABEL software="Tomahawk"
 LABEL software.version="0.7.0"
 LABEL about.summary="Latest image for Tomahawk"

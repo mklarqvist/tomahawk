@@ -481,7 +481,7 @@ bool two_reader::PositionalDecay(twk_two_settings& settings){
         twk_sstats_pos(uint32_t chrom, uint32_t position) : rid(chrom), pos(position){}
 
         void operator+=(const twk1_two_t* rec){
-            if(rec->ridA == rec->ridB)
+            if(rec->ridA == rec->ridB && rec->Apos < rec->Bpos)
                 Add(rec->Bpos, 1);
         }
 
@@ -501,14 +501,16 @@ bool two_reader::PositionalDecay(twk_two_settings& settings){
             variants.push_back(twk_sstats_pos(it.rcd->ridA, it.rcd->Apos));
             rid_prev = it.rcd->ridA;
             pos_prev = it.rcd->Apos;
+            variants.back().n = 1;
         }
 
         variants.back() += it.rcd;
     }
 
     std::cerr << "variants = " << variants.size() << std::endl;
+    std::cout << std::fixed;
     for(int i = 0; i < variants.size(); ++i){
-        std::cout << variants[i].rid << '\t' << variants[i].pos << '\t' << variants[i].n << '\t' << variants[i].GetMean() << '\n';
+        std::cout << variants[i].rid << '\t' << variants[i].pos << '\t' << variants[i].n << '\t' << variants[i].GetMean()-variants[i].pos << '\n';
     }
     std::cout.flush();
 

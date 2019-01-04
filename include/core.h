@@ -1205,7 +1205,7 @@ struct twk_sstats {
     }
 
     double GetMean(const uint32_t min = 0) const {
-        if(n < min) return(0);
+        if(n < min || min == 0) return(0);
         return(total / n);
     }
 

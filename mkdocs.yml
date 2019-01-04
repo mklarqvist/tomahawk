@@ -1,0 +1,28 @@
+site_name: Tomahawk
+repo_url: https://github.com/mklarqvist/tomahawk/
+repo_name: 'GitHub'
+site_author: Marcus D. R. Klarqvist
+theme:
+    name: material
+    custom_dir: docs/material/
+
+nav:
+  - Home: index.md
+  - Introduction: introduction.md
+  - Installation: installation.md
+  - Tutorial:
+    - Overview: tutorial.md
+    - CLI: tutorial.md
+    - R: tutorial.md
+    - Python3: tutorial.md
+    - Docker: docker-tutorial.md
+  - API documentation: api-documentation.md
+  - Command line interface: command-line-interface.md
+  - Developer documentation: developer-documentation.md
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      linenums: true
+  - toc:
+      permalink: true
