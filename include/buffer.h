@@ -20,8 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ==============================================================================*/
-#ifndef TOMAHAWK_BUFFER_H_
-#define TOMAHAWK_BUFFER_H_
+#ifndef TWK_BUFFER_H_
+#define TWK_BUFFER_H_
 
 #define __STDC_FORMAT_MACROS 1
 #include <inttypes.h>

@@ -377,7 +377,7 @@ int view(int argc, char** argv){
 	}
 
 	// Build intervals data structures if any are available.
-	if(settings.intervals.Build(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
+	if(oreader.BuildIntervals(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
 		return 1;
 
 	// Prepare writer.
@@ -406,8 +406,9 @@ int view(int argc, char** argv){
 		writer.oindex.state = TWK_IDX_SORTED;
 
 		//std::cerr << settings.intervals.overlap_blocks.size() << std::endl;
-		for(int i = 0; i < settings.intervals.GetOverlapSize(); ++i){
-			oreader.stream->seekg(settings.intervals.GetOverlapBlock(i)->foff);
+		const std::vector<tomahawk::IndexEntryOutput*>& irecs = oreader.GetIntervalBlocks();
+		for(int i = 0; i < irecs.size(); ++i){
+			oreader.stream->seekg(irecs[i]->foff);
 			if(oreader.NextBlock() == false){
 				std::cerr << "failed to get next block" << std::endl;
 				return 1;
@@ -416,7 +417,7 @@ int view(int argc, char** argv){
 			for(int j = 0; j < oreader.it.blk.n; ++j){
 				assert(oreader.NextRecord());
 				//oreader.it.rcd->PrintLD(std::cerr);
-				if(settings.intervals.FilterInterval(*oreader.it.rcd)){
+				if(oreader.FilterInterval(oreader.it.rcd)){
 					continue;
 				}
 
@@ -427,7 +428,7 @@ int view(int argc, char** argv){
 		}
 	} else if(settings.ivals.size()){
 		while(oreader.NextRecord()){
-			if(settings.intervals.FilterInterval(*oreader.it.rcd)){
+			if(oreader.FilterInterval(oreader.it.rcd)){
 				continue;
 			}
 

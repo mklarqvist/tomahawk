@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2017-current Genome Research Ltd.
+Copyright (C) 2016-current Genome Research Ltd.
 Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,8 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ==============================================================================*/
-#ifndef TOMAHAWK_UTILS_H_
-#define TOMAHAWK_UTILS_H_
+#ifndef TWK_UTILS_H_
+#define TWK_UTILS_H_
 
 #include <string>
 #include <vector>

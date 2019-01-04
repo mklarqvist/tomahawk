@@ -29,6 +29,7 @@ DEALINGS IN THE SOFTWARE.
 #include "core.h"
 #include "twk_reader.h"
 #include "writer.h"
+// Move out
 #include "intervals.h"
 
 namespace tomahawk {
@@ -139,9 +140,7 @@ public:
 
 private:
 	class twk_ld_impl;
-
 	uint32_t n_blks, m_blks, n_vnts, n_tree;
-	//twk1_ldd_blk* ldd;
 	twk1_block_t* ldd2;
 	twk_ld_settings settings;
 	twk_intervals intervals;

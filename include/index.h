@@ -20,8 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ==============================================================================*/
-#ifndef TOMAHAWK_INDEX_H_
-#define TOMAHAWK_INDEX_H_
+#ifndef TWK_INDEX_H_
+#define TWK_INDEX_H_
 
 #include <unordered_map>
 #include <cstdint>

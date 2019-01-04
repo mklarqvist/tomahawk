@@ -3,7 +3,6 @@
 
 #include "index.h"
 #include "header.h"
-// Move out
 #include "third_party/intervalTree.h"
 
 namespace tomahawk {
@@ -23,7 +22,6 @@ struct interval_pair_payload {
  * them to the local tomahawk index. Have functionality for sorting, deduping,
  * and mapping interval tuples and the resulting index objects.
  */
-
 class twk_intervals {
 private:
 	typedef algorithm::Interval<uint32_t,uint32_t> interval;

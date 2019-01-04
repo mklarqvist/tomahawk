@@ -1,8 +1,16 @@
-# Tutorial
+# Getting started: CLI
 
-This is an introductory tutorial for using TensorFlow. It will cover:
+This is an introductory tutorial for using Tomahawk. It will cover:
 
-* Importing required packages
-* Creating and using Tensors
-* Using GPU acceleration
+* Importing into Tomahawk
+* Computing linkage-disequilibrium
+* Aggregating and visualizing datasets
 * Datasets
+
+## Importing into Tomahawk
+
+## Computing linkage-disequilibrium
+
+## Aggregating and visualizing datasets
+
+## Datasets

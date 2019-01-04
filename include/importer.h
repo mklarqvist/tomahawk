@@ -20,8 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ==============================================================================*/
-#ifndef IMPORTER_H_
-#define IMPORTER_H_
+#ifndef TWK_IMPORTER_H_
+#define TWK_IMPORTER_H_
 
 #include <cstdint>
 #include <string>
@@ -58,4 +58,4 @@ public:
 
 }
 
-#endif /* IMPORTER_H_ */
+#endif /* TWK_IMPORTER_H_ */

@@ -12,8 +12,8 @@ Tomahawk is unique in that it constructs complete haplotype/genotype contigency 
 ## Installation
 For Ubuntu, Debian, and Mac systems, installation is easy: just run
 ```bash
-git clone --recursive https://github.com/mklarqvist/tachyon
-cd tachyon
+git clone --recursive https://github.com/mklarqvist/tomahawk
+cd tomahawk
 ./install.sh
 ```
 The `install.sh` file depends extensively on `apt-get`, so it is unlikely to run without extensive modifications on non-Debian-based systems.
@@ -31,18 +31,17 @@ Interested in contributing? Fork and submit a pull request and it will be review
 We are actively developing Tomahawk and are always interested in improving its quality. If you run into an issue, please report the problem on our Issue tracker. Be sure to add enough detail to your report that we can reproduce the problem and address it. We have not reached version 1.0 and as such the specification and/or the API interfaces may change.
 
 ### Version
-This is Tomahawk 0.7.0. Tachyon follows [semantic versioning](https://semver.org/).
+This is Tomahawk 0.7.0. Tomahawk follows [semantic versioning](https://semver.org/).
 
 ### Author
 Marcus D. R. Klarqvist (<mk819@cam.ac.uk>)  
 Department of Genetics, University of Cambridge  
-Wellcome Trust Sanger Institute
+Wellcome Sanger Institute
 
 
 ### License
 Tomahawk is licensed under [MIT](LICENSE)
 
-[openssl]:  https://www.openssl.org/
+[htslib]:   https://github.com/samtools/htslib
 [zstd]:     https://github.com/facebook/zstd
 [tomahawk]: https://github.com/mklarqvist/tomahawk
-[msprime]:  https://github.com/jeromekelleher/msprime

@@ -1,6 +1,7 @@
 #include <queue>
 
 #include "two_reader.h"
+#include "intervals.h"
 #include "writer.h"
 #include "two_sorter_structs.h"
 
@@ -64,6 +65,27 @@ bool twk1_two_iterator::NextRecord(){
 	rcd = &blk.rcds[offset++];
 	return true;
 }
+
+// reader
+class two_reader::two_reader_impl {
+public:
+	twk_intervals_two intervals;
+};
+
+two_reader::two_reader() : buf(nullptr), stream(nullptr), mImpl(new two_reader_impl){}
+two_reader::~two_reader(){ delete stream; delete mImpl; }
+
+bool two_reader::BuildIntervals(std::vector<std::string>& strings, const uint32_t n_contigs,
+		           const IndexOutput& index, const VcfHeader& hdr)
+{
+	return(mImpl->intervals.Build(strings, n_contigs, index, hdr));
+}
+
+bool two_reader::FilterInterval(const twk1_two_t* rec) const { return(mImpl->intervals.FilterInterval(*rec)); }
+bool two_reader::FilterInterval(const twk1_two_t& rec) const { return(mImpl->intervals.FilterInterval(rec)); }
+
+IndexEntryOutput* two_reader::GetIntervalBlock(const uint32_t p){ return(mImpl->intervals.GetOverlapBlock(p)); }
+const std::vector<IndexEntryOutput*>& two_reader::GetIntervalBlocks() const { return(mImpl->intervals.overlap_blocks); }
 
 bool two_reader::Open(std::string file){
 	fstream.open(file, std::ios::in|std::ios::binary|std::ios::ate);
@@ -421,8 +443,8 @@ bool two_reader::Decay(twk_two_settings& settings, int64_t window_bp, int32_t n_
 	}
 
 	// Build intervals data structures if any are available.
-	if(settings.intervals.Build(settings.ivals, hdr.GetNumberContigs(),
-								index, hdr) == false)
+	if(BuildIntervals(settings.ivals, hdr.GetNumberContigs(),
+	                   index, hdr) == false)
 	{
 		return false;
 	}
@@ -464,8 +486,8 @@ bool two_reader::PositionalDecay(twk_two_settings& settings){
     }
 
     // Build intervals data structures if any are available.
-    if(settings.intervals.Build(settings.ivals, hdr.GetNumberContigs(),
-                                index, hdr) == false)
+    if(BuildIntervals(settings.ivals, hdr.GetNumberContigs(),
+                       index, hdr) == false)
     {
         return false;
     }
@@ -495,7 +517,7 @@ bool two_reader::PositionalDecay(twk_two_settings& settings){
     variants.push_back(twk_sstats_pos(it.rcd->ridA, it.rcd->Apos));
 
     while(NextRecord()){
-        if(settings.intervals.FilterInterval(*it.rcd)) continue;
+        if(FilterInterval(it.rcd)) continue;
 
         if(it.rcd->ridA != rid_prev || it.rcd->Apos != pos_prev){
             variants.push_back(twk_sstats_pos(it.rcd->ridA, it.rcd->Apos));

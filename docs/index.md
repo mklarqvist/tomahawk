@@ -2,16 +2,33 @@
 <img src="images/tomahawk.png">
 </div>
 
-# Tomahawk documentation
+# Fast calculation of LD in large-scale cohorts
+Tomahawk is a machine-optimized library for computing
+[linkage-disequilibrium](https://en.wikipedia.org/wiki/Linkage_disequilibrium)
+from population-sized datasets. Tomahawk permits close to real-time analysis of
+regions-of-interest in datasets of many millions of diploid individuals on a
+standard laptop. All algorithms are embarrassingly parallel and have been
+successfully tested on chromosome-sized datasets with up to _10 million_
+individuals.
 
-For full documentation visit [mkdocs.org](https://mkdocs.org).
+Tomahawk uniquely constructs complete haplotype/genotype contigency matrices for
+each comparison, perform statistical tests on the output data, and provide a
+framework for querying the resulting data.
 
 ## Commands
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs help` - Print this help message.
+| Command        | Description                                                 |
+|----------------|-------------------------------------------------------------|
+| `aggregate`    | data rasterization framework for `TWO` files                |
+| `calc`         | calculate linkage disequilibrium                            |
+| `concat`       | concatenate `TWO` files from the same set of samples        |
+| `import`       | import `VCF`/`VCF.gz`/`BCF` to `TWK`                        |
+| `sort`         | sort `TWO` file                                             |
+| `view`         | `TWO`-&gt;`LD`/`TWO` view, `TWO` subset and filter          |
+| `haplotype`    | extract per-sample haplotype strings in `FASTA`/binary format |
+| `relationship` | compute marker-based pair-wise sample relationship matrices |
+| `decay`        | compute LD-decay over distance                              |
+| `prune`        | perform graph-based LD-pruning of variant sites             |
 
 ## Project layout
 
@@ -118,7 +135,9 @@ cp partials/language/en.html partials/language/jp.html
 
   [16]: https://www.w3schools.com/tags/ref_language_codes.asp
 
-
+!!! success "Installation complete"
+    
+    Success: Tomahawk is now installed. Read the [tutorials](tutorial) to get started.
 
 !!! warning "MkDocs 1.0 compatibility"
 

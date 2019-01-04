@@ -1,5 +1,27 @@
-#ifndef TWO_READER_H_
-#define TWO_READER_H_
+/*
+Copyright (C) 2016-current Genome Research Ltd.
+Author: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+==============================================================================*/
+#ifndef TWK_TWO_READER_H_
+#define TWK_TWO_READER_H_
 
 #include <fstream>
 #include <thread>
@@ -8,7 +30,6 @@
 #include "core.h"
 #include "index.h"
 #include "header.h"
-#include "intervals.h"
 //
 #include "zstd_codec.h"
 
@@ -196,7 +217,6 @@ struct twk_two_settings {
 	int32_t n_threads;
 	std::string in, out;
 	std::vector<std::string> ivals; // unparsed interval strings
-	twk_intervals_two intervals;
 	twk_two_filter filter;
 };
 
@@ -213,8 +233,8 @@ struct two_sorter_settings {
  */
 class two_reader {
 public:
-	two_reader() : buf(nullptr), stream(nullptr){}
-	~two_reader(){ delete stream; }
+	two_reader();
+	~two_reader();
 
 	/**<
 	 * Open a target two file. File header, index, and footer will be read
@@ -229,6 +249,16 @@ public:
 	inline bool NextBlockRaw(){ return(it.NextBlockRaw()); }
 	inline bool NextRecord(){ return(it.NextRecord()); }
 
+	// Dispatch functions for intervals.
+	IndexEntryOutput* GetIntervalBlock(const uint32_t p);
+	const std::vector<IndexEntryOutput*>& GetIntervalBlocks() const;
+
+	bool BuildIntervals(std::vector<std::string>& strings, const uint32_t n_contigs,
+		           const IndexOutput& index, const VcfHeader& hdr);
+	bool FilterInterval(const twk1_two_t* rec) const;
+	bool FilterInterval(const twk1_two_t& rec) const;
+
+	// Main functions.
 	bool Sort();
 	bool Sort(two_sorter_settings& settings);
 	// Todo: fix return values.
@@ -238,6 +268,9 @@ public:
 
 	// Todo
 	bool Aggregate(twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5);
+
+private:
+	class two_reader_impl;
 
 public:
 	std::streambuf* buf;
@@ -249,8 +282,10 @@ public:
 	twk_two_filter filter;
 	twk1_two_iterator it;
 	ZSTDCodec zcodec;
+	//twk_intervals_two intervals;
+	two_reader_impl* mImpl;
 };
 
 }
 
-#endif /* TWO_READER_H_ */
+#endif /* TWK_TWO_READER_H_ */
