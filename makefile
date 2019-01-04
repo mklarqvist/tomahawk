@@ -32,7 +32,22 @@ LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
 LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
 LIBVER       := $(shell echo $(LIBVER_SCRIPT))
 
-PREFIX := /usr/local
+prefix      = /usr/local
+exec_prefix = $(prefix)
+bindir      = $(exec_prefix)/bin
+libdir      = $(exec_prefix)/lib
+includedir  = $(exec_prefix)/include
+#mandir      = $(prefix)/share/man
+#man1dir     = $(mandir)/man1
+
+MKDIR_P = mkdir -p
+INSTALL = install -p
+INSTALL_DATA    = $(INSTALL) -m 644
+INSTALL_DIR     = $(MKDIR_P) -m 755
+INSTALL_MAN     = $(INSTALL_DATA)
+INSTALL_PROGRAM = $(INSTALL)
+INSTALL_SCRIPT  = $(INSTALL_PROGRAM)
+INSTALL_LIB     = $(INSTALL_DATA)
 
 # If you want to build in debug mode then add DEBUG=true to your build command
 # make DEBUG=true
@@ -144,7 +159,18 @@ library: $(OBJECTS)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
 
-examples: $(LIB_EXAMPLE_OUTPUT)
+install: $(PROGRAMS)
+	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(includedir)/tomahawk $(DESTDIR)$(libdir)
+	$(INSTALL_DATA) include/*.h $(DESTDIR)$(includedir)/tomahawk
+	$(INSTALL_PROGRAM) twk $(DESTDIR)$(bindir)
+	$(INSTALL_DATA) libtomahawk.a $(DESTDIR)$(libdir)/libtomahawk.a
+	$(INSTALL_LIB) libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT).$(LIBVER)
+	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT)
+	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/ltomahawk.$(SHARED_EXT)
+  	#$(INSTALL_PROGRAM) twk $(DESTDIR)$(bindir)
+	#$(INSTALL_SCRIPT) $(MISC_SCRIPTS) $(DESTDIR)$(misc_bindir)
+	#$(INSTALL_MAN) doc/bcftools.1 $(DESTDIR)$(man1dir)
+	#$(INSTALL_PROGRAM) plugins/*.so $(DESTDIR)$(plugindir)
 
 # Clean procedures
 cleanmost:
@@ -153,4 +179,4 @@ cleanmost:
 clean: cleanmost clean_examples
 	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so
 
-.PHONY: all clean clean_examples cleanmost library
+.PHONY: all clean clean_examples cleanmost library install
