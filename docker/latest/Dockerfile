@@ -86,8 +86,6 @@ RUN apt-get clean all &&  \
         apt-get purge && \
         rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Multi-stage build
-FROM alpine:latest
 RUN mkdir -p /opt
 RUN cd /opt \
     && git clone https://github.com/samtools/htslib.git \
