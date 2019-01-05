@@ -3,7 +3,7 @@
 
 #include "index.h"
 #include "header.h"
-#include "third_party/intervalTree.h"
+#include "intervalTree.h"
 
 namespace tomahawk {
 
@@ -56,7 +56,7 @@ public:
 	 * @param reader Reference instance of twk_reader object.
 	 * @return       Returns TRUE upon success or FALSE otherwise.
 	 */
-	bool ParseIntervalStrings(std::vector<std::string>& ivals, VcfHeader& hdr);
+	bool ParseIntervalStrings(const std::vector<std::string>& ivals, VcfHeader& hdr);
 
 	/**<
 	 * Internal function for parsing a source interval string into a (rid,posA,posB)

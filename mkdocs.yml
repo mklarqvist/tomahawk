@@ -17,8 +17,18 @@ nav:
     - R: tutorial.md
     - Python3: tutorial.md
     - Docker: docker-tutorial.md
+  - Command line interface:
+      - aggregate: cli/cli-aggregate.md
+      - calc: cli/cli-calc.md
+      - concat: cli/cli-concat.md
+      - import: cli/cli-import.md
+      - sort: cli/cli-sort.md
+      - view: cli/cli-view.md
+      - haplotype: cli/cli-haplotype.md
+      - relationship: cli/cli-relationship.md
+      - decay: cli/cli-decay.md
+      - prune: cli/cli-prune.md
   - API documentation: api-documentation.md
-  - Command line interface: command-line-interface.md
   - Developer documentation: developer-documentation.md
 
 markdown_extensions:

@@ -248,8 +248,7 @@ void aggregate_usage(void){
 	tomahawk::ProgramMessage();
 	std::cerr <<
 	"About:  Aggregate TWO data into a rasterized matrix of size [x,y] for\n"
-    "        plotting. Data has to be sorted and pre-sliced to the correct\n"
-	"        interval-of-interest prior to running.\n"
+    "        plotting.\n"
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " aggregate [options] <in.two>\n\n"
 
 	"Options:\n"

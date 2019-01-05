@@ -77,7 +77,7 @@ bool twk_intervals::Build(const uint32_t n_contigs, const Index& index){
 	return(true);
 }
 
-bool twk_intervals::ParseIntervalStrings(std::vector<std::string>& ivals, VcfHeader& hdr){
+bool twk_intervals::ParseIntervalStrings(const std::vector<std::string>& ivals, VcfHeader& hdr){
 	if(ivals.size() == 0)
 		return true;
 

@@ -15,11 +15,11 @@ Tomahawk uniquely constructs complete haplotype/genotype contigency matrices for
 each comparison, perform statistical tests on the output data, and provide a
 framework for querying the resulting data.
 
-## Commands
+## CLI Commands
 
 | Command        | Description                                                 |
 |----------------|-------------------------------------------------------------|
-| `aggregate`    | data rasterization framework for `TWO` files                |
+| [`aggregate`](cli/cli-aggregate)    | data rasterization framework for `TWO` files                |
 | `calc`         | calculate linkage disequilibrium                            |
 | `concat`       | concatenate `TWO` files from the same set of samples        |
 | `import`       | import `VCF`/`VCF.gz`/`BCF` to `TWK`                        |

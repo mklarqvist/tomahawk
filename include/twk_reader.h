@@ -74,7 +74,7 @@ public:
 	std::streambuf* buf;
 	std::istream*   stream;
 	std::ifstream   fstream;
-	VcfHeader   hdr;
+	VcfHeader hdr;
 	Index index;
 };
 

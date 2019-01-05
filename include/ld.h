@@ -29,8 +29,6 @@ DEALINGS IN THE SOFTWARE.
 #include "core.h"
 #include "twk_reader.h"
 #include "writer.h"
-// Move out
-#include "intervals.h"
 
 namespace tomahawk {
 
@@ -44,83 +42,7 @@ public:
 	twk_ld();
 	~twk_ld();
 
-	/**<
-	 * Wrapper function for parsing interval strings.
-	 * @param reader Reference twk_reader instance.
-	 * @return       Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool ParseIntervalStrings(twk_reader& reader){ return(intervals.ParseIntervalStrings(settings.ival_strings, reader.hdr)); }
-
 	void operator=(const twk_ld_settings& settings){ this->settings = settings; }
-
-	/**<
-	 * Reads the desired tomahawk blocks given the balancer intervals. Internally
-	 * decides if the block slicing is based on the universal set of blocks or a
-	 * targetted subset (as decided by the interval slicing operation).
-	 * @param reader
-	 * @param bit
-	 * @param balancer
-	 * @param load
-	 * @return
-	 */
-	bool LoadBlocks(twk_reader& reader,
-	                twk1_blk_iterator& bit,
-	                const twk_ld_balancer& balancer,
-	                const twk_ld_settings& settings);
-
-	/**<
-	 * Loading twk blocks for a single variant and its surrounding variants within
-	 * some distance and on the same chromosome. This function loads the target variant
-	 * in a single block and the other variants in separate blocks as usual. The
-	 * identity of the target site is parameterized in the settings object.
-	 * @param reader
-	 * @param bit
-	 * @param balancer
-	 * @param load
-	 * @return
-	 */
-	bool LoadTargetSingle(twk_reader& reader,
-	                      twk1_blk_iterator& bit,
-	                      const twk_ld_balancer& balancer,
-	                      const uint8_t load);
-
-	/**<
-	 * Construct interval container and trees given the pre-provided interval
-	 * strings.
-	 * @param reader
-	 * @param bit
-	 * @param load
-	 * @return
-	 */
-	bool BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit);
-
-	/**<
-	 * Loads only the target blocks that overlap with the given vector of interval
-	 * tuples as parameterized in the settings object.
-	 * @param reader   Reference to twk reader.
-	 * @param bit      Reference to a twk block iterator.
-	 * @param balancer Reference of a pre-computed load balancer.
-	 * @param settings Reference of a user-paramterized settings object.
-	 * @return         Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool LoadTargetBlocks(twk_reader& reader,
-	                      twk1_blk_iterator& bit,
-	                      const twk_ld_balancer& balancer,
-	                      const twk_ld_settings& settings);
-
-	/**<
-	 * Loads all available twk blocks into memory. Internally spawns the maximum
-	 * possible number of unpacking threads possible (as parameterized by settings).
-	 * @param reader   Reference to twk reader.
-	 * @param bit      Reference to a twk block iterator.
-	 * @param balancer Reference of a pre-computed load balancer.
-	 * @param settings Reference of a user-paramterized settings object.
-	 * @return         Returns TRUE upon success or FALSE otherwise.
-	 */
-	bool LoadAllBlocks(twk_reader& reader,
-	                   twk1_blk_iterator& bit,
-	                   const twk_ld_balancer& balancer,
-	                   const twk_ld_settings& settings);
 
 	/**<
 	 * Helper function to call Compute subroutine when passing a new settings
@@ -140,10 +62,7 @@ public:
 
 private:
 	class twk_ld_impl;
-	uint32_t n_blks, m_blks, n_vnts, n_tree;
-	twk1_block_t* ldd2;
 	twk_ld_settings settings;
-	twk_intervals intervals;
 	twk_ld_impl* mImpl;
 };
 

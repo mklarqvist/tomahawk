@@ -22,10 +22,8 @@ SOFTWARE.
 
 */
 /*
- Tomahawk:
- Modified to work with pointers to intervals
- Modified interval struct and added contigInterval struct
- Modified to uses signed 64-bit integers
+This header file has been modified relative the original implementation to suit
+the needs of Tomahawk. Also see the original header file for more information.
  */
 #ifndef __THIRD_PARTY_INTERVAL_TREE_H
 #define __THIRD_PARTY_INTERVAL_TREE_H

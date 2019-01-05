@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 #include "ld.h"
+#include "intervals.h"
 #include "fisher_math.h"
 #include "ld/ld_engine.h"
 #include "timer.h"
@@ -12,26 +13,106 @@ namespace tomahawk {
 // us to not having to include third party headers in our releases.
 class twk_ld::twk_ld_impl {
 public:
-	twk_ld_impl() : ldd(nullptr){}
-	~twk_ld_impl(){ delete[] ldd; }
+	twk_ld_impl() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd(nullptr), ldd2(nullptr){}
+	~twk_ld_impl(){ delete[] ldd; delete[] ldd2; }
 
+	/**<
+	 * Wrapper function for parsing interval strings.
+	 * @param reader Reference twk_reader instance.
+	 * @return       Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool ParseIntervalStrings(twk_reader& reader, const twk_ld_settings& settings){ return(intervals.ParseIntervalStrings(settings.ival_strings, reader.hdr)); }
+
+	/**<
+	 * Reads the desired tomahawk blocks given the balancer intervals. Internally
+	 * decides if the block slicing is based on the universal set of blocks or a
+	 * targetted subset (as decided by the interval slicing operation).
+	 * @param reader
+	 * @param bit
+	 * @param balancer
+	 * @param load
+	 * @return
+	 */
+	bool LoadBlocks(twk_reader& reader,
+					twk1_blk_iterator& bit,
+					const twk_ld_balancer& balancer,
+					const twk_ld_settings& settings);
+
+	/**<
+	 * Loading twk blocks for a single variant and its surrounding variants within
+	 * some distance and on the same chromosome. This function loads the target variant
+	 * in a single block and the other variants in separate blocks as usual. The
+	 * identity of the target site is parameterized in the settings object.
+	 * @param reader
+	 * @param bit
+	 * @param balancer
+	 * @param load
+	 * @return
+	 */
+	bool LoadTargetSingle(twk_reader& reader,
+						  twk1_blk_iterator& bit,
+						  const twk_ld_balancer& balancer,
+						  const twk_ld_settings& settings,
+						  const uint8_t load);
+
+	/**<
+	 * Construct interval container and trees given the pre-provided interval
+	 * strings.
+	 * @param reader
+	 * @param bit
+	 * @param load
+	 * @return
+	 */
+	bool BuildIntervals(twk_reader& reader, const twk_ld_settings& settings, twk1_blk_iterator& bit);
+
+	/**<
+	 * Loads only the target blocks that overlap with the given vector of interval
+	 * tuples as parameterized in the settings object.
+	 * @param reader   Reference to twk reader.
+	 * @param bit      Reference to a twk block iterator.
+	 * @param balancer Reference of a pre-computed load balancer.
+	 * @param settings Reference of a user-paramterized settings object.
+	 * @return         Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool LoadTargetBlocks(twk_reader& reader,
+						  twk1_blk_iterator& bit,
+						  const twk_ld_balancer& balancer,
+						  const twk_ld_settings& settings);
+
+	/**<
+	 * Loads all available twk blocks into memory. Internally spawns the maximum
+	 * possible number of unpacking threads possible (as parameterized by settings).
+	 * @param reader   Reference to twk reader.
+	 * @param bit      Reference to a twk block iterator.
+	 * @param balancer Reference of a pre-computed load balancer.
+	 * @param settings Reference of a user-paramterized settings object.
+	 * @return         Returns TRUE upon success or FALSE otherwise.
+	 */
+	bool LoadAllBlocks(twk_reader& reader,
+					   twk1_blk_iterator& bit,
+					   const twk_ld_balancer& balancer,
+					   const twk_ld_settings& settings);
+
+public:
+	uint32_t n_blks, m_blks, n_vnts, n_tree;
+	twk_intervals intervals;
 	twk1_ldd_blk* ldd;
+	twk1_block_t* ldd2;
 };
 
 
 /****************************
 *  twk_ld
 ****************************/
-twk_ld::twk_ld() : n_blks(0), m_blks(0), n_vnts(0), n_tree(0), ldd2(nullptr), mImpl(new twk_ld_impl)
+twk_ld::twk_ld() : mImpl(new twk_ld_impl)
 {
 }
 
 twk_ld::~twk_ld(){
-	delete[] ldd2;
 	delete mImpl;
 }
 
-bool twk_ld::LoadBlocks(twk_reader& reader,
+bool twk_ld::twk_ld_impl::LoadBlocks(twk_reader& reader,
 		twk1_blk_iterator& bit,
 		const twk_ld_balancer& balancer,
 		const twk_ld_settings& settings)
@@ -40,9 +121,10 @@ bool twk_ld::LoadBlocks(twk_reader& reader,
 	return(this->LoadAllBlocks(reader, bit, balancer, settings));
 }
 
-bool twk_ld::LoadTargetSingle(twk_reader& reader,
+bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 		twk1_blk_iterator& bit,
 		const twk_ld_balancer& balancer,
+		const twk_ld_settings& settings,
 		const uint8_t load)
 {
 	if(settings.ival_strings.size() == 0){ // if have interval strings
@@ -50,7 +132,7 @@ bool twk_ld::LoadTargetSingle(twk_reader& reader,
 	}
 
 	this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
-	if(this->ParseIntervalStrings(reader) == false)
+	if(this->ParseIntervalStrings(reader, settings) == false)
 		return false;
 
 	if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
@@ -62,7 +144,7 @@ bool twk_ld::LoadTargetSingle(twk_reader& reader,
 	return true;
 }
 
-bool twk_ld::BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit)
+bool twk_ld::twk_ld_impl::BuildIntervals(twk_reader& reader, const twk_ld_settings& settings, twk1_blk_iterator& bit)
 {
 	if(settings.ival_strings.size() == 0){ // if have interval strings
 		return false;
@@ -70,7 +152,7 @@ bool twk_ld::BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit)
 
 	this->intervals.ivecs.resize(reader.hdr.GetNumberContigs());
 	// Parse the literal interval strings into actual interval tuples.
-	if(this->ParseIntervalStrings(reader) == false)
+	if(this->ParseIntervalStrings(reader, settings) == false)
 		return false;
 
 	// Construct interval trees and find overlaps.
@@ -84,7 +166,7 @@ bool twk_ld::BuildIntervals(twk_reader& reader, twk1_blk_iterator& bit)
 	return true;
 }
 
-bool twk_ld::LoadTargetBlocks(twk_reader& reader,
+bool twk_ld::twk_ld_impl::LoadTargetBlocks(twk_reader& reader,
 		twk1_blk_iterator& bit,
 		const twk_ld_balancer& balancer,
 		const twk_ld_settings& settings)
@@ -100,7 +182,7 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 
 		n_blks = balancer.toR - balancer.fromR;
 		m_blks = balancer.toR - balancer.fromR;
-		mImpl->ldd = new twk1_ldd_blk[m_blks];
+		ldd    = new twk1_ldd_blk[m_blks];
 		ldd2   = new twk1_block_t[m_blks];
 	}
 	// Computation is square: e.g. (5,6) or (10,21).
@@ -110,7 +192,7 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 
 		n_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 		m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
-		mImpl->ldd    = new twk1_ldd_blk[m_blks];
+		ldd    = new twk1_ldd_blk[m_blks];
 		ldd2   = new twk1_block_t[m_blks];
 	}
 
@@ -136,8 +218,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[i] = std::move(bit.blk);
-				mImpl->ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
-				mImpl->ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
+				ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
+				ldd[i].Inflate(reader.hdr.GetNumberSamples(), settings.ldd_load_type, true);
 			}
 		} else {
 			uint32_t offset = 0;
@@ -149,8 +231,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[offset] = std::move(bit.blk);
-				mImpl->ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				mImpl->ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
+				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 
@@ -162,8 +244,8 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 				}
 
 				ldd2[offset] = std::move(bit.blk);
-				mImpl->ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
-				mImpl->ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
+				ldd[offset].SetOwn(ldd2[offset], reader.hdr.GetNumberSamples());
+				ldd[offset].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
 				++offset;
 			}
 		}
@@ -175,7 +257,7 @@ bool twk_ld::LoadTargetBlocks(twk_reader& reader,
 	return true;
 }
 
-bool twk_ld::LoadAllBlocks(twk_reader& reader,
+bool twk_ld::twk_ld_impl::LoadAllBlocks(twk_reader& reader,
 		twk1_blk_iterator& bit,
 		const twk_ld_balancer& balancer,
 		const twk_ld_settings& settings)
@@ -184,8 +266,8 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		return false;
 
 	// Delete old
-	delete[] mImpl->ldd; delete[] ldd2;
-	mImpl->ldd = nullptr; ldd2 = nullptr;
+	delete[] ldd; delete[] ldd2;
+	ldd = nullptr; ldd2 = nullptr;
 
 	if(balancer.diag){
 		//std::cerr << "is diag" << std::endl;
@@ -195,7 +277,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		m_blks = balancer.toR - balancer.fromR;
 		std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
 
-		mImpl->ldd  = new twk1_ldd_blk[m_blks];
+		ldd  = new twk1_ldd_blk[m_blks];
 		ldd2 = new twk1_block_t[m_blks];
 	} else {
 		//std::cerr << "is square" << std::endl;
@@ -205,7 +287,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 		m_blks = (balancer.toL - balancer.fromL) + (balancer.toR - balancer.fromR);
 		std::cerr << utility::timestamp("LOG") << "Allocating " << utility::ToPrettyString(m_blks) << " blocks..." << std::endl;
 
-		mImpl->ldd  = new twk1_ldd_blk[m_blks];
+		ldd  = new twk1_ldd_blk[m_blks];
 		ldd2 = new twk1_block_t[m_blks];
 	}
 
@@ -249,7 +331,7 @@ bool twk_ld::LoadAllBlocks(twk_reader& reader,
 	Timer timer; timer.Start();
 	twk_ld_unpacker* slaves = new twk_ld_unpacker[unpack_threads];
 	for(uint32_t i = 0; i < unpack_threads; ++i){
-		slaves[i].ldd  = mImpl->ldd;
+		slaves[i].ldd  = ldd;
 		slaves[i].ldd2 = ldd2;
 		slaves[i].rdr  = &reader;
 		slaves[i].resize = true;
@@ -318,26 +400,26 @@ bool twk_ld::Compute(){
 		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 	}
 
-	if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
+	if(settings.ival_strings.size() == 0) mImpl->n_blks = reader.index.n;
 	else {
-		if(this->BuildIntervals(reader, bit) == false)
+		if(this->mImpl->BuildIntervals(reader, settings, bit) == false)
 			return false;
 	}
 
 	if(settings.window) settings.c_chunk = 0;
 
 	twk_ld_balancer balancer;
-	if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
+	if(balancer.Build(mImpl->n_blks, settings.n_chunks, settings.c_chunk) == false){
 		return false;
 	}
 
 	std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 
-	if(this->LoadBlocks(reader, bit, balancer, settings) == false){
+	if(this->mImpl->LoadBlocks(reader, bit, balancer, settings) == false){
 		return false;
 	}
 
-	if(this->n_blks == 0){
+	if(mImpl->n_blks == 0){
 		std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
 		return true;
 	}
@@ -510,22 +592,22 @@ bool twk_ld::ComputePerformance(){
 		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 	}
 
-	if(settings.ival_strings.size() == 0) n_blks = reader.index.n;
+	if(settings.ival_strings.size() == 0) mImpl->n_blks = reader.index.n;
 	else {
-		if(this->BuildIntervals(reader, bit) == false)
+		if(this->mImpl->BuildIntervals(reader, settings, bit) == false)
 			return false;
 	}
 
 	if(settings.window) settings.c_chunk = 0;
 
 	twk_ld_balancer balancer;
-	if(balancer.Build(this->n_blks, settings.n_chunks, settings.c_chunk) == false){
+	if(balancer.Build(mImpl->n_blks, settings.n_chunks, settings.c_chunk) == false){
 		return false;
 	}
 
 	std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 
-	if(this->n_blks == 0){
+	if(mImpl->n_blks == 0){
 		std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
 		return true;
 	}
@@ -606,7 +688,7 @@ bool twk_ld::ComputePerformance(){
 		if(method == 2 || method == 3 || method == 4 || method == 6) continue;
 		std::cerr << utility::timestamp("LOG","PROGRESS") << "Starting method: " << method_names[method] << "..." << std::endl;
 		settings.ldd_load_type = unpack_list[method];
-		if(this->LoadBlocks(reader, bit, balancer, settings) == false){
+		if(this->mImpl->LoadBlocks(reader, bit, balancer, settings) == false){
 			return false;
 		}
 

@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 #include "index.h"
 #include "header.h"
 //
+#include "intervals.h"
 #include "zstd_codec.h"
 
 namespace tomahawk {
@@ -269,9 +270,6 @@ public:
 	// Todo
 	bool Aggregate(twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5);
 
-private:
-	class two_reader_impl;
-
 public:
 	std::streambuf* buf;
 	std::istream* stream;
@@ -282,8 +280,8 @@ public:
 	twk_two_filter filter;
 	twk1_two_iterator it;
 	ZSTDCodec zcodec;
-	//twk_intervals_two intervals;
-	two_reader_impl* mImpl;
+	twk_intervals_two intervals;
+	//two_reader_impl* mImpl;
 };
 
 }

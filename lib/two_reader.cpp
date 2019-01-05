@@ -66,26 +66,20 @@ bool twk1_two_iterator::NextRecord(){
 	return true;
 }
 
-// reader
-class two_reader::two_reader_impl {
-public:
-	twk_intervals_two intervals;
-};
-
-two_reader::two_reader() : buf(nullptr), stream(nullptr), mImpl(new two_reader_impl){}
-two_reader::~two_reader(){ delete stream; delete mImpl; }
+two_reader::two_reader() : buf(nullptr), stream(nullptr){}
+two_reader::~two_reader(){ delete stream; }
 
 bool two_reader::BuildIntervals(std::vector<std::string>& strings, const uint32_t n_contigs,
 		           const IndexOutput& index, const VcfHeader& hdr)
 {
-	return(mImpl->intervals.Build(strings, n_contigs, index, hdr));
+	return(intervals.Build(strings, n_contigs, index, hdr));
 }
 
-bool two_reader::FilterInterval(const twk1_two_t* rec) const { return(mImpl->intervals.FilterInterval(*rec)); }
-bool two_reader::FilterInterval(const twk1_two_t& rec) const { return(mImpl->intervals.FilterInterval(rec)); }
+bool two_reader::FilterInterval(const twk1_two_t* rec) const { return(intervals.FilterInterval(*rec)); }
+bool two_reader::FilterInterval(const twk1_two_t& rec) const { return(intervals.FilterInterval(rec)); }
 
-IndexEntryOutput* two_reader::GetIntervalBlock(const uint32_t p){ return(mImpl->intervals.GetOverlapBlock(p)); }
-const std::vector<IndexEntryOutput*>& two_reader::GetIntervalBlocks() const { return(mImpl->intervals.overlap_blocks); }
+IndexEntryOutput* two_reader::GetIntervalBlock(const uint32_t p){ return(intervals.GetOverlapBlock(p)); }
+const std::vector<IndexEntryOutput*>& two_reader::GetIntervalBlocks() const { return(intervals.overlap_blocks); }
 
 bool two_reader::Open(std::string file){
 	fstream.open(file, std::ios::in|std::ios::binary|std::ios::ate);
