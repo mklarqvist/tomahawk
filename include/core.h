@@ -703,19 +703,8 @@ const static uint8_t TWK_GT_BV_DATA_MISS_LOOKUP[16] = {0, 1, 0, 0, 2, 3, 0, 0, 0
 
 struct twk_igt_vec {
 public:
-	twk_igt_vec():
-		n(0),
-		front_zero(0),
-		tail_zero(0),
-		data(nullptr),
-		mask(nullptr)
-	{
-	}
-
-	~twk_igt_vec(){
-		aligned_free(data);
-		aligned_free(mask);
-	}
+	twk_igt_vec();
+	~twk_igt_vec();
 
 	inline void reset(void){ memset(this->data, 0, this->n*sizeof(uint64_t)); memset(this->mask, 0, this->n*sizeof(uint64_t)); }
 	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 64))); }
@@ -726,102 +715,14 @@ public:
 	inline void SetMask(const uint32_t p, const bool val){ this->mask[p/64] |= ((uint64_t)val << (p % 64)); }
 
 	/**<
-	 *
-	 * @param rec
-	 * @param n_samples
-	 * @param alignment
-	 * @return
+	 * Constructs a 1-bitvector from from the given compressed genotypes. The
+	 * bitvector is guaranteed to fit in the largest SIMD vector available and
+	 * has enforced memory boundary alignments according to the hardware.
+	 * @param rec       Input reference twk1_t record
+	 * @param n_samples Total number of samples.
+	 * @return          Returns TRUE upon success or FALSE otherwise.
 	 */
-	bool Build(const twk1_t& rec,
-	           const uint32_t& n_samples)
-	{
-		if(n == 0){
-			n = ceil((double)(n_samples*2)/64);
-			n += (n*64) % 128; // must be divisible by 128-bit register
-			data = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
-			if(rec.gt_missing){
-				mask = reinterpret_cast<uint64_t*>(aligned_malloc(n*sizeof(uint64_t), SIMD_ALIGNMENT));
-			}
-		}
-
-		memset(data, 0, n*sizeof(uint64_t));
-		if(rec.gt_missing)
-			memset(mask, 0, n*sizeof(uint64_t));
-
-		uint32_t cumpos = 0;
-		for(int i = 0; i < rec.gt->n; ++i){
-			const uint32_t len  = rec.gt->GetLength(i);
-			const uint8_t  refA = rec.gt->GetRefA(i);
-			const uint8_t  refB = rec.gt->GetRefB(i);
-
-			if(refA == 0 && refB == 0){
-				cumpos += 2*len;
-				continue;
-			}
-
-			for(int j = 0; j < 2*len; j+=2){
-				if(refA == 1){ this->SetData(cumpos + j + 0); }
-				if(refB == 1){ this->SetData(cumpos + j + 1); }
-				if(refA == 2){ this->SetMask(cumpos + j + 0); this->SetMask(cumpos + j + 1); }
-				if(refB == 2){ this->SetMask(cumpos + j + 0); this->SetMask(cumpos + j + 1); }
-			}
-			cumpos += 2*len;
-		}
-
-		if(rec.gt_missing){
-			// Invert mask
-			/*for(int i = 0; i < n; ++i){
-				mask[i] = ~mask[i];
-			}*/
-		}
-		assert(cumpos == n_samples*2);
-
-
-		const uint32_t byteAlignedEnd  = (2*n_samples/SIMD_WIDTH) * (SIMD_WIDTH / 64);
-
-		int j = 0;
-		if(rec.gt_missing){
-			// Search from left->right
-			for(; j < byteAlignedEnd; ++j){
-				if(this->data[j] != 0 || this->mask[j] != 0)
-					break;
-			}
-
-			// Front of zeroes
-			this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
-			if(j != byteAlignedEnd){
-				j = byteAlignedEnd - 1;
-				for(; j > 0; --j){
-					if(this->data[j] != 0 || this->mask[j] != 0)
-						break;
-				}
-			}
-		}
-		// If no data is missing then we have no mask. Run this subroutine instead
-		// to avoid memory problems.
-		else {
-			// Search from left->right
-			for(; j < byteAlignedEnd; ++j){
-				if(this->data[j] != 0)
-					break;
-			}
-
-			// Front of zeroes
-			this->front_zero = ((j - 1 < 0 ? 0 : j - 1)*4)/GENOTYPE_TRIP_COUNT;
-			if(j != byteAlignedEnd){
-				j = byteAlignedEnd - 1;
-				for(; j > 0; --j){
-					if(this->data[j] != 0)
-						break;
-				}
-			}
-		}
-
-		// Tail of zeroes
-		this->tail_zero = byteAlignedEnd == j ? 0 : ((byteAlignedEnd - (j+1))*4)/GENOTYPE_TRIP_COUNT;
-
-		return(true);
-	}
+	bool Build(const twk1_t& rec, const uint32_t& n_samples);
 
 public:
 	uint32_t  n; // n bytes, m allocated entries
@@ -831,46 +732,13 @@ public:
 	uint64_t* mask;
 };
 
-// gtocc
-struct twk_gtocc {
-	twk_gtocc(): n(0), cumpos(nullptr){}
-	twk_gtocc(const uint32_t n_s): n(n_s+1), cumpos(new uint32_t*[n]){
-		for(int i = 0; i < n; ++i){
-			cumpos[i] = new uint32_t[16];
-			memset(cumpos[i], 0, sizeof(uint32_t)*16);
-		}
-	}
-	~twk_gtocc(){
-		for(int i = 0; i < n; ++i) delete [] cumpos[i];
-		delete[] cumpos;
-	}
-
-	void operator=(const twk1_gt_t* gt){
-		assert(n != 0);
-		for(int i = 0; i < n; ++i) memset(cumpos[i], 0, sizeof(uint32_t)*16);
-		uint32_t cum = 0;
-		for(int i = 0; i < gt->n; ++i){
-			const uint32_t l = gt->GetLength(i);
-			const uint8_t ref = gt->GetRefByte(i);
-			for(int j = 0; j < l; ++j){
-
-			}
-		}
-	}
-
-	uint32_t n;
-	// <0,0> <0,1> <0,2> <1,0> <1,1> <1,2> <2,0> <2,1> <2,2>
-	uint32_t** cumpos;
-};
-
-
 // output
 struct twk1_two_t {
 public:
-	const static uint32_t packed_size = sizeof(uint16_t) + 2*sizeof(int32_t) + 2*sizeof(uint32_t) + 11*sizeof(double);
+	const static uint32_t packed_size = sizeof(uint16_t) + 2*sizeof(int32_t) +
+	                                    2*sizeof(uint32_t) + 11*sizeof(double);
 
-	twk1_two_t() :
-		controller(0), ridA(0), ridB(0), Amiss(0), Aphased(0), Apos(0), Bmiss(0), Bphased(0), Bpos(0), R(0), R2(0), D(0), Dprime(0), P(0), ChiSqModel(0), ChiSqFisher(0){ memset(cnt, 0, sizeof(double)*4); }
+	twk1_two_t();
 	~twk1_two_t() = default;
 
 	inline double& operator[](const uint32_t& p){ return(this->cnt[p]); }
@@ -878,87 +746,6 @@ public:
 
 	void PrintUnphasedCounts(void) const;
 	void PrintPhasedCounts(void) const;
-
-	friend twk_buffer_t& operator<<(twk_buffer_t& os, const twk1_two_t& entry){
-		SerializePrimitive(entry.controller, os);
-		SerializePrimitive(entry.ridA, os);
-		SerializePrimitive(entry.ridB, os);
-		uint32_t packA = entry.Apos << 2 | entry.Aphased << 1 | entry.Amiss;
-		uint32_t packB = entry.Bpos << 2 | entry.Bphased << 1 | entry.Bmiss;
-		SerializePrimitive(packA, os);
-		SerializePrimitive(packB, os);
-		SerializePrimitive(entry.cnt[0], os);
-		SerializePrimitive(entry.cnt[1], os);
-		SerializePrimitive(entry.cnt[2], os);
-		SerializePrimitive(entry.cnt[3], os);
-		SerializePrimitive(entry.D, os);
-		SerializePrimitive(entry.Dprime, os);
-		SerializePrimitive(entry.R, os);
-		SerializePrimitive(entry.R2, os);
-		SerializePrimitive(entry.P, os);
-		SerializePrimitive(entry.ChiSqFisher, os);
-		SerializePrimitive(entry.ChiSqModel, os);
-		return os;
-	}
-
-	friend twk_buffer_t& operator>>(twk_buffer_t& os, twk1_two_t& entry){
-		DeserializePrimitive(entry.controller, os);
-		DeserializePrimitive(entry.ridA, os);
-		DeserializePrimitive(entry.ridB, os);
-		uint32_t packA = 0;
-		uint32_t packB = 0;
-		DeserializePrimitive(packA, os);
-		DeserializePrimitive(packB, os);
-		entry.Apos = packA >> 2;
-		entry.Bpos = packB >> 2;
-		entry.Aphased = (packA >> 1) & 1;
-		entry.Bphased = (packB >> 1) & 1;
-		entry.Amiss = packA & 1;
-		entry.Bmiss = packB & 1;
-		DeserializePrimitive(entry.cnt[0], os);
-		DeserializePrimitive(entry.cnt[1], os);
-		DeserializePrimitive(entry.cnt[2], os);
-		DeserializePrimitive(entry.cnt[3], os);
-		DeserializePrimitive(entry.D, os);
-		DeserializePrimitive(entry.Dprime, os);
-		DeserializePrimitive(entry.R, os);
-		DeserializePrimitive(entry.R2, os);
-		DeserializePrimitive(entry.P, os);
-		DeserializePrimitive(entry.ChiSqFisher, os);
-		DeserializePrimitive(entry.ChiSqModel, os);
-		return(os);
-	}
-
-	/**<
-	 * Print out record in uncompressed LD format.
-	 * @param os
-	 * @return
-	 */
-	std::ostream& PrintLD(std::ostream& os) const {
-		os << controller << '\t' << ridA << '\t' << Apos << '\t' << ridB << '\t' << Bpos << '\t'
-		   << cnt[0] << '\t' << cnt[1] << '\t' << cnt[2] << '\t' << cnt[3] << '\t' << D << '\t'
-		   << Dprime << '\t' << R << '\t' << R2 << '\t' << P << '\t' << ChiSqFisher << '\t' << ChiSqModel << '\n';
-		return(os);
-	}
-
-	/**<
-	 * Print out JSON
-	 * @param os
-	 * @return
-	 */
-	std::ostream& PrintLDJson(std::ostream& os) const {
-		os << '[' << controller << ',' << ridA << ',' << Apos << ',' << ridB << ',' << Bpos << ','
-		   << cnt[0] << ',' << cnt[1] << ',' << cnt[2] << ',' << cnt[3] << ',' << D << ','
-		   << Dprime << ',' << R << ',' << R2 << ',' << P << ',' << ChiSqFisher << ',' << ChiSqModel << ']' << '\n';
-		return(os);
-	}
-
-	friend std::ostream& operator<<(std::ostream& os, const twk1_two_t& entry){
-		os << entry.controller << '\t' << entry.ridA << '\t' << entry.Apos << '\t' << entry.ridB << '\t' << entry.Bpos << '\t'
-		   << entry.cnt[0] << '\t' << entry.cnt[1] << '\t' << entry.cnt[2] << '\t' << entry.cnt[3] << '\t'
-		   << entry.D << '\t' << entry.Dprime << '\t' << entry.R << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.ChiSqFisher << '\t' << entry.ChiSqModel;
-		return os;
-	}
 
 	inline void SetUsedPhasedMath(const bool yes = true)   { this->controller |= yes << 0;  } // 1
 	inline void SetSameContig(const bool yes = true)       { this->controller |= yes << 1;  } // 2
@@ -973,28 +760,45 @@ public:
 	inline void SetLowACA(const bool yes = true)           { this->controller |= yes << 10; } // 1024
 	inline void SetLowACB(const bool yes = true)           { this->controller |= yes << 11; } // 2048
 
-	void clear(){
-		controller = 0; ridA = 0; ridB = 0;
-		Amiss = 0; Aphased = 0; Apos = 0;
-		Bmiss = 0; Bphased = 0; Bpos = 0;
-		R = 0; R2 = 0; D = 0; Dprime = 0; P = 0;
-		ChiSqModel = 0; ChiSqFisher = 0;
-		memset(cnt, 0, sizeof(double)*4);
-	}
+	void clear();
+	bool operator<(const twk1_two_t& other) const;
 
-	bool operator<(const twk1_two_t& other) const{
-		if(ridA < other.ridA) return true;
-		if(other.ridA < ridA) return false;
-		if(ridB < other.ridB) return true;
-		if(other.ridB < ridB) return false;
-		if(Apos < other.Apos) return true;
-		if(other.Apos < Apos) return false;
-		if(Bpos < other.Bpos) return true;
-		if(other.Bpos < Bpos) return false;
-		return false;
-	}
+	/**<
+	 * Print out record in uncompressed LD format. Note that contig
+	 * identifiers will be written in lieu of contig names.
+	 * @param os Ouput ostream reference.
+	 * @return   Returns the output ostream reference.
+	 */
+	std::ostream& PrintLD(std::ostream& os) const;
+
+	/**<
+	 * Print out JSON to a given ostream. Note that contig identifiers
+	 * will be written in lieu of contig names.
+	 * @param os Ouput ostream reference.
+	 * @return   Returns the output ostream reference.
+	 */
+	std::ostream& PrintLDJson(std::ostream& os) const;
+
+	friend twk_buffer_t& operator<<(twk_buffer_t& os, const twk1_two_t& entry);
+	friend twk_buffer_t& operator>>(twk_buffer_t& os, twk1_two_t& entry);
+	friend std::ostream& operator<<(std::ostream& os, const twk1_two_t& entry);
 
 public:
+	/**<
+	 * The controller is a 16-bit vector of flags:
+	 *    1: Used phased math.
+	 *    2: Acceptor and donor variants are on the same contig.
+	 *    3: Acceptor and donor variants are far apart on the same contig.
+	 *    4: The output contingency matrix has at least one empty cell (referred to as complete).
+	 *    5: Output correlation coefficient is perfect (1.0).
+	 *    6: Output solution is one of >1 possible solutions. This only occurs for unphased pairs.
+	 *    7: Output data was generated in 'fast mode'.
+	 *    8: Output data is estimated from a subsampling of the total pool of genotypes.
+	 *    9: Donor vector has missing value(s).
+	 *    10: Acceptor vector has missing value(s).
+	 *    11: Donor vector has low allele count.
+	 *    12: Acceptor vector has low allele count.
+	 */
 	uint16_t controller;
 	uint32_t ridA, ridB;
 	uint32_t Amiss: 1, Aphased: 1, Apos: 30;
@@ -1002,44 +806,20 @@ public:
 	double R, R2, D, Dprime, P;
 	double ChiSqModel;   // Chi-Squared critical value for 3x3 contingency table
 	double ChiSqFisher;  // Chi-Squared critical value for 2x2 contingency table
-	double cnt[4];
+	double cnt[4];       // REFREF,REFALT,ALTREF,ALTALT
 };
 
 
 struct twk_oblock_two_t {
 public:
-	twk_oblock_two_t() : n(0), nc(0){}
+	twk_oblock_two_t();
 
 	inline void operator+=(const twk1_two_t& entry){ bytes << entry; }
 
-	void Write(std::ostream& stream, const uint32_t n, const uint32_t nc, const twk_buffer_t& buffer){
-		uint8_t marker = 1;
-		SerializePrimitive(marker, stream);
-		SerializePrimitive(n, stream);
-		SerializePrimitive(nc, stream);
-		stream.write(buffer.data(), buffer.size());
-	}
+	void Write(std::ostream& stream, const uint32_t n, const uint32_t nc, const twk_buffer_t& buffer);
 
-	friend std::ostream& operator<<(std::ostream& stream, const twk_oblock_two_t& self){
-		uint8_t marker = 1;
-		SerializePrimitive(marker, stream);
-		SerializePrimitive(self.n, stream);
-		SerializePrimitive(self.nc, stream);
-		assert(self.nc == self.bytes.size());
-		stream.write(self.bytes.data(), self.bytes.size());
-		return(stream);
-	}
-
-	friend std::istream& operator>>(std::istream& stream, twk_oblock_two_t& self){
-		// marker has to be read outside
-		self.bytes.reset();
-		DeserializePrimitive(self.n,  stream);
-		DeserializePrimitive(self.nc, stream);
-		self.bytes.reset(); self.bytes.resize(self.nc);
-		stream.read(self.bytes.data(), self.nc);
-		self.bytes.n_chars_ = self.nc;
-		return(stream);
-	}
+	friend std::ostream& operator<<(std::ostream& stream, const twk_oblock_two_t& self);
+	friend std::istream& operator>>(std::istream& stream, twk_oblock_two_t& self);
 
 public:
 	uint32_t n, nc;
@@ -1058,45 +838,15 @@ public:
 	typedef std::size_t        size_type;
 
 public:
-   	twk1_two_block_t() : n(0), m(0), rcds(nullptr){}
-   	twk1_two_block_t(const uint32_t p): n(0), m(p), rcds(new twk1_two_t[p]){}
-	~twk1_two_block_t(){ delete[] rcds; }
+   	twk1_two_block_t();
+   	twk1_two_block_t(const uint32_t p);
+	~twk1_two_block_t();
 
 	inline twk1_two_block_t& operator+=(const twk1_two_t& rec){ return(this->Add(rec)); }
-	twk1_two_block_t& Add(const twk1_two_t& rec){
-		if(n == m) this->resize(); // will also trigger when n=0 and m=0
-		rcds[n++] = rec;
-		return(*this);
-	}
+	twk1_two_block_t& Add(const twk1_two_t& rec);
 
-	void resize(const uint32_t p){
-		if(p < n) return;
-
-		//std::cerr << "resizing to " << p << " @ " << n << "/" << m << std::endl;
-
-		twk1_two_t* temp = rcds;
-		rcds = new twk1_two_t[p];
-		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
-		delete[] temp;
-		m = p;
-	}
-
-	void resize(void){
-		if(this->rcds == nullptr){
-			this->rcds = new twk1_two_t[500];
-			this->n = 0;
-			this->m = 500;
-			return;
-		}
-		//std::cerr << "resizing=" << n << "/" << m << std::endl;
-
-		twk1_two_t* temp = rcds;
-		rcds = new twk1_two_t[m*2];
-		for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
-		delete[] temp;
-		m*=2;
-	}
-
+	void resize(const uint32_t p);
+	void resize(void);
 	void reserve(const uint32_t p);
 
 	inline const uint32_t& size(void) const{ return(this->n); }
@@ -1116,37 +866,12 @@ public:
 	inline pointer end(void){ return(&this->rcds[this->n]); }
 	inline const_pointer end(void) const{ return(&this->rcds[this->n]); }
 
+	void reset();
+	void clear();
+	bool Sort();
 
-	void reset(){
-		n = 0;
-	}
-
-	void clear(){
-		delete[] rcds; rcds = nullptr;
-		n = 0; m = 0;
-	}
-
-	bool Sort(){
-		//std::cerr << "sorting=" << n << std::endl;
-		std::sort(start(), end());
-		return(true);
-	}
-
-	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_two_block_t& self){
-		SerializePrimitive(self.n, buffer);
-		SerializePrimitive(self.m, buffer);
-		for(int i = 0; i < self.n; ++i) buffer << self.rcds[i];
-		return(buffer);
-	}
-
-	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_two_block_t& self){
-		delete[] self.rcds; self.rcds = nullptr;
-		DeserializePrimitive(self.n, buffer);
-		DeserializePrimitive(self.m, buffer);
-		self.rcds = new twk1_two_t[self.m];
-		for(int i = 0; i < self.n; ++i) buffer >> self.rcds[i];
-		return(buffer);
-	}
+	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_two_block_t& self);
+	friend twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_two_block_t& self);
 
 public:
 	uint32_t n, m;
@@ -1191,11 +916,11 @@ struct twk_sstats {
         this->max = value > max ? value : max;
     }
 
-    void AddR2(const twk1_two_t* rec){ Add(rec->R2); }
-    void AddR(const twk1_two_t* rec){ Add(rec->R); }
-    void AddD(const twk1_two_t* rec){ Add(rec->D); }
+    void AddR2(const twk1_two_t* rec)  { Add(rec->R2); }
+    void AddR(const twk1_two_t* rec)   { Add(rec->R);  }
+    void AddD(const twk1_two_t* rec)   { Add(rec->D);  }
     void AddDprime(const twk1_two_t* rec){ Add(rec->Dprime); }
-    void AddP(const twk1_two_t* rec){ Add(rec->P); }
+    void AddP(const twk1_two_t* rec)   { Add(rec->P);  }
     void AddHets(const twk1_two_t* rec){
         Add((rec->cnt[1] + rec->cnt[2]) / (rec->cnt[0] + rec->cnt[1] + rec->cnt[2] + rec->cnt[3]));
     }

@@ -26,7 +26,6 @@ LIBVER_MAJOR_SCRIPT:=`sed -n '/const int32_t TOMAHAWK_VERSION_MAJOR = /s/.*[[:bl
 LIBVER_MINOR_SCRIPT:=`sed -n '/const int32_t TOMAHAWK_VERSION_MINOR = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < include/tomahawk.h`
 LIBVER_PATCH_SCRIPT:=`sed -n '/const int32_t TOMAHAWK_VERSION_PATCH = /s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < include/tomahawk.h`
 LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
-LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
 LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
 LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
 LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
@@ -167,16 +166,13 @@ install: $(PROGRAMS)
 	$(INSTALL_LIB) libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT).$(LIBVER)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/ltomahawk.$(SHARED_EXT)
-  	#$(INSTALL_PROGRAM) twk $(DESTDIR)$(bindir)
-	#$(INSTALL_SCRIPT) $(MISC_SCRIPTS) $(DESTDIR)$(misc_bindir)
-	#$(INSTALL_MAN) doc/bcftools.1 $(DESTDIR)$(man1dir)
-	#$(INSTALL_PROGRAM) plugins/*.so $(DESTDIR)$(plugindir)
+  	#$(INSTALL_MAN) doc/tomahawk.1 $(DESTDIR)$(man1dir)
 
 # Clean procedures
 cleanmost:
 	rm -f $(OBJECTS) $(CPP_DEPS)
 
 clean: cleanmost clean_examples
-	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so
+	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so libtomahawk.a
 
 .PHONY: all clean clean_examples cleanmost library install

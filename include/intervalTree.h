@@ -25,8 +25,8 @@ SOFTWARE.
 This header file has been modified relative the original implementation to suit
 the needs of Tomahawk. Also see the original header file for more information.
  */
-#ifndef __THIRD_PARTY_INTERVAL_TREE_H
-#define __THIRD_PARTY_INTERVAL_TREE_H
+#ifndef __TWK_THIRD_PARTY_INTERVAL_TREE_H
+#define __TWK_THIRD_PARTY_INTERVAL_TREE_H
 
 #include <vector>
 #include <algorithm>
@@ -94,19 +94,20 @@ static inline int64_t intervalStop(const Interval<T,K>& i) {
 template <class Scalar, class Value>
 class IntervalTree {
 public:
+    typedef class IntervalTree<Scalar, Value> self_type;
     typedef Interval<Scalar, Value> interval;
     typedef std::vector<interval> interval_vector;
 
 
     struct IntervalStartCmp {
         bool operator()(const interval& a, const interval& b) {
-            return a.start < b.start;
+            return((a.start) < (b.start));
         }
     };
 
     struct IntervalStopCmp {
         bool operator()(const interval& a, const interval& b) {
-            return a.stop < b.stop;
+            return((a.stop) < (b.stop));
         }
     };
 
@@ -118,21 +119,21 @@ public:
 
     ~IntervalTree() = default;
 
-    std::unique_ptr<IntervalTree> clone() const {
-        return std::unique_ptr<IntervalTree>(new IntervalTree(*this));
+    std::unique_ptr<self_type> clone() const {
+        return std::unique_ptr<self_type>(new self_type(*this));
     }
 
-    IntervalTree(const IntervalTree& other)
+    IntervalTree(const self_type& other)
     :   intervals(other.intervals),
         left(other.left ? other.left->clone() : nullptr),
         right(other.right ? other.right->clone() : nullptr),
         center(other.center)
     {}
 
-    IntervalTree& operator=(IntervalTree&&) = default;
-    IntervalTree(IntervalTree&&) = default;
+    self_type& operator=(self_type&&) = default;
+    IntervalTree(self_type&&) = default;
 
-    IntervalTree& operator=(const IntervalTree& other) {
+    self_type& operator=(const self_type& other) {
         center    = other.center;
         intervals = other.intervals;
         left      = other.left  ? other.left->clone() : nullptr;
@@ -188,13 +189,13 @@ public:
             for (typename interval_vector::const_iterator i = ivals.begin();
                  i != ivals.end(); ++i) {
                 const interval& interval = *i;
-                if (interval.stop < center) {
+                if ((interval.stop) < center) {
                     lefts.push_back(interval);
-                } else if (interval.start > center) {
+                } else if ((interval.start) > center) {
                     rights.push_back(interval);
                 } else {
-                    assert(interval.start <= center);
-                    assert(center <= interval.stop);
+                    assert((interval.start) <= center);
+                    assert(center <= (interval.stop));
                     intervals.push_back(interval);
                 }
             }
