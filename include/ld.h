@@ -51,7 +51,7 @@ public:
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Compute(const twk_ld_settings& settings);
-	bool ComputeSingle(const twk_ld_settings& settings);
+	bool ComputeSingle(const twk_ld_settings& settings, bool verbose = false, bool progress = true);
 
 	/**<
 	 * Main subroutine for computing linkage-disequilibrium as contextually
@@ -59,7 +59,7 @@ public:
 	 * @return Returns TRUE upon success or FALSE otherwise.
 	 */
 	bool Compute();
-	bool ComputeSingle();
+	bool ComputeSingle(bool verbose = false, bool progress = true);
 	bool ComputePerformance();
 
 private:

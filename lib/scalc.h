@@ -188,6 +188,6 @@ int scalc(int argc, char** argv){
 	settings.minR2 = 0;
 
 	tomahawk::twk_ld ld;
-	if(ld.ComputeSingle(settings) == false) return 1;
+	if(ld.ComputeSingle(settings, true, true) == false) return 1;
 	return 0;
 }

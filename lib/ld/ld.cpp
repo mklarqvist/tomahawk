@@ -445,9 +445,9 @@ bool twk_ld::Compute(const twk_ld_settings& settings){
 	return(Compute());
 }
 
-bool twk_ld::ComputeSingle(const twk_ld_settings& settings){
+bool twk_ld::ComputeSingle(const twk_ld_settings& settings, bool verbose, bool progress){
 	this->settings = settings;
-	return(ComputeSingle());
+	return(ComputeSingle(verbose, progress));
 }
 
 bool twk_ld::Compute(){
@@ -644,7 +644,7 @@ bool twk_ld::Compute(){
 	return true;
 }
 
-bool twk_ld::ComputeSingle(){
+bool twk_ld::ComputeSingle(bool verbose, bool progress){
 	if(settings.in.size() == 0){
 		std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
 		return false;
@@ -670,7 +670,7 @@ bool twk_ld::ComputeSingle(){
 		return false;
 	}
 
-	std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
+	if(verbose) std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
 
 	twk_reader reader;
 	if(reader.Open(settings.in) == false){
@@ -678,7 +678,7 @@ bool twk_ld::ComputeSingle(){
 		return false;
 	}
 
-	std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
+	if(verbose) std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
 
 	twk1_blk_iterator bit;
 	bit.stream = reader.stream;
@@ -710,7 +710,7 @@ bool twk_ld::ComputeSingle(){
 	if(balancer.BuildSingleSite(mImpl->n_blks, settings.n_chunks, settings.c_chunk) == false)
 		return false;
 
-	std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
+	if(verbose) std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 
 	if(mImpl->n_blks == 0){
 		std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
@@ -724,7 +724,7 @@ bool twk_ld::ComputeSingle(){
 	if(balancer.diag){
 		for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
 		n_comparisons = ((uint64_t)n_variants * n_variants - n_variants) / 2;
-		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
+		if(verbose) std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
 	} else {
 		uint32_t n_variants_left = 0, n_variants_right = 0;
 		for(int i = balancer.fromL; i < balancer.toL; ++i){
@@ -736,20 +736,23 @@ bool twk_ld::ComputeSingle(){
 			n_variants_left += reader.index.ent[i].n;
 		}
 		n_comparisons = n_variants_left * n_variants_right;
-		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants (" << utility::ToPrettyString(n_variants_left) << "," << utility::ToPrettyString(n_variants_right) << ") from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
+		if(verbose) std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants (" << utility::ToPrettyString(n_variants_left) << "," << utility::ToPrettyString(n_variants_right) << ") from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
 	}
-	std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
-	std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_comparisons) << " variant comparisons..." << std::endl;
+
+	if(verbose){
+		std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
+		std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_comparisons) << " variant comparisons..." << std::endl;
+	}
 
 	twk_ld_dynamic_balancer ticker;
 	ticker = balancer;
 	ticker.SetWindow(settings.window, settings.l_window);
 	ticker.ldd = mImpl->ldd;
 
-	twk_ld_progress progress;
-	progress.n_s = reader.hdr.GetNumberSamples();
+	twk_ld_progress progression;
+	progression.n_s = reader.hdr.GetNumberSamples();
 	if(settings.window == false){
-		progress.n_cmps = n_comparisons;
+		progression.n_cmps = n_comparisons;
 	}
 	twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
 	std::vector<std::thread*> threads(settings.n_threads);
@@ -757,7 +760,7 @@ bool twk_ld::ComputeSingle(){
 	// Start writing file.
 	twk_two_writer_t* writer = nullptr;
 	if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
-		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
+		if(verbose) std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
 		writer = new twk_two_writer_t;
 	} else {
 		std::string base_path = twk_writer_t::GetBasePath(settings.out);
@@ -771,7 +774,7 @@ bool twk_ld::ComputeSingle(){
 			 settings.out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
 		}
 
-		std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
+		if(verbose) std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
 		writer = new twk_two_writer_t;
 		if(writer->Open(settings.out) == false){
 			std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
@@ -795,39 +798,41 @@ bool twk_ld::ComputeSingle(){
 	IndexOutput index(reader.hdr.GetNumberContigs());
 
 	timer.Start();
-	std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
+	if(verbose) std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].ldd    = mImpl->ldd;
 		slaves[i].n_s    = reader.hdr.GetNumberSamples();
 		slaves[i].ticker = &ticker;
 		slaves[i].engine.SetSamples(reader.hdr.GetNumberSamples());
 		slaves[i].engine.SetBlocksize(settings.b_size);
-		slaves[i].engine.progress = &progress;
+		slaves[i].engine.progress = &progression;
 		slaves[i].engine.writer   = writer;
 		slaves[i].engine.index    = &index;
 		slaves[i].engine.settings = settings;
-		slaves[i].progress = &progress;
+		slaves[i].progress = &progression;
 		slaves[i].settings = &settings;
 		threads[i] = slaves[i].Start();
-		std::cerr << ".";
+		if(verbose) std::cerr << ".";
 	}
-	std::cerr << std::endl;
+	if(verbose) std::cerr << std::endl;
 
-	progress.Start();
+	if(progress) progression.Start();
 
 	for(int i = 0; i < settings.n_threads; ++i) threads[i]->join();
 	for(int i = 0; i < settings.n_threads; ++i) slaves[i].engine.CompressBlock();
-	progress.is_ticking = false;
-	progress.PrintFinal();
+	progression.is_ticking = false;
+	if(progress) progression.PrintFinal();
 	writer->stream.flush();
 
-	std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
-	for(int i = 0; i < settings.n_threads; ++i){
-		std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
-		for(int j = 0; j < 8; ++j){
-			std::cerr << "\t" << utility::ToPrettyString(slaves[i].engine.n_method[j]);
+	if(verbose){
+		std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
+		for(int i = 0; i < settings.n_threads; ++i){
+			std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
+			for(int j = 0; j < 8; ++j){
+				std::cerr << "\t" << utility::ToPrettyString(slaves[i].engine.n_method[j]);
+			}
+			std::cerr << std::endl;
 		}
-		std::cerr << std::endl;
 	}
 
 	//std::cerr << "performed=" << ticker.n_perf << std::endl;
@@ -837,7 +842,7 @@ bool twk_ld::ComputeSingle(){
 	}
 
 	delete[] slaves; delete writer;
-	std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
+	if(verbose) std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
 
 	return true;
 }
