@@ -269,7 +269,7 @@ public:
 
 	// Todo
 	//bool Aggregate(twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5);
-	bool Aggregate(twk1_aggregate_t& out, twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5);
+	bool Aggregate(twk1_aggregate_t& out, twk_two_settings& settings, std::string agg_name, std::string red_name, int32_t xbins = 1000, int32_t ybins = 1000, int32_t min_cutoff = 5, bool verbose = false, bool progress = false);
 
 public:
 	std::streambuf* buf;
