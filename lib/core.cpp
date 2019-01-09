@@ -578,18 +578,30 @@ std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg){
 }
 
 bool twk1_aggregate::Open(std::string input){
-	if(input.size() == 0) return false;
+	if(input.size() == 0){
+		std::cerr << utility::timestamp("ERROR") << "No input path provided..." << std::endl;
+		return false;
+	}
 
 	std::ifstream in;
 	in.open(input, std::ios::in|std::ios::binary|std::ios::ate);
-	if(in.good() == false) return false;
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "Could not open path \"" << input << "\"!" << std::endl;
+		return false;
+	}
 	uint64_t fsize = in.tellg();
 	in.seekg(0);
 
 	char magic[TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH];
 	in.read(&magic[0], TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
-	if(in.good() == false) return false;
-	if(strncmp(magic, TOMAHAWK_AGGREGATE_MAGIC_HEADER.data(), TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH) != 0) return false;
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
+		return false;
+	}
+	if(strncmp(magic, TOMAHAWK_AGGREGATE_MAGIC_HEADER.data(), TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH) != 0){
+		std::cerr << utility::timestamp("ERROR") << "Incorrect magic string in file header..." << std::endl;
+		return false;
+	}
 
 	DeserializePrimitive(n, in);
 	DeserializePrimitive(x, in);
@@ -599,7 +611,11 @@ bool twk1_aggregate::Open(std::string input){
 	DeserializePrimitive(n_original, in);
 	DeserializePrimitive(range, in);
 	DeserializeString(filename, in);
-	if(in.good() == false) return false;
+
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
+		return false;
+	}
 
 	// Write rid tuples.
 	uint32_t n_rid = 0;
@@ -612,7 +628,10 @@ bool twk1_aggregate::Open(std::string input){
 		DeserializePrimitive(rid_offsets[i].max, in);
 		DeserializePrimitive(rid_offsets[i].range, in);
 	}
-	if(in.good() == false) return false;
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
+		return false;
+	}
 
 	uint32_t obuf_size = 0;
 	DeserializePrimitive(obuf_size, in);
@@ -621,8 +640,14 @@ bool twk1_aggregate::Open(std::string input){
 	twk_buffer_t ibuf, obuf;
 	ibuf.resize(obuf_size);
 	in.read(ibuf.data(), obuf_size);
-	if(in.good() == false) return false;
-	if(in.tellg() != fsize - TOMAHAWK_TWOAGG_EOF_LENGTH) return false;
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
+		return false;
+	}
+	if(in.tellg() != fsize - TOMAHAWK_TWOAGG_EOF_LENGTH){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted (incorrect position)..." << std::endl;
+		return false;
+	}
 
 	zcodec.Decompress(obuf, ibuf);
 
@@ -634,10 +659,16 @@ bool twk1_aggregate::Open(std::string input){
 	for(int i = 0; i < n; ++i) data[i] = ibuf_double[i];
 
 	//in.seekg(fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
-	if(in.good() == false) return false;
+	if(in.good() == false){
+		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
+		return false;
+	}
 	char eof[TOMAHAWK_TWOAGG_EOF_LENGTH];
 	in.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
-	if(strncmp(eof, TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH) != 0) return false;
+	if(strncmp(eof, TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH) != 0){
+		std::cerr << utility::timestamp("ERROR") << "Failed to validate footer EOF marker..." << std::endl;
+		return false;
+	}
 
 	return true;
 }
