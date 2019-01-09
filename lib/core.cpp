@@ -635,7 +635,6 @@ bool twk1_aggregate_t::Open(std::string input){
 
 	uint32_t obuf_size = 0;
 	DeserializePrimitive(obuf_size, in);
-	std::cerr << "retrieving=" << obuf_size << std::endl;
 
 	ZSTDCodec zcodec;
 	twk_buffer_t ibuf, obuf;

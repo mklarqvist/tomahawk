@@ -4,6 +4,7 @@
 #include "intervals.h"
 #include "writer.h"
 #include "two_sorter_structs.h"
+#include "aggregation.h"
 
 namespace tomahawk {
 
@@ -532,5 +533,309 @@ bool two_reader::PositionalDecay(twk_two_settings& settings){
 
     return true;
 }
+
+// aggregation
+bool two_reader::Aggregate(twk1_aggregate_t& agg,
+		twk_two_settings& settings,
+		std::string agg_name, std::string red_name,
+		int32_t xbins, int32_t ybins,
+		int32_t min_cutoff)
+{
+	if(agg_name.size() == 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "No aggregation function (-f) provided..." << std::endl;
+		return(false);
+	}
+
+	if(red_name.size() == 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "No reduce function (-r) provided..." << std::endl;
+		return(false);
+	}
+
+	if(min_cutoff < 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have a min-cutoff (-c) < 0..." << std::endl;
+		return(false);
+	}
+
+	if(settings.n_threads <= 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have <= 0 threads (-t)..." << std::endl;
+		return(false);
+	}
+	twk_sstats::aggfunc f = &tomahawk::twk_sstats::AddR2;
+	twk_sstats::redfunc r = &tomahawk::twk_sstats::GetMean;
+
+	// Transform string of aggregation function name into lower then try to map
+	// name to existing function names.
+	std::transform(agg_name.begin(), agg_name.end(), agg_name.begin(), ::tolower);
+	if(agg_name == "r2")         { f = &tomahawk::twk_sstats::AddR2;   }
+	else if(agg_name == "r")     { f = &tomahawk::twk_sstats::AddR;    }
+	else if(agg_name == "d")     { f = &tomahawk::twk_sstats::AddD;    }
+	else if(agg_name == "dprime"){ f = &tomahawk::twk_sstats::AddDprime; }
+	else if(agg_name == "dp")    { f = &tomahawk::twk_sstats::AddDprime; }
+	else if(agg_name == "p")     { f = &tomahawk::twk_sstats::AddP;    }
+	else if(agg_name == "hets")  { f = &tomahawk::twk_sstats::AddHets; }
+	else if(agg_name == "alts")  { f = &tomahawk::twk_sstats::AddAlts; }
+	else if(agg_name == "het")   { f = &tomahawk::twk_sstats::AddHets; }
+	else if(agg_name == "alt")   { f = &tomahawk::twk_sstats::AddAlts; }
+	else {
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Unknown aggregation function \"" << agg_name << "\"..." << std::endl;
+		return(false);
+	}
+
+	// Transform string of reduction function name into lower then try to map
+	// name to existing function names.
+	std::transform(red_name.begin(), red_name.end(), red_name.begin(), ::tolower);
+	if(red_name == "mean")          { r = &tomahawk::twk_sstats::GetMean;  }
+		else if(red_name == "max")  { r = &tomahawk::twk_sstats::GetMax;   }
+		else if(red_name == "min")  { r = &tomahawk::twk_sstats::GetMin;   }
+		else if(red_name == "count"){ r = &tomahawk::twk_sstats::GetCount; }
+		else if(red_name == "n")    { r = &tomahawk::twk_sstats::GetCount; }
+		else if(red_name == "total"){ r = &tomahawk::twk_sstats::GetTotal; }
+		else if(red_name == "sd")   { r = &tomahawk::twk_sstats::GetStandardDeviation; }
+		else {
+			std::cerr << tomahawk::utility::timestamp("ERROR") << "Unknown reduce function \"" << red_name << "\"..." << std::endl;
+			return(false);
+		}
+
+	if(xbins < 5){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of x-bins cannot be < 5!" << std::endl;
+		return(false);
+	}
+
+	if(ybins < 5){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Number of y-bins cannot be < 5!" << std::endl;
+		return(false);
+	}
+
+	if(settings.in.length() == 0){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "No input value specified..." << std::endl;
+		return(false);
+	}
+
+	// Open file handle.
+	if(Open(settings.in) == false) return 1;
+
+
+	// Build intervals data structures if any are available.
+	/*if(settings.intervals.Build(settings.ivals,
+								hdr.GetNumberContigs(),
+								index,
+								hdr) == false)
+	{
+		return 1;
+	}*/
+
+	// Construct filters.
+	//settings.filter.Build();
+
+	// Print messages
+	tomahawk::ProgramMessage();
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling aggregate..." << std::endl;
+
+
+	// Algorithmic overview.
+	// Step 1: Find maximum and minimum X and Y values.
+	// Step 2: Partition into (maxY-minY)/#bins and (maxX-minX)/#bins buckets.
+	//      a: Range can be either dynamic min and max given the data, or;
+	//      b: Interval (from,to)-tuple.
+	// Step 3: Iterate over data and update summary statistics in buckets.
+	// Step 4: Output data.
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Performing 2-pass over data..." << std::endl;
+
+	// Step 1: iterate over index entries and find what contigs are used
+	std::cerr << tomahawk::utility::timestamp("LOG") << "===== First pass (peeking at landscape) =====" << std::endl;
+	// Distrubution.
+	uint64_t b_unc = 0, n_recs = 0;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Blocks: " << tomahawk::utility::ToPrettyString(index.n) << std::endl;
+	for(int i = 0; i < index.n; ++i){
+		b_unc  += index.ent[i].b_unc;
+		n_recs += index.ent[i].n;
+	}
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Uncompressed size: " << tomahawk::utility::ToPrettyDiskString(b_unc) << std::endl;
+
+	if(b_unc == 0){
+		std::cerr << tomahawk::utility::timestamp("LOG") << "Cannot aggregate empty file..." << std::endl;
+		return false;
+	}
+
+	if(index.n < settings.n_threads) settings.n_threads = index.n;
+	uint64_t b_unc_thread = b_unc / settings.n_threads;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Data/thread: " << tomahawk::utility::ToPrettyDiskString(b_unc_thread) << std::endl;
+
+	std::vector< std::pair<uint32_t,uint32_t> > ranges;
+	uint64_t fR = 0, tR = 0, b_unc_tot = 0;
+	for(int i = 0; i < index.n; ++i){
+		if(b_unc_tot >= b_unc_thread){
+			ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
+			b_unc_tot = 0;
+			fR = tR;
+		}
+		b_unc_tot += index.ent[i].b_unc;
+		++tR;
+	}
+	if(fR != tR){
+		ranges.push_back(std::pair<uint32_t,uint32_t>(fR, tR));
+		b_unc_tot = 0;
+		fR = tR;
+	}
+	assert(ranges.back().second == index.n);
+	assert(ranges.size() <= settings.n_threads);
+
+	tomahawk::twk_sort_progress progress_sort;
+	progress_sort.n_cmps = n_recs;
+	std::thread* psthread = progress_sort.Start();
+
+	tomahawk::twk_agg_slave* slaves = new tomahawk::twk_agg_slave[settings.n_threads];
+	uint32_t range_thread = index.n / settings.n_threads;
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].f = ranges[i].first;
+		slaves[i].t = ranges[i].second;
+		slaves[i].filename = settings.in;
+		slaves[i].progress = &progress_sort;
+		//std::cerr << "thread-" << i << " " << slaves[i].f << "-" << slaves[i].t << std::endl;
+	}
+
+	for(int i = 0; i < settings.n_threads; ++i){
+		if(slaves[i].StartFindRanges(*this) == nullptr){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+			return false;
+		}
+	}
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+	progress_sort.is_ticking = false;
+	progress_sort.PrintFinal();
+
+	// Reduce.
+	for(int i = 1; i < settings.n_threads; ++i){
+		for(int j = 0; j < slaves[0].contig_avail.size(); ++j){
+			slaves[0].contig_avail[j].set = std::max(slaves[0].contig_avail[j].set, slaves[i].contig_avail[j].set);
+			slaves[0].contig_avail[j].min = std::min(slaves[0].contig_avail[j].min, slaves[i].contig_avail[j].min);
+			slaves[0].contig_avail[j].max = std::max(slaves[0].contig_avail[j].max, slaves[i].contig_avail[j].max);
+		}
+	}
+
+	// Reduce.
+	uint32_t n_chrom_set = slaves[0].contig_avail[0].set;
+	for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
+		n_chrom_set += slaves[0].contig_avail[i].set;
+	}
+	//std::cerr << "chrom set=" << n_chrom_set << std::endl;
+
+	// Step 2: Determine boundaries given the contigs that were set.
+	//         Calculate the landscape ranges (X and Y dimensions).
+	// Approach 2: Dropping regions with no data.
+	uint64_t range = 0;
+	std::vector<tomahawk::twk1_aggregate_t::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+
+	/**<
+	 * If there is only chromosome set then restrict the (X,Y) landscape to the
+	 * available data range. This is in contrast to cases where N > 1, where we
+	 * consider the entire genomic range of the affected chromosomes irrespective
+	 * of how much range is actually used.
+	 */
+	if(n_chrom_set == 1){
+		if(slaves[0].contig_avail[0].set){
+			rid_offsets[0].range = slaves[0].contig_avail[0].max - slaves[0].contig_avail[0].min + 1;
+			range += slaves[0].contig_avail[0].max - slaves[0].contig_avail[0].min + 1;
+		} else
+			rid_offsets[0].range = 0;
+
+		rid_offsets[0].min = slaves[0].contig_avail[0].min;
+		rid_offsets[0].max = slaves[0].contig_avail[0].max;
+
+		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i].set){
+				// Cumulative offset for the current rid equals the previous rid
+				rid_offsets[i].range = rid_offsets[i - 1].range + (slaves[0].contig_avail[i].max - slaves[0].contig_avail[i].min + 1);
+				range += (slaves[0].contig_avail[i].max - slaves[0].contig_avail[i].min + 1);
+			} else {
+				rid_offsets[i].range = rid_offsets[i - 1].range;
+			}
+			rid_offsets[i].min = slaves[0].contig_avail[i].min;
+			rid_offsets[i].max = slaves[0].contig_avail[i].max;
+		}
+
+	}
+	// If there is data from n>1 chromosomes.
+	else {
+		if(slaves[0].contig_avail[0].set){
+			rid_offsets[0].range = hdr.contigs_[0].n_bases;
+			range += hdr.contigs_[0].n_bases;
+		} else
+			rid_offsets[0].range = 0;
+
+		rid_offsets[0].min = 0;
+		rid_offsets[0].max = hdr.contigs_[0].n_bases;
+
+		for(int i = 1; i < slaves[0].contig_avail.size(); ++i){
+			if(slaves[0].contig_avail[i].set){
+				// Cumulative offset for the current rid equals the previous rid
+				rid_offsets[i].range = rid_offsets[i - 1].range + hdr.contigs_[i].n_bases;
+				range += hdr.contigs_[i].n_bases;
+
+			} else {
+				rid_offsets[i].range = rid_offsets[i - 1].range;
+			}
+			rid_offsets[i].min = 0;
+			rid_offsets[i].max = hdr.contigs_[i].n_bases;
+		}
+	}
+
+	//std::cerr << "range=" << range << std::endl;
+	//for(int i = 0; i < rid_offsets.size(); ++i){
+	//	std::cerr << "rid=" << i << "=" << rid_offsets[i].range << " -> " << rid_offsets[i].min << "-" << rid_offsets[i].max << std::endl;
+	//}
+
+	// Step 3: Second pass over data.
+	//         Prepare n-tensor for storing output data.
+	//         Matrix dimensions (1,2) correspond to pixel equivalents.
+	//         Tensor dimensions (3,..) correspond to summary statistics for
+	//         each bin (pixel).
+	uint32_t xrange = std::ceil((float)range / xbins);
+	uint32_t yrange = std::ceil((float)range / ybins);
+
+	//tomahawk::twk1_aggregate_t agg(xbins, ybins);
+	agg.n = xbins*ybins;
+	agg.x = xbins;
+	agg.y = ybins;
+	agg.data = new double[agg.n];
+	agg.bpx = xrange;
+	agg.bpy = yrange;
+	agg.range = range;
+	agg.rid_offsets = rid_offsets;
+	agg.n_original = n_recs;
+
+	std::cerr << tomahawk::utility::timestamp("LOG") << "===== Second pass (building matrix) =====" << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregating " << tomahawk::utility::ToPrettyString(n_recs) << " records..." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG","THREAD") << "Allocating: " << tomahawk::utility::ToPrettyDiskString(sizeof(tomahawk::twk_sstats)*xbins*ybins*settings.n_threads) << " for matrices..." << std::endl;
+
+	tomahawk::twk_sort_progress progress_sort_step2;
+	progress_sort_step2.n_cmps = n_recs;
+	psthread = progress_sort_step2.Start();
+	//std::cerr << "range=" << range << " x,y = " << xrange << " bp/pixel " << " and " << yrange << " bp/pixel" << std::endl;
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].rid_offsets = rid_offsets;
+		slaves[i].progress = &progress_sort_step2;
+		if(slaves[i].StartBuildMatrix(*this, f, r, xbins, ybins, xrange, yrange) == nullptr){
+			std::cerr << tomahawk::utility::timestamp("ERROR","THREAD") << "Failed to spawn slave" << std::endl;
+			return false;
+		}
+	}
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
+	progress_sort_step2.is_ticking = false;
+	progress_sort_step2.PrintFinal();
+	for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
+
+	// Print matrix
+	//slaves[0].PrintMatrix(std::cout, min_cutoff);
+	slaves[0].Overload(agg, min_cutoff);
+	//std::cout << agg;
+
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregated " << tomahawk::utility::ToPrettyString(n_recs) << " records in " << tomahawk::utility::ToPrettyString(xbins*ybins) << " bins." << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished." << std::endl;
+
+	delete[] slaves;
+	return(true);
+}
+
 
 }
