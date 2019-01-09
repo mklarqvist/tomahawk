@@ -146,7 +146,7 @@ public:
 				contig_avail[it->blk[j].ridB].min = std::min(it->blk[j].Bpos, contig_avail[it->blk[j].ridB].min);
 				contig_avail[it->blk[j].ridB].max = std::max(it->blk[j].Bpos, contig_avail[it->blk[j].ridB].max);
 			}
-			progress->cmps += it->GetBlock().n;
+			if(progress != nullptr) progress->cmps += it->GetBlock().n;
 		}
 
 		delete it; it = nullptr;
@@ -167,7 +167,7 @@ public:
 				// Position: (chromosome_offset.range - chromosome_offset.max - chromoosme_offset.min) + (Apos - smallest_in_chr)
 				(mat[((rid_offsets[it->blk[j].ridA].range - (rid_offsets[it->blk[j].ridA].max - rid_offsets[it->blk[j].ridA].min)) + (it->blk[j].Apos - rid_offsets[it->blk[j].ridA].min))/xrange][((rid_offsets[it->blk[j].ridB].range - (rid_offsets[it->blk[j].ridB].max - rid_offsets[it->blk[j].ridB].min)) + (it->blk[j].Bpos - rid_offsets[it->blk[j].ridB].min))/yrange].*aggregator)(&it->blk[j]);
 			}
-			progress->cmps += it->GetBlock().n;
+			if(progress != nullptr) progress->cmps += it->GetBlock().n;
 		}
 
 		delete it; it = nullptr;

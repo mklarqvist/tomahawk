@@ -28,21 +28,18 @@ DEALINGS IN THE SOFTWARE.
 void scalc_usage(void){
 	tomahawk::ProgramMessage();
 	std::cerr <<
-	"About:  Calculate linkage disequilibrium for a single variant verus its neighbourhood.\n\n"
+	"About:  Calculate linkage disequilibrium for a single variant versus its neighbourhood.\n\n"
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " scalc [options] -i <in.twk> -I <SNP position> -o <output.two>\n\n"
 	"Options:\n"
 	"  -i FILE   input Tomahawk (required)\n"
 	"  -o FILE   output file or file prefix (required)\n"
 	"  -I STRING filter interval <contig>:pos-pos (see manual; required)\n"
 	"  -w INT    number of bases to include around the target snp (default: 500kbp)\n"
-
 	"  -t INT    number of CPU threads (default: maximum available)\n"
 	"  -m        run in low-memory mode: this is considerably slower but use no more memory than\n"
 	"               block1*variants + block2*variants\n"
 	"  -M        use phased bitmaps in low-memory mode. Automatically triggers -m and -p.\n"
 	"  -b        number of records in a block. Has an effect on memory usage only when -m is set.\n"
-	"  -p        force computations to use phased math\n"
-	"  -u        force computations to use unphased math\n"
 	//"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.0)\n"
@@ -63,21 +60,17 @@ int scalc(int argc, char** argv){
 	int option_index = 0;
 	static struct option long_options[] = {
 		{"input",             required_argument, 0, 'i' },
-		{"threads",           optional_argument, 0, 't' },
 		{"output",            required_argument, 0, 'o' },
-		{"interval",          optional_argument, 0, 'I' },
+		{"interval",          required_argument, 0, 'I' },
+		{"window",            optional_argument, 0, 'w' },
+		{"threads",           optional_argument, 0, 't' },
 
 		{"low-memory",        optional_argument, 0, 'm' },
 		{"block-size",        optional_argument, 0, 'b' },
 		{"bitmaps",           optional_argument, 0, 'M' },
 		{"compression-level", optional_argument, 0, 'k' },
 
-		{"window",            optional_argument, 0, 'w' },
-
 		{"minP",              optional_argument, 0, 'P' },
-		{"force-phased",      no_argument,       0, 'p' },
-		{"force-unphased",    no_argument,       0, 'u' },
-
 		{"minR2",             optional_argument, 0, 'r' },
 		{"maxR2",             optional_argument, 0, 'R' },
 
@@ -88,7 +81,7 @@ int scalc(int argc, char** argv){
 	tomahawk::twk_ld_settings settings;
 	//std::vector<std::string> filter_regions;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:I:smMb:k:w:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:P:a:A:r:R:I:smMb:k:w:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -105,14 +98,7 @@ int scalc(int argc, char** argv){
 		case 'm':
 			settings.low_memory = true;
 			break;
-		case 'p':
-			settings.force_phased = true;
-			settings.forced_unphased = false;
-			break;
-		case 'u':
-			settings.forced_unphased = true;
-			settings.force_phased = false;
-			break;
+
 		case 'M':
 			settings.force_phased = true;
 			settings.low_memory = true;

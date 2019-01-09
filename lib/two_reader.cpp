@@ -704,7 +704,7 @@ bool two_reader::Aggregate(twk1_aggregate_t& agg,
 	}
 	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
 	progress_sort.is_ticking = false;
-	if(verbose) progress_sort.PrintFinal();
+	if(progress && verbose) progress_sort.PrintFinal();
 
 	// Reduce.
 	for(int i = 1; i < settings.n_threads; ++i){
@@ -826,7 +826,7 @@ bool two_reader::Aggregate(twk1_aggregate_t& agg,
 	}
 	for(int i = 0; i < settings.n_threads; ++i) slaves[i].thread->join();
 	progress_sort_step2.is_ticking = false;
-	if(verbose) progress_sort_step2.PrintFinal();
+	if(progress && verbose) progress_sort_step2.PrintFinal();
 	for(int i = 1; i < settings.n_threads; ++i) slaves[0].AddMatrix(slaves[i]);
 
 	// Print matrix
