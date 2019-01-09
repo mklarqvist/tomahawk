@@ -640,29 +640,42 @@ bool twk1_aggregate::Open(std::string input){
 	twk_buffer_t ibuf, obuf;
 	ibuf.resize(obuf_size);
 	in.read(ibuf.data(), obuf_size);
+	obuf.resize(n*sizeof(double));
+	ibuf.n_chars_ = obuf_size;
+
 	if(in.good() == false){
 		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
 		return false;
 	}
+
 	if(in.tellg() != fsize - TOMAHAWK_TWOAGG_EOF_LENGTH){
 		std::cerr << utility::timestamp("ERROR") << "File stream corrupted (incorrect position)..." << std::endl;
 		return false;
 	}
 
-	zcodec.Decompress(obuf, ibuf);
+	if(zcodec.Decompress(ibuf, obuf) == false){
+		std::cerr << utility::timestamp("ERROR") << "Failed to decompress data..." << std::endl;
+		return false;
+	}
+
+	if(obuf.size() != n*sizeof(double)){
+		std::cerr << utility::timestamp("ERROR") << "Corrupted decompression size (" << obuf.size() << "!=" << n*sizeof(double) << ")!"  << std::endl;
+		return false;
+	}
 
 	// Write data.
 	delete[] data; data = nullptr;
 	data = new double[n];
-	double* ibuf_double = reinterpret_cast<double*>(ibuf.data());
+	double* obuf_double = reinterpret_cast<double*>(obuf.data());
 
-	for(int i = 0; i < n; ++i) data[i] = ibuf_double[i];
+	for(int i = 0; i < n; ++i) data[i] = obuf_double[i];
 
 	//in.seekg(fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
 	if(in.good() == false){
 		std::cerr << utility::timestamp("ERROR") << "File stream corrupted..." << std::endl;
 		return false;
 	}
+
 	char eof[TOMAHAWK_TWOAGG_EOF_LENGTH];
 	in.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
 	if(strncmp(eof, TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH) != 0){
