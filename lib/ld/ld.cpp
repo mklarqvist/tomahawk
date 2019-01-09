@@ -140,7 +140,7 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 		if(intervals.ivecs[i].size()) ivec_rid = i;
 	}
 	assert(n_vecs == 1);
-	std::cerr << "target=" << intervals.ivecs[ivec_rid].front().start << "-" << intervals.ivecs[ivec_rid].front().stop << " val=" << intervals.ivecs[ivec_rid].front().value << std::endl;
+	//std::cerr << "target=" << intervals.ivecs[ivec_rid].front().start << "-" << intervals.ivecs[ivec_rid].front().stop << " val=" << intervals.ivecs[ivec_rid].front().value << std::endl;
 	// Add flanking intervals
 	int32_t f   = (int32_t)intervals.ivecs[ivec_rid][0].start - settings.l_surrounding;
 	int32_t f_s = (int32_t)intervals.ivecs[ivec_rid][0].start - 1;
@@ -153,9 +153,9 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 	intervals.ivecs[ivec_rid].push_back(twk_intervals::interval(intervals.ivecs[ivec_rid][0].stop, t, 2));
 
 	// Debug print.
-	for(int i = 1; i < intervals.ivecs[ivec_rid].size(); ++i){
+	/*for(int i = 1; i < intervals.ivecs[ivec_rid].size(); ++i){
 		std::cerr << "others=" << intervals.ivecs[ivec_rid][i].start << "-" << intervals.ivecs[ivec_rid][i].stop << " val=" << intervals.ivecs[ivec_rid][i].value << std::endl;
-	}
+	}*/
 
 	// Build intervals container.
 	if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
@@ -168,11 +168,11 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 
 	// First block has only 1 variant: the reference.
 	// All other blocks
-	std::cerr << "overlap blocks=" << intervals.overlap_blocks.size() << " and " << intervals.ivecs[ivec_rid].size() << std::endl;
+	/*std::cerr << "overlap blocks=" << intervals.overlap_blocks.size() << " and " << intervals.ivecs[ivec_rid].size() << std::endl;
 	// Debug print.
 	for(int i = 0; i < intervals.ivecs[ivec_rid].size(); ++i){
 		std::cerr << "others=" << intervals.ivecs[ivec_rid][i].start << "-" << intervals.ivecs[ivec_rid][i].stop << " val=" << intervals.ivecs[ivec_rid][i].value << std::endl;
-	}
+	}*/
 
 	for(int i = 0; i < intervals.overlap_blocks.size(); ++i){
 		// Make sure we don't seek to the same block twice. This will result
@@ -190,17 +190,31 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 
 		for(int j = 0; j < bit.blk.n; ++j){
 			std::vector<twk_intervals::interval> mivals = intervals.itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos+1, bit.blk.rcds[j].pos+1); // 1-base matching.
-			//assert(mivals.size() == 0 || mivals.size() == 1);
+			// It is possible we get >1 overlapping interval matches since the
+			// intervalTree checks for inclusive ranges [A,B]. In this case we
+			// record the overlap as beloning to the 0-th bin or else is corrupted.
 			if(mivals.size()){
-				assert(mivals.size() == 1);
-				for(int p = 0; p < mivals.size(); ++p){
-					if(mivals[p].value == 0){
+				if(mivals.size() == 1){
+					if(mivals[0].value == 0){
 						if(ldd2[0].n) assert(ldd2[0].rcds[0].pos != bit.blk.rcds[j].pos);
 						ldd2[0].Add(bit.blk.rcds[j]);
 					}
 					else {
 						ldd2[ldd2_n].Add(bit.blk.rcds[j]);
 						if(ldd2[ldd2_n].n == 100) ++ldd2_n;
+					}
+				} else {
+					bool found = false;
+					for(int p = 0; p < mivals.size(); ++p){
+						if(mivals[p].value == 0){
+							if(ldd2[0].n) assert(ldd2[0].rcds[0].pos != bit.blk.rcds[j].pos);
+							ldd2[0].Add(bit.blk.rcds[j]);
+							found = true;
+						}
+					}
+					if(found == false){
+						std::cerr << utility::timestamp("ERROR") << "Corrupted intervals! (Too many matches)" << std::endl;
+						return false;
 					}
 				}
 			}
