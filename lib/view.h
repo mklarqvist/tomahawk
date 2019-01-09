@@ -399,6 +399,9 @@ int view(int argc, char** argv){
 	else if(writer.mode == 'b')
 		writer.WriteHeader(oreader);
 
+	// Pass reference to header for writer in case of human-readble output.
+	writer.hdr = &oreader.hdr;
+
 	// Construct filters.
 	settings.filter.Build();
 

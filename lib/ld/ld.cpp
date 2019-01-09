@@ -51,7 +51,6 @@ public:
 	 */
 	bool LoadTargetSingle(twk_reader& reader,
 						  twk1_blk_iterator& bit,
-						  const twk_ld_balancer& balancer,
 						  const twk_ld_settings& settings,
 						  const uint8_t load);
 
@@ -123,7 +122,6 @@ bool twk_ld::twk_ld_impl::LoadBlocks(twk_reader& reader,
 
 bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 		twk1_blk_iterator& bit,
-		const twk_ld_balancer& balancer,
 		const twk_ld_settings& settings,
 		const uint8_t load)
 {
@@ -135,12 +133,100 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 	if(this->ParseIntervalStrings(reader, settings) == false)
 		return false;
 
+	uint32_t n_vecs = 0, ivec_rid = 0;
+	for(int i = 0; i < intervals.ivecs.size(); ++i){
+		//std::cerr << i << "/" << intervals.ivecs.size() << "\t" << intervals.ivecs[i].size() << std::endl;
+		n_vecs += intervals.ivecs[i].size();
+		if(intervals.ivecs[i].size()) ivec_rid = i;
+	}
+	assert(n_vecs == 1);
+	std::cerr << "target=" << intervals.ivecs[ivec_rid].front().start << "-" << intervals.ivecs[ivec_rid].front().stop << " val=" << intervals.ivecs[ivec_rid].front().value << std::endl;
+	// Add flanking intervals
+	int32_t f   = (int32_t)intervals.ivecs[ivec_rid][0].start - settings.l_surrounding;
+	int32_t f_s = (int32_t)intervals.ivecs[ivec_rid][0].start - 1;
+	f   = std::max(f,   0);
+	f_s = std::max(f_s, 0);
+	uint32_t g   = f; // stupid constructor design in intervalTree.h
+	uint32_t g_s = f_s;
+	uint32_t t = (int32_t)intervals.ivecs[ivec_rid][0].stop + settings.l_surrounding;
+	intervals.ivecs[ivec_rid].push_back(twk_intervals::interval(g, g_s, 1)); // right side is inclusive here
+	intervals.ivecs[ivec_rid].push_back(twk_intervals::interval(intervals.ivecs[ivec_rid][0].stop, t, 2));
+
+	// Debug print.
+	for(int i = 1; i < intervals.ivecs[ivec_rid].size(); ++i){
+		std::cerr << "others=" << intervals.ivecs[ivec_rid][i].start << "-" << intervals.ivecs[ivec_rid][i].stop << " val=" << intervals.ivecs[ivec_rid][i].value << std::endl;
+	}
+
+	// Build intervals container.
 	if(this->intervals.Build(reader.hdr.GetNumberContigs(), reader.index) == false){
 		return false;
 	}
 
+	//ldd    = new twk1_ldd_blk[3];
+	uint32_t ldd2_n = 1, ldd2_m = 1000;
+	ldd2   = new twk1_block_t[ldd2_m];
+
 	// First block has only 1 variant: the reference.
 	// All other blocks
+	std::cerr << "overlap blocks=" << intervals.overlap_blocks.size() << " and " << intervals.ivecs[ivec_rid].size() << std::endl;
+	// Debug print.
+	for(int i = 0; i < intervals.ivecs[ivec_rid].size(); ++i){
+		std::cerr << "others=" << intervals.ivecs[ivec_rid][i].start << "-" << intervals.ivecs[ivec_rid][i].stop << " val=" << intervals.ivecs[ivec_rid][i].value << std::endl;
+	}
+
+	for(int i = 0; i < intervals.overlap_blocks.size(); ++i){
+		// Make sure we don't seek to the same block twice. This will result
+		// in incorrect duplicatation of variants.
+		if(i!=0){
+			if(intervals.overlap_blocks[i]->foff == intervals.overlap_blocks[i-1]->foff)
+				continue;
+		}
+
+		bit.stream->seekg(intervals.overlap_blocks[i]->foff);
+		if(bit.NextBlock() == false){
+			std::cerr << utility::timestamp("ERROR") << "Failed to load block " << i << "..." << std::endl;
+			return false;
+		}
+
+		for(int j = 0; j < bit.blk.n; ++j){
+			std::vector<twk_intervals::interval> mivals = intervals.itree[bit.blk.rcds[j].rid]->findOverlapping(bit.blk.rcds[j].pos+1, bit.blk.rcds[j].pos+1); // 1-base matching.
+			//assert(mivals.size() == 0 || mivals.size() == 1);
+			if(mivals.size()){
+				assert(mivals.size() == 1);
+				for(int p = 0; p < mivals.size(); ++p){
+					if(mivals[p].value == 0){
+						if(ldd2[0].n) assert(ldd2[0].rcds[0].pos != bit.blk.rcds[j].pos);
+						ldd2[0].Add(bit.blk.rcds[j]);
+					}
+					else {
+						ldd2[ldd2_n].Add(bit.blk.rcds[j]);
+						if(ldd2[ldd2_n].n == 100) ++ldd2_n;
+					}
+				}
+			}
+		}
+	}
+
+	if(ldd2[0].n == 0){
+		std::cerr << "no data found for reference" << std::endl;
+		return false;
+	}
+
+	if(ldd2_n == 1){
+		std::cerr << "no surrounding variants" << std::endl;
+		return false;
+	}
+
+	this->n_blks = ldd2_n;
+	ldd = new twk1_ldd_blk[n_blks];
+	for(int i = 0; i < n_blks; ++i){
+		//std::cerr << "ldd2 size=" << ldd2[i].n << "/" << ldd2[i].m << " " << ldd2[i].minpos << "-" << ldd2[i].maxpos << std::endl;
+		ldd[i].SetOwn(ldd2[i], reader.hdr.GetNumberSamples());
+		ldd[i].Inflate(reader.hdr.GetNumberSamples(),settings.ldd_load_type, true);
+		//std::cerr << ldd[i].n_rec << std::endl;
+		//std::cerr << "first=" << ldd2[i].rcds[0].pos << std::endl;
+	}
+
 	return true;
 }
 
@@ -359,6 +445,11 @@ bool twk_ld::Compute(const twk_ld_settings& settings){
 	return(Compute());
 }
 
+bool twk_ld::ComputeSingle(const twk_ld_settings& settings){
+	this->settings = settings;
+	return(ComputeSingle());
+}
+
 bool twk_ld::Compute(){
 	//return(ComputePerformance());
 
@@ -387,7 +478,11 @@ bool twk_ld::Compute(){
 
 	Timer timer;
 
-	//settings.ldd_load_type = TWK_LDD_ALL;
+	/**<
+	 * Trigger the appropriate flag(s) for constructing bitvector, bitmap, or
+	 * list structures. These additional structs are what we actually compute
+	 * LD from.
+	 */
 	if(settings.low_memory && settings.force_phased && settings.bitmaps){
 		settings.ldd_load_type = TWK_LDD_BITMAP;
 	} else if(settings.low_memory && settings.force_phased){
@@ -400,6 +495,7 @@ bool twk_ld::Compute(){
 		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
 	}
 
+	// Construct interval trees for the input interval strings, if any.
 	if(settings.ival_strings.size() == 0) mImpl->n_blks = reader.index.n;
 	else {
 		if(this->mImpl->BuildIntervals(reader, settings, bit) == false)
@@ -412,9 +508,9 @@ bool twk_ld::Compute(){
 	if(balancer.Build(mImpl->n_blks, settings.n_chunks, settings.c_chunk) == false){
 		return false;
 	}
-
 	std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
 
+	// Load and construct data blocks.
 	if(this->mImpl->LoadBlocks(reader, bit, balancer, settings) == false){
 		return false;
 	}
@@ -451,6 +547,204 @@ bool twk_ld::Compute(){
 	ticker = balancer;
 	ticker.SetWindow(settings.window, settings.l_window);
 	ticker.ldd  = mImpl->ldd;
+
+	twk_ld_progress progress;
+	progress.n_s = reader.hdr.GetNumberSamples();
+	if(settings.window == false){
+		progress.n_cmps = n_comparisons;
+	}
+	twk_ld_slave* slaves = new twk_ld_slave[settings.n_threads];
+	std::vector<std::thread*> threads(settings.n_threads);
+
+	// Start writing file.
+	twk_two_writer_t* writer = nullptr;
+	if(settings.out.size() == 0 || (settings.out.size() == 1 && settings.out[0] == '-')){
+		std::cerr << utility::timestamp("LOG","WRITER") << "Writing to " << "stdout..." << std::endl;
+		writer = new twk_two_writer_t;
+	} else {
+		std::string base_path = twk_writer_t::GetBasePath(settings.out);
+		std::string base_name = twk_writer_t::GetBaseName(settings.out);
+		std::string extension = twk_writer_t::GetExtension(settings.out);
+		if(extension.length() == 3){
+			if(strncasecmp(&extension[0], "two", 3) != 0){
+				settings.out =  (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+			}
+		} else {
+			 settings.out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+		}
+
+		std::cerr << utility::timestamp("LOG","WRITER") << "Opening " << settings.out << "..." << std::endl;
+		writer = new twk_two_writer_t;
+		if(writer->Open(settings.out) == false){
+			std::cerr << utility::timestamp("ERROR", "WRITER") << "Failed to open file: " << settings.out << "..." << std::endl;
+			delete writer;
+			return false;
+		}
+	}
+
+	// Append literal string.
+	std::string calc_string = "\n##tomahawk_calcVersion=" + std::string(VERSION) + "\n";
+	calc_string += "##tomahawk_calcCommand=" + tomahawk::LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
+	reader.hdr.literals_ += calc_string;
+
+	if(writer->WriteHeaderBinary(reader) == false){
+		std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write header!" << std::endl;
+		return false;
+	}
+	// end start write
+
+	// New index
+	IndexOutput index(reader.hdr.GetNumberContigs());
+
+	timer.Start();
+	std::cerr << utility::timestamp("LOG","THREAD") << "Spawning " << settings.n_threads << " threads: ";
+	for(int i = 0; i < settings.n_threads; ++i){
+		slaves[i].ldd    = mImpl->ldd;
+		slaves[i].n_s    = reader.hdr.GetNumberSamples();
+		slaves[i].ticker = &ticker;
+		slaves[i].engine.SetSamples(reader.hdr.GetNumberSamples());
+		slaves[i].engine.SetBlocksize(settings.b_size);
+		slaves[i].engine.progress = &progress;
+		slaves[i].engine.writer   = writer;
+		slaves[i].engine.index    = &index;
+		slaves[i].engine.settings = settings;
+		slaves[i].progress = &progress;
+		slaves[i].settings = &settings;
+		threads[i] = slaves[i].Start();
+		std::cerr << ".";
+	}
+	std::cerr << std::endl;
+
+	progress.Start();
+
+	for(int i = 0; i < settings.n_threads; ++i) threads[i]->join();
+	for(int i = 0; i < settings.n_threads; ++i) slaves[i].engine.CompressBlock();
+	progress.is_ticking = false;
+	progress.PrintFinal();
+	writer->stream.flush();
+
+	std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
+	for(int i = 0; i < settings.n_threads; ++i){
+		std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
+		for(int j = 0; j < 8; ++j){
+			std::cerr << "\t" << utility::ToPrettyString(slaves[i].engine.n_method[j]);
+		}
+		std::cerr << std::endl;
+	}
+
+	//std::cerr << "performed=" << ticker.n_perf << std::endl;
+	if(writer->WriteFinal(index) == false){
+		std::cerr << utility::timestamp("ERROR","WRITER") << "Failed to write final block!" << std::endl;
+		return false;
+	}
+
+	delete[] slaves; delete writer;
+	std::cerr << utility::timestamp("LOG","PROGRESS") << "All done..." << timer.ElapsedString() << "!" << std::endl;
+
+	return true;
+}
+
+bool twk_ld::ComputeSingle(){
+	if(settings.in.size() == 0){
+		std::cerr << utility::timestamp("ERROR") << "No file-name provided..." << std::endl;
+		return false;
+	}
+
+	if(settings.n_chunks != 1){
+		std::cerr << utility::timestamp("ERROR") << "Cannot use chunking in single mode!" << std::endl;
+		return false;
+	}
+
+	if(settings.window){
+		std::cerr << utility::timestamp("ERROR") << "Cannot use window in single mode!" << std::endl;
+		return false;
+	}
+
+	if(settings.ival_strings.size() == 0){
+		std::cerr << utility::timestamp("ERROR") << "An interval has to be provided in single mode!" << std::endl;
+		return false;
+	}
+
+	if(settings.ival_strings.size() != 1){
+		std::cerr << utility::timestamp("ERROR") << "Only a single interval can be provided in single mode!" << std::endl;
+		return false;
+	}
+
+	std::cerr << utility::timestamp("LOG","READER") << "Opening " << settings.in << "..." << std::endl;
+
+	twk_reader reader;
+	if(reader.Open(settings.in) == false){
+		std::cerr << utility::timestamp("ERROR") << "Failed to open file: " << settings.in << "..." << std::endl;
+		return false;
+	}
+
+	std::cerr << utility::timestamp("LOG") << "Samples: " << utility::ToPrettyString(reader.hdr.GetNumberSamples()) << "..." << std::endl;
+
+	twk1_blk_iterator bit;
+	bit.stream = reader.stream;
+
+	Timer timer;
+
+	/**<
+	 * Trigger the appropriate flag(s) for constructing bitvector, bitmap, or
+	 * list structures. These additional structs are what we actually compute
+	 * LD from.
+	 */
+	if(settings.low_memory && settings.force_phased && settings.bitmaps){
+		settings.ldd_load_type = TWK_LDD_BITMAP;
+	} else if(settings.low_memory && settings.force_phased){
+		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
+	} else if(settings.force_phased){
+		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
+	} else if(settings.forced_unphased){
+		settings.ldd_load_type = TWK_LDD_VEC;
+	} else {
+		settings.ldd_load_type = TWK_LDD_VEC | TWK_LDD_LIST;
+	}
+
+	// Construct interval trees for the input interval string.
+	if(this->mImpl->LoadTargetSingle(reader, bit, settings, settings.ldd_load_type) == false)
+		return false;
+
+	twk_ld_balancer balancer;
+	if(balancer.BuildSingleSite(mImpl->n_blks, settings.n_chunks, settings.c_chunk) == false)
+		return false;
+
+	std::cerr << utility::timestamp("LOG","BALANCING") << "Using ranges [" << balancer.fromL << "-" << balancer.toL << "," << balancer.fromR << "-" << balancer.toR << "] in " << (settings.window ? "window mode" : "square mode") <<"..." << std::endl;
+
+	if(mImpl->n_blks == 0){
+		std::cerr << utility::timestamp("ERROR") << "No valid data available..." << std::endl;
+		return true;
+	}
+
+	// Compute workload for progress monitoring.
+	// Todo
+	uint32_t n_variants = 0;
+	uint64_t n_comparisons = 0;
+	if(balancer.diag){
+		for(int i = balancer.fromL; i < balancer.toL; ++i) n_variants += reader.index.ent[i].n;
+		n_comparisons = ((uint64_t)n_variants * n_variants - n_variants) / 2;
+		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
+	} else {
+		uint32_t n_variants_left = 0, n_variants_right = 0;
+		for(int i = balancer.fromL; i < balancer.toL; ++i){
+			n_variants += reader.index.ent[i].n;
+			n_variants_left += reader.index.ent[i].n;
+		}
+		for(int i = balancer.fromR; i < balancer.toR; ++i){
+			n_variants += reader.index.ent[i].n;
+			n_variants_left += reader.index.ent[i].n;
+		}
+		n_comparisons = n_variants_left * n_variants_right;
+		std::cerr << utility::timestamp("LOG") << utility::ToPrettyString(n_variants) << " variants (" << utility::ToPrettyString(n_variants_left) << "," << utility::ToPrettyString(n_variants_right) << ") from " << utility::ToPrettyString(balancer.n_m) << " blocks..." << std::endl;
+	}
+	std::cerr << utility::timestamp("LOG","PARAMS") << settings.GetString() << std::endl;
+	std::cerr << utility::timestamp("LOG") << "Performing: " << utility::ToPrettyString(n_comparisons) << " variant comparisons..." << std::endl;
+
+	twk_ld_dynamic_balancer ticker;
+	ticker = balancer;
+	ticker.SetWindow(settings.window, settings.l_window);
+	ticker.ldd = mImpl->ldd;
 
 	twk_ld_progress progress;
 	progress.n_s = reader.hdr.GetNumberSamples();

@@ -23,7 +23,7 @@ struct interval_pair_payload {
  * and mapping interval tuples and the resulting index objects.
  */
 class twk_intervals {
-private:
+public:
 	typedef algorithm::Interval<uint32_t,uint32_t> interval;
 
 public:

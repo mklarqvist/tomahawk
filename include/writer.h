@@ -161,10 +161,11 @@ public:
 
 
 struct twk_two_writer_t : public twk_writer_t {
-	twk_two_writer_t() : mode('u'), c_level(1), n_blk_lim(10000), oblock(10000){
+	twk_two_writer_t() : mode('u'), c_level(1), n_blk_lim(10000), oblock(10000), hdr(nullptr){
 		buf = std::cout.rdbuf();
 		stream.basic_ios<char>::rdbuf(buf);
 	}
+	~twk_two_writer_t(){}
 
 	inline void SetCompressionLevel(const int32_t level){ c_level = level; }
 
@@ -329,9 +330,10 @@ struct twk_two_writer_t : public twk_writer_t {
 	}
 
 	bool WriteBlockUncompressedLD(){
+		assert(hdr != nullptr);
 		if(oblock.n){
 			for(int i = 0; i < oblock.n; ++i){
-				oblock.rcds[i].PrintLD(std::cout);
+				oblock.rcds[i].PrintLD(std::cout, hdr);
 			}
 			oblock.reset();
 			std::cout.flush();
@@ -400,6 +402,7 @@ public:
 	ZSTDCodec zcodec;
 	twk_buffer_t ubuf, obuf;
 	std::ofstream out;
+	VcfHeader* hdr;
 };
 
 }

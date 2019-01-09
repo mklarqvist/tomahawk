@@ -49,6 +49,8 @@ const uint32_t    TOMAHAWK_MAGIC_HEADER_LENGTH = 9;
 const std::string TOMAHAWK_LD_SUFFIX = "two";
 const std::string TOMAHAWK_LD_MAGIC_HEADER  = "TWO\1";
 const uint32_t    TOMAHAWK_LD_MAGIC_HEADER_LENGTH = 4;
+const std::string TOMAHAWK_AGGREGATE_MAGIC_HEADER  = "TWOAGG\1";
+const uint32_t    TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH = 7;
 
 /*------   Regular expression patterns  ------*/
 const std::regex TWK_REGEX_CANONICAL_BASES = std::regex("^[ATGC]{1}$");
@@ -64,6 +66,8 @@ const std::regex TWK_REGEX_NUMBER_EXP      = std::regex("^[0-9]+([eE][-+]?[0-9]+
 const std::string TOMAHAWK_FILE_EOF = "a4f54f39f5e251a6993796f48164ccf554f1b680c2ebbb13be301f3ff76f82cf";
 const uint32_t    TOMAHAWK_FILE_EOF_LENGTH = 32;
 const uint64_t    TOMAHAWK_INDEX_START_MARKER = 1954702206512158641;
+const std::string TOMAHAWK_TWOAGG_EOF = "48814f3c53866e57bac4d87d2b800ed7de295ae6caa39e198f9ffa169bd2bee3";
+const uint32_t    TOMAHAWK_TWOAGG_EOF_LENGTH = 32;
 
 /*------   Library and CLI strings   ------*/
 std::string LibrariesString();

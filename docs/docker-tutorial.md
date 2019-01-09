@@ -7,6 +7,13 @@ programs are run within this virtual environment that can share resources with
 its host machine. The Tomahawk [Docker
 images](https://hub.docker.com/r/mklarqvist/tomahawk/) are tested for each release.
 
+## Prerequisites
+
+To follow this tutorial, you will need the following:
+
+* One Ubuntu 18.04 server set up by following the Ubuntu 18.04 initial server setup guide, including a sudo non-root user and a firewall.
+* An account on Docker Hub if you wish to create your own images and push them to Docker Hub, as shown in Steps 7 and 8.
+
 ## Getting started
 You can pull the latest Tomahawk image using
 ```

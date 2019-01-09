@@ -182,8 +182,14 @@ int haplotype(int argc, char** argv){
 	} else {
 		std::cerr << tomahawk::utility::timestamp("LOG") << "Writing output matrix..." << std::endl;
 
+		std::cout << "Name";
+		for(int p = 0; p < positions.size(); ++p){
+			std::cout << "\t" << positions[p];
+		}
+		std::cout.put('\n');
+
 		for(int p = 0; p < haps.size(); ++p){
-			std::cout << ">" << rdr.hdr.samples_[p/2] << "_" << (p%2) << "\t";
+			std::cout << ">" << rdr.hdr.samples_[p/2] << "_" << (p%2);
 			for(int i = 0; i < haps[p].size(); ++i){
 				std::cout << '\t' << haps[p][i];
 			}

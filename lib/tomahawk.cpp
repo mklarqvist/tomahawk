@@ -24,7 +24,7 @@ void ProgramMessage(const bool separator){
 
 void ProgramHelp(void){
 	std::cerr << "Usage: " << TOMAHAWK_PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: aggregate, calc, concat, import, sort, view, haplotype, relationship, decay, prune" << std::endl;
+	std::cerr << "Commands: aggregate, calc, scalc, concat, import, sort, view, haplotype, relationship, decay, prune" << std::endl;
 }
 
 void ProgramHelpDetailed(void){
@@ -33,6 +33,7 @@ void ProgramHelpDetailed(void){
     "\n"
 	"aggregate    data rasterization framework for TWO files\n"
 	"calc         calculate linkage disequilibrium\n"
+	"scalc        calculate linkage disequilibrium for a single site\n"
 	"concat       concatenate TWO files from the same set of samples\n"
 	"import       import VCF/VCF.gz/BCF to TWK\n"
 	"sort         sort TWO file\n"

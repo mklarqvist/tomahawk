@@ -1,5 +1,5 @@
 <div align="center">
-<img src="images/tomahawk.png">
+<img src="images/tomahawk.png" style="max-width:400px;">
 </div>
 
 # Fast calculation of LD in large-scale cohorts

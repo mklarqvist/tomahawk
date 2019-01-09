@@ -28,6 +28,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "tomahawk.h"
 #include "buffer.h"
+#include "header.h"
 
 namespace tomahawk {
 
@@ -769,7 +770,7 @@ public:
 	 * @param os Ouput ostream reference.
 	 * @return   Returns the output ostream reference.
 	 */
-	std::ostream& PrintLD(std::ostream& os) const;
+	std::ostream& PrintLD(std::ostream& os, VcfHeader* hdr) const;
 
 	/**<
 	 * Print out JSON to a given ostream. Note that contig identifiers
@@ -888,10 +889,11 @@ public:
 	std::string GetString() const;
 
 public:
-	bool square, window, low_memory, bitmaps; // using square compute, using window compute
+	bool square, window, low_memory, bitmaps, single; // using square compute, using window compute
 	bool force_phased, forced_unphased, force_cross_intervals;
 	int32_t c_level, bl_size, b_size, l_window; // compression level, block_size, output block size, window size in bp
 	int32_t n_threads, cycle_threshold, ldd_load_type;
+	int32_t l_surrounding; // left,right-padding in base-pairs when running in single mode
 	std::string in, out; // input file, output file/cout
 	double minP, minR2, maxR2, minDprime, maxDprime;
 	int32_t n_chunks, c_chunk;

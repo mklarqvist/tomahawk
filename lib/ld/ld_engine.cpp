@@ -1275,6 +1275,7 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 		irecR.ridB   = cur_rcd.ridA;
 		irecR.minpos = cur_rcd.Bpos;
 		irecR.maxpos = cur_rcd.Bpos;
+		//n_out_tick = 0;
 	}
 	// If ridB is mixed then set index value to -1.
 	if(irecF.ridB != cur_rcd.ridB) irecF.ridB = -1;
@@ -1294,10 +1295,11 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 	// Add reverse.
 	blk_r += cur_rcd;
 	// Update tickers.
-	n_out += 2; n_out_tick += 2;
+	n_out += 2; //n_out_tick += 2;
 
 	// Update ticker.
-	if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
+	//if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
+	//progress->n_out += 2;
 
 	// Reset controller.
 	cur_rcd.controller = 0;
@@ -1722,10 +1724,10 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 	// Add reverse.
 	blk_r += cur_rcd;
 	// Update tickers.
-	n_out += 2; n_out_tick += 2;
+	n_out += 2; //n_out_tick += 2;
 
 	// Update ticker.
-	if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
+	//if(n_out_tick == 300){ progress->n_out += 300; n_out_tick = 0; }
 
 	// Reset controller.
 	cur_rcd.controller = 0;
@@ -1735,6 +1737,7 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 
 bool twk_ld_engine::CompressFwd(){
 	if(blk_f.n){
+		//progress->n_out += blk_f.n;
 		ibuf << blk_f;
 
 		if(zcodec.Compress(ibuf, obuf, settings.c_level) == false){
@@ -1747,11 +1750,11 @@ bool twk_ld_engine::CompressFwd(){
 		//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
 		//writer->flush(); // flush to make sure offset is good.
 		//irecF.foff = writer->stream.tellp();
+		irecF.b_cmp = obuf.size(); // keep here because writer resets obuf.
 		writer->Add(ibuf.size(), obuf.size(), obuf, irecF);
 		//writer->flush(); // flush to make sure offset is good.
 		//irecF.fend = writer->stream.tellp();
 		irecF.n = blk_f.n;
-		irecF.b_cmp = obuf.size();
 		irecF.b_unc = twk1_two_t::packed_size * irecF.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecF);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
@@ -1766,6 +1769,7 @@ bool twk_ld_engine::CompressFwd(){
 bool twk_ld_engine::CompressRev(){
 	if(blk_r.n){
 		ibuf << blk_r;
+		//progress->n_out += blk_r.n;
 
 		if(zcodec.Compress(ibuf, obuf, settings.c_level) == false){
 			std::cerr << "failed compression" << std::endl;
@@ -1777,11 +1781,11 @@ bool twk_ld_engine::CompressRev(){
 		//std::cerr << "F=" << buf_f.size() << "->" << obuf.size() << " -> " << (float)buf_f.size()/obuf.size() << std::endl;
 		//writer->flush(); // flush to make sure offset is good.
 		//irecR.foff = writer->stream.tellp();
+		irecR.b_cmp = obuf.size(); // keep here because writer resets obuf.
 		writer->Add(ibuf.size(), obuf.size(), obuf, irecR);
 		//writer->flush(); // flush to make sure offset is good.
 		//irecR.fend = writer->stream.tellp();
 		irecR.n = blk_r.n;
-		irecR.b_cmp = obuf.size();
 		irecR.b_unc = twk1_two_t::packed_size * irecR.n + 2*sizeof(uint32_t);
 		index->AddThreadSafe(irecR);
 		//std::cerr << irecF.n << "," << irecF.foff << "," << irecF.fend << "," << irecF.rid << ":" << irecF.minpos << "-" << irecF.maxpos << "," << irecF.ridB << std::endl;
@@ -1796,7 +1800,7 @@ bool twk_ld_engine::CompressRev(){
 bool twk_ld_engine::CompressBlock(){
 	if(CompressFwd() == false) return false;
 	if(CompressRev() == false) return false;
-	n_out = 0;
+	//n_out = 0;
 
 	return true;
 }
@@ -1814,6 +1818,12 @@ twk_ld_slave::~twk_ld_slave(){ delete thread; }
 
 std::thread* twk_ld_slave::Start(){
 	delete thread; thread = nullptr;
+
+	// Special case for single
+	if(settings->single){
+		thread = new std::thread(&twk_ld_slave::CalculateSingle, this, nullptr);
+		return(thread);
+	}
 
 	if(settings->force_phased && settings->low_memory && settings->bitmaps)
 		if(settings->window) thread = new std::thread(&twk_ld_slave::CalculatePhasedBitmapWindow, this, nullptr);
@@ -1882,7 +1892,9 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 	//std::cerr << thresh_nomiss << "," << thresh_miss << std::endl;
 
 	if(type == 1){
+		uint64_t cur_out = engine.n_out;
 		for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+			cur_out = engine.n_out;
 			for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 				if(rcds0[i].ac + rcds0[j].ac <= 2){
 					continue;
@@ -1897,6 +1909,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 						engine.PhasedVectorized(blocks[0],i,blocks[0],j,perf);
 				}
 			}
+			progress->n_out += engine.n_out - cur_out;
 		}
 		progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 	} else {
@@ -1907,9 +1920,11 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 		const uint32_t n_blocks2 = blocks[1].n_rec / bsize;
 
 		uint64_t d = 0;
+		uint64_t cur_out = engine.n_out;
 		for(uint32_t ii = 0; ii < n_blocks1*bsize; ii += bsize){
 			for(uint32_t jj = 0; jj < n_blocks2*bsize; jj += bsize){
 				for(uint32_t i = ii; i < ii + bsize; ++i){
+					cur_out = engine.n_out;
 					for(uint32_t j = jj; j < jj + bsize; ++j){
 						++d;
 						if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -1926,12 +1941,14 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 								engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
 						}
 					}
+					progress->n_out += engine.n_out - cur_out;
 					//std::cerr << "end j" << std::endl;
 				}
 				//std::cerr << "end i" << std::endl;
 			}
 			// residual j that does not fit in a block
 			for(uint32_t i = ii; i < ii + bsize; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = n_blocks2*bsize; j < blocks[1].n_rec; ++j){
 					++d;
 					if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -1948,6 +1965,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 					}
 
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 		}
 
@@ -1955,6 +1973,7 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 		//std::cerr << "j=" << n_blocks2*bsize << "/" << blocks[1].n_rec << std::endl;
 
 		for(uint32_t i = n_blocks1*bsize; i < blocks[0].n_rec; ++i){
+			cur_out = engine.n_out;
 			for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 				++d;
 				if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -1969,8 +1988,8 @@ void twk_ld_slave::Phased(const twk1_t* rcds0,
 					else
 						engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
 				}
-
 			}
+			progress->n_out += engine.n_out - cur_out;
 		}
 
 		//std::cerr << "done=" << d << "/" << blocks[0].n_rec * blocks[1].n_rec << std::endl;
@@ -1988,7 +2007,9 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 	const uint32_t thresh_miss = 0.012*n_s + 22.3661;
 
 	if(type == 1){
+		uint64_t cur_out = engine.n_out;
 		for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+			cur_out = engine.n_out;
 			for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 				if(rcds0[i].ac + rcds0[j].ac <= 2){
 					continue;
@@ -2017,6 +2038,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 				}
 #endif
 			}
+			progress->n_out += engine.n_out - cur_out;
 		}
 		progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 	} else {
@@ -2026,9 +2048,11 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 		const uint32_t n_blocks2 = blocks[1].n_rec / bsize;
 
 		uint64_t d = 0;
+		uint64_t cur_out = engine.n_out;
 		for(uint32_t ii = 0; ii < n_blocks1*bsize; ii += bsize){
 			for(uint32_t jj = 0; jj < n_blocks2*bsize; jj += bsize){
 				for(uint32_t i = ii; i < ii + bsize; ++i){
+					cur_out = engine.n_out;
 					for(uint32_t j = jj; j < jj + bsize; ++j){
 						++d;
 						if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -2059,12 +2083,14 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 						}
 #endif
 					}
+					progress->n_out += engine.n_out - cur_out;
 					//std::cerr << "end j" << std::endl;
 				}
 				//std::cerr << "end i" << std::endl;
 			}
 			// residual j that does not fit in a block
 			for(uint32_t i = ii; i < ii + bsize; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = n_blocks2*bsize; j < blocks[1].n_rec; ++j){
 					++d;
 					if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -2095,6 +2121,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 #endif
 
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 		}
 
@@ -2102,6 +2129,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 		//std::cerr << "j=" << n_blocks2*bsize << "/" << blocks[1].n_rec << std::endl;
 
 		for(uint32_t i = n_blocks1*bsize; i < blocks[0].n_rec; ++i){
+			cur_out = engine.n_out;
 			for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 				++d;
 				if( rcds0[i].ac + rcds1[j].ac <= 2){
@@ -2132,6 +2160,7 @@ void twk_ld_slave::Unphased(const twk1_t* rcds0, const twk1_t* rcds1, const twk1
 #endif
 
 			}
+			progress->n_out += engine.n_out - cur_out;
 		}
 
 		//std::cerr << "done=" << d << "/" << blocks[0].n_rec * blocks[1].n_rec << std::endl;
@@ -2152,13 +2181,121 @@ bool twk_ld_slave::CalculatePhased(twk_ld_perf* perf){
 
 	while(true){
 		if(!ticker->Get(from, to, type)) break;
-
 		this->UpdateBlocks(blocks,from,to);
+
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
 		// Compute phased math
 		Phased(rcds0, rcds1, blocks, type, perf);
+	}
+	//std::cerr << "done" << std::endl;
+
+	// if preloaded
+	if(settings->low_memory == false){
+		blocks[0].vec = nullptr; blocks[0].list = nullptr; blocks[0].bitmap = nullptr;
+		blocks[1].vec = nullptr; blocks[1].list = nullptr; blocks[1].bitmap = nullptr;
+	}
+
+	// compress last
+	if(this->engine.CompressBlock() == false)
+		return false;
+
+	return true;
+}
+
+bool twk_ld_slave::CalculateSingle(twk_ld_perf* perf){
+	twk1_ldd_blk blocks[2];
+	uint32_t from, to; uint8_t type;
+	Timer timer; timer.Start();
+
+	i_start = ticker->fL; j_start = ticker->fR;
+	prev_i = 0; prev_j = 0;
+	n_cycles = 0;
+
+	// Heuristically determined
+	uint32_t cycle_thresh_p = n_s / 45 == 0 ? 2 : n_s / 45;
+	if(settings->cycle_threshold != 0)
+		cycle_thresh_p = settings->cycle_threshold;
+	uint32_t cycle_thresh_u = (n_s / 60 == 0 ? 2 : n_s / 60);
+	if(settings->cycle_threshold != 0)
+		cycle_thresh_u = settings->cycle_threshold;
+
+	const uint32_t thresh_miss = 0.0047*n_s + 5.2913;
+
+	const twk1_t* rcds0 = nullptr;
+	const twk1_t* rcds1 = nullptr;
+
+	while(true){
+		if(!ticker->Get(from, to, type)) break;
+		//this->UpdateBlocks(blocks,from,to);
+		blocks[0].SetPreloaded(ldd[0]);
+		blocks[1].SetPreloaded(ldd[to]);
+		if(to == 0) type = 1;
+		else type = 0;
+
+		//std::cerr << "f/t/t: " << from << "," << to << "," << (int)type << " of " << ticker->fL << "-" << ticker->tR << std::endl;
+		//std::cerr << "starts=" << i_start << "/" << j_start << std::endl;
+		//std::cerr << "sizes=" << blocks[0].blk->n << "," << blocks[1].blk->n << std::endl;
+		//std::cerr << "range=" << blocks[0].blk->minpos << "-" << blocks[0].blk->maxpos << " and " << blocks[1].blk->minpos << "-" << blocks[1].blk->maxpos << std::endl;
+
+		rcds0 = blocks[0].blk->rcds;
+		rcds1 = blocks[1].blk->rcds;
+
+		if(type == 1){
+			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
+					/*if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
+						continue;
+					}*/
+
+					if(blocks[0].blk->rcds[i].an || blocks[0].blk->rcds[j].an){
+						if(blocks[0].blk->rcds[i].gt->n + blocks[0].blk->rcds[j].gt->n < cycle_thresh_u){
+							engine.UnphasedRunlength(blocks[0],i,blocks[0],j,nullptr);
+						} else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,nullptr);
+						}
+					} else {
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedListVector(blocks[0],i,blocks[0],j,perf);
+						} else {
+							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+								engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
+							else
+								engine.PhasedVectorized(blocks[0],i,blocks[0],j,perf);
+						}
+					}
+				}
+			}
+			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
+		} else {
+			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
+					/*if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
+						continue;
+					}*/
+
+					if(blocks[0].blk->rcds[i].an || blocks[1].blk->rcds[j].an){
+						if(blocks[0].blk->rcds[i].gt->n + blocks[1].blk->rcds[j].gt->n < cycle_thresh_u)
+							engine.UnphasedRunlength(blocks[0],i,blocks[1],j,nullptr);
+						else {
+							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,nullptr);
+						}
+					} else {
+						if((rcds0[i].gt_missing || rcds1[j].gt_missing) == false){
+							engine.PhasedListVector(blocks[0],i,blocks[1],j,perf);
+						} else {
+							if(rcds0[i].ac + rcds1[j].ac < thresh_miss)
+								engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
+							else
+								engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
+						}
+					}
+
+				}
+			}
+			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
+		}
 	}
 	//std::cerr << "done" << std::endl;
 
@@ -2231,8 +2368,10 @@ bool twk_ld_slave::CalculatePhasedBitmap(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
+		uint32_t cur_out = engine.n_out;
 		if(type == 1){
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 					if(rcds0[i].ac + rcds0[j].ac <= 2){
 						continue;
@@ -2244,10 +2383,12 @@ bool twk_ld_slave::CalculatePhasedBitmap(twk_ld_perf* perf){
 						engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 		} else {
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 					if( rcds0[i].ac + rcds1[j].ac <= 2){
 						continue;
@@ -2259,6 +2400,7 @@ bool twk_ld_slave::CalculatePhasedBitmap(twk_ld_perf* perf){
 						engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 		}
@@ -2297,8 +2439,10 @@ bool twk_ld_slave::CalculatePhasedBitmapWindow(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
+		uint32_t cur_out = engine.n_out;
 		if(type == 1){
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 					if(blocks[0].blk->rcds[i].rid != blocks[0].blk->rcds[j].rid
 					   && (blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
@@ -2317,10 +2461,12 @@ bool twk_ld_slave::CalculatePhasedBitmapWindow(twk_ld_perf* perf){
 						engine.PhasedRunlength(blocks[0],i,blocks[0],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 		} else {
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 					if(blocks[0].blk->rcds[i].rid != blocks[1].blk->rcds[j].rid
 					   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
@@ -2339,6 +2485,7 @@ bool twk_ld_slave::CalculatePhasedBitmapWindow(twk_ld_perf* perf){
 						engine.PhasedRunlength(blocks[0],i,blocks[1],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 		}
@@ -2378,8 +2525,10 @@ bool twk_ld_slave::CalculatePhasedWindow(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
+		uint32_t cur_out = engine.n_out;
 		if(type == 1){
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 					//std::cerr << "here=" << i << "/" << j << " diff=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
 					if(blocks[0].blk->rcds[i].rid == blocks[0].blk->rcds[j].rid
@@ -2404,10 +2553,12 @@ bool twk_ld_slave::CalculatePhasedWindow(twk_ld_perf* perf){
 							engine.PhasedVectorized(blocks[0],i,blocks[0],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 		} else {
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 					if(blocks[0].blk->rcds[i].rid == blocks[1].blk->rcds[j].rid
 					   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
@@ -2430,6 +2581,7 @@ bool twk_ld_slave::CalculatePhasedWindow(twk_ld_perf* perf){
 							engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 		}
@@ -2478,8 +2630,10 @@ bool twk_ld_slave::CalculateUnphasedWindow(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
+		uint32_t cur_out = engine.n_out;
 		if(type == 1){
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 					//std::cerr << "here=" << i << "/" << j << " diff=" << blocks[0].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos << std::endl;
 					if(blocks[0].blk->rcds[i].rid == blocks[0].blk->rcds[j].rid
@@ -2508,10 +2662,12 @@ bool twk_ld_slave::CalculateUnphasedWindow(twk_ld_perf* perf){
 							engine.UnphasedVectorized(blocks[0],i,blocks[0],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 		} else {
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 					if(blocks[0].blk->rcds[i].rid == blocks[1].blk->rcds[j].rid
 					   && (blocks[1].blk->rcds[j].pos - blocks[0].blk->rcds[i].pos) > settings->l_window)
@@ -2538,6 +2694,7 @@ bool twk_ld_slave::CalculateUnphasedWindow(twk_ld_perf* perf){
 							engine.UnphasedVectorized(blocks[0],i,blocks[1],j,perf);
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 		}
@@ -2587,8 +2744,10 @@ bool twk_ld_slave::Calculate(twk_ld_perf* perf){
 		rcds0 = blocks[0].blk->rcds;
 		rcds1 = blocks[1].blk->rcds;
 
+		uint32_t cur_out = engine.n_out;
 		if(type == 1){
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = i+1; j < blocks[0].n_rec; ++j){
 					if(blocks[0].blk->rcds[i].ac + blocks[0].blk->rcds[j].ac <= 2){
 						continue;
@@ -2611,10 +2770,12 @@ bool twk_ld_slave::Calculate(twk_ld_perf* perf){
 						}
 					}
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += ((blocks[0].n_rec * blocks[0].n_rec) - blocks[0].n_rec) / 2; // n choose 2
 		} else {
 			for(uint32_t i = 0; i < blocks[0].n_rec; ++i){
+				cur_out = engine.n_out;
 				for(uint32_t j = 0; j < blocks[1].n_rec; ++j){
 					if( blocks[0].blk->rcds[i].ac + blocks[1].blk->rcds[j].ac <= 2 ){
 						continue;
@@ -2636,8 +2797,8 @@ bool twk_ld_slave::Calculate(twk_ld_perf* perf){
 								engine.PhasedVectorized(blocks[0],i,blocks[1],j,perf);
 						}
 					}
-
 				}
+				progress->n_out += engine.n_out - cur_out;
 			}
 			progress->n_var += blocks[0].n_rec * blocks[1].n_rec;
 		}

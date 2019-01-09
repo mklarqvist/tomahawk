@@ -87,9 +87,12 @@ struct twk_ld_progress {
 	 * reasons. This has no consequence as this function is ever only called once.
 	 */
 	void PrintFinal(){
-		std::cerr << utility::timestamp("PROGRESS") << this->timer.ElapsedString() << "\t" << utility::ToPrettyString(n_var.load()) << "\t" << utility::ToPrettyString(n_var.load()*n_s) << "\t" << utility::ToPrettyString(n_out.load()) << std::endl;
-		std::cerr << utility::timestamp("PROGRESS") << utility::ToPrettyString((uint64_t)((double)n_var.load()/timer.Elapsed().count())) << "\t" << utility::ToPrettyString((uint64_t)(((double)n_var.load()*n_s)/timer.Elapsed().count())) << std::endl;
-		std::cerr << utility::timestamp("PROGRESS") << "Finished" << std::endl;
+		std::cerr << utility::timestamp("PROGRESS") << "Finished in " << this->timer.ElapsedString()
+				<< ". Variants: " << utility::ToPrettyString(n_var.load()) << ", genotypes: "
+				<< utility::ToPrettyString(n_var.load()*n_s) << ", output: "
+				<< utility::ToPrettyString(n_out.load()) << std::endl;
+		std::cerr << utility::timestamp("PROGRESS") << utility::ToPrettyString((uint64_t)((double)n_var.load()/timer.Elapsed().count())) << " variants/s and "
+				<< utility::ToPrettyString((uint64_t)(((double)n_var.load()*n_s)/timer.Elapsed().count())) << " genotypes/s" << std::endl;
 	}
 
 public:

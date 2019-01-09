@@ -397,6 +397,7 @@ struct twk_ld_slave {
 	bool CalculateUnphasedWindow(twk_ld_perf* perf = nullptr);
 	bool Calculate(twk_ld_perf* perf = nullptr);
 	bool CalculatePerformance(twk_ld_engine::func f, twk_ld_perf* perf = nullptr);
+	bool CalculateSingle(twk_ld_perf* perf = nullptr);
 
 public:
 	uint32_t n_s, n_total;

@@ -79,6 +79,27 @@ struct twk_ld_balancer {
 		return true;
 	}
 
+	/**<
+	 * Construction in the special case of (1,...,n) sites compared against
+	 * all other sites. This is useful in the case you want to compute a single
+	 * site vs all-others very quickly.
+	 * @param n_blocks      Total number of blocks.
+	 * @param desired_parts Desired number of subproblems to solve.
+	 * @param chosen_part   Target subproblem we are interested in getting the ranges for.
+	 * @return              Return TRUE upon success or FALSE otherwise.
+	 */
+	bool BuildSingleSite(uint32_t n_blocks,
+	                     uint32_t desired_parts,
+	                     uint32_t chosen_part)
+	{
+		if(desired_parts != 1) return false;
+		if(chosen_part > desired_parts) return false;
+		p = 1; c = 0;
+		fromL = 0; toL = 1; fromR = 0; toR = n_blocks;
+		n_m = n_blocks; diag = false;
+		return true;
+	}
+
 public:
 	bool diag; // is selectd chunk diagonal
 	uint32_t n, p, c; // number of available blocks, desired parts, chosen part

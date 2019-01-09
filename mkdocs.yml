@@ -1,11 +1,14 @@
 site_name: Tomahawk
-repo_url: https://github.com/mklarqvist/twk_local/
+repo_url: https://github.com/mklarqvist/tomahawk/
 repo_name: 'GitHub'
 site_author: Marcus D. R. Klarqvist
 copyright: Copyright (C) 2016-present Genome Research Ltd., University of Cambridge, and Marcus D. R. Klarqvist
 theme:
     name: material
     custom_dir: docs/material/
+
+extra_css:
+  - 'stylesheets/extra.css'
 
 nav:
   - Home: index.md

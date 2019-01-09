@@ -14,6 +14,7 @@ std::string tomahawk::INTERPRETED_COMMAND;
 #include "haplotype.h"
 #include "relationship.h"
 #include "decay.h"
+#include "scalc.h"
 
 int main(int argc, char** argv){
 	if(tomahawk::utility::IsBigEndian()){
@@ -40,6 +41,8 @@ int main(int argc, char** argv){
 	else if(strcmp(&argv[1][0], "calc") == 0){
 		return(calc(argc, argv));
 
+	} else if(strcmp(&argv[1][0], "calc-single") == 0 || strcmp(&argv[1][0], "scalc") == 0){
+		return(scalc(argc, argv));
 	}
 
 	else if(strcmp(&argv[1][0], "view") == 0){

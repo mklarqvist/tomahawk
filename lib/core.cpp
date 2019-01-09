@@ -112,6 +112,7 @@ twk1_block_t& twk1_block_t::operator=(twk1_block_t&& other){
 
 void twk1_block_t::Add(const twk1_t& rec){
 	if(this->n == this->m) this->resize(); // will also trigger when n=0 and m=0
+	if(this->n == 0) this->minpos = rec.pos + 1;
 	this->maxpos = rec.pos + 1; // right non-inclusive
 	this->rcds[this->n++] = rec;
 }
@@ -188,11 +189,12 @@ std::istream& operator>>(std::istream& stream, twk_oblock_t& self){
 //
 
 twk_ld_settings::twk_ld_settings() :
-	square(true), window(false), low_memory(false), bitmaps(false),
+	square(true), window(false), low_memory(false), bitmaps(false), single(false),
 	force_phased(false), forced_unphased(false), force_cross_intervals(false),
 	c_level(1), bl_size(500), b_size(10000), l_window(1000000),
 	n_threads(std::thread::hardware_concurrency()), cycle_threshold(0),
-	ldd_load_type(TWK_LDD_ALL), out("-"),
+	ldd_load_type(TWK_LDD_ALL), l_surrounding(500000),
+	out("-"),
 	minP(1), minR2(0.1), maxR2(100), minDprime(0), maxDprime(100),
 	n_chunks(1), c_chunk(0)
 {}
@@ -202,12 +204,14 @@ std::string twk_ld_settings::GetString() const{
 				  + ",window=" + std::string((window ? "TRUE" : "FALSE"))
 				  + ",low_memory=" + std::string((low_memory ? "TRUE" : "FALSE"))
 				  + ",bitmaps=" + std::string((bitmaps ? "TRUE" : "FALSE"))
+	              + ",single=" + std::string((single ? "TRUE" : "FALSE"))
 				  + ",force_phased=" + std::string((force_phased ? "TRUE" : "FALSE"))
 				  + ",force_unphased=" + std::string((forced_unphased ? "TRUE" : "FALSE"))
 				  + ",compression_level=" + std::to_string(c_level)
 				  + ",block_size=" + std::to_string(bl_size)
 				  + ",output_block_size=" + std::to_string(b_size)
 				  + (window ? std::string(",window_size=") + std::to_string(l_window) : "")
+				  + ",l_surrounding=" + std::to_string(l_surrounding)
 				  + ",minP=" + std::to_string(minP)
 				  + ",minR2=" + std::to_string(minR2)
 				  + ",maxR2=" + std::to_string(maxR2)
@@ -407,22 +411,22 @@ twk_buffer_t& operator>>(twk_buffer_t& os, twk1_two_t& entry){
 	return(os);
 }
 
-std::ostream& twk1_two_t::PrintLD(std::ostream& os) const {
-	os << controller << '\t' << ridA << '\t' << Apos << '\t' << ridB << '\t' << Bpos << '\t'
+std::ostream& twk1_two_t::PrintLD(std::ostream& os, VcfHeader* hdr) const {
+	os << controller << '\t' << hdr->GetContig(ridA)->name << '\t' << Apos+1 << '\t' << hdr->GetContig(ridB)->name << '\t' << Bpos+1 << '\t'
 	   << cnt[0] << '\t' << cnt[1] << '\t' << cnt[2] << '\t' << cnt[3] << '\t' << D << '\t'
 	   << Dprime << '\t' << R << '\t' << R2 << '\t' << P << '\t' << ChiSqFisher << '\t' << ChiSqModel << '\n';
 	return(os);
 }
 
 std::ostream& twk1_two_t::PrintLDJson(std::ostream& os) const {
-	os << '[' << controller << ',' << ridA << ',' << Apos << ',' << ridB << ',' << Bpos << ','
+	os << '[' << controller << ',' << ridA << ',' << Apos+1 << ',' << ridB << ',' << Bpos+1 << ','
 	   << cnt[0] << ',' << cnt[1] << ',' << cnt[2] << ',' << cnt[3] << ',' << D << ','
 	   << Dprime << ',' << R << ',' << R2 << ',' << P << ',' << ChiSqFisher << ',' << ChiSqModel << ']' << '\n';
 	return(os);
 }
 
 std::ostream& operator<<(std::ostream& os, const twk1_two_t& entry){
-	os << entry.controller << '\t' << entry.ridA << '\t' << entry.Apos << '\t' << entry.ridB << '\t' << entry.Bpos << '\t'
+	os << entry.controller << '\t' << entry.ridA << '\t' << entry.Apos+1 << '\t' << entry.ridB << '\t' << entry.Bpos+1 << '\t'
 	   << entry.cnt[0] << '\t' << entry.cnt[1] << '\t' << entry.cnt[2] << '\t' << entry.cnt[3] << '\t'
 	   << entry.D << '\t' << entry.Dprime << '\t' << entry.R << '\t' << entry.R2 << '\t' << entry.P << '\t' << entry.ChiSqFisher << '\t' << entry.ChiSqModel;
 	return os;
@@ -490,11 +494,10 @@ void twk1_two_block_t::resize(void){
 		this->m = 500;
 		return;
 	}
-	//std::cerr << "resizing=" << n << "/" << m << std::endl;
 
 	twk1_two_t* temp = rcds;
 	rcds = new twk1_two_t[m*2];
-	for(int i = 0; i < n; ++i) rcds[i] = std::move(temp[i]); // move records over
+	for(int i = 0; i < n; ++i) rcds[i] = temp[i]; // move records over
 	delete[] temp;
 	m*=2;
 }

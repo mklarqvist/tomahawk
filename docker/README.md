@@ -1,8 +1,12 @@
-Dockerized Tomahawk
-================
+# Dockerized Tomahawk #
+## Overview ##
 
-[Tomahawk](https://github.com/mklarqvist/tomahawk) is available as a [Docker
-image](https://hub.docker.com/r/mklarqvist/tomahawk/). You can pull the Tomahawk
+This directory contains [Dockerfiles](https://hub.docker.com/r/mklarqvist/tomahawk/) for different Docker containers of interest
+for [Tomahawk](https://github.com/mklarqvist/tomahawk) users.  Additional information about available containers,
+installation and modification can be found on the [Docker
+installation](https://docs.docker.com/installation/s) page.
+
+You can pull the Tomahawk
 image using
 
 `docker pull mklarqvist/tomahawk`

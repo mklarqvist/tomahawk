@@ -38,7 +38,8 @@ void twk_intervals::Dedupe(){
 		std::sort(ivecs[i].begin(), ivecs[i].end());
 		ivals.push_back(ivecs[i][0]);
 		for(int j = 1; j < ivecs[i].size(); ++j){
-			if(  ivecs[i][j].start <= ivals.back().stop
+			// Not-inclusive right-interval [from, to)
+			if(  ivecs[i][j].start <  ivals.back().stop
 			  && ivecs[i][j].stop  >= ivals.back().start)
 			{
 				ivals.back().stop = ivecs[i][j].stop;
@@ -114,7 +115,7 @@ bool twk_intervals::ParseIntervalString(const std::string& s, const VcfHeader& h
 		std::vector<std::string> rid = utility::split(s, ':');
 
 		uint32_t ival_from = (uint32_t)std::atof(rid[1].c_str());
-		uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str());
+		uint32_t ival_to   = (uint32_t)std::atof(rid[1].c_str()) + 1;
 		const VcfContig* contig = hdr.GetContig(rid[0]);
 		if(contig == nullptr){
 			std::cerr << utility::timestamp("ERROR","INTERVAL") << "Contig does not exist in string " << s << std::endl;
