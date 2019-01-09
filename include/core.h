@@ -966,6 +966,35 @@ public:
     double min, max;
 };
 
+// aggregate
+struct twk1_aggregate {
+public:
+	struct offset_tuple {
+	    offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
+	    uint64_t range;
+	    uint32_t min, max;
+	};
+
+public:
+	twk1_aggregate();
+	twk1_aggregate(const uint32_t x, const uint32_t y);
+	~twk1_aggregate();
+
+	friend std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg);
+	friend std::istream& operator>>(std::istream& stream, twk1_aggregate& agg);
+
+	bool Open(std::string input);
+
+public:
+	// magic header
+	uint32_t n, x, y, bpx, bpy, n_original;
+	uint64_t range;
+	std::string filename; // input filename
+	std::vector<offset_tuple> rid_offsets; // mat offsets
+	double* data;
+	// EOF
+};
+
 }
 
 #endif /* TWK_CORE_H_ */

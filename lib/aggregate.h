@@ -28,168 +28,10 @@ DEALINGS IN THE SOFTWARE.
 
 namespace tomahawk {
 
-struct offset_tuple {
-    offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
-    uint64_t range;
-    uint32_t min, max;
-};
-
 /**<
  *
  */
 // Todo:
-struct twk1_aggregate {
-public:
-	twk1_aggregate() : n(0), x(0), y(0), bpx(0), bpy(0), n_original(0), range(0), data(nullptr){}
-	twk1_aggregate(const uint32_t x, const uint32_t y) : n(x*y), x(x), y(y), bpx(0), bpy(0), n_original(0), range(0), data(new double[n]){}
-	~twk1_aggregate(){ delete[] data; }
-
-	friend std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg){
-		stream.write(TOMAHAWK_AGGREGATE_MAGIC_HEADER.data(), TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
-
-		SerializePrimitive(agg.n, stream);
-		SerializePrimitive(agg.x, stream);
-		SerializePrimitive(agg.y, stream);
-		SerializePrimitive(agg.bpx, stream);
-		SerializePrimitive(agg.bpy, stream);
-		SerializePrimitive(agg.n_original, stream);
-		SerializePrimitive(agg.range, stream);
-		SerializeString(agg.filename, stream);
-
-		// Write rid tuples.
-		uint32_t n_rid = agg.rid_offsets.size();
-		SerializePrimitive(n_rid, stream);
-		for(int i = 0; i < agg.rid_offsets.size(); ++i){
-			uint32_t min = agg.rid_offsets[i].min == std::numeric_limits<uint32_t>::max() ? 0 : agg.rid_offsets[i].min;
-			uint32_t max = agg.rid_offsets[i].max < min ? 0 : agg.rid_offsets[i].min;
-			SerializePrimitive(min, stream);
-			SerializePrimitive(max, stream);
-			SerializePrimitive(agg.rid_offsets[i].range, stream);
-		}
-
-		ZSTDCodec zcodec;
-		twk_buffer_t ibuf, obuf;
-		for(int i = 0; i < agg.n; ++i) ibuf += agg.data[i];
-		zcodec.Compress(ibuf, obuf, 6);
-
-		// Write data.
-		uint32_t obuf_size = obuf.size();
-		SerializePrimitive(obuf_size, stream);
-		stream.write(obuf.data(), obuf.size());
-		stream.write(TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH);
-
-		return(stream);
-	}
-
-	friend std::istream& operator>>(std::istream& stream, twk1_aggregate& agg){
-		char magic[TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH];
-		stream.read(&magic[0], TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
-
-		DeserializePrimitive(agg.n, stream);
-		DeserializePrimitive(agg.x, stream);
-		DeserializePrimitive(agg.y, stream);
-		DeserializePrimitive(agg.bpx, stream);
-		DeserializePrimitive(agg.bpy, stream);
-		DeserializePrimitive(agg.n_original, stream);
-		DeserializePrimitive(agg.range, stream);
-		DeserializeString(agg.filename, stream);
-
-		// Write rid tuples.
-		uint32_t n_rid = 0;
-		DeserializePrimitive(n_rid, stream);
-		agg.rid_offsets.clear();
-		agg.rid_offsets.resize(n_rid);
-		for(int i = 0; i < agg.rid_offsets.size(); ++i){
-			DeserializePrimitive(agg.rid_offsets[i].min, stream);
-			DeserializePrimitive(agg.rid_offsets[i].max, stream);
-			DeserializePrimitive(agg.rid_offsets[i].range, stream);
-		}
-
-		ZSTDCodec zcodec;
-		twk_buffer_t ibuf, obuf;
-		for(int i = 0; i < agg.n; ++i) ibuf += agg.data[i];
-		zcodec.Decompress(obuf, ibuf);
-
-		// Write data.
-		delete[] agg.data; agg.data = nullptr;
-		agg.data = new double[agg.n];
-		uint32_t obuf_size = 0;
-		DeserializePrimitive(obuf_size, stream);
-		stream.read(obuf.data(), obuf_size);
-
-		char eof[TOMAHAWK_TWOAGG_EOF_LENGTH];
-		stream.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
-
-		return(stream);
-	}
-
-	bool Open(std::string input){
-		if(input.size() == 0) return false;
-
-		std::ifstream in(input, std::ios::in | std::ios::binary | std::ios::ate);
-		if(in.good() == false) return false;
-		uint64_t fsize = in.tellg();
-		in.seekg(0);
-
-		char magic[TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH];
-		in.read(&magic[0], TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
-		if(in.good() == false) return false;
-		if(strncmp(magic, TOMAHAWK_AGGREGATE_MAGIC_HEADER.data(), TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH) != 0) return false;
-
-		DeserializePrimitive(n, in);
-		DeserializePrimitive(x, in);
-		DeserializePrimitive(y, in);
-		DeserializePrimitive(bpx, in);
-		DeserializePrimitive(bpy, in);
-		DeserializePrimitive(n_original, in);
-		DeserializePrimitive(range, in);
-		DeserializeString(filename, in);
-		if(in.good() == false) return false;
-
-		// Write rid tuples.
-		uint32_t n_rid = 0;
-		DeserializePrimitive(n_rid, in);
-		rid_offsets.clear();
-		rid_offsets.resize(n_rid);
-		for(int i = 0; i < rid_offsets.size(); ++i){
-			DeserializePrimitive(rid_offsets[i].min, in);
-			DeserializePrimitive(rid_offsets[i].max, in);
-			DeserializePrimitive(rid_offsets[i].range, in);
-		}
-		if(in.good() == false) return false;
-
-		ZSTDCodec zcodec;
-		twk_buffer_t ibuf, obuf;
-		for(int i = 0; i < n; ++i) ibuf += data[i];
-		zcodec.Decompress(obuf, ibuf);
-
-		// Write data.
-		delete[] data; data = nullptr;
-		data = new double[n];
-		uint32_t obuf_size = 0;
-		DeserializePrimitive(obuf_size, in);
-		in.read(obuf.data(), obuf_size);
-		assert(in.tellg() == fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
-
-		//in.seekg(fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
-		if(in.good() == false) return false;
-		char eof[TOMAHAWK_TWOAGG_EOF_LENGTH];
-		in.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
-		if(strncmp(eof, TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH) != 0) return false;
-
-
-		return false;
-	}
-
-public:
-	// magic header
-	uint32_t n, x, y, bpx, bpy, n_original;
-	uint64_t range;
-	std::string filename; // input filename
-	std::vector<offset_tuple> rid_offsets; // mat offsets
-	double* data;
-	// EOF
-};
 
 struct twk_agg_slave {
 public:
@@ -405,7 +247,7 @@ public:
 	twk_sstats::redfunc reductor; // reductor function
 	std::string filename; // input filename
 	std::vector<range_helper> contig_avail;
-	std::vector<offset_tuple> rid_offsets; // mat offsets
+	std::vector<twk1_aggregate::offset_tuple> rid_offsets; // mat offsets
 	std::vector< std::vector<twk_sstats> > mat; // Output matrix
 };
 
@@ -667,7 +509,7 @@ int aggregate(int argc, char** argv){
 	//         Calculate the landscape ranges (X and Y dimensions).
 	// Approach 2: Dropping regions with no data.
 	uint64_t range = 0;
-	std::vector<tomahawk::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+	std::vector<tomahawk::twk1_aggregate::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
 
 	/**<
 	 * If there is only chromosome set then restrict the (X,Y) landscape to the
