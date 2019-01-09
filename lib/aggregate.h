@@ -223,7 +223,7 @@ public:
 		stream.flush();
 	}
 
-	twk1_aggregate& Overload(twk1_aggregate& agg, uint32_t min_cutoff = 5) const{
+	twk1_aggregate_t& Overload(twk1_aggregate_t& agg, uint32_t min_cutoff = 5) const{
 		for(int i = 0; i < mat.size(); ++i){
 			agg.data[i*mat.size() + 0] = (mat[i][0].*reductor)(min_cutoff);
 			for(int j = 1; j < mat[i].size(); ++j){
@@ -247,7 +247,7 @@ public:
 	twk_sstats::redfunc reductor; // reductor function
 	std::string filename; // input filename
 	std::vector<range_helper> contig_avail;
-	std::vector<twk1_aggregate::offset_tuple> rid_offsets; // mat offsets
+	std::vector<twk1_aggregate_t::offset_tuple> rid_offsets; // mat offsets
 	std::vector< std::vector<twk_sstats> > mat; // Output matrix
 };
 
@@ -509,7 +509,7 @@ int aggregate(int argc, char** argv){
 	//         Calculate the landscape ranges (X and Y dimensions).
 	// Approach 2: Dropping regions with no data.
 	uint64_t range = 0;
-	std::vector<tomahawk::twk1_aggregate::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
+	std::vector<tomahawk::twk1_aggregate_t::offset_tuple> rid_offsets(slaves[0].contig_avail.size());
 
 	/**<
 	 * If there is only chromosome set then restrict the (X,Y) landscape to the
@@ -578,7 +578,7 @@ int aggregate(int argc, char** argv){
 	uint32_t xrange = std::ceil((float)range / x_bins);
 	uint32_t yrange = std::ceil((float)range / y_bins);
 
-	tomahawk::twk1_aggregate agg(x_bins, y_bins);
+	tomahawk::twk1_aggregate_t agg(x_bins, y_bins);
 	agg.bpx = xrange;
 	agg.bpy = yrange;
 	agg.range = range;

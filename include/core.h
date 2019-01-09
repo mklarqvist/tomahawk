@@ -967,7 +967,7 @@ public:
 };
 
 // aggregate
-struct twk1_aggregate {
+struct twk1_aggregate_t {
 public:
 	struct offset_tuple {
 	    offset_tuple() : range(0), min(std::numeric_limits<uint32_t>::max()), max(0){}
@@ -976,11 +976,11 @@ public:
 	};
 
 public:
-	twk1_aggregate();
-	twk1_aggregate(const uint32_t x, const uint32_t y);
-	~twk1_aggregate();
+	twk1_aggregate_t();
+	twk1_aggregate_t(const uint32_t x, const uint32_t y);
+	~twk1_aggregate_t();
 
-	friend std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg);
+	friend std::ostream& operator<<(std::ostream& stream, const twk1_aggregate_t& agg);
 
 	bool Open(std::string input);
 

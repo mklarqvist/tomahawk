@@ -536,11 +536,11 @@ twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_two_block_t& self){
 }
 
 // Aggregate
-twk1_aggregate::twk1_aggregate() : n(0), x(0), y(0), bpx(0), bpy(0), n_original(0), range(0), data(nullptr){}
-twk1_aggregate::twk1_aggregate(const uint32_t x, const uint32_t y) : n(x*y), x(x), y(y), bpx(0), bpy(0), n_original(0), range(0), data(new double[n]){}
-twk1_aggregate::~twk1_aggregate(){ delete[] data; }
+twk1_aggregate_t::twk1_aggregate_t() : n(0), x(0), y(0), bpx(0), bpy(0), n_original(0), range(0), data(nullptr){}
+twk1_aggregate_t::twk1_aggregate_t(const uint32_t x, const uint32_t y) : n(x*y), x(x), y(y), bpx(0), bpy(0), n_original(0), range(0), data(new double[n]){}
+twk1_aggregate_t::~twk1_aggregate_t(){ delete[] data; }
 
-std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg){
+std::ostream& operator<<(std::ostream& stream, const twk1_aggregate_t& agg){
 	stream.write(TOMAHAWK_AGGREGATE_MAGIC_HEADER.data(), TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
 
 	SerializePrimitive(agg.n, stream);
@@ -577,7 +577,7 @@ std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg){
 	return(stream);
 }
 
-bool twk1_aggregate::Open(std::string input){
+bool twk1_aggregate_t::Open(std::string input){
 	if(input.size() == 0){
 		std::cerr << utility::timestamp("ERROR") << "No input path provided..." << std::endl;
 		return false;
@@ -635,6 +635,7 @@ bool twk1_aggregate::Open(std::string input){
 
 	uint32_t obuf_size = 0;
 	DeserializePrimitive(obuf_size, in);
+	std::cerr << "retrieving=" << obuf_size << std::endl;
 
 	ZSTDCodec zcodec;
 	twk_buffer_t ibuf, obuf;
