@@ -981,7 +981,6 @@ public:
 	~twk1_aggregate();
 
 	friend std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg);
-	friend std::istream& operator>>(std::istream& stream, twk1_aggregate& agg);
 
 	bool Open(std::string input);
 

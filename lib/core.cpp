@@ -577,48 +577,6 @@ std::ostream& operator<<(std::ostream& stream, const twk1_aggregate& agg){
 	return(stream);
 }
 
-std::istream& operator>>(std::istream& stream, twk1_aggregate& agg){
-	char magic[TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH];
-	stream.read(&magic[0], TOMAHAWK_AGGREGATE_MAGIC_HEADER_LENGTH);
-
-	DeserializePrimitive(agg.n, stream);
-	DeserializePrimitive(agg.x, stream);
-	DeserializePrimitive(agg.y, stream);
-	DeserializePrimitive(agg.bpx, stream);
-	DeserializePrimitive(agg.bpy, stream);
-	DeserializePrimitive(agg.n_original, stream);
-	DeserializePrimitive(agg.range, stream);
-	DeserializeString(agg.filename, stream);
-
-	// Write rid tuples.
-	uint32_t n_rid = 0;
-	DeserializePrimitive(n_rid, stream);
-	agg.rid_offsets.clear();
-	agg.rid_offsets.resize(n_rid);
-	for(int i = 0; i < agg.rid_offsets.size(); ++i){
-		DeserializePrimitive(agg.rid_offsets[i].min, stream);
-		DeserializePrimitive(agg.rid_offsets[i].max, stream);
-		DeserializePrimitive(agg.rid_offsets[i].range, stream);
-	}
-
-	ZSTDCodec zcodec;
-	twk_buffer_t ibuf, obuf;
-	for(int i = 0; i < agg.n; ++i) ibuf += agg.data[i];
-	zcodec.Decompress(obuf, ibuf);
-
-	// Write data.
-	delete[] agg.data; agg.data = nullptr;
-	agg.data = new double[agg.n];
-	uint32_t obuf_size = 0;
-	DeserializePrimitive(obuf_size, stream);
-	stream.read(obuf.data(), obuf_size);
-
-	char eof[TOMAHAWK_TWOAGG_EOF_LENGTH];
-	stream.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
-
-	return(stream);
-}
-
 bool twk1_aggregate::Open(std::string input){
 	if(input.size() == 0) return false;
 
@@ -648,6 +606,7 @@ bool twk1_aggregate::Open(std::string input){
 	DeserializePrimitive(n_rid, in);
 	rid_offsets.clear();
 	rid_offsets.resize(n_rid);
+
 	for(int i = 0; i < rid_offsets.size(); ++i){
 		DeserializePrimitive(rid_offsets[i].min, in);
 		DeserializePrimitive(rid_offsets[i].max, in);
@@ -655,18 +614,24 @@ bool twk1_aggregate::Open(std::string input){
 	}
 	if(in.good() == false) return false;
 
+	uint32_t obuf_size = 0;
+	DeserializePrimitive(obuf_size, in);
+
 	ZSTDCodec zcodec;
 	twk_buffer_t ibuf, obuf;
-	for(int i = 0; i < n; ++i) ibuf += data[i];
+	ibuf.resize(obuf_size);
+	in.read(ibuf.data(), obuf_size);
+	if(in.good() == false) return false;
+	if(in.tellg() != fsize - TOMAHAWK_TWOAGG_EOF_LENGTH) return false;
+
 	zcodec.Decompress(obuf, ibuf);
 
 	// Write data.
 	delete[] data; data = nullptr;
 	data = new double[n];
-	uint32_t obuf_size = 0;
-	DeserializePrimitive(obuf_size, in);
-	in.read(obuf.data(), obuf_size);
-	assert(in.tellg() == fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
+	double* ibuf_double = reinterpret_cast<double*>(ibuf.data());
+
+	for(int i = 0; i < n; ++i) data[i] = ibuf_double[i];
 
 	//in.seekg(fsize - TOMAHAWK_TWOAGG_EOF_LENGTH);
 	if(in.good() == false) return false;
@@ -674,8 +639,7 @@ bool twk1_aggregate::Open(std::string input){
 	in.read(&eof[0], TOMAHAWK_TWOAGG_EOF_LENGTH);
 	if(strncmp(eof, TOMAHAWK_TWOAGG_EOF.data(), TOMAHAWK_TWOAGG_EOF_LENGTH) != 0) return false;
 
-
-	return false;
+	return true;
 }
 
 }
