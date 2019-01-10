@@ -201,7 +201,17 @@ bool twk_ld::twk_ld_impl::LoadTargetSingle(twk_reader& reader,
 					}
 					else {
 						ldd2[ldd2_n].Add(bit.blk.rcds[j]);
-						if(ldd2[ldd2_n].n == 100) ++ldd2_n;
+						if(ldd2[ldd2_n].n == 100){
+							++ldd2_n;
+							if(ldd2_n == ldd2_m){
+								twk1_block_t* temp = ldd2;
+								ldd2 = new twk1_block_t[ldd2_m*2];
+								for(int z = 0; z < ldd2_m; ++z)
+									ldd2[z] = std::move(temp[z]);
+								delete[] temp;
+								ldd2_m *= 2;
+							}
+						}
 					}
 				} else {
 					bool found = false;
