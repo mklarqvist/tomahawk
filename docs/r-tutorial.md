@@ -1,10 +1,10 @@
 # R tutorial
 
 ## Import files into Tomahawk
-Depending on the downstream application you want to import either Tomahawk representations
-of sequence variant files (`.twk`) or Tomahawk-generated output LD data (`.two`). Both
-operations require minimal work. First importing a `vcf`/`vcf.gz`/`bcf` file into the 
-binary Tomahawk file format (`.twk`):
+Depending on the downstream application you want to import either Tomahawk
+representations of sequence variant files (`.twk`) or Tomahawk-generated output
+LD data (`.two`). Both operations require minimal work. First importing a
+`vcf`/`vcf.gz`/`bcf` file into the binary Tomahawk file format (`.twk`):
 ```R
 twk <- import("1kgp3_chr20.bcf","1kgp3_chr20")
 ```
@@ -14,6 +14,14 @@ twk <- import("1kgp3_chr20.bcf","1kgp3_chr20")
     will automatically add this if missing. In the example above `"1kgp3_chr20"`
     will be converted to `"1kgp3_chr20.two"` automatically. This is true for 
     most Tomahawk commands when using the CLI but *not* when using `rtomahawk`.
+
+!!! Warning "Unsafe method"
+    
+    In the current release of `rtomahawk`, this subroutine does *not* check for
+    user-interruption (for example `Ctrl+C` or `Ctrl+Z`) commands. This means that
+    you need to wait until the underlying process has finished or you have to
+    terminate the host `R` session, in turn killing the spawned process. This will
+    be fixed in upcoming releases.
 
 By default, `rtomahawk` will print verbose output to the console during the importing
 procedure:
@@ -36,8 +44,8 @@ procedure:
 [2019-01-18 14:03:30,025][LOG]    Not SNP: 63,568 (3.50654%)
 ```
 
-The `import` procedure will return a new empty `twk` class with a file pointer set
-to the newly created output file:
+The `import` procedure will return a new empty `twk` class with a file pointer
+set to the newly created output file:
 ```R
 > twk
 An object of class twk
@@ -50,11 +58,11 @@ An object of class twk
 ## Loading and reading `.two` data
 
 Many functions in `rtomahawk` computes or use linkage-disequilibrium and require
-a different loading procedure involving the `openTomahawkOuput` subroutine. In this
-example we have a pre-computed `.two` output file available locally. We open this file
-and load all supportive information such as headers, footers, sample information, and
-validate the archive and collate this information in a new `twk` class together with
-a file pointer to the target archive:
+a different loading procedure involving the `openTomahawkOuput` subroutine. In
+this example we have a pre-computed `.two` output file available locally. We
+open this file and load all supportive information such as headers, footers,
+sample information, and validate the archive and collate this information in a
+new `twk` class together with a file pointer to the target archive:
 ```R
 twk<-openTomahawkOutput("example.two")
 ```
@@ -65,9 +73,9 @@ twk<-openTomahawkOutput("example.two")
     missing file extensions. This is done purposely to avoid enforcing file
     extensions and any possible capitalization issues.
 
-This procedure is extremely fast as very little data is loaded from the archive and
-instead maintaining a data pointer. This approach, albeit a bit akward, enables us
-to handle more data than there is available system memory (RAM).
+This procedure is extremely fast as very little data is loaded from the archive
+and instead maintaining a data pointer. This approach, albeit a bit akward,
+enables us to handle more data than there is available system memory (RAM).
 
 ```R
 > system.time(twk<-openTomahawkOutput("example.two"))
@@ -79,11 +87,12 @@ to handle more data than there is available system memory (RAM).
     
     Success: This object is now ready to be used by other downstream functions in `rtomahawk`.
 
-In some situations you _do_ want to load data into memory using the file handle pointer in
-a `twk` object. This is trivially done with the `readRecords` subroutine that require
-a `twk` class object as a required parameter. As it is very simple to accidentally load hundreds
-of millions of records if you are not careful we introduced the logical flag `really`. By default
-this flag is set to `FALSE` and will force terminate the loading procedure at 10 million records.
+In some situations you _do_ want to load data into memory using the file handle
+pointer in a `twk` object. This is trivially done with the `readRecords`
+subroutine that require a `twk` class object as a required parameter. As it is
+very simple to accidentally load hundreds of millions of records if you are not
+careful we introduced the logical flag `really`. By default this flag is set to
+`FALSE` and will force terminate the loading procedure at 10 million records.
 
 ```R
 y<-readRecords(twk, really=FALSE)
@@ -136,9 +145,9 @@ Has internal data: 10000000 records
 10000000 1.0000000 0.3707673 0.1374684 4.173075e-31    688.4415          0
 ```
 
-A more useful procedure is to slice out regions of interest that match some set of criteron.
-Such as for example retrieving records from the region chr6:5e6-10e6 with an `R2` value between
-0.4 and 0.8 and a P-value < 0.001:
+A more useful procedure is to slice out regions of interest that match some set
+of criteron. Such as for example retrieving records from the region
+chr6:5e6-10e6 with an `R2` value between 0.4 and 0.8 and a P-value < 0.001:
 ```R
 f<-setFilters(minR2=0.6, maxR2=0.8, maxP = 0.001)
 recs<-readRecords(twk,"6:5e6-10e6",filters=f,really=TRUE)
@@ -152,13 +161,13 @@ recs<-readRecords(twk,"6:5e6-10e6",filters=f,really=TRUE)
     (`posA`) and that by default the output data generarted from Tomahawk have bidirectional
     symmetry such that two tuples (A,B) == (B,A), exists and are mirrored.
 
-We can ascertain that the filtering procedure work correctly by looking at the summary statistics
-for each column and note that `posA` is bounded by 5Mb-10Mb, `R2` is bounded by [0.6, 0.8], and
-`P` < 0.001:
+We can ascertain that the filtering procedure work correctly by looking at the
+summary statistics for each column and note that `posA` is bounded by 5Mb-10Mb,
+`R2` is bounded by [0.6, 0.8], and `P` < 0.001:
 ```R
 summary(recs)
 ```
-```
+``` hl_lines="4 14 15 21 31 32"
                      Min.      1st Qu.        Median         Mean      3rd Qu.
 FLAG         3.000000e+00 3.000000e+00  3.000000e+00 5.311864e+01 3.000000e+00
 ridA         3.659840e+05 3.659840e+05  3.659840e+05 3.659840e+05 3.659840e+05
@@ -210,7 +219,25 @@ data of interest. See `?twk_filter` for more information.
 Color schemes available
 <img src="../images/rtwk_colors.jpeg">
 
-### Plot square LD
+### Pairwise LD
+
+Graphically representing LD data is useful for checking data quality and in
+exploration. If your data has already been loaded into memory using
+`readRecords` it is possible to plot this data as individual data points using
+the `plotLD` function. This approach is generally only feasable for visualizing
+smaller genomic regions, for example, < 2-3 megabases. If you are investigating
+longer ranges than this you should consider using the aggregation functions
+provided in `tomahawk`/`rtomahawk`. 
+
+Because of the vast number of data points rendered and the finite amount of
+pixels available, we render data points with an opacity gradient scaled
+according to its `R2` value from [0.1, 1]. This allows for mixing of both colors
+and opacities to more clearly represent the distribution of the underlying data.
+It is possible to disable this functionality by setting the optional argument
+`opacity` to `FALSE`. In the following examples, we render both a large region
+(5-8 Mb) and a small region (5.0-5.6 Mb) with and without the opacity flag set.
+We also showcase the different color schemes.
+
 ```R
 # Load some local data into memory.
 twk <- openTomahawkOutput("1kgp3_chr6.two")
@@ -234,6 +261,20 @@ plotLD(y, ylim=c(5e6,8e6), xlim=c(5e6,8e6), colors=<COLOR>, bg=<COLOR>(11)[1], o
 | `plasma`             |<img src="../images/twk_plotLD_plasma_quad.jpeg">        |
 | `viridis`                |<img src="../images/twk_plotLD_viridis_quad.jpeg">        |
 
+By default, the birectionally symmetric output data from `tomahawk` is kept (i.e. both (A,B) and (B,A))
+tuples are kept. For this reason, the output plot will be square (or rectangular with mismatched `xlim`
+and `ylim` parameters). In some cases, only the upper or lower triangular values are desired. We can
+control what values are plotted with the logical `upper` and `lower` parameters.
+
+```R
+par(mfrow=c(1,3))
+plotLD(y,ylim=c(5e6,8e6),xlim=c(5e6,8e6),colors=viridis(11),bg=viridis(11)[1])
+plotLD(y,ylim=c(5e6,8e6),xlim=c(5e6,8e6),colors=viridis(11),bg=viridis(11)[1], upper=T)
+plotLD(y,ylim=c(5e6,8e6),xlim=c(5e6,8e6),colors=viridis(11),bg=viridis(11)[1], lower=T)
+```
+
+<img src="../images/twk_plotLD_upperlower.jpeg">
+
 ### Plot triangular LD
 Default for range
 ```R
@@ -248,7 +289,10 @@ plotLDTriangular(y,colors=viridis(11),bg=viridis(11)[1],ylim=c(0,300e3))
 
 <img src="../images/twk_plotLD_triangular_truncate.jpeg">
 
-Orientations
+It is possible to control the orientation (rotation) of the output graph by
+specifying the `orientation` parameter. The encodings are: 1) standard; 2)
+upside down;
+3) left-right flipped; and 4) right-left flipped.
 ```R
 par(mfrow=c(2,2))
 plotLDTriangular(y,ylim=c(0,300e3),colors=viridis(11),bg=viridis(11)[1], orientation = 1)
@@ -258,28 +302,31 @@ plotLDTriangular(y,ylim=c(0,300e3),colors=viridis(11),bg=viridis(11)[1], orienta
 ```
 
 <img src="../images/twk_plotLD_triangular_orientations.jpeg">
-Without annotations
+
+It is possible to completely disable all anotation by setting the logical
+parameter `annotate` to `FALSE`. This will remove titles, axes, and ticks.
 ```R
 plotLDTriangular(y,ylim=c(0,300e3),colors=viridis(11),bg=viridis(11)[1], orientation = 1, annotate = FALSE)
 ```
 <img src="../images/twk_plotLD_triangular_orientations_no_annotation.jpeg">
 
-Note that these plotting functions still respect the global `mar` (margin)
-values and have white space around it. We can change the global `par` argument
-to, for example, zero to remove these margins when annotation is disabled. 
+Note that these plotting functions respect the global `mar` (margin) values and
+(by default) will have white space around it. We can change the global `par`
+argument to, for example, zero to remove these margins when annotation is
+disabled for edge-to-edge graphics.
 
 <img src="../images/twk_plotLD_triangular_orientations_no_annotation_nomar.jpeg">
 
-### Genome-wide association study plots
+### Visualizing GWAS data and LD
 In this section we will produce LocusZoom-like plots using [GWAS](https://en.wikipedia.org/wiki/Genome-wide_association_study) 
 data from the UK BioBank comprised exclusively of white British individuals. 
 The Roslin Institute at the University of Edinbrugh host a data browser of associatins called [Gene
 Atlas](http://geneatlas.roslin.ed.ac.uk/). In the following examples we will
-investigate the association of genotypes at chromosome 6 and diabetes mellitus
+investigate the association of genotypes at chromosome 6 and diabetes
 in this cohort. Data in its entirety can be [explored
 further](http://geneatlas.roslin.ed.ac.uk/downloads/?traits=493) using the Gene
 Atlas. To reproduce the results below download the 
-[imputed](ttp://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/imputed/data.copy/imputed.allWhites.selfReported_n_1245.chr6.csv.gz) 
+[imputed](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/imputed/data.copy/imputed.allWhites.selfReported_n_1245.chr6.csv.gz) 
 data for chromosome 6 and the associated 
 [positional information](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/snps/extended/snps.imputed.chr6.csv.gz).
 
@@ -344,8 +391,16 @@ user  0m0.937s
 sys   0m0.061s
 ```
 
-### Combining plots
-`rtomahawk` renders plots using base-R.
+Many aspects of the plots can be customized to your needs. For example,
+modifying the datapoint symbol `pch` in the valid range [21, 25]. Note that
+other `pch` values are technically valid but will not generate a fill color.
+
+<img src="../images/twk_locuszoom_pch.jpeg">
+
+If your visualizations require additional data layers it is possible to combine
+these into a single plot as `rtomahawk` renders plots using base-R. In this
+example we will combine two plots generated by `rtomahawk`: the GWAS P-value and
+its single-site LD together with the all-vs-all pairwise LD for the same region.
 
 ```R
 par(mfrow=c(2,1), mar=c(0,5,3,5)) # Set bottom margin to 0.
@@ -357,13 +412,31 @@ plotLDTriangular(y, ylim=c(0,500e3), xlim=c(20694884 - 1e6, 20694884 + 1e6), col
 ```
 <img src="../images/twk_locuszoom_combine.jpeg">
 
-Zoom into local region (100kb flanking region):
+We can zoom into the local region (100kb flanking region) by simply changing the
+window parameter in `plotLZ` and the `xlim` range in `plotLDTriangular`. 
+
 <img src="../images/twk_locuszoom_combine_100k.jpeg">
 
-Add a gene track using data from `biomaRt` and drawn using `Sushi`:
+It is possible to add more advanced data layers using external packages with
+some simple manipulations. In this example we will add a gene track using
+genetic information extracted from `biomaRt` and drawn using `Sushi`, both
+third-party packages.
+
+!!! Note "biomaRt information"
+    
+    The `R` package `biomaRt` _requires_ internet connectivity to function as the
+    package itself is a wrapper around the Ensembl [BioMart](https://www.ensembl.org/biomart/martview/)
+    tool that allows extraction of connected data from databases without having
+    to perform explicit programming.
+    
+
 ```R
 library(biomaRt)
 mart <- useMart(host='http://grch37.ensembl.org',biomart="ensembl", dataset="hsapiens_gene_ensembl")
+# We will retrieve results from biomaRt twice because the database
+# does _not_ allow simultaneous queries for exon-level data and
+# gene-level data. To overcome this problem, we will perform two
+# quries to the database and merge the results together.
 results <- getBM(attributes = c("ensembl_exon_id",
                     "exon_chrom_start","exon_chrom_end"),
                  filters = c("chromosome_name", "start", "end"), 
@@ -399,22 +472,31 @@ par(mar=c(2,5,0,5))
 plotGenes(geneinfo=results, chrom=chrom, chromstart=chromstart, chromend=chromend, labeloffset=.5, fontsize=1, arrowlength = 0.025)
 abline(v=20694884,lty="dashed",col="grey")
 # Highjack internal `rtomahawk` function for drawing genomic axes.
+# This function is unexported and is not intended for general use.
 rtomahawk:::addGenomicAxis(c(chromstart,chromend),at = 1, las = 1, F)
 ```
 <img src="../images/twk_locuszoom_combine_genes.jpeg">
+
+Again, we can zoom into the local region (200kb flanking region) by simply
+changing the appropriate paramters in the code above.
+
 <img src="../images/twk_locuszoom_combine_genes_zoom.jpeg"  >
 
-`rtomahawk` and `tomahawk` computes millions of LD associations and plots millions of data points in seconds on a single thread
+The plotting time can vary from milliseconds to several seconds depending on the
+number of points that are being computed directly (top panel) and the number of
+points that are loaded and rendered (middle panel). In the first example above,
+`rtomahawk` and `tomahawk` computes and plots millions of LD associations and
+data points in a few seconds on a single thread.
+
 ```R
 > system.time(f())
    user  system elapsed 
   6.336   0.260   6.233 
 ```
+In this code snippet, the function `f()`, is simply a placeholder for the code
+above.
 
-Controlling graphics
-<img src="../images/twk_locuszoom_pch.jpeg">
-
-### Aggregation
+## Data aggregation and visualization
 
 Quantile-normalized (left) or linear range (right)
 ```R
