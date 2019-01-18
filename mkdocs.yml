@@ -6,7 +6,7 @@ copyright: Copyright (C) 2016-present Genome Research Ltd., University of Cambri
 theme:
     name: material
     custom_dir: docs/material/
-
+    logo: images/twk_logo_white.svg
 extra_css:
   - 'stylesheets/extra.css'
 
@@ -17,8 +17,7 @@ nav:
   - Tutorial:
     - Overview: tutorial.md
     - CLI: tutorial.md
-    - R: tutorial.md
-    - Python3: tutorial.md
+    - R: r-tutorial.md
     - Docker: docker-tutorial.md
   - Command line interface:
       - aggregate: cli/cli-aggregate.md

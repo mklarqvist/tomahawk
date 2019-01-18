@@ -134,7 +134,7 @@ public:
 		return true;
 	}
 
-	bool Filter(const twk1_two_t* rec) const{
+	bool Filter(const twk1_two_t* rec) const {
 		if(funcs.size() == 0) return true;
 		for(int i = 0; i < funcs.size(); ++i){
 			if((this->*funcs[i])(rec) == false)
