@@ -8,9 +8,9 @@
     
     Compiling and running Tomahawk requires a CPU with at least SSE4.2 available.
     This is a computational requirement stemming from the use of machine-optimized
-    instructions called Single instruction, multiple data (SIMD). This processing
+    instructions called Single instruction, multiple data ([SIMD](https://en.wikipedia.org/wiki/SIMD)). This processing
     paradigm enables us to perform operations on multiple datapoints simultaneously.
-    The (Streaming SIMD Extensions) SSE4.2 instruction set, and later, describes 
+    The ([Streaming SIMD Extensions](https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions)) SSE4.2 instruction set, and later, describes 
     the instructions for performing these operations and are embedded in the CPU.
 
 ### Installation instructions
