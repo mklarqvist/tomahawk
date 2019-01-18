@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
+[![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg?logo=docker)](https://github.com/mklarqvist/tomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 # Getting started: Docker
 ## About
 [Docker](https://docs.docker.com/install/) uses operating-system-level

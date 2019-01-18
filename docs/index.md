@@ -34,17 +34,6 @@ framework for querying the resulting data.
 | `decay`        | compute LD-decay over distance                              |
 | `prune`        | perform graph-based LD-pruning of variant sites             |
 
-
-``` python hl_lines="3 4"
-""" Bubble sort """
-def bubble_sort(items):
-    for i in range(len(items)):
-        for j in range(len(items) - 1 - i):
-            if items[j] > items[j + 1]:
-                items[j], items[j + 1] = items[j + 1], items[j]
-```
-
-
 <div align="center">
 <img src="images/tomahawk_overview_problem.jpg">
 </div>

@@ -14,6 +14,10 @@ nav:
   - Home: index.md
   - Introduction: introduction.md
   - Installation: installation.md
+  - Technical details:
+    - Algorithm overview: algorithm-overview.md
+    - Aggregation: aggregation.md
+    - Job balancing: job-balancing.md
   - Tutorial:
     - Overview: tutorial.md
     - CLI: tutorial.md

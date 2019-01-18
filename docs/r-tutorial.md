@@ -1,4 +1,8 @@
-# R tutorial
+[![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
+[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg)](https://github.com/mklarqvist/rtomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+# Getting started with `rtomahawk`
 
 ## Import files into Tomahawk
 Depending on the downstream application you want to import either Tomahawk
@@ -109,10 +113,10 @@ limit reached
     is unlike the required column-store format used in `R`. Because of this, we perform
     an implicit transposition of the internal structs into appropriate `std::vectors` followed
     by convertion into the appropriate `data.table` format. During this final convertion into
-    `R` structures, `Rcpp` will perform an unneccessary copy of the data resulting in a transient
+    `SEXP` structures, `Rcpp` will perform an unneccessary copy of the data resulting in a transient
     use (spike) of excess memory. We will address this problem in upcoming releases.
 
-```R
+```
 > y
 An object of class twk
 Has internal data: 10000000 records
@@ -219,14 +223,14 @@ data of interest. See `?twk_filter` for more information.
 Color schemes available
 <img src="../images/rtwk_colors.jpeg">
 
-### Pairwise LD
+### Square representation
 
 Graphically representing LD data is useful for checking data quality and in
 exploration. If your data has already been loaded into memory using
 `readRecords` it is possible to plot this data as individual data points using
 the `plotLD` function. This approach is generally only feasable for visualizing
 smaller genomic regions, for example, < 2-3 megabases. If you are investigating
-longer ranges than this you should consider using the aggregation functions
+longer ranges than this you should consider using the [aggregation](aggregation.md) functions
 provided in `tomahawk`/`rtomahawk`. 
 
 Because of the vast number of data points rendered and the finite amount of
@@ -275,7 +279,7 @@ plotLD(y,ylim=c(5e6,8e6),xlim=c(5e6,8e6),colors=viridis(11),bg=viridis(11)[1], l
 
 <img src="../images/twk_plotLD_upperlower.jpeg">
 
-### Plot triangular LD
+### Triangular representation
 Default for range
 ```R
 plotLDTriangular(y,colors=viridis(11),bg=viridis(11)[1])
