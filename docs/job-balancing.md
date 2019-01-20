@@ -19,8 +19,8 @@ simple iterative algorithm to compare them below:
 * Load block 2 from memory and compare {2, 3}
 
 Notice that we have now released and loaded the data for block 2 twice. This
-undesired memory- and IO-overhead grows square to the number of blocks, `O(
-(N-1) * (N-1) )` where `N` is the number of blocks. 
+undesired memory- and IO-overhead grows square to the number of blocks, `O((N-1)
+* (N-1) )` where `N` is the number of blocks. 
 * If you have 10 blocks, there will be 9 overhead loads for each block for a
   total of 81 excess loads.
 * If you have 100 blocks, there will be 99 overhead loads for each block for a

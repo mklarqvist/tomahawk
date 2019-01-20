@@ -511,3 +511,24 @@ plotAggregation(x, normalize = TRUE)
 plotAggregation(x, normalize = FALSE)
 ```
 <img src="../images/twk_aggregate_r2.jpeg">
+
+```R
+> agg <- aggregate(twk,"r2", "count", 1000, 1000, 50, verbose=T, threads=6)
+Program:   tomahawk-062954eb (Tools for computing, querying and storing LD data)
+Libraries: tomahawk-0.7.0; ZSTD-1.3.1; htslib 1.9
+Contact: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+Documentation: https://github.com/mklarqvist/tomahawk
+License: MIT
+----------
+[2019-01-19 11:05:37,072][LOG] Calling aggregate...
+[2019-01-19 11:05:37,072][LOG] Performing 2-pass over data...
+[2019-01-19 11:05:37,072][LOG] ===== First pass (peeking at landscape) =====
+[2019-01-19 11:05:37,072][LOG] Blocks: 32
+[2019-01-19 11:05:37,072][LOG] Uncompressed size: 5.286261 Gb
+[2019-01-19 11:05:37,072][LOG][THREAD] Data/thread: 881.043564 Mb
+[2019-01-19 11:05:41,040][LOG] ===== Second pass (building matrix) =====
+[2019-01-19 11:05:41,040][LOG] Aggregating 49,870,388 records...
+[2019-01-19 11:05:41,040][LOG][THREAD] Allocating: 240.000000 Mb for matrices...
+[2019-01-19 11:05:44,797][LOG] Aggregated 49,870,388 records in 1,000,000 bins.
+[2019-01-19 11:05:44,798][LOG] Finished.
+```

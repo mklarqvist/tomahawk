@@ -3,11 +3,11 @@
 [Tomahawk](https://github.com/mklarqvist/tomahawk) generally output many
 millions to many hundreds of millions, or even billions, of output linkage
 disequilibrium (LD) associations generated from many millions of input SNVs. It
-is technically very challenging to visualize such large datasets. Not only because
-of hardware limitations such as loading all the data into memory, or directly rendering
-billions of data points, but also because of more practical considerations such as
-cramming such a vast number of data points into a finite number of pixels would
-result in an absolute horrendous and uninformative image.
+is technically very challenging to visualize such large datasets. Not only
+because of hardware limitations such as loading all the data into memory, or
+directly rendering billions of data points, but also because of more practical
+considerations such as cramming such a vast number of data points into a finite
+number of pixels would result in an absolute horrendous and uninformative image.
 
 In order to get a scope of the scale this problem presents, take for example a
 small chromosome like `chr20` with data from the 1000 Genomes Project Phase 3
@@ -21,20 +21,20 @@ have to be huge, the memory requirement for plotting this image would be around
 
 ## Existing solutions
 There are several existing solutions for aggregating large datasets, such as
-[Datashader](http://datashader.org/) for Python users. But packages like this requires us to
-leave the highly compressed internal binary representation of Tomahawk in order
-to transform `two` records into a form understandable by these frameworks. We
-have tried several of the most popular framework for aggregating datasets and
-found none that works in reasonable memory and is sufficiently efficient when applied
-to our specific use-case.
+[Datashader](http://datashader.org/) for Python users. But packages like this
+requires us to leave the highly compressed internal binary representation of
+Tomahawk in order to transform `two` records into a form understandable by these
+frameworks. We have tried several of the most popular framework for aggregating
+datasets and found none that works in reasonable memory and is sufficiently
+efficient when applied to our specific use-case.
 
 ## Aggregation
 Aggregation is the process of reducing larger datasets to smaller ones for the
-purposes of displaying more data than can fit on the screen at once while maintaining
-the primary features of the original dataset. Tomahawk
-performs aggregation into regular grids (two-dimensional partitions) by applying summary statistics
-function on data collected in the given bins. At the moment, Tomahawk supports
-aggregation by
+purposes of displaying more data than can fit on the screen at once while
+maintaining the primary features of the original dataset. Tomahawk performs
+aggregation into regular grids (two-dimensional partitions) by applying summary
+statistics function on data collected in the given bins. At the moment, Tomahawk
+supports aggregation by
 
 | Function           |  Action                                                              |
 |--------------------|----------------------------------------------------------------------|
