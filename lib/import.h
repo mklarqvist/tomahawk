@@ -38,13 +38,14 @@ int import(int argc, char** argv){
 		{"filter-univariate", optional_argument, 0,  'r' },
 		{"flip",        optional_argument, 0,  'f' },
 		{"missingness", optional_argument, 0,  'n' },
-		{"compression-level", optional_argument, 0,  'b' },
-		{"block-size", optional_argument, 0,  'L' },
+		{"compression-level", optional_argument, 0,  'L' },
+		{"block-size", optional_argument, 0,  'b' },
+		{"hwe", optional_argument, 0,  'H' },
 		{0,0,0,0}
 	};
 	tomahawk::twk_vimport_settings settings;
 
-	while ((c = getopt_long(argc, argv, "i:o:rfn:b:L:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:rfn:b:L:H:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -68,6 +69,19 @@ int import(int argc, char** argv){
 
 			if(settings.threshold_miss > 1){
 				std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot set missingness filter to > 1..." << std::endl;
+				return(1);
+			}
+
+			break;
+		case 'H':
+			settings.hwe = atof(optarg);
+			if(settings.hwe < 0){
+				std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to < 0..." << std::endl;
+				return(1);
+			}
+
+			if(settings.hwe > 1){
+				std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot set Hardy-Weinberg filter to > 1..." << std::endl;
 				return(1);
 			}
 
@@ -106,8 +120,6 @@ int import(int argc, char** argv){
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Calling import..." << std::endl;
 
 	tomahawk::twk_variant_importer importer;
-	//settings.input  = "/media/mdrk/NVMe/sim_haplotypes/sim_1mb_1000.bcf";
-	//settings.output = "/media/mdrk/NVMe/sim_haplotypes/sim_1mb_1000k.twk";
 	if(importer.Import(settings) == false){
 		std::cerr << "failed import" << std::endl;
 		return 1;
@@ -115,9 +127,5 @@ int import(int argc, char** argv){
 
 	return 0;
 }
-
-
-
-
 
 #endif /* IMPORT_H_ */

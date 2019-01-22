@@ -9,6 +9,8 @@ theme:
     logo: images/twk_logo_white.svg
 extra_css:
   - 'stylesheets/extra.css'
+extra_javascript:
+  - 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML'
 
 nav:
   - Home: index.md
@@ -19,7 +21,6 @@ nav:
     - Aggregation: aggregation.md
     - Job balancing: job-balancing.md
   - Tutorial:
-    - Overview: tutorial.md
     - CLI: tutorial.md
     - R: r-tutorial.md
     - Docker: docker-tutorial.md

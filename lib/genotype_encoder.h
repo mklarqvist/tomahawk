@@ -24,8 +24,9 @@ const static uint8_t TWK_GT_FLIP_NONE[3] = {0,1,2}; // usage TWK_GT_FLIP_NONE[TW
 // 5: no fmt
 // 6: not biallelic
 // 7: not snp
-static uint64_t TWK_SITES_FILTERED[8];
-const static std::string TWK_SITES_FILTERED_NAMES[8] = {"Invariant","Missing threshold","Insufficient samples","Mixed ploidy","No genotypes","No FORMAT","Not biallelic","Not SNP"};
+// 8: hardy-weinberg limit
+static uint64_t TWK_SITES_FILTERED[9];
+const static std::string TWK_SITES_FILTERED_NAMES[9] = {"Invariant","Missing threshold","Insufficient samples","Mixed ploidy","No genotypes","No FORMAT","Not biallelic","Not SNP","Hardy-Weinberg threshold"};
 
 struct GenotypeSummary {
 public:

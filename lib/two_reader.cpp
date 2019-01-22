@@ -208,6 +208,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 			f = t;
 		}
 		b_unc_tot += index.ent[i].b_unc;
+		//std::cerr << "index=" << index.ent[i].b_cmp << " -> " << index.ent[i].b_unc << std::endl;
 		++t;
 	}
 	if(f != t){
@@ -215,8 +216,11 @@ bool two_reader::Sort(two_sorter_settings& settings){
 		b_unc_tot = 0;
 		f = t;
 	}
+	//std::cerr << "ranges: " << ranges.size() << std::endl;
 	assert(ranges.back().second == index.n);
 	assert(ranges.size() <= settings.n_threads);
+
+	//return(1);
 
 	twk_sort_progress progress_sort;
 	progress_sort.n_cmps = n_recs;

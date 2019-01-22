@@ -6,9 +6,9 @@ namespace tomahawk {
 /****************************
 *  twk1_ldd_blk
 ****************************/
-twk1_ldd_blk::twk1_ldd_blk() : owns_block(false), n_rec(0), m_vec(0), m_list(0), m_bitmap(0), blk(nullptr), vec(nullptr), list(nullptr), bitmap(nullptr){}
+twk1_ldd_blk::twk1_ldd_blk() : owns_block(false), unphased(true), n_rec(0), m_vec(0), m_list(0), m_bitmap(0), blk(nullptr), vec(nullptr), list(nullptr), bitmap(nullptr){}
 twk1_ldd_blk::twk1_ldd_blk(twk1_blk_iterator& it, const uint32_t n_samples) :
-	owns_block(false),
+	owns_block(false), unphased(true),
 	n_rec(it.blk.n),
 	m_vec(0), m_list(0), m_bitmap(0),
 	blk(&it.blk),
@@ -31,6 +31,7 @@ twk1_ldd_blk::~twk1_ldd_blk(){
 
 twk1_ldd_blk& twk1_ldd_blk::operator=(const twk1_ldd_blk& other){
 	if(owns_block) delete blk;
+	unphased = other.unphased;
 	owns_block = false; n_rec = 0; // do not change m
 	blk = other.blk;
 	if(blk != nullptr){
@@ -41,6 +42,7 @@ twk1_ldd_blk& twk1_ldd_blk::operator=(const twk1_ldd_blk& other){
 
 twk1_ldd_blk& twk1_ldd_blk::operator=(twk1_ldd_blk&& other){
 	if(owns_block) delete blk;
+	unphased = other.unphased;
 	blk = nullptr;
 	std::swap(blk, other.blk);
 	owns_block = other.owns_block;
@@ -62,6 +64,7 @@ twk1_ldd_blk& twk1_ldd_blk::operator=(twk1_ldd_blk&& other){
 
 void twk1_ldd_blk::SetPreloaded(const twk1_ldd_blk& other){
 	if(owns_block) delete blk;
+	unphased = other.unphased;
 	owns_block = false; n_rec = 0; // do not change m
 	blk = other.blk;
 	if(blk != nullptr){
@@ -157,12 +160,12 @@ void twk1_ldd_blk::Inflate(const uint32_t n_samples,
 				if(blk->rcds[i].an) continue; // do not construct if missing data
 				list[i].own = false; list[i].n = vec[i].n;
 				list[i].bv = vec[i].data;
-				list[i].Build(blk->rcds[i], n_samples, resizeable);
+				list[i].Build(blk->rcds[i], n_samples, resizeable, false);
 			}
 		} else {
 			for(int i = 0; i < blk->n; ++i){
 				if(blk->rcds[i].an) continue; // do not construct if missing data
-				list[i].Build(blk->rcds[i], n_samples, resizeable);
+				list[i].Build(blk->rcds[i], n_samples, resizeable, false);
 			}
 		}
 

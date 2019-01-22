@@ -31,6 +31,7 @@ namespace tomahawk {
 
 // Parameter thresholds for FLAGs
 #define TWK_LOW_AC_THRESHOLD        5
+#define TWK_INVALID_HWE_THRESHOLD   1e-4
 #define TWK_LONG_RANGE_THRESHOLD    500e3
 #define TWK_MINIMUM_ALLOWED_ALLELES 5		// Minimum number of alleles required for math to work out in the unphased case
 #define TWK_ALLOWED_ROUNDING_ERROR  0.00001

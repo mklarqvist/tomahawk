@@ -12,7 +12,7 @@ namespace tomahawk {
 twk1_t::twk1_t() :
 	gt_ptype(0), gt_flipped(0), gt_phase(0), gt_missing(0),
 	alleles(0), pos(0), ac(0), an(0), rid(0),
-	n_het(0), n_hom(0), gt(nullptr){}
+	n_het(0), n_hom(0), hwe(0), gt(nullptr){}
 twk1_t::~twk1_t(){ delete gt; }
 
 twk1_t& twk1_t::operator=(const twk1_t& other){
@@ -26,6 +26,7 @@ twk1_t& twk1_t::operator=(const twk1_t& other){
 	rid = other.rid;
 	n_het = other.n_het;
 	n_hom = other.n_hom;
+	hwe = other.hwe;
 	delete[] gt; gt = nullptr;
 	gt = other.gt->Clone();
 	return(*this);
@@ -42,6 +43,7 @@ twk1_t& twk1_t::operator=(twk1_t&& other) noexcept{
 	rid = other.rid;
 	n_het = other.n_het;
 	n_hom = other.n_hom;
+	hwe = other.hwe;
 	delete[] gt; gt = nullptr;
 	other.gt->Move(gt);
 	other.gt = nullptr;
@@ -50,7 +52,7 @@ twk1_t& twk1_t::operator=(twk1_t&& other) noexcept{
 
 void twk1_t::clear(){
 	gt_ptype = 0, gt_phase = 0, gt_missing = 0; alleles = 0; pos = 0; ac = 0; an = 0;
-	n_het = 0, n_hom = 0;
+	n_het = 0, n_hom = 0; hwe = 0;
 	if(gt != nullptr) gt->clear();
 }
 
@@ -65,6 +67,7 @@ twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_t& self){
 	SerializePrimitive(self.rid, buffer);
 	SerializePrimitive(self.n_het, buffer);
 	SerializePrimitive(self.n_hom, buffer);
+	SerializePrimitive(self.hwe, buffer);
 	buffer << *self.gt;
 	return(buffer);
 }
@@ -84,16 +87,117 @@ twk_buffer_t& operator>>(twk_buffer_t& buffer, twk1_t& self){
 	DeserializePrimitive(self.rid, buffer);
 	DeserializePrimitive(self.n_het, buffer);
 	DeserializePrimitive(self.n_hom, buffer);
+	DeserializePrimitive(self.hwe, buffer);
 	switch(self.gt_ptype){
 	case(1): self.gt = new twk1_igt_t<uint8_t>; break;
 	case(2): self.gt = new twk1_igt_t<uint16_t>; break;
 	case(4): self.gt = new twk1_igt_t<uint32_t>; break;
-	default: std::cerr << "illegal gt primtiive type" << std::endl; exit(1);
+	default: std::cerr << "illegal gt primitive type" << std::endl; exit(1);
 	}
 
 	buffer >> *self.gt;
 
 	return(buffer);
+}
+
+void twk1_t::calculateHardyWeinberg(){
+	if(gt == nullptr) return;
+
+	uint64_t obs_hets = 0, obs_hom1 = 0, obs_hom2 = 0;
+	uint32_t n_tot = 0;
+	if(gt->miss){
+		// Todo: validate
+		for(int i = 0; i < gt->n; ++i){
+			const uint32_t len = gt->GetLength(i);
+			const uint8_t ref  = gt->GetRefByte(i);
+			obs_hom1 += ref == 0 ? len : 0;
+			obs_hets += (ref == 1 || ref == 4) ? len : 0;
+			obs_hom2 += ref == 5 ? len : 0;
+			std::cerr << std::bitset<8>(ref) << std::endl;
+			assert(ref == 0 || ref == 1 || ref == 4 || ref == 5);
+			n_tot += len;
+		}
+	} else {
+		for(int i = 0; i < gt->n; ++i){
+			const uint32_t len = gt->GetLength(i);
+			const uint8_t ref  = gt->GetRefByte(i);
+			obs_hom1 += ref == 0 ? len : 0;
+			obs_hets += (ref == 1 || ref == 2) ? len : 0;
+			obs_hom2 += ref == 3 ? len : 0;
+			assert(ref == 0 || ref == 1 || ref == 2 || ref == 3);
+			n_tot += len;
+		}
+	}
+
+	//std::cerr << "data=" << obs_hom1 << "," << obs_hets << "," << obs_hom2 << " total=" << obs_hom1 + obs_hom2 + obs_hets << std::endl;
+	//assert(n_tot == 2504);
+
+	uint64_t obs_homc = obs_hom1 < obs_hom2 ? obs_hom2 : obs_hom1;
+	uint64_t obs_homr = obs_hom1 < obs_hom2 ? obs_hom1 : obs_hom2;
+
+	int64_t rare_copies = 2 * obs_homr + obs_hets;
+	int64_t genotypes   = obs_hets + obs_homc + obs_homr;
+
+	double* het_probs = new double[rare_copies + 1];
+
+	int64_t i;
+	for (i = 0; i <= rare_copies; ++i)
+		het_probs[i] = 0.0;
+
+	/* start at midpoint */
+	int64_t mid = rare_copies * (2 * genotypes - rare_copies) / (2 * genotypes);
+
+	/* check to ensure that midpoint and rare alleles have same parity */
+	if ((rare_copies & 1) ^ (mid & 1))
+		++mid;
+
+	int64_t curr_hets = mid;
+	int64_t curr_homr = (rare_copies - mid) / 2;
+	int64_t curr_homc = genotypes - curr_hets - curr_homr;
+
+	het_probs[mid] = 1.0;
+	double sum = het_probs[mid];
+	for (curr_hets = mid; curr_hets > 1; curr_hets -= 2){
+		het_probs[curr_hets - 2] = het_probs[curr_hets] * curr_hets * (curr_hets - 1.0)
+						   / (4.0 * (curr_homr + 1.0) * (curr_homc + 1.0));
+		sum += het_probs[curr_hets - 2];
+
+		/* 2 fewer heterozygotes for next iteration -> add one rare, one common homozygote */
+		++curr_homr;
+		++curr_homc;
+	}
+
+	curr_hets = mid;
+	curr_homr = (rare_copies - mid) / 2;
+	curr_homc = genotypes - curr_hets - curr_homr;
+	for (curr_hets = mid; curr_hets <= rare_copies - 2; curr_hets += 2){
+		het_probs[curr_hets + 2] = het_probs[curr_hets] * 4.0 * curr_homr * curr_homc
+						/((curr_hets + 2.0) * (curr_hets + 1.0));
+		sum += het_probs[curr_hets + 2];
+
+		/* add 2 heterozygotes for next iteration -> subtract one rare, one common homozygote */
+		--curr_homr;
+		--curr_homc;
+	}
+
+	for (i = 0; i <= rare_copies; i++)
+		het_probs[i] /= sum;
+
+	double p_hwe = 0.0;
+	/*  p-value calculation for p_hwe  */
+	for (i = 0; i <= rare_copies; i++){
+		if (het_probs[i] > het_probs[obs_hets])
+			continue;
+
+		p_hwe += het_probs[i];
+	}
+
+	p_hwe = p_hwe > 1.0 ? 1.0 : p_hwe;
+
+	delete [] het_probs;
+
+	this->hwe = p_hwe;
+	//std::cerr << "data=" << obs_hom1 << "," << obs_hets << "," << obs_hom2 << " total=" << obs_hom1 + obs_hom2 + obs_hets << " hwe=" << this->hwe << std::endl;
 }
 
 /****************************

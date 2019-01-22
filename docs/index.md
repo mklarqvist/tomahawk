@@ -1,5 +1,15 @@
+C++ API:
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg?logo=c%2B%2B&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
+[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg?logo=docker&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+R:
+[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg?logo=R&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Python3:
+[![Release](https://img.shields.io/badge/Release-alpha_0.1.0-blue.svg?logo=Python&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 <div align="center">
@@ -24,15 +34,16 @@ framework for querying the resulting data.
 | Command        | Description                                                 |
 |----------------|-------------------------------------------------------------|
 | [`aggregate`](cli/cli-aggregate)    | data rasterization framework for `TWO` files                |
-| `calc`         | calculate linkage disequilibrium                            |
-| `concat`       | concatenate `TWO` files from the same set of samples        |
-| `import`       | import `VCF`/`VCF.gz`/`BCF` to `TWK`                        |
-| `sort`         | sort `TWO` file                                             |
-| `view`         | `TWO`-&gt;`LD`/`TWO` view, `TWO` subset and filter          |
-| `haplotype`    | extract per-sample haplotype strings in `FASTA`/binary format |
-| `relationship` | compute marker-based pair-wise sample relationship matrices |
-| `decay`        | compute LD-decay over distance                              |
-| `prune`        | perform graph-based LD-pruning of variant sites             |
+| [`calc`](cli/cli-calc)         | calculate linkage disequilibrium                            |
+| [`scalc`](cli/cli-scalc)         | calculate linkage disequilibrium for a single site                          |
+| [`concat`](cli/cli-concat)       | concatenate `TWO` files from the same set of samples        |
+| [`import`](cli/cli-import)      | import `VCF`/`VCF.gz`/`BCF` to `TWK`                        |
+| [`sort`](cli/cli-sort)         | sort `TWO` file                                             |
+| [`view`](cli/cli-view)         | `TWO`-&gt;`LD`/`TWO` view, `TWO` subset and filter          |
+| [`haplotype`](cli/cli-haplotype)    | extract per-sample haplotype strings in `FASTA`/binary format |
+| [`relationship`](cli/cli-relationship) | compute marker-based pair-wise sample relationship matrices |
+| [`decay`](cli/cli-decay)        | compute LD-decay over distance                              |
+| [`prune`](cli/cli-prune)        | perform graph-based LD-pruning of variant sites             |
 
 <div align="center">
 <img src="images/tomahawk_overview_problem.jpg">

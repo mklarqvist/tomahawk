@@ -148,7 +148,9 @@ twk_intervals_two::twk_intervals_two(const uint32_t n_contigs) :
 }
 
 twk_intervals_two::~twk_intervals_two(){
-	for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
+	if(itree != nullptr){
+		for(uint32_t i = 0; i < n_c; ++i) delete itree[i];
+	}
 	delete[] itree;
 }
 

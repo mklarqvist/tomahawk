@@ -53,7 +53,7 @@ bool GrabNames(const std::vector<std::string>& list, std::vector<std::string>& f
 
 		std::string line;
 		while(getline(stream,line)){
-			std::cerr << "adding file=" << line << std::endl;
+			//std::cerr << "adding file=" << line << std::endl;
 			files.push_back(line);
 		}
 	}
@@ -165,6 +165,20 @@ int concat(int argc, char** argv){
 	tomahawk::twk_two_writer_t writer;
 	writer.mode = 'b';
 	writer.oindex.SetChroms(oreader.hdr.GetNumberContigs());
+
+	// Take care of output suffix.
+	std::string base_path = tomahawk::twk_writer_t::GetBasePath(out);
+	std::string base_name = tomahawk::twk_writer_t::GetBaseName(out);
+	std::string extension = tomahawk::twk_writer_t::GetExtension(out);
+	if(extension.length() == 3){
+		if(strncasecmp(&extension[0], "two", 3) != 0){
+			out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+		}
+	} else {
+		 out = (base_path.size() ? base_path + "/" : "") + base_name + ".two";
+	}
+
+	std::cerr << tomahawk::utility::timestamp("LOG","WRITER") << "Opening " << out << "..." << std::endl;
 	if(writer.Open(out) == false){
 		std::cerr << "failed to open " << out << std::endl;
 		return false;
@@ -228,7 +242,7 @@ int concat(int argc, char** argv){
 	}
 
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished. Added " << in_list.size() << " files..." << std::endl;
-	std::cerr << tomahawk::utility::timestamp("LOG") << "Total size: Uncompresed = " << tomahawk::utility::ToPrettyDiskString(nt_b) <<  " and compressed = " << tomahawk::utility::ToPrettyDiskString(nt_bc) << std::endl;
+	std::cerr << tomahawk::utility::timestamp("LOG") << "Total size: Uncompressed = " << tomahawk::utility::ToPrettyDiskString(nt_b) <<  " and compressed = " << tomahawk::utility::ToPrettyDiskString(nt_bc) << std::endl;
 
 	if(writer.mode == 'b') writer.WriteFinal();
 	else writer.WriteBlock();

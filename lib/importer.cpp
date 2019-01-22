@@ -180,6 +180,15 @@ bool twk_variant_importer::Import(void){
 					continue;
 				}
 				entry.rid = vcf->bcf1_->rid;
+				entry.calculateHardyWeinberg();
+
+				if(entry.hwe < settings.hwe){
+					//std::cerr << "dropped hwe=" << entry.hwe << "<" << settings.hwe << std::endl;
+					++n_vnt_dropped;
+					prev_rec.dropped = true;
+					++TWK_SITES_FILTERED[8];
+					continue;
+				}
 
 				if(block.n != 0){
 					if(block.rid != vcf->bcf1_->rid){
@@ -320,7 +329,7 @@ bool twk_variant_importer::Import(void){
 	std::cerr << utility::timestamp("LOG") << "Wrote: " << utility::ToPrettyString(index.GetTotalVariants()) << " variants to " << utility::ToPrettyString(index.n) << " blocks..." << std::endl;
 	std::cerr << utility::timestamp("LOG") << "Finished: " << timer.ElapsedString() << std::endl;
 	std::cerr << utility::timestamp("LOG") << "Filtered out " << utility::ToPrettyString(n_tot_vnts - index.GetTotalVariants()) << " sites (" << (float)(n_tot_vnts - index.GetTotalVariants())/n_tot_vnts*100 << "%):" << std::endl;
-	for(int i = 0; i < 8; ++i){
+	for(int i = 0; i < 9; ++i){
 		std::cerr << utility::timestamp("LOG") << "   " << TWK_SITES_FILTERED_NAMES[i] << ": " << utility::ToPrettyString(TWK_SITES_FILTERED[i]) << " (" << (float)TWK_SITES_FILTERED[i]/n_tot_vnts*100 << "%)" << std::endl;
 	}
 

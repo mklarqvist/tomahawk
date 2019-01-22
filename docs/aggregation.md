@@ -1,5 +1,7 @@
-# Aggregation in Tomahawk
+# Aggregating datasets
+
 ## Motivation
+
 [Tomahawk](https://github.com/mklarqvist/tomahawk) generally output many
 millions to many hundreds of millions, or even billions, of output linkage
 disequilibrium (LD) associations generated from many millions of input SNVs. It

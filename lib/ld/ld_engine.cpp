@@ -1251,6 +1251,8 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 	cur_rcd.SetLongRange(abs(diff) > TWK_LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
 	cur_rcd.SetUsedPhasedMath();
 	cur_rcd.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
+	cur_rcd.SetInvalidHWEA(b1.blk->rcds[p1].hwe < TWK_INVALID_HWE_THRESHOLD);
+	cur_rcd.SetInvalidHWEB(b2.blk->rcds[p2].hwe < TWK_INVALID_HWE_THRESHOLD);
 
 	// Calculate Chi-Sq CV from 2x2 contingency table
 	cur_rcd.ChiSqModel = 0;
@@ -1265,7 +1267,7 @@ bool twk_ld_engine::PhasedMath(const twk1_ldd_blk& b1, const uint32_t p1, const 
 #endif
 	// If the number of rcds written is equal to the flush limit then
 	// compress and write output.
-	if(n_out == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
+	if(blk_f.n == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
 		if(this->CompressBlock() == false) return false;
 		irecF.rid    = cur_rcd.ridA;
 		irecF.ridB   = cur_rcd.ridB;
@@ -1678,6 +1680,8 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 	int32_t diff = (int32_t)b1.blk->rcds[pos1].pos - b2.blk->rcds[pos2].pos;
 	cur_rcd.SetLongRange(abs(diff) > TWK_LONG_RANGE_THRESHOLD && (cur_rcd.ridA == cur_rcd.ridB));
 	cur_rcd.SetSameContig(cur_rcd.ridA == cur_rcd.ridB);
+	cur_rcd.SetInvalidHWEA(b1.blk->rcds[pos1].hwe < TWK_INVALID_HWE_THRESHOLD);
+	cur_rcd.SetInvalidHWEB(b2.blk->rcds[pos2].hwe < TWK_INVALID_HWE_THRESHOLD);
 
 	//if(helper.R2 > 0.5) exit(1);
 
@@ -1695,7 +1699,7 @@ bool twk_ld_engine::ChooseF11Calculate(const twk1_ldd_blk& b1, const uint32_t po
 
 	// If the number of rcds written is equal to the flush limit then
 	// compress and write output.
-	if(n_out == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
+	if(blk_f.n == n_lim || irecF.rid != cur_rcd.ridA || irecR.rid != cur_rcd.ridB){
 		if(this->CompressBlock() == false) return false;
 		irecF.rid    = cur_rcd.ridA;
 		irecF.ridB   = cur_rcd.ridB;

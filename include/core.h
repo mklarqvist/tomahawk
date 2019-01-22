@@ -272,6 +272,16 @@ public:
 	inline char GetAlleleA() const{ return(TWK_BASE_MAP_INV[this->alleles >> 4]); }
 	inline char GetAlleleB() const{ return(TWK_BASE_MAP_INV[this->alleles & 15]); }
 
+	/**<
+	 * 	This code implements an exact SNP test of Hardy-Weinberg Equilibrium as described in
+	 * 	Wigginton, JE, Cutler, DJ, and Abecasis, GR (2005) A Note on Exact Tests of
+	 * 	Hardy-Weinberg Equilibrium. American Journal of Human Genetics. 76: 000 - 000
+	 *
+	 * 	Originally code written by Jan Wigginton
+	 * 	Modified to use Tomahawk data by Marcus D. R. Klarqvist
+	 */
+	void calculateHardyWeinberg(void);
+
 	void clear();
 
 	friend twk_buffer_t& operator<<(twk_buffer_t& buffer, const twk1_t& self);
@@ -281,6 +291,7 @@ public:
     uint8_t  gt_ptype: 5, gt_flipped: 1, gt_phase: 1, gt_missing: 1;
     uint8_t  alleles;
     uint32_t pos, ac, an, rid, n_het, n_hom;
+    double hwe;
     twk1_gt_t* gt;
 };
 
@@ -505,15 +516,18 @@ public:
 
 	bool Build(const twk1_t& twk,
 	           const uint32_t n_samples,
-	           const bool resizeable = false)
+	           const bool resizeable = false,
+			   bool build_unphased = true)
 		{
 		if(n == 0){
 			n = ceil((double)(n_samples*2)/64);
 			if(resizeable){ m = twk.ac; }
 			else { m = n_samples*2; }
 			delete[] list; list = new uint32_t[m];
-			delete[] list_aa; list_aa = new uint32_t[m];
-			delete[] list_het; list_het = new uint32_t[m];
+			if(build_unphased){
+				delete[] list_aa; list_aa = new uint32_t[m];
+				delete[] list_het; list_het = new uint32_t[m];
+			}
 			if(own){
 				bv = new uint64_t[n];
 			}
@@ -525,8 +539,13 @@ public:
 			//std::cerr << "resize=" << twk.ac << ">" << m << std::endl;
 			m = twk.ac;
 			delete[] list; list = new uint32_t[m];
-			delete[] list_aa; list_aa = new uint32_t[m];
-			delete[] list_het; list_het = new uint32_t[m];
+			delete[] list_aa; list_aa = nullptr;
+			delete[] list_het; list_het = nullptr;
+
+			if(build_unphased){
+				list_aa = new uint32_t[m];
+				list_het = new uint32_t[m];
+			}
 		}
 
 		if(own){
@@ -549,8 +568,8 @@ public:
 				for(int j = 0; j < 2*len; j+=2){
 					if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
 					if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
-					if(refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
-					if((refA == 0 && refB == 1) || (refA == 1 && refB == 0)){ list_het[l_het++] = cumpos + j + 0; }
+					if(build_unphased && refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
+					if(build_unphased && ((refA == 0 && refB == 1) || (refA == 1 && refB == 0))){ list_het[l_het++] = cumpos + j + 0; }
 				}
 				cumpos += 2*len;
 			}
@@ -573,8 +592,8 @@ public:
 				for(int j = 0; j < 2*len; j+=2){
 					if(refA != 0){ this->set(cumpos + j + 0); list[l_list++] = cumpos + j + 0; }
 					if(refB != 0){ this->set(cumpos + j + 1); list[l_list++] = cumpos + j + 1; }
-					if(refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
-					if((refA == 0 && refB == 1) || (refA == 1 && refB == 0)){ list_het[l_het++] = cumpos + j + 0; }
+					if(build_unphased && refA == 1 && refB == 1){ list_aa[l_aa++] = cumpos + j + 0; }
+					if(build_unphased && ((refA == 0 && refB == 1) || (refA == 1 && refB == 0))){ list_het[l_het++] = cumpos + j + 0; }
 				}
 				cumpos += 2*len;
 			}
@@ -590,20 +609,21 @@ public:
 				} else r_pos.push_back(list[i] / 128);
 			}
 
-			r_aa.clear();
-			for(int i = 0; i < l_aa; ++i){
-				if(r_aa.size()){
-					if(r_aa.back() != list_aa[i] / 128)
-						r_aa.push_back(list_aa[i] / 128);
-				} else r_aa.push_back(list_aa[i] / 128);
-			}
+			r_aa.clear(); r_het.clear();
+			if(build_unphased){
+				for(int i = 0; i < l_aa; ++i){
+					if(r_aa.size()){
+						if(r_aa.back() != list_aa[i] / 128)
+							r_aa.push_back(list_aa[i] / 128);
+					} else r_aa.push_back(list_aa[i] / 128);
+				}
 
-			r_het.clear();
-			for(int i = 0; i < l_het; ++i){
-				if(r_het.size()){
-					if(r_het.back() != list_het[i] / 128)
-						r_het.push_back(list_het[i] / 128);
-				} else r_het.push_back(list_het[i] / 128);
+				for(int i = 0; i < l_het; ++i){
+					if(r_het.size()){
+						if(r_het.back() != list_het[i] / 128)
+							r_het.push_back(list_het[i] / 128);
+					} else r_het.push_back(list_het[i] / 128);
+				}
 			}
 			//std::cerr << l_list << "," << l_het << "," << l_aa << " and " << r_pos.size() << "," << r_aa.size() << "," << r_het.size() << std::endl;
 
@@ -760,6 +780,8 @@ public:
 	inline void SetHasMissingValuesB(const bool yes = true){ this->controller |= yes << 9;  } // 512
 	inline void SetLowACA(const bool yes = true)           { this->controller |= yes << 10; } // 1024
 	inline void SetLowACB(const bool yes = true)           { this->controller |= yes << 11; } // 2048
+	inline void SetInvalidHWEA(const bool yes = true)      { this->controller |= yes << 12; } // 4096
+	inline void SetInvalidHWEB(const bool yes = true)      { this->controller |= yes << 13; } // 8192
 
 	void clear();
 	bool operator<(const twk1_two_t& other) const;
@@ -797,8 +819,10 @@ public:
 	 *    8: Output data is estimated from a subsampling of the total pool of genotypes.
 	 *    9: Donor vector has missing value(s).
 	 *    10: Acceptor vector has missing value(s).
-	 *    11: Donor vector has low allele count.
-	 *    12: Acceptor vector has low allele count.
+	 *    11: Donor vector has low allele count (<5).
+	 *    12: Acceptor vector has low allele count (<5).
+	 *    13: Acceptor vector has a HWE-P value < 1e-4.
+	 *    14: Donor vector has a HWE-P value < 1e-4.
 	 */
 	uint16_t controller;
 	uint32_t ridA, ridB;
@@ -966,7 +990,9 @@ public:
     double min, max;
 };
 
-// aggregate
+/**<
+ * Structure for operating on aggregated datasets.
+ */
 struct twk1_aggregate_t {
 public:
 	struct offset_tuple {

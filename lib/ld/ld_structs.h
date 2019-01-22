@@ -39,7 +39,7 @@ struct twk1_ldd_blk {
 	inline const twk1_t& operator[](const uint32_t p) const{ return(blk->rcds[p]); }
 
 public:
-	bool owns_block;
+	bool owns_block, unphased;
 	uint32_t n_rec, m_vec, m_list, m_bitmap; // number records, memory allocated for vectors, memory allocated for lists
 	twk1_block_t* blk; // data block
 	twk_igt_vec*  vec; // vectorized (bitvector)

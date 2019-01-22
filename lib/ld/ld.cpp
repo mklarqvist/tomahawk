@@ -647,6 +647,7 @@ bool twk_ld::Compute(){
 	progress.PrintFinal();
 	writer->stream.flush();
 
+	/*
 	std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
 	for(int i = 0; i < settings.n_threads; ++i){
 		std::cerr << i << "\t" << utility::ToPrettyString(slaves[i].engine.n_out);
@@ -655,6 +656,7 @@ bool twk_ld::Compute(){
 		}
 		std::cerr << std::endl;
 	}
+	*/
 
 	//std::cerr << "performed=" << ticker.n_perf << std::endl;
 	if(writer->WriteFinal(index) == false){
@@ -848,6 +850,7 @@ bool twk_ld::ComputeSingle(bool verbose, bool progress){
 	if(progress) progression.PrintFinal();
 	writer->stream.flush();
 
+	/*
 	if(verbose){
 		std::cerr << utility::timestamp("LOG","THREAD") << "Thread\tOutput\tTWK-LIST\tTWK-BVP-BM\tTWK-BVP\tTWK-BVP-NM\tTWK-BVU\tTWK-BVU-NM\tTWK-RLEP\tTWK-RLEU\n";
 		for(int i = 0; i < settings.n_threads; ++i){
@@ -858,6 +861,7 @@ bool twk_ld::ComputeSingle(bool verbose, bool progress){
 			std::cerr << std::endl;
 		}
 	}
+	*/
 
 	//std::cerr << "performed=" << ticker.n_perf << std::endl;
 	if(writer->WriteFinal(index) == false){

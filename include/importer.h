@@ -33,12 +33,13 @@ namespace tomahawk {
  * class below. If you want to write to stdout then set output to '-'. If reading
  */
 struct twk_vimport_settings {
-	twk_vimport_settings() : remove_univariate(true), flip_major_minor(false), c_level(1), block_size(500), threshold_miss(0.9), input("-"), output("-"){}
+	twk_vimport_settings() : remove_univariate(true), flip_major_minor(false), c_level(1), block_size(500), threshold_miss(0.9), hwe(0), input("-"), output("-"){}
 
 	bool remove_univariate, flip_major_minor;
 	uint8_t c_level;
 	uint32_t block_size;
 	float threshold_miss;
+	double hwe;
 	std::string input, output;
 };
 

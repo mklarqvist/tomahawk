@@ -1,22 +1,42 @@
-[![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
-[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg)](https://github.com/mklarqvist/rtomahawk/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
 # Getting started with `rtomahawk`
+
+## Prerequisites
+In order to follow this tutorial exactly, you will need to download the variant
+call data for chromosome 6 the 1000 Genomes Project (1KGP3) cohort and validate
+its correctness. You can use the following commands on Debian-based systems, or,
+go to the [1KGP3 FTP
+server](ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/) and download
+the data manually.
+```bash
+wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr6.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.{gz,gz.tbi}
+md5sum ALL.chr6.*.gz*
+```
+
+| MD5 checksum                     | File                                                                          |
+|----------------------------------|-------------------------------------------------------------------------------|
+| 9be06b094cc80281c9aec651d657abb9 | ALL.chr6.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz     |
+| 5ed21968b2e212fa2cc9237170866c5b | ALL.chr6.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz.tbi |
+
+This tutorial was designed and tested for
+```R
+> tomahawkVersion()
+rtomahawk: 0.1.0
+Libraries: tomahawk-0.7.0; ZSTD-1.3.1; htslib 1.9
+```
 
 ## Import files into Tomahawk
 Depending on the downstream application you want to import either Tomahawk
 representations of sequence variant files (`.twk`) or Tomahawk-generated output
-LD data (`.two`). Both operations require minimal work. First importing a
+LD data (`.two`). Both operations require minimal work. First we will import a
 `vcf`/`vcf.gz`/`bcf` file into the binary Tomahawk file format (`.twk`):
 ```R
-twk <- import("1kgp3_chr20.bcf","1kgp3_chr20")
+twk <- import("ALL.chr6.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz","1kgp3_chr6")
 ```
 !!! Note "Auto-completion of file extensions"
     
     You do not have to append the `.twk` suffix to the output name as Tomahawk
-    will automatically add this if missing. In the example above `"1kgp3_chr20"`
-    will be converted to `"1kgp3_chr20.two"` automatically. This is true for 
+    will automatically add this if missing. In the example above `"1kgp3_chr6"`
+    will be converted to `"1kgp3_chr6.two"` automatically. This is true for 
     most Tomahawk commands when using the CLI but *not* when using `rtomahawk`.
 
 !!! Warning "Unsafe method"
@@ -27,25 +47,32 @@ twk <- import("1kgp3_chr20.bcf","1kgp3_chr20")
     terminate the host `R` session, in turn killing the spawned process. This will
     be fixed in upcoming releases.
 
-By default, `rtomahawk` will print verbose output to the console during the importing
-procedure:
+By default, `rtomahawk` will print verbose output to the console during the
+importing procedure. This will take several minutes depending on your system.
 ```
-[2019-01-18 14:02:25,080][LOG][READER] Opening 1kgp3_chr20.bcf...
-[2019-01-18 14:02:25,088][LOG][VCF] Constructing lookup table for 86 contigs...
-[2019-01-18 14:02:25,088][LOG][VCF] Samples: 2,504...
-[2019-01-18 14:02:25,088][LOG][WRITER] Opening 1kgp3_chr20.twk...
-[2019-01-18 14:03:15,973][LOG] Duplicate site dropped: 20:51526991
-[2019-01-18 14:03:30,025][LOG] Wrote: 1,733,484 variants to 3,467 blocks...
-[2019-01-18 14:03:30,025][LOG] Finished: 01m04,944s
-[2019-01-18 14:03:30,025][LOG] Filtered out 79,357 sites (4.37749%):
-[2019-01-18 14:03:30,025][LOG]    Invariant: 5,830 (0.321595%)
-[2019-01-18 14:03:30,025][LOG]    Missing threshold: 0 (0%)
-[2019-01-18 14:03:30,025][LOG]    Insufficient samples: 0 (0%)
-[2019-01-18 14:03:30,025][LOG]    Mixed ploidy: 0 (0%)
-[2019-01-18 14:03:30,025][LOG]    No genotypes: 0 (0%)
-[2019-01-18 14:03:30,025][LOG]    No FORMAT: 0 (0%)
-[2019-01-18 14:03:30,025][LOG]    Not biallelic: 8,968 (0.494693%)
-[2019-01-18 14:03:30,025][LOG]    Not SNP: 63,568 (3.50654%)
+[2019-01-21 10:42:59,178][LOG][READER] Opening ALL.chr6.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz...
+[2019-01-21 10:42:59,188][LOG][VCF] Constructing lookup table for 86 contigs...
+[2019-01-21 10:42:59,188][LOG][VCF] Samples: 2,504...
+[2019-01-21 10:42:59,188][LOG][WRITER] Opening 1kgp3_chr6.twk...
+[2019-01-21 10:44:41,225][LOG] Duplicate site dropped: 6:18233985
+[2019-01-21 10:48:06,492][LOG] Duplicate site dropped: 6:55137646
+[2019-01-21 10:49:01,472][LOG] Duplicate site dropped: 6:67839893
+[2019-01-21 10:49:36,487][LOG] Duplicate site dropped: 6:74373442
+[2019-01-21 10:49:55,386][LOG] Duplicate site dropped: 6:77843171
+[2019-01-21 10:53:47,992][LOG] Duplicate site dropped: 6:121316830
+[2019-01-21 10:56:08,853][LOG] Duplicate site dropped: 6:148573620
+[2019-01-21 10:56:25,301][LOG] Duplicate site dropped: 6:151397786
+[2019-01-21 10:58:16,584][LOG] Wrote: 4,784,608 variants to 9,570 blocks...
+[2019-01-21 10:58:16,584][LOG] Finished: 15m17,405s
+[2019-01-21 10:58:16,584][LOG] Filtered out 239,511 sites (4.76722%):
+[2019-01-21 10:58:16,584][LOG]    Invariant: 15,485 (0.308213%)
+[2019-01-21 10:58:16,584][LOG]    Missing threshold: 0 (0%)
+[2019-01-21 10:58:16,584][LOG]    Insufficient samples: 0 (0%)
+[2019-01-21 10:58:16,584][LOG]    Mixed ploidy: 0 (0%)
+[2019-01-21 10:58:16,584][LOG]    No genotypes: 0 (0%)
+[2019-01-21 10:58:16,584][LOG]    No FORMAT: 0 (0%)
+[2019-01-21 10:58:16,584][LOG]    Not biallelic: 26,277 (0.523017%)
+[2019-01-21 10:58:16,584][LOG]    Not SNP: 194,566 (3.87264%)
 ```
 
 The `import` procedure will return a new empty `twk` class with a file pointer
@@ -208,19 +235,72 @@ ChiSqFisher 4.006383e+03
 ChiSqModel  0.000000e+00
 ```
 
-There are a large number of filter parameters available to slice out the exact
-data of interest. See `?twk_filter` for more information.
-
 !!! success "Opening and slicing LD data"
     
     Success: This object is now ready to be used by other downstream functions in `rtomahawk`.
+
+There are a large number of filter parameters available to slice out the exact
+data of interest:
+
+| Field          | Type    |
+|----------------|---------|
+| `flagInclude`    | `integer` |
+| `flagExclude`    | `integer` |
+| `minR`           | `numeric` |
+| `maxR`           | `numeric` |
+| `minR2`          | `numeric` |
+| `maxR2`          | `numeric` |
+| `minD`           | `numeric` |
+| `maxD`           | `numeric` |
+| `minDprime`      | `numeric` |
+| `maxDprime`      | `numeric` |
+| `minP`           | `numeric` |
+| `maxP`           | `numeric` |
+| `minP1`          | `numeric` |
+| `maxP1`          | `numeric` |
+| `minP2`          | `numeric` |
+| `maxP2`          | `numeric` |
+| `minQ1`          | `numeric` |
+| `maxQ1`          | `numeric` |
+| `minQ2`          | `numeric` |
+| `maxQ2`          | `numeric` |
+| `minChiSqFisher` | `numeric` |
+| `maxChiSqFisher` | `numeric` |
+| `minChiSqModel`  | `numeric` |
+| `maxChiSqModel`  | `numeric` |
+| `upperOnly`      | `logical` |
+| `lowerOnly`      | `logical` |
+
+See `?setFilters` for more information.
 
 ## Calculating linkage-disequilibrium
 
 ## Plotting data with `rtomahawk`
 
 ### Color schemes
-Color schemes available
+`rtomahawk` comes prepacked with a number of color schemes. Most of these are
+taken directly from the
+[`viridis`](https://cran.r-project.org/web/packages/viridis/) `R` package and
+are included here independent of that package to remove the package
+interdependency. These color schemes are callable as functions taking as require
+arguments the number of distinct values (`n`) and optionally the desired opacity
+(alpha) level (`alpha`).
+
+| Color scheme |
+|--------------|
+| `viridis`      |
+| `plasma`       |
+| `magma`        |
+| `inferno`      |
+| `cividis`      |
+| `default`     |
+
+
+We can plot these values as a gradient of values from [0, 100) and as [0, 11] by
+calling the `displayColors` function:
+```R
+displayColors()
+```
 <img src="../images/rtwk_colors.jpeg">
 
 ### Square representation
@@ -280,13 +360,30 @@ plotLD(y,ylim=c(5e6,8e6),xlim=c(5e6,8e6),colors=viridis(11),bg=viridis(11)[1], l
 <img src="../images/twk_plotLD_upperlower.jpeg">
 
 ### Triangular representation
-Default for range
+In many cases, there is generally no need to graphically represent the entire
+square (or rectangular) symmetric matrix of associations. This is especially
+true when combining multiple graphs together to create a more comprehensive
+picture of a particular region or feature. The topic of combining plots will be
+explored in greter detail below. All of the examples here involves the
+subroutine `plotLDTriangular`.  As a design choice, we decided to restrict the
+rendered y-axis data such that it is always bounded by the x-axis limits. For
+this reason, these plots will always be triangular will partially "missing"
+(omitted) values even if they are technically present in the dataset. 
+
+First, we describe its most basic use case. In the following example, we will
+plot a section of associations with the `viridis` color palette and specifiy the
+background to be the lowest (in this case, first) color in that scheme.
+
 ```R
 plotLDTriangular(y,colors=viridis(11),bg=viridis(11)[1])
 ```
+
 <img src="../images/twk_plotLD_triangular.jpeg">
 
-Truncate y-axis to show local neighbourhood
+Because of the smallish haplotype blocks in humans, most of these visible
+triangular structures will have limited span in the y-axis. We can truncate the
+y-axis to zoom into the local neighbourhood and more accurately display the
+local haplotype structure.
 ```R
 plotLDTriangular(y,colors=viridis(11),bg=viridis(11)[1],ylim=c(0,300e3))
 ```
@@ -294,8 +391,8 @@ plotLDTriangular(y,colors=viridis(11),bg=viridis(11)[1],ylim=c(0,300e3))
 <img src="../images/twk_plotLD_triangular_truncate.jpeg">
 
 It is possible to control the orientation (rotation) of the output graph by
-specifying the `orientation` parameter. The encodings are: 1) standard; 2)
-upside down;
+specifying the `orientation` parameter. The numerial encodings are: 1)
+standard; 2) upside down;
 3) left-right flipped; and 4) right-left flipped.
 ```R
 par(mfrow=c(2,2))
@@ -322,17 +419,19 @@ disabled for edge-to-edge graphics.
 <img src="../images/twk_plotLD_triangular_orientations_no_annotation_nomar.jpeg">
 
 ### Visualizing GWAS data and LD
-In this section we will produce LocusZoom-like plots using [GWAS](https://en.wikipedia.org/wiki/Genome-wide_association_study) 
-data from the UK BioBank comprised exclusively of white British individuals. 
-The Roslin Institute at the University of Edinbrugh host a data browser of associatins called [Gene
+In this section we will produce LocusZoom-like plots using
+[GWAS](https://en.wikipedia.org/wiki/Genome-wide_association_study) data from
+the [UK BioBank](www.ukbiobank.ac.uk/) comprised exclusively of white British
+individuals. [The Roslin Institute](www.ed.ac.uk/roslin) at the [University of
+Edinbrugh](www.ed.ac.uk/) host a data browser of associatins called [Gene
 Atlas](http://geneatlas.roslin.ed.ac.uk/). In the following examples we will
-investigate the association of genotypes at chromosome 6 and diabetes
-in this cohort. Data in its entirety can be [explored
+investigate the association of genotypes at chromosome 6 and diabetes in this
+cohort. Data in its entirety can be [explored
 further](http://geneatlas.roslin.ed.ac.uk/downloads/?traits=493) using the Gene
-Atlas. To reproduce the results below download the 
-[imputed](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/imputed/data.copy/imputed.allWhites.selfReported_n_1245.chr6.csv.gz) 
-data for chromosome 6 and the associated 
-[positional information](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/snps/extended/snps.imputed.chr6.csv.gz).
+Atlas. To reproduce the results below download the
+[imputed](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/imputed/data.copy/imputed.allWhites.selfReported_n_1245.chr6.csv.gz)
+data for chromosome 6 and the associated [positional
+information](http://static.geneatlas.roslin.ed.ac.uk/gwas/allWhites/snps/extended/snps.imputed.chr6.csv.gz).
 
 ```R
 # Downloaded data from:
@@ -396,7 +495,7 @@ sys   0m0.061s
 ```
 
 Many aspects of the plots can be customized to your needs. For example,
-modifying the datapoint symbol `pch` in the valid range [21, 25]. Note that
+modifying the datapoint symbol `pch` in the valid range [21, 25]. Note that all
 other `pch` values are technically valid but will not generate a fill color.
 
 <img src="../images/twk_locuszoom_pch.jpeg">
@@ -482,7 +581,7 @@ rtomahawk:::addGenomicAxis(c(chromstart,chromend),at = 1, las = 1, F)
 <img src="../images/twk_locuszoom_combine_genes.jpeg">
 
 Again, we can zoom into the local region (200kb flanking region) by simply
-changing the appropriate paramters in the code above.
+changing the appropriate parameters in the code above.
 
 <img src="../images/twk_locuszoom_combine_genes_zoom.jpeg"  >
 
@@ -500,9 +599,19 @@ data points in a few seconds on a single thread.
 In this code snippet, the function `f()`, is simply a placeholder for the code
 above.
 
-## Data aggregation and visualization
+## Aggregating and visualizing datasets
 
 Quantile-normalized (left) or linear range (right)
+
+!!! Warning "Unsafe method"
+    
+    In the current release of `rtomahawk`, this subroutine does *not* check for
+    user-interruption (for example `Ctrl+C` or `Ctrl+Z`) commands. This means that
+    you need to wait until the underlying process has finished or you have to
+    terminate the host `R` session, in turn killing the spawned process. This will
+    be fixed in upcoming releases.
+
+
 ```R
 twk<-openTomahawkOutput("example.two")
 x<-aggregate(twk,aggregation="r2", reduction="count",xbins=1000, ybins=1000,minCount=50, verbose=T, threads=8)
@@ -531,4 +640,9 @@ License: MIT
 [2019-01-19 11:05:41,040][LOG][THREAD] Allocating: 240.000000 Mb for matrices...
 [2019-01-19 11:05:44,797][LOG] Aggregated 49,870,388 records in 1,000,000 bins.
 [2019-01-19 11:05:44,798][LOG] Finished.
+```
+
+Load a pre-computed `tomahawk` aggregation object:
+```R
+agg <- loadAggregate("agg.twa")
 ```

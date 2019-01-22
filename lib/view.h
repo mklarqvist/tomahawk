@@ -377,8 +377,9 @@ int view(int argc, char** argv){
 	}
 
 	// Build intervals data structures if any are available.
-	if(oreader.BuildIntervals(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false)
+	if(oreader.BuildIntervals(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false){
 		return 1;
+	}
 
 	// Prepare writer.
 	std::string view_string = "##tomahawk_viewVersion=" + std::string(VERSION) + "\n";
@@ -394,7 +395,7 @@ int view(int argc, char** argv){
 		writer.WriteHeader(oreader);
 		writer.n_blk_lim = 65536 / sizeof(tomahawk::twk1_two_t);
 	} else if(writer.mode == 'u' && write_header == false){
-		std::cout << "flags\tridA\tposA\tridB\tposB\tHOMHOM\tHOMALT\tALTHOM\tALTALT\tD\tDprime\tR\tR2\tP\tChiSqFisher\tChiSqModel" << std::endl;
+		std::cout << "FLAG\tCHROM_A\tPOS_A\tCHROM_B\tPOS_B\tREF_REF\tREF_ALT\tALT_REF\tALT_ALT\tD\tDPrime\tR\tR2\tP\tChiSqModel\tChiSqTable" << std::endl;
 	}
 	else if(writer.mode == 'b')
 		writer.WriteHeader(oreader);

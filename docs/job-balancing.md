@@ -1,4 +1,4 @@
-# Job balancing in Tomahawk
+# Balancing compute
 
 ## Motivation
 [Tomahawk](https://github.com/mklarqvist/tomahawk) stores variants in
