@@ -24,7 +24,7 @@ void ProgramMessage(const bool separator){
 
 void ProgramHelp(void){
 	std::cerr << "Usage: " << TOMAHAWK_PROGRAM_NAME << " [--version] [--help] <commands> <argument>" << std::endl;
-	std::cerr << "Commands: aggregate, calc, scalc, concat, import, sort, view, haplotype, relationship, decay, prune" << std::endl;
+	std::cerr << "Commands: aggregate, calc, scalc, concat, import, sort, view, haplotype, decay" << std::endl;
 }
 
 void ProgramHelpDetailed(void){
@@ -39,9 +39,9 @@ void ProgramHelpDetailed(void){
 	"sort         sort TWO file\n"
     "view         TWO->LD/TWO view, TWO subset and filter\n"
 	"haplotype    extract per-sample haplotype strings in FASTA/binary format\n"
-	"relationship compute marker-based pair-wise sample relationship matrices\n"
+	//"relationship compute marker-based pair-wise sample relationship matrices\n"
 	"decay        compute LD-decay over distance\n"
-	"prune        perform graph-based LD-pruning of variant sites\n"
+	//"prune        perform graph-based LD-pruning of variant sites\n"
 	//"stats        general stats for TWO files\n"
     << std::endl;
 }

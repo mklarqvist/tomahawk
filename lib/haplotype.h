@@ -30,7 +30,7 @@ void haplotype_usage(void){
 	std::cerr <<
 	"About:  Retrieve haplotype strings from individuals in a given range.\n"
 	"        This is equivalent to slicing out a section of the transpose of the\n"
-	"        genotype-sample matrix. Outputs a FASTA file with 2N haplotype strings.\n\n"
+	"        genotype-sample matrix. Outputs a FASTA file or NM-matrix with 2N haplotype strings.\n\n"
 	"Usage:  " << tomahawk::TOMAHAWK_PROGRAM_NAME << " haplotype [options] -i <in.twk> -I <interval>\n\n"
 	"Options:\n"
 	"  -i FILE   input TWK file (required)\n"
