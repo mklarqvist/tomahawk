@@ -32,9 +32,7 @@ nav:
       - sort: cli/cli-sort.md
       - view: cli/cli-view.md
       - haplotype: cli/cli-haplotype.md
-      - relationship: cli/cli-relationship.md
       - decay: cli/cli-decay.md
-      - prune: cli/cli-prune.md
   - API documentation: api-documentation.md
   - Developer documentation: developer-documentation.md
 

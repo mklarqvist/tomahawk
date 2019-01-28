@@ -41,6 +41,4 @@ framework for querying the resulting data.
 | [`sort`](cli/cli-sort)         | sort `TWO` file                                             |
 | [`view`](cli/cli-view)         | `TWO`-&gt;`LD`/`TWO` view, `TWO` subset and filter          |
 | [`haplotype`](cli/cli-haplotype)    | extract per-sample haplotype strings in `FASTA`/binary format |
-| [`relationship`](cli/cli-relationship) | compute marker-based pair-wise sample relationship matrices |
 | [`decay`](cli/cli-decay)        | compute LD-decay over distance                              |
-| [`prune`](cli/cli-prune)        | perform graph-based LD-pruning of variant sites             |
