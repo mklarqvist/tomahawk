@@ -2,15 +2,15 @@ C++ API:
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
 [![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg?logo=c%2B%2B&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
 [![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg?logo=docker&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mklarqvist/tomahawk/blob/master/LICENSE)
 
 R:
-[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg?logo=R&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/Release-beta_0.1.0-blue.svg?logo=R&logoColor=white)](https://github.com/mklarqvist/rtomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mklarqvist/rtomahawk/blob/master/LICENSE)
 
 Python3:
-[![Release](https://img.shields.io/badge/Release-alpha_0.1.0-blue.svg?logo=Python&logoColor=white)](https://github.com/mklarqvist/tomahawk/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/Release-alpha_0.1.0-blue.svg?logo=Python&logoColor=white)](https://github.com/mklarqvist/pytomahawk/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mklarqvist/pytomahawk/blob/master/LICENSE)
 
 <div align="center">
 <img src="images/tomahawk.png" style="max-width:400px;">
@@ -44,11 +44,3 @@ framework for querying the resulting data.
 | [`relationship`](cli/cli-relationship) | compute marker-based pair-wise sample relationship matrices |
 | [`decay`](cli/cli-decay)        | compute LD-decay over distance                              |
 | [`prune`](cli/cli-prune)        | perform graph-based LD-pruning of variant sites             |
-
-<div align="center">
-<img src="images/tomahawk_overview_problem.jpg">
-</div>
-
-<div align="center">
-<img src="images/ld_overview.jpg">
-</div>

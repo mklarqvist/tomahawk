@@ -49,7 +49,7 @@ void calc_usage(void){
 	//"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.1)\n"
-	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	//"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -k INT    compression level to use (default: 1, max = 22).\n" << std::endl;
 }
 
@@ -84,7 +84,7 @@ int calc(int argc, char** argv){
 		{"force-unphased",    no_argument,       0, 'u' },
 		{"samples",           optional_argument, 0, 'S' },
 		{"minR2",             optional_argument, 0, 'r' },
-		{"maxR2",             optional_argument, 0, 'R' },
+		//{"maxR2",             optional_argument, 0, 'R' },
 
 		{"detailedProgress",  no_argument,       0, 'd' },
 		{"silent",            no_argument,       0, 's' },
@@ -96,7 +96,7 @@ int calc(int argc, char** argv){
 	tomahawk::twk_ld_settings settings;
 	//std::vector<std::string> filter_regions;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:R:w:S:I:sdc:C:mMb:xXk:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:puP:a:A:r:w:S:I:sdc:C:mMb:xXk:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -166,6 +166,7 @@ int calc(int argc, char** argv){
 				return(1);
 			}
 			break;
+		/*
 		case 'R':
 			settings.maxR2 = atof(optarg);
 			if(settings.maxR2 < 0){
@@ -176,7 +177,7 @@ int calc(int argc, char** argv){
 			return(1);
 			}
 			break;
-
+		*/
 		case 'P':
 		  settings.minP = atof(optarg);
 		  if(settings.minP < 0){

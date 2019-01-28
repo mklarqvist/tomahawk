@@ -44,15 +44,15 @@ supports aggregation by
 | Summation squared  | Sum total of squares of the desired property                         |
 | Mean               | Mean of the desired property                                         |
 | Standard deviation | Standard deviation of the desired property                           |
-| Minimum            | Smallest value observed of the desired property                                                       |
-| Maximum            | Largest value oserved of the desired property                                                        |
+| Minimum            | Smallest value observed of the desired property                      |
+| Maximum            | Largest value oserved of the desired property                        |
 | Count              | Number of times a non-zero value is observed of the desired property |
 
 Without losing generality, imagine we start out with this 4x4 matrix of
 observations and we want to plot 4 pixels (2 x 2).
 
-|    | C1 | C2 | C3 | C4 |
-|----|----|----|----|----|
+|        | C1 | C2 | C3 | C4 |
+|--------|----|----|----|----|
 | **R1** | 1  | 2  | 3  | 4  |
 | **R2** | 5  | 6  | 7  | 8  |
 | **R3** | 9  | 10 | 11 | 12 |
@@ -60,36 +60,36 @@ observations and we want to plot 4 pixels (2 x 2).
 
 Aggregation by summation
 
-|      | C1-2 | C3-4 |
-|------|------|------|
+|          | C1-2 | C3-4 |
+|----------|------|------|
 | **R1-2** | 14   | 22   |
 | **R3-4** | 46   | 54   |
 
 Aggregation by mean
 
-|      | C1-2 | C3-4 |
-|------|------|------|
+|          | C1-2 | C3-4 |
+|----------|------|------|
 | **R1-2** | 3.5  | 5.5  |
 | **R3-4** | 11.5 | 13.5 |
 
 Aggregation by min
 
-|      | C1-2 | C3-4 |
-|------|------|------|
+|          | C1-2 | C3-4 |
+|----------|------|------|
 | **R1-2** | 1    | 3    |
 | **R3-4** | 9    | 11   |
 
 Aggregation by max
 
-|      | C1-2 | C3-4 |
-|------|------|------|
+|          | C1-2 | C3-4 |
+|----------|------|------|
 | **R1-2** | 6    | 8    |
 | **R3-4** | 14   | 16   |
 
 Aggregation by count
 
-|      | C1-2 | C3-4 |
-|------|------|------|
+|          | C1-2 | C3-4 |
+|----------|------|------|
 | **R1-2** | 4    | 4    |
 | **R3-4** | 4    | 4    |
 

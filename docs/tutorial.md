@@ -1,11 +1,14 @@
 # Getting started with `tomahawk`
 
+## About
+
 This is an introductory tutorial for using Tomahawk. It will cover:
 
-* Importing into Tomahawk
+* Importing data into Tomahawk
 * Computing linkage-disequilibrium
-* Aggregating and visualizing datasets
-* Datasets
+* Subsetting and filtering output data
+* Aggregating datasets
+
 
 ## Usage instructions
 The CLI of Tomahawk comprises of several distinct subroutines (listed below).
@@ -27,7 +30,7 @@ or human-readable `ld` format.
 | [`import`](cli/cli-import)      | import `VCF`/`VCF.gz`/`BCF` to `TWK`                        |
 | [`sort`](cli/cli-sort)          | sort `TWO` file                                             |
 | [`view`](cli/cli-view)          | `TWO`-&gt;`LD`/`TWO` view, `TWO` subset and filter          |
-| [`haplotype`](cli/cli-haplotype)| extract per-sample haplotype strings in `FASTA`/binary format |
+| [`haplotype`](cli/cli-haplotype)| extract per-sample haplotype strings in `FASTA`/binary format      |
 | [`relationship`](cli/cli-relationship) | compute marker-based pair-wise sample relationship matrices |
 | [`decay`](cli/cli-decay)        | compute LD-decay over distance                              |
 | [`prune`](cli/cli-prune)        | perform graph-based LD-pruning of variant sites             |
@@ -129,7 +132,7 @@ $ tomahawk calc -pi 1kgp3_chr6.twk -o 1kgp3_chr6_1_45 -C 1 -c 45 -t 8
     partitioning](job-balancing.md) in Tomahawk.
 
     Here is the first 100 valid partition sizes:  
-    `1`, `3`, `6`, `10`, `15`, `21`, `28`, `36`, `45`, `55`, `56`, `68`, `81`, `95`, `110`, `126`, `143`, `161`, `180`, `200`, `211`, `233`, `256`, `280`, `305`, `331`, `358`, `386`, `415`, `445`, `466`, `498`, `531`, `565`, `600`, `636`, `673`, `711`, `750`, `790`, `821`, `863`, `906`, `950`, `995`, `1041`, `1088`, `1136`, `1185`, `1235`, `1276`, `1328`, `1381`, `1435`, `1490`, `1546`, `1603`, `1661`, `1720`, `1780`, `1831`, `1893`, `1956`, `2020`, `2085`, `2151`, `2218`, `2286`, `2355`, `2425`, `2486`, `2558`, `2631`, `2705`, `2780`, `2856`, `2933`, `3011`, `3090`, `3170`, `3241`, `3323`, `3406`, `3490`, `3575`, `3661`, `3748`, `3836`, `3925`, `4015`, `4096`, `4188`, `4281`, `4375`, `4470`, `4566`, `4663`, `4761`, `4860`, `4960`
+    `1`, `3`, `6`, `10`, `15`, `21`, `28`, `36`, `45`, `55`, `66`, `78`, `91`, `105`, `120`, `136`, `153`, `171`, `190`, `210`, `231`, `253`, `276`, `300`, `325`, `351`, `378`, `406`, `435`, `465`, `496`, `528`, `561`, `595`, `630`, `666`, `703`, `741`, `780`, `820`, `861`, `903`, `946`, `990`, `1035`, `1081`, `1128`, `1176`, `1225`, `1275`, `1326`, `1378`, `1431`, `1485`, `1540`, `1596`, `1653`, `1711`, `1770`, `1830`, `1891`, `1953`, `2016`, `2080`, `2145`, `2211`, `2278`, `2346`, `2415`, `2485`, `2556`, `2628`, `2701`, `2775`, `2850`, `2926`, `3003`, `3081`, `3160`, `3240`, `3321`, `3403`, `3486`, `3570`, `3655`, `3741`, `3828`, `3916`, `4005`, `4095`, `4186`, `4278`, `4371`, `4465`, `4560`, `4656`, `4753`, `4851`, `4950`, `5050`
 
 !!! Warning "Massive workload"
     
@@ -251,15 +254,45 @@ License: MIT
 [2019-01-21 16:13:17,257][LOG][PROGRESS] All done...02h02m27,854s!
 ```
 
+### Single interval vs its local neighbourhood
+
+In many cases we are not interested in computing large-scale
+linkage-disequilibrium associations but have a limited genomics window of
+interest. If this is the case, you can use the specialization subroutine of
+`calc` called `scalc` that is parameterizable with a target region and a
+neighbourhood size in bases.
+
+In this example, we will compute the regional associations of variants mapping
+to the interval chr6:10e6-10.1e6 and a 100kb neighbourhood.
+```bash
+tomahawk scalc -i 1kgp3_chr6.twk -o test -I 6:10e6-10.1e6 -w 100000
+```
+
+!!! Note "Neighbourhood interval"
+    
+    The neighbourhood is computed as the region from [start of interval -
+    neighbourhood, start of interval) and (end of interval + neighbourhood). If the
+    start of the interval minus the neighbourhood falls outside the chromosome
+    (position < 0) then this interval is truncated to 0 in the left end.
+
+!!! Warning "Scalability"
+    
+    This subroutine was designed to be used with a relatively short interval to
+    maximize computability in this case. It is however possible to provide any valid
+    interval as the target region to compute linkage-disequilibrium for. Providing
+    large intervals will result in poor performance and potentially undesired
+    output.
+
+
 ## Concatenating multiple archives
 
-On of the immediate downsides of partitioning compute into multiple non-overlapping 
-sub-problems is that we will generate a large number of independent files that must
-be merged prior to downstream analysis. Fortunatly, this is a trivial operation in
-Tomahawk and involves the `concat` command.
+On of the immediate downsides of partitioning compute into multiple
+non-overlapping sub-problems is that we will generate a large number of
+independent files that must be merged prior to downstream analysis. Fortunatly,
+this is a trivial operation in Tomahawk and involves the `concat` command.
 
-First lets compute some data using the first 3 out of 990 partitions of the dataset
-used above.
+First lets compute some data using the first 3 out of 990 partitions of the
+dataset used above.
 ```bash
 for i in {1..3}; do time tomahawk calc -pi 1kgp3_chr6.twk -c 990 -C $i -o part$i\_3.two; done
 ```
@@ -433,7 +466,8 @@ sys	    0m53.197s
     support individual columnar slicing and subset operations.
 
 ### `LD` format
-Tomahawk can output binary `two` data in the human-readable `ld` format by invoking the `view` command. The primary output columns are described below:
+Tomahawk can output binary `two` data in the human-readable `ld` format by invoking the `view` command. 
+The general schema for `ld` is below:
 
 | Column    | Description |
 |----------|-------------|
@@ -626,3 +660,45 @@ datasets. Read more about [aggregation](aggregation.md) in Tomahawk.
 | `Count`     | Total number of records in a bin        |
 | `N`         | Alias for `count`                       |
 | `Total`     | Sum total of aggregated number in a bin |
+
+In this example, we will aggregate the genome-wide data generated from the sliding example
+above by aggregating on `R2` values and reducing into `count` in a (4000,4000)-bin space. If
+a bin have less than 50 observations (`-c`) we will drop all the value and report 0 for that bin.
+
+```bash
+twk aggregate -i 1kgp3_chr6_4mb_sorted.two -x 4000 -y 4000 -f r2 -r count -c 50 -t 4 -O b -o 1kgp3_chr6_4mb_aggregate.twa
+```
+
+```text
+Program:   tomahawk-7f8eef9b-dirty (Tools for computing, querying and storing LD data)
+Libraries: tomahawk-0.7.0; ZSTD-1.3.8; htslib 1.9
+Contact: Marcus D. R. Klarqvist <mk819@cam.ac.uk>
+Documentation: https://github.com/mklarqvist/tomahawk
+License: MIT
+----------
+[2019-01-25 14:55:43,299][LOG] Calling aggregate...
+[2019-01-25 14:55:43,299][LOG] Performing 2-pass over data...
+[2019-01-25 14:55:43,299][LOG] ===== First pass (peeking at landscape) =====
+[2019-01-25 14:55:43,299][LOG] Blocks: 47,352
+[2019-01-25 14:55:43,299][LOG] Uncompressed size: 50.192950 Gb
+[2019-01-25 14:55:43,299][LOG][THREAD] Data/thread: 12.548238 Gb
+[2019-01-25 14:55:43,299][PROGRESS] Time elapsed       Variants  Progress	Est. Time left
+[2019-01-25 14:56:13,299][PROGRESS]      30,000s    344,930,000   72.8446%	11s
+[2019-01-25 14:56:27,979][PROGRESS] 44,679s	473,514,826 (10,597,935 variants/s)
+[2019-01-25 14:56:27,979][PROGRESS] Finished!
+[2019-01-25 14:56:27,979][LOG] ===== Second pass (building matrix) =====
+[2019-01-25 14:56:27,979][LOG] Aggregating 473,514,826 records...
+[2019-01-25 14:56:27,979][LOG][THREAD] Allocating: 2.560000 Gb for matrices...
+[2019-01-25 14:56:27,979][PROGRESS] Time elapsed       Variants  Progress	Est. Time left
+[2019-01-25 14:56:57,979][PROGRESS]      30,000s    348,560,000   73.6112%	10s
+[2019-01-25 14:57:12,499][PROGRESS] 44,520s	473,514,826 (10,635,926 variants/s)
+[2019-01-25 14:57:12,499][PROGRESS] Finished!
+[2019-01-25 14:57:13,713][LOG] Aggregated 473,514,826 records in 16,000,000 bins.
+[2019-01-25 14:57:13,713][LOG] Finished.
+```
+
+You can now use the output binary format `.twa` in your downstream analysis.
+Alternatively, it is possible to output a human-readable (x,y)-matrix by setting
+the `-O` parameter to `u`. This tab-delimited matrix can now be loaded in any
+programming language and used as input for graphical visualizations or for analysis.
+It is easiest to use these files directly in [`rtomahawk`](r-tutorial.md), the R-bindings for `tomahawk`.

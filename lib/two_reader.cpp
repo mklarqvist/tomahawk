@@ -255,6 +255,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	progress_sort.PrintFinal();
 
 	// temp
+	/*
 	for(int i = 0; i < settings.n_threads; ++i){
 		std::cerr << i << "\t" << slaves[i].run_ivals.size() << std::endl;
 		for(int j = 0; j < slaves[i].run_ivals.size(); ++j){
@@ -265,6 +266,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 			std::cerr << std::endl;
 		}
 	}
+	*/
 	//
 
 	uint32_t n_queues = 0;
@@ -345,7 +347,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	sort_string += "##tomahawk_sortCommand=" + LITERAL_COMMAND_LINE + "; Date=" + utility::datetime() + "\n";
 	hdr.literals_ += sort_string;
 	if(owriter.WriteHeader(*this) == false){
-		std::cerr << "failed to write header" << std::endl;
+		std::cerr << utility::timestamp("ERROR") << "Failed to write header!" << std::endl;
 		return false;
 	}
 

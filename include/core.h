@@ -531,22 +531,21 @@ public:
 			if(own){
 				bv = new uint64_t[n];
 			}
-			//std::cerr << "build now=" << n << "," << m << "," << l_list << std::endl;
 		}
-		//if(d.m == 0) d.resize(n_samples);
 
 		if(twk.ac > m){
-			//std::cerr << "resize=" << twk.ac << ">" << m << std::endl;
 			m = twk.ac;
 			delete[] list; list = new uint32_t[m];
-			delete[] list_aa; list_aa = nullptr;
-			delete[] list_het; list_het = nullptr;
 
 			if(build_unphased){
+				delete[] list_aa; list_aa = nullptr;
+				delete[] list_het; list_het = nullptr;
 				list_aa = new uint32_t[m];
 				list_het = new uint32_t[m];
 			}
 		}
+		assert(list != nullptr);
+		assert(bv != nullptr);
 
 		if(own){
 			memset(bv, 0, n*sizeof(uint64_t));
@@ -576,8 +575,6 @@ public:
 			assert(cumpos == n_samples*2);
 			assert(l_list <= m);
 		} else {
-			//std::cerr << "in not own" << std::endl;
-
 			//x.resize(n_samples);
 			for(int i = 0; i < twk.gt->n; ++i){
 				const uint32_t len  = twk.gt->GetLength(i);
@@ -599,73 +596,75 @@ public:
 			}
 			assert(cumpos == n_samples*2);
 			//std::cerr << "total bins=" << d.n << " with ac=" << twk.ac << std::endl;
-
-			// Register positions.
-			r_pos.clear();
-			for(int i = 0; i < l_list; ++i){
-				if(r_pos.size()){
-					if(r_pos.back() != list[i] / 128)
-						r_pos.push_back(list[i] / 128);
-				} else r_pos.push_back(list[i] / 128);
-			}
-
-			r_aa.clear(); r_het.clear();
-			if(build_unphased){
-				for(int i = 0; i < l_aa; ++i){
-					if(r_aa.size()){
-						if(r_aa.back() != list_aa[i] / 128)
-							r_aa.push_back(list_aa[i] / 128);
-					} else r_aa.push_back(list_aa[i] / 128);
-				}
-
-				for(int i = 0; i < l_het; ++i){
-					if(r_het.size()){
-						if(r_het.back() != list_het[i] / 128)
-							r_het.push_back(list_het[i] / 128);
-					} else r_het.push_back(list_het[i] / 128);
-				}
-			}
-			//std::cerr << l_list << "," << l_het << "," << l_aa << " and " << r_pos.size() << "," << r_aa.size() << "," << r_het.size() << std::endl;
-
-
-			// Convert register number into offset in 64-bit space.
-			// This step is required to guarantee memory aligned lookups when
-			// using SIMD instructions.
-			for(int i = 0; i < r_pos.size(); ++i) r_pos[i] *= 128 / 64;
-
-			//d.n = d.m;
-			//std::cerr << "size=" << d.n << " and " << d.m << std::endl;
-			//uint32_t divide = std::ceil((float)d.m / 2);
-			uint32_t divide = std::ceil((float)2*n_samples/128) + 1;
-			for(int i = 0; i < r_pos.size(); ++i){
-				assert(r_pos[i] / divide < 2);
-				bin_bitmap[r_pos[i]/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(r_pos[i] % divide) / divide)*64) ));
-			}
-			//std::cerr << std::bitset<64>(bin_bitmap[0]) << " " << std::bitset<64>(bin_bitmap[1]) << std::endl;
-
-			/*for(int i = 0; i < d.n; ++i){
-				aligned_free(d.data[i].vals);
-				d.data[i].vals = nullptr;
-			}*/
-
-
-			/*x_bins = 0;
-			for(int i = 0; i < x.n; ++i){
-				x_bins += x.data[i].pos.size();
-				//for(int j = 0; j < x.data[i].pos.size(); ++j){
-					//std::cerr << i << "/" << x.n << " " << j << "/" << x.data[i].pos.size() << " -> " << x.data[i].pos[j] << std::endl;
-				//}
-			}
-			//std::cerr << "done" << std::endl;
-			//std::cerr << "bins=" << x_bins << " and " << x.pos.size() << std::endl;
-
-			x.cleanup();*/
 		}
 
+		// Register positions.
+		r_pos.clear();
+		for(int i = 0; i < l_list; ++i){
+			if(r_pos.size()){
+				if(r_pos.back() != list[i] / 128)
+					r_pos.push_back(list[i] / 128);
+			} else r_pos.push_back(list[i] / 128);
+		}
+
+		r_aa.clear(); r_het.clear();
+		if(build_unphased){
+			for(int i = 0; i < l_aa; ++i){
+				if(r_aa.size()){
+					if(r_aa.back() != list_aa[i] / 128)
+						r_aa.push_back(list_aa[i] / 128);
+				} else r_aa.push_back(list_aa[i] / 128);
+			}
+
+			for(int i = 0; i < l_het; ++i){
+				if(r_het.size()){
+					if(r_het.back() != list_het[i] / 128)
+						r_het.push_back(list_het[i] / 128);
+				} else r_het.push_back(list_het[i] / 128);
+			}
+		}
+		//std::cerr << l_list << "," << l_het << "," << l_aa << " and " << r_pos.size() << "," << r_aa.size() << "," << r_het.size() << std::endl;
+
+
+		// Convert register number into offset in 64-bit space.
+		// This step is required to guarantee memory aligned lookups when
+		// using SIMD instructions.
+		for(int i = 0; i < r_pos.size(); ++i) r_pos[i] *= 128 / 64;
+
+		//d.n = d.m;
+		//std::cerr << "size=" << d.n << " and " << d.m << std::endl;
+		//uint32_t divide = std::ceil((float)d.m / 2);
+		uint32_t divide = std::ceil((float)2*n_samples/128) + 1;
+		for(int i = 0; i < r_pos.size(); ++i){
+			assert(r_pos[i] / divide < 2);
+			bin_bitmap[r_pos[i]/divide] |= ((uint64_t)1 << ( (uint64_t)(((float)(r_pos[i] % divide) / divide)*64) ));
+		}
+		//std::cerr << std::bitset<64>(bin_bitmap[0]) << " " << std::bitset<64>(bin_bitmap[1]) << std::endl;
+
+		/*for(int i = 0; i < d.n; ++i){
+			aligned_free(d.data[i].vals);
+			d.data[i].vals = nullptr;
+		}*/
+
+
+		/*x_bins = 0;
+		for(int i = 0; i < x.n; ++i){
+			x_bins += x.data[i].pos.size();
+			//for(int j = 0; j < x.data[i].pos.size(); ++j){
+				//std::cerr << i << "/" << x.n << " " << j << "/" << x.data[i].pos.size() << " -> " << x.data[i].pos[j] << std::endl;
+			//}
+		}
+		//std::cerr << "done" << std::endl;
+		//std::cerr << "bins=" << x_bins << " and " << x.pos.size() << std::endl;
+
+		x.cleanup();*/
+
 		// Delete list as we use registers
-		delete[] list; list = nullptr;
-		delete[] list_aa; list_aa = nullptr;
-		delete[] list_het; list_het = nullptr;
+		delete[] list; list = nullptr; m = 0;
+		if(build_unphased){
+			delete[] list_aa; list_aa = nullptr;
+			delete[] list_het; list_het = nullptr;
+		}
 		//l_list = 0;
 
 

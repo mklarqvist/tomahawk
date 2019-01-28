@@ -1846,26 +1846,39 @@ std::thread* twk_ld_slave::Start(){
 	return(thread);
 }
 
-void twk_ld_slave::UpdateBlocks(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
-	if(settings->low_memory == false) this->UpdateBlocksPreloaded(blks,from,to);
-	else this->UpdateBlocksGenerate(blks,from,to);
+void twk_ld_slave::UpdateBlocks(twk1_ldd_blk* blks,
+                                const uint32_t& from,
+                                const uint32_t& to)
+{
+	if(settings->low_memory == false)
+		this->UpdateBlocksPreloaded(blks,from,to);
+	else
+		this->UpdateBlocksGenerate(blks,from,to);
 }
 
-void twk_ld_slave::UpdateBlocksPreloaded(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
+void twk_ld_slave::UpdateBlocksPreloaded(twk1_ldd_blk* blks,
+                                         const uint32_t& from,
+                                         const uint32_t& to)
+{
 	const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 	blks[0].SetPreloaded(ldd[from - i_start]);
 	blks[1].SetPreloaded(ldd[add + (to - j_start)]);
-	prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
+	prev_i = from - i_start;
+	prev_j = add + (to - j_start);
+	++n_cycles;
 }
 
-void twk_ld_slave::UpdateBlocksGenerate(twk1_ldd_blk* blks, const uint32_t& from, const uint32_t& to){
+void twk_ld_slave::UpdateBlocksGenerate(twk1_ldd_blk* blks,
+                                        const uint32_t& from,
+                                        const uint32_t& to)
+{
 	const uint32_t add = ticker->diag ? 0 : (ticker->tL - ticker->fL);
 
 	if(n_cycles == 0 || prev_i != from - i_start){
 		blks[0] = ldd[from - i_start];
 		blks[0].Inflate(n_s, settings->ldd_load_type, true);
 	} else {
-		blks[0].blk = ldd[from - i_start].blk;
+		blks[0].blk   = ldd[from - i_start].blk;
 		blks[0].n_rec = ldd[from - i_start].blk->n;
 	}
 
@@ -1873,11 +1886,13 @@ void twk_ld_slave::UpdateBlocksGenerate(twk1_ldd_blk* blks, const uint32_t& from
 		blks[1] = ldd[add + (to - j_start)];
 		blks[1].Inflate(n_s, settings->ldd_load_type, true);
 	} else {
-		blks[1].blk = ldd[add + (to - j_start)].blk;
+		blks[1].blk   = ldd[add + (to - j_start)].blk;
 		blks[1].n_rec = ldd[add + (to - j_start)].blk->n;
 	}
 
-	prev_i = from - i_start; prev_j = add + (to - j_start); ++n_cycles;
+	prev_i = from - i_start;
+	prev_j = add + (to - j_start);
+	++n_cycles;
 }
 
 void twk_ld_slave::Phased(const twk1_t* rcds0,

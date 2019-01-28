@@ -34,9 +34,11 @@ void aggregate_usage(void){
 
 	"Options:\n"
 	"  -i   FILE   input TWO file (required)\n"
+	"  -o   FILE   output file path (default: -)\n"
+	"  -O   <b,u>  b: compressed binary representation, u: uncompressed matrix (default: b)\n"
 	"  -x,y INT    number of X/Y-axis bins (default: 1000)\n"
 	"  -f   STRING aggregation function: can be one of (r2,r,d,dprime,dp,p,hets,alts,het,alt)(required)\n"
-	"  -r   STRING reduction function: can be one of (mean,count,n,min,max,sd)(required)\n"
+	"  -r   STRING reduction function: can be one of (mean,count,n,min,max,sd,total)(required)\n"
 	"  -I   STRING filter interval <contig>:pos-pos (TWK/TWO) or linked interval <contig>:pos-pos,<contig>:pos-pos\n"
 	"  -c   INT    min cut-off value used in reduction function: value < c will be set to 0 (default: 5)\n"
 	"  -t   INT    number of parallel threads: each thread will use " << sizeof(tomahawk::twk_sstats) << "(x*y) bytes\n" << std::endl;
@@ -50,6 +52,8 @@ int aggregate(int argc, char** argv){
 
 	static struct option long_options[] = {
 		{"input",       required_argument, 0, 'i' },
+		{"output",       optional_argument, 0, 'o' },
+		{"output-type",       optional_argument, 0, 'O' },
 		{"interval",    optional_argument, 0, 'I' },
 		{"xbins",       optional_argument, 0, 'x' },
 		{"ynins",       optional_argument, 0, 'y' },
@@ -64,11 +68,13 @@ int aggregate(int argc, char** argv){
 	int32_t x_bins = 1000, y_bins = 1000;
 	std::string aggregate_func_name, reduce_func_name;
 	int32_t min_cutoff = 5;
+	settings.out = "-";
+	settings.out_type = 'b';
 
 	int c = 0;
 	int long_index = 0;
 	int hits = 0;
-	while ((c = getopt_long(argc, argv, "i:I:x:y:f:r:c:t:", long_options, &long_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:O:I:x:y:f:r:c:t:", long_options, &long_index)) != -1){
 		hits += 2;
 		switch (c){
 		case ':':   /* missing option argument */
@@ -85,6 +91,12 @@ int aggregate(int argc, char** argv){
 		case 'i':
 			settings.in = std::string(optarg);
 			break;
+		case 'o':
+			settings.out = std::string(optarg);
+			break;
+		case 'O':
+			settings.out_type = std::string(optarg)[0];
+			break;
 		case 'I': settings.ivals.push_back(std::string(optarg)); break;
 		case 'x': x_bins = std::atoi(optarg); break;
 		case 'y': y_bins = std::atoi(optarg); break;
@@ -93,6 +105,11 @@ int aggregate(int argc, char** argv){
 		case 'c': min_cutoff = std::atoi(optarg); break;
 		case 't': settings.n_threads = std::atoi(optarg); break;
 		}
+	}
+
+	if(settings.out_type != 'u' && settings.out_type != 'b'){
+		std::cerr << tomahawk::utility::timestamp("ERROR") << "Output format must be either 'u' or 'b'..." << std::endl;
+		return(1);
 	}
 
 	tomahawk::twk_sstats::aggfunc f = &tomahawk::twk_sstats::AddR2;
@@ -116,6 +133,19 @@ int aggregate(int argc, char** argv){
 	if(settings.n_threads <= 0){
 		std::cerr << tomahawk::utility::timestamp("ERROR") << "Cannot have <= 0 threads (-t)..." << std::endl;
 		return(1);
+	}
+
+	std::ofstream* writer; bool use_writer = false;
+	if(settings.out.size() == 1 && settings.out == "-"){
+
+	} else {
+		use_writer = true;
+		writer = new std::ofstream(settings.out, std::ios::out);
+		if(!writer->good()){
+			std::cerr << tomahawk::utility::timestamp("ERROR") << "Could not open output file \"" << settings.out << "\"!" << std::endl;
+			return(1);
+		}
+
 	}
 
 	// Transform string of aggregation function name into lower then try to map
@@ -382,7 +412,20 @@ int aggregate(int argc, char** argv){
 	// Print matrix
 	//slaves[0].PrintMatrix(std::cout, min_cutoff);
 	slaves[0].Overload(agg, min_cutoff);
-	std::cout << agg;
+
+	if(use_writer){
+		if(settings.out_type == 'b'){
+			*writer << agg;
+		} else {
+			slaves[0].PrintMatrix(*writer, min_cutoff);
+		}
+		writer->flush();
+		writer->close();
+		delete writer;
+	} else {
+		if(settings.out_type == 'b') std::cout << agg;
+		else slaves[0].PrintMatrix(std::cout, min_cutoff);
+	}
 
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Aggregated " << tomahawk::utility::ToPrettyString(n_recs) << " records in " << tomahawk::utility::ToPrettyString(x_bins*y_bins) << " bins." << std::endl;
 	std::cerr << tomahawk::utility::timestamp("LOG") << "Finished." << std::endl;

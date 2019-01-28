@@ -1,5 +1,18 @@
 # Getting started with `rtomahawk`
 
+## About
+
+This is an introductory tutorial for using the R-bindings for Tomahawk
+(`rtomahawk`). It will cover:
+
+* Importing data into Tomahawk
+* Loading, subsetting, and filtering output data
+* Computing linkage-disequilibrium
+* Plotting raw linkage-disequilibrium data
+* Aggregating and visualizing datasets
+* Combining LD information with GWAS P-values and annotations
+
+
 ## Prerequisites
 In order to follow this tutorial exactly, you will need to download the variant
 call data for chromosome 6 the 1000 Genomes Project (1KGP3) cohort and validate

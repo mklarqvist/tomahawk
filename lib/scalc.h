@@ -43,7 +43,7 @@ void scalc_usage(void){
 	//"  -S INT    trigger sampling mode: number of individuals to sample when allele counts are large.\n"
 	"  -P FLOAT  Fisher's exact test / Chi-squared cutoff P-value (default: 1)\n"
 	"  -r FLOAT  Pearson's R-squared minimum cut-off value (default: 0.0)\n"
-	"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
+	//"  -R FLOAT  Pearson's R-squared maximum cut-off value (default: 1.0)\n"
 	"  -k INT    compression level to use (default: 1, max = 22).\n" << std::endl;
 }
 
@@ -72,7 +72,7 @@ int scalc(int argc, char** argv){
 
 		{"minP",              optional_argument, 0, 'P' },
 		{"minR2",             optional_argument, 0, 'r' },
-		{"maxR2",             optional_argument, 0, 'R' },
+		//{"maxR2",             optional_argument, 0, 'R' },
 
 		{"silent",            no_argument,       0, 's' },
 		{0,0,0,0}
@@ -81,7 +81,7 @@ int scalc(int argc, char** argv){
 	tomahawk::twk_ld_settings settings;
 	//std::vector<std::string> filter_regions;
 
-	while ((c = getopt_long(argc, argv, "i:o:t:P:a:A:r:R:I:smMb:k:w:?", long_options, &option_index)) != -1){
+	while ((c = getopt_long(argc, argv, "i:o:t:P:a:A:r:I:smMb:k:w:?", long_options, &option_index)) != -1){
 		switch (c){
 		case 0:
 			std::cerr << "Case 0: " << option_index << '\t' << long_options[option_index].name << std::endl;
@@ -130,6 +130,7 @@ int scalc(int argc, char** argv){
 				return(1);
 			}
 			break;
+		/*
 		case 'R':
 			settings.maxR2 = atof(optarg);
 			if(settings.maxR2 < 0){
@@ -140,7 +141,7 @@ int scalc(int argc, char** argv){
 			return(1);
 			}
 			break;
-
+		*/
 		case 'P':
 		  settings.minP = atof(optarg);
 		  if(settings.minP < 0){
