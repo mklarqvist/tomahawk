@@ -145,7 +145,7 @@ all: tomahawk
 	g++ $(CXXFLAGS) $(INCLUDE_PATH) -c -DVERSION=\"$(GIT_VERSION)\" -o $@ $<
 
 tomahawk: $(OBJECTS)
-	g++ $(BINARY_RPATHS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o twk
+	g++ $(BINARY_RPATHS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o tomahawk
 	$(MAKE) cleanmost
 	$(MAKE) library library=true
 
@@ -161,7 +161,7 @@ library: $(OBJECTS)
 install: $(PROGRAMS)
 	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(includedir)/tomahawk $(DESTDIR)$(libdir)
 	$(INSTALL_DATA) include/*.h $(DESTDIR)$(includedir)/tomahawk
-	$(INSTALL_PROGRAM) twk $(DESTDIR)$(bindir)
+	$(INSTALL_PROGRAM) tomahawk $(DESTDIR)$(bindir)
 	$(INSTALL_DATA) libtomahawk.a $(DESTDIR)$(libdir)/libtomahawk.a
 	$(INSTALL_LIB) libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT).$(LIBVER)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) $(DESTDIR)$(libdir)/libtomahawk.$(SHARED_EXT)
