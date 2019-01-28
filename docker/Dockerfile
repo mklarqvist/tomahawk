@@ -101,8 +101,8 @@ RUN cd /opt \
     && make install
 
 RUN cd /opt \
-    && git clone https://mklarqvist:CpgqYBz6-S@github.com/mklarqvist/twk_local \
-    && cd /opt/twk_local/ \
+    && git clone https://mklarqvist:CpgqYBz6-S@github.com/mklarqvist/tomahawk \
+    && cd /opt/tomahawk/ \
     && make \
     && make install
 

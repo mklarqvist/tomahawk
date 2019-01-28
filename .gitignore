@@ -39,3 +39,4 @@ curl**/
 htslib/
 openssl/
 zstd/
+site/

@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
 [![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![screenshot](tomahawk.png)
 
@@ -8,6 +9,13 @@
 Tomahawk is a machine-optimized library for computing [linkage-disequilibrium](https://en.wikipedia.org/wiki/Linkage_disequilibrium) from population-sized datasets. Tomahawk permits close to real-time analysis of regions-of-interest in datasets of many millions of diploid individuals on a standard laptop. All algorithms are embarrassingly parallel and have been successfully tested on datasets with up to _10 million individuals_ using thousands of cores on hundreds of machines using the [Wellcome Trust Sanger Institute](http://www.sanger.ac.uk/) compute farm.
 
 Tomahawk is unique in that it constructs complete haplotype/genotype contigency matrices for each comparison, perform statistical tests on the output data, and provide a framework for investigating the produced data.
+
+### Get started
+
+* Read the [documentation](https://mklarqvist.github.io/tomahawk/)
+* [Get started](https://mklarqvist.github.io/tomahawk/tutorial/) with the CLI
+* [Get started](https://mklarqvist.github.io/tomahawk/r-tutorial/) with [rtomahawk](https://github.com/mklarqvist/rtomahawk)
+* [Get started](https://mklarqvist.github.io/tomahawk/docker-tutorial/) with Docker and Tomahawk
 
 ## Installation
 For Ubuntu, Debian, and Mac systems, installation is easy: just run
