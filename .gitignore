@@ -15,6 +15,7 @@
 *.so
 *.dylib
 *.dll
+# Symlinks to libraries or libraries
 *.so.*
 
 # Fortran module files
@@ -31,9 +32,10 @@
 *.exe
 *.out
 *.app
-bin/
-**/.DS_Store
 
-
-# Special
-.cproject
+# Possible third party directories if installing using the
+# convenience script.
+curl**/
+htslib/
+openssl/
+zstd/
