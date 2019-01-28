@@ -1,0 +1,46 @@
+site_name: Tomahawk
+repo_url: https://github.com/mklarqvist/tomahawk/
+repo_name: 'GitHub'
+site_author: Marcus D. R. Klarqvist
+copyright: Copyright (C) 2016-present Genome Research Ltd., University of Cambridge, and Marcus D. R. Klarqvist
+theme:
+    name: material
+    custom_dir: docs/material/
+    logo: images/twk_logo_white.svg
+extra_css:
+  - 'stylesheets/extra.css'
+extra_javascript:
+  - 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML'
+
+nav:
+  - Home: index.md
+  - Introduction: introduction.md
+  - Installation: installation.md
+  - Technical details:
+    - Algorithm overview: algorithm-overview.md
+    - Aggregation: aggregation.md
+    - Job balancing: job-balancing.md
+  - Tutorial:
+    - CLI: tutorial.md
+    - R: r-tutorial.md
+    - Docker: docker-tutorial.md
+  - Command line interface:
+      - aggregate: cli/cli-aggregate.md
+      - calc: cli/cli-calc.md
+      - concat: cli/cli-concat.md
+      - import: cli/cli-import.md
+      - sort: cli/cli-sort.md
+      - view: cli/cli-view.md
+      - haplotype: cli/cli-haplotype.md
+      - relationship: cli/cli-relationship.md
+      - decay: cli/cli-decay.md
+      - prune: cli/cli-prune.md
+  - API documentation: api-documentation.md
+  - Developer documentation: developer-documentation.md
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      linenums: true
+  - toc:
+      permalink: true
