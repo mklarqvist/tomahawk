@@ -74,11 +74,10 @@ else ifneq ("$(wildcard /usr/local/include/zstd.h)","")
   #ZSTD_LIBRARY_PATH = -L/usr/local/lib 
 else ifneq ("$(wildcard /usr/src/linux-headers-$(UNAME_R)/include/linux/zstd.h)","")
   INCLUDE_PATH += -I/usr/src/linux-headers-$(UNAME_R)/include/linux/
-  INCLUDE_PATH += -I/usr/src/linux-headers-$(UNAME_R)/include/
   #ZSTD_LIBRARY_PATH = -L/usr/src/linux-headers-$(uname -r)/lib
-else
-  INCLUDE_PATH += -I/usr/src/linux-headers-$(UNAME_R)/include/linux/
-  INCLUDE_PATH += "-I/usr/src/linux-headers-$(UNAME_R)/include/"
+else ifneq ("$(wildcard ../zstd/)","")
+  INCLUDE_PATH += -I../zstd/lib/ -I../zstd/lib/common/ 
+  ZSTD_LIBRARY_PATH = -L../zstd/lib 
 endif
 
 # Try to deduce where HTSLib is located
@@ -86,6 +85,9 @@ HSLIB_LIBRARY_PATH =
 ifneq ("$(wildcard ./htslib/)","")
   INCLUDE_PATH += -I./htslib/
   HSLIB_LIBRARY_PATH = -L./htslib/
+else ifneq ("$(wildcard ../htslib/)","")
+  INCLUDE_PATH += -I../htslib/
+  HSLIB_LIBRARY_PATH = -L../htslib/
 else ifneq ("$(wildcard /usr/local/include/htslib/)","")
   INCLUDE_PATH += -I/usr/local/include/
 endif 
