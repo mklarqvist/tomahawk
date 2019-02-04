@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/mklarqvist/tomahawk.svg?branch=master)](https://travis-ci.org/mklarqvist/tomahawk)
 [![Release](https://img.shields.io/badge/Release-beta_0.7.0-blue.svg)](https://github.com/mklarqvist/tomahawk/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/Docs-Available-brightgreen.svg)](https://mklarqvist.github.io/tomahawk/)
 
 ![screenshot](tomahawk.png)
 
@@ -10,12 +10,18 @@ Tomahawk is a machine-optimized library for computing [linkage-disequilibrium](h
 
 Tomahawk is unique in that it constructs complete haplotype/genotype contigency matrices for each comparison, perform statistical tests on the output data, and provide a framework for investigating the produced data.
 
-### Get started
+## Get started
 
 * Read the [documentation](https://mklarqvist.github.io/tomahawk/)
 * [Get started](https://mklarqvist.github.io/tomahawk/tutorial/) with the CLI
 * [Get started](https://mklarqvist.github.io/tomahawk/r-tutorial/) with [rtomahawk](https://github.com/mklarqvist/rtomahawk)
 * [Get started](https://mklarqvist.github.io/tomahawk/docker-tutorial/) with Docker and Tomahawk
+
+## Requirements
+
+* Your processor should support SSE4.2 (It is supported by most Intel and AMD processors released since 2008.)
+* C++11 compliant compiler (GCC is assumed)
+* A Linux-like distribution is assumed by the makefile
 
 ## Installation
 For Ubuntu, Debian, and Mac systems, installation is easy: just run
