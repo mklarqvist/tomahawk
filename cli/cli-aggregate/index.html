@@ -479,7 +479,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-calc.md" title="calc" class="md-nav__link">
+    <a href="../cli-calc/" title="calc" class="md-nav__link">
       calc
     </a>
   </li>
@@ -491,7 +491,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-concat.md" title="concat" class="md-nav__link">
+    <a href="../cli-concat/" title="concat" class="md-nav__link">
       concat
     </a>
   </li>
@@ -503,7 +503,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-import.md" title="import" class="md-nav__link">
+    <a href="../cli-import/" title="import" class="md-nav__link">
       import
     </a>
   </li>
@@ -515,7 +515,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-sort.md" title="sort" class="md-nav__link">
+    <a href="../cli-sort/" title="sort" class="md-nav__link">
       sort
     </a>
   </li>
@@ -527,7 +527,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-view.md" title="view" class="md-nav__link">
+    <a href="../cli-view/" title="view" class="md-nav__link">
       view
     </a>
   </li>
@@ -539,7 +539,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-haplotype.md" title="haplotype" class="md-nav__link">
+    <a href="../cli-haplotype/" title="haplotype" class="md-nav__link">
       haplotype
     </a>
   </li>
@@ -551,7 +551,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../cli-decay.md" title="decay" class="md-nav__link">
+    <a href="../cli-decay/" title="decay" class="md-nav__link">
       decay
     </a>
   </li>
@@ -647,32 +647,125 @@
                 
                 
                 <h1 id="cli-aggregate">CLI: <code>aggregate</code><a class="headerlink" href="#cli-aggregate" title="Permanent link">&para;</a></h1>
-<p>Short</p>
 <h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
 <p>Aggregate TWO data into a rasterized matrix of size [x,y] for plotting.</p>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>tomahawk aggregate -f r2 -r mean -c <span class="m">50</span> -i input.twk
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>tomahawk aggregate -f r2 -r mean -c <span class="m">50</span> -i input.twk -O b -o agg.twa
+tomahawk aggregate -f r2 -r mean -c <span class="m">50</span> -i input.twk &gt; agg.mat
+tomahawk aggregate -f r2 -r mean -c <span class="m">50</span> -i input.twk -x <span class="m">4000</span> -y <span class="m">4000</span> -c <span class="m">50</span> -t <span class="m">8</span> -O b -o agg.twa
 </pre></div>
 </td></tr></table>
 
 <h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>Options:
-  -i   FILE   input TWO file <span class="o">(</span>required<span class="o">)</span>
-  -x,y INT    number of X/Y-axis bins <span class="o">(</span>default: <span class="m">1000</span><span class="o">)</span>
-  -f   STRING aggregation <span class="k">function</span>: can be one of <span class="o">(</span>r2,r,d,dprime,dp,p,hets,alts,het,alt<span class="o">)(</span>required<span class="o">)</span>
-  -r   STRING reduction <span class="k">function</span>: can be one of <span class="o">(</span>mean,count,n,min,max,sd<span class="o">)(</span>required<span class="o">)</span>
-  -I   STRING filter interval &lt;contig&gt;:pos-pos <span class="o">(</span>TWK/TWO<span class="o">)</span> or linked interval &lt;contig&gt;:pos-pos,&lt;contig&gt;:pos-pos
-  -c   INT    min cut-off value used in reduction <span class="k">function</span>: value &lt; c will be <span class="nb">set</span> to <span class="m">0</span> <span class="o">(</span>default: <span class="m">5</span><span class="o">)</span>
-  -t   INT    number of parallel threads: each thread will use <span class="m">40</span><span class="o">(</span>x*y<span class="o">)</span> bytes
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>Options:
+  -i   FILE   input TWO file (required)
+  -o   FILE   output file path (default: -)
+  -O   &lt;b,u&gt;  b: compressed binary representation, u: uncompressed matrix (default: b)
+  -x,y INT    number of X/Y-axis bins (default: 1000)
+  -f   STRING aggregation function: can be one of (r2,r,d,dprime,dp,p,hets,alts,het,alt)(required)
+  -r   STRING reduction function: can be one of (mean,count,n,min,max,sd,total)(required)
+  -I   STRING filter interval &lt;contig&gt;:pos-pos (TWK/TWO) or linked interval &lt;contig&gt;:pos-pos,&lt;contig&gt;:pos-pos
+  -c   INT    min cut-off value used in reduction function: value &lt; c will be set to 0 (default: 5)
+  -t   INT    number of parallel threads: each thread will use 40(x*y) bytes
 </pre></div>
 </td></tr></table>
+
+<p>Valid aggregation and reduction function names (case insensitive):</p>
+<table>
+<thead>
+<tr>
+<th>Aggregation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>R</code></td>
+<td>Pearson correlation coefficient</td>
+</tr>
+<tr>
+<td><code>R2</code></td>
+<td>Squared pearson correlation coefficient</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>Coefficient of linkage disequilibrium</td>
+</tr>
+<tr>
+<td><code>Dprime</code></td>
+<td>Scaled coefficient of linkage disequilibrium</td>
+</tr>
+<tr>
+<td><code>Dp</code></td>
+<td>Alias for <code>dprime</code></td>
+</tr>
+<tr>
+<td><code>P</code></td>
+<td>Fisher's exact test P-value of the 2x2 haplotype contigency table</td>
+</tr>
+<tr>
+<td><code>Hets</code></td>
+<td>Number of (0,1) or (1,0) associations</td>
+</tr>
+<tr>
+<td><code>Alts</code></td>
+<td>Number of (1,1) associations</td>
+</tr>
+<tr>
+<td><code>Het</code></td>
+<td>Alias for <code>hets</code></td>
+</tr>
+<tr>
+<td><code>Alt</code></td>
+<td>Alias for <code>alts</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Reduction</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Mean</code></td>
+<td>Mean number of aggregate</td>
+</tr>
+<tr>
+<td><code>Max</code></td>
+<td>Largest number in aggregate bin</td>
+</tr>
+<tr>
+<td><code>Min</code></td>
+<td>Smallest number in aggregate bin</td>
+</tr>
+<tr>
+<td><code>Count</code></td>
+<td>Total number of records in a bin</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Alias for <code>count</code></td>
+</tr>
+<tr>
+<td><code>Total</code></td>
+<td>Sum total of aggregated number in a bin</td>
+</tr>
+</tbody>
+</table>
                 
                   
                 
@@ -708,13 +801,13 @@
           </a>
         
         
-          <a href="../../api-documentation/" title="API documentation" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../cli-calc/" title="calc" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                API documentation
+                calc
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">
