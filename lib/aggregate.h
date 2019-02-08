@@ -204,13 +204,15 @@ int aggregate(int argc, char** argv){
 
 
 	// Build intervals data structures if any are available.
-	/*if(settings.intervals.Build(settings.ivals,
-	                            oreader.hdr.GetNumberContigs(),
-	                            oreader.index,
-	                            oreader.hdr) == false)
-	{
-		return 1;
-	}*/
+    if(oreader.BuildIntervals(settings.ivals,oreader.hdr.GetNumberContigs(),oreader.index,oreader.hdr) == false){
+        return 1;
+    }
+
+    // If we have settings then we do not need to perform two-pass over data as
+    // we already know the scene dimensions.
+	if(settings.ivals.size()){
+
+	}
 
 	// Construct filters.
 	//settings.filter.Build();
@@ -279,7 +281,6 @@ int aggregate(int argc, char** argv){
 		slaves[i].t = ranges[i].second;
 		slaves[i].filename = settings.in;
 		slaves[i].progress = &progress_sort;
-		//std::cerr << "thread-" << i << " " << slaves[i].f << "-" << slaves[i].t << std::endl;
 	}
 
 	for(int i = 0; i < settings.n_threads; ++i){
@@ -302,11 +303,10 @@ int aggregate(int argc, char** argv){
 	}
 
 	// Reduce.
-	uint32_t n_chrom_set = slaves[0].contig_avail[0].set;
+	uint32_t n_chrom_set = 0;
 	for(int i = 0; i < slaves[0].contig_avail.size(); ++i){
 		n_chrom_set += slaves[0].contig_avail[i].set;
 	}
-	//std::cerr << "chrom set=" << n_chrom_set << std::endl;
 
 	// Step 2: Determine boundaries given the contigs that were set.
 	//         Calculate the landscape ranges (X and Y dimensions).
@@ -341,7 +341,6 @@ int aggregate(int argc, char** argv){
 			rid_offsets[i].min = slaves[0].contig_avail[i].min;
 			rid_offsets[i].max = slaves[0].contig_avail[i].max;
 		}
-
 	}
 	// If there is data from n>1 chromosomes.
 	else {

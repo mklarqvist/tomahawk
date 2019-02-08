@@ -661,7 +661,7 @@ std::ostream& operator<<(std::ostream& stream, const twk1_aggregate_t& agg){
 	SerializePrimitive(n_rid, stream);
 	for(int i = 0; i < agg.rid_offsets.size(); ++i){
 		uint32_t min = agg.rid_offsets[i].min == std::numeric_limits<uint32_t>::max() ? 0 : agg.rid_offsets[i].min;
-		uint32_t max = agg.rid_offsets[i].max < min ? 0 : agg.rid_offsets[i].min;
+		uint32_t max = agg.rid_offsets[i].max < min ? 0 : agg.rid_offsets[i].max;
 		SerializePrimitive(min, stream);
 		SerializePrimitive(max, stream);
 		SerializePrimitive(agg.rid_offsets[i].range, stream);
