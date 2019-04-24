@@ -111,12 +111,13 @@ endif
 
 # OS X linker doesn't support -soname, and use different extension
 # see : https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
+# Use LDFLAGS for passing additional flags. Avoid using LD_LIB_FLAGS.
 ifneq ($(shell uname), Darwin)
 SHARED_EXT   = so
-LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)'
+LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)' $(LDFLAGS)
 else
 SHARED_EXT   = dylib
-LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib'
+LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib' $(LDFLAGS) 
 endif
 
 CXXFLAGS      = -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
@@ -146,18 +147,18 @@ all: tomahawk
 
 # Generic rules
 %.o: %.cpp
-	g++ $(CXXFLAGS) $(INCLUDE_PATH) -c -DVERSION=\"$(GIT_VERSION)\" -o $@ $<
+	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c -DVERSION=\"$(GIT_VERSION)\" -o $@ $<
 
 tomahawk: $(OBJECTS)
-	g++ $(BINARY_RPATHS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o tomahawk
+	$(CXX) $(BINARY_RPATHS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o tomahawk
 	$(MAKE) cleanmost
 	$(MAKE) library library=true
 
 library: $(OBJECTS)
 	@echo 'Building dynamic library...'
-	g++ $(LD_LIB_FLAGS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o libtomahawk.$(SHARED_EXT).$(LIBVER)
+	$(CXX) $(LD_LIB_FLAGS) $(LIBRARY_PATHS) -pthread $(OBJECTS) $(LIBS) -o libtomahawk.$(SHARED_EXT).$(LIBVER)
 	@echo 'Building static library...'
-	ar crs libtomahawk.a $(OBJECTS)
+	$(AR) crs libtomahawk.a $(OBJECTS)
 	@echo 'Symlinking library...'
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
@@ -177,6 +178,6 @@ cleanmost:
 	rm -f $(OBJECTS) $(CPP_DEPS)
 
 clean: cleanmost clean_examples
-	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so libtomahawk.a
+	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so libtomahawk.a libtomahawk.dylib* ltomahawk.dylib
 
 .PHONY: all clean clean_examples cleanmost library install
