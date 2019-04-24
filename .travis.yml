@@ -1,6 +1,7 @@
 # Control file for continuous integration testing at http://travis-ci.org/
 language: cpp
 dist: trusty
+
 matrix:
   include:
     # works on Precise and Trusty
@@ -20,7 +21,7 @@ matrix:
             - libcurl4-openssl-dev 
             - liblz-dev
             - libbz2-dev
-- liblzma-dev
+            - liblzma-dev
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
       compiler: gcc
@@ -198,22 +199,22 @@ matrix:
 
     # OSX begin
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
         - MATRIX_EVAL="brew update && brew install gcc5 && CC=gcc-5 && CXX=g++-5"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
         - MATRIX_EVAL="brew update && brew install gcc6 && CC=gcc-6 && CXX=g++-6"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
         - MATRIX_EVAL="brew update && brew install gcc && CC=gcc-7 && CXX=g++-7"
 
