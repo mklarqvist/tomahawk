@@ -201,11 +201,6 @@ matrix:
     - os: osx
       osx_image: xcode10
       env:
-        - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
-
-    - os: osx
-      osx_image: xcode10
-      env:
         - MATRIX_EVAL="brew update && brew install gcc5 && CC=gcc-5 && CXX=g++-5"
 
     - os: osx
@@ -217,6 +212,11 @@ matrix:
       osx_image: xcode10
       env:
         - MATRIX_EVAL="brew update && brew install gcc && CC=gcc-7 && CXX=g++-7"
+
+    - os: osx
+      osx_image: xcode10
+      env:
+        - MATRIX_EVAL="brew update && brew install gcc && CC=gcc-8 && CXX=g++-8"
 
 
 before_install:
