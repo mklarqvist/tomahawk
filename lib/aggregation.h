@@ -38,7 +38,7 @@ public:
 
 		if(stream.good()) stream.close();
 
-		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+		stream.open(filename,std::ios::binary | std::ios::in);
 		if(stream.good() == false){
 			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
 			return nullptr;
@@ -94,7 +94,7 @@ public:
 
 		if(stream.good()) stream.close();
 
-		stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+		stream.open(filename,std::ios::binary | std::ios::in);
 		if(stream.good() == false){
 			std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
 			return nullptr;

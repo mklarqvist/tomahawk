@@ -116,7 +116,7 @@ SHARED_EXT   = so
 LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)'
 else
 SHARED_EXT   = dylib
-LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib'
+LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib'
 endif
 
 CXXFLAGS      = -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
