@@ -313,7 +313,6 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sudo xcode-select -s /Library/Developer/CommandLineTools; fi
   - git clone https://github.com/facebook/zstd
   - cd zstd && make -j4 && sudo make install && cd ..
   - git clone https://github.com/samtools/htslib
@@ -321,5 +320,8 @@ before_install:
 
 script:
   - git submodule update --recursive
-  - make -j4
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];
+    then make -j 4 2>&1 >/dev/null[:space:]]*\.section' -e '^[[:space:]]*\^[[:space:]]*~*'
+    else make -j 4
+    fi
 
