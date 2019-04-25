@@ -321,7 +321,6 @@ before_install:
 script:
   - git submodule update --recursive
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]];
-    then make -j 4 2>&1 >/dev/null[:space:]]*\.section' -e '^[[:space:]]*\^[[:space:]]*~*'
-    else make -j 4
+    then make -j 4 2>&1 >/dev/null[:space:]]*\.section' -e '^[[:space:]]*\^[[:space:]]*~*';
+    else make -j 4;
     fi
-
