@@ -117,13 +117,18 @@ SHARED_EXT   = so
 LD_LIB_FLAGS = -shared '-Wl,-rpath-link,$$ORIGIN/,-rpath-link,$(PWD),-rpath-link,$$ORIGIN/zstd/lib,-rpath-link,$$ORIGIN/htslib,-soname,libtomahawk.$(SHARED_EXT)' $(LDFLAGS)
 else
 SHARED_EXT   = dylib
-LD_LIB_FLAGS = -dynamiclib -install_name libtomahawk.$(SHARED_EXT) '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib' $(LDFLAGS) 
+LD_LIB_FLAGS = -dynamiclib -install_name "@rpath/libtomahawk.$(SHARED_EXT)" '-Wl,-rpath,@loader_path/,-rpath,$(PWD),-rpath,@loader_path/zstd/lib,-rpath,@loader_path/htslib' $(LDFLAGS) 
 endif
 
 CXXFLAGS      = -std=c++0x $(OPTFLAGS) $(DEBUG_FLAGS)
 CFLAGS        = -std=c99   $(OPTFLAGS) $(DEBUG_FLAGS)
 CFLAGS_VENDOR = -std=c99   $(OPTFLAGS)
+
+ifneq ($(shell uname), Darwin)
 BINARY_RPATHS = '-Wl,-rpath,$$ORIGIN/,-rpath,$(PWD),-rpath,$$ORIGIN/zstd/lib,-rpath,$$ORIGIN/htslib'
+else
+BINARY_RPATHS = '-Wl,-rpath,@loader_path/,-rpath,$(PWD),-rpath,@loader_path/zstd/lib,-rpath,@loader_path/htslib'
+endif
 
 LIBS := -lzstd -lhts
 CXX_SOURCE = $(wildcard lib/*.cpp) \
