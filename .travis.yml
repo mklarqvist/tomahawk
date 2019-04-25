@@ -1,6 +1,7 @@
 # Control file for continuous integration testing at http://travis-ci.org/
 language: cpp
 dist: trusty
+
 matrix:
   include:
     # works on Precise and Trusty
@@ -20,7 +21,7 @@ matrix:
             - libcurl4-openssl-dev 
             - liblz-dev
             - libbz2-dev
-- liblzma-dev
+            - liblzma-dev
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
       compiler: gcc
@@ -65,6 +66,50 @@ matrix:
             - libbz2-dev
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+      compiler: gcc
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - pkg-config
+            - libncurses5-dev
+            - libncursesw5-dev
+            - zlib1g-dev 
+            - libssl-dev
+            - liblz4-dev
+            - libcurl4-openssl-dev 
+            - liblz-dev
+            - libbz2-dev
+            - liblzma-dev
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+      compiler: gcc
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+            - pkg-config
+            - libncurses5-dev
+            - libncursesw5-dev
+            - zlib1g-dev 
+            - libssl-dev
+            - liblz4-dev
+            - libcurl4-openssl-dev 
+            - liblz-dev
+            - libbz2-dev
+            - liblzma-dev
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
       compiler: gcc
       
     # works on Precise and Trusty
@@ -196,26 +241,74 @@ matrix:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
       compiler: clang
 
+    # works on Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-6.0
+          packages:
+            - clang-6.0
+            - libstdc++-6-dev
+            - pkg-config
+            - libncurses5-dev
+            - libncursesw5-dev
+            - zlib1g-dev 
+            - libssl-dev
+            - liblz4-dev
+            - libcurl4-openssl-dev 
+            - liblz-dev
+            - libbz2-dev
+            - liblzma-dev
+      env:
+        - MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
+      compiler: clang
+
+    # works on Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-7
+          packages:
+            - clang-7
+            - libstdc++-7-dev
+            - pkg-config
+            - libncurses5-dev
+            - libncursesw5-dev
+            - zlib1g-dev 
+            - libssl-dev
+            - liblz4-dev
+            - libcurl4-openssl-dev 
+            - liblz-dev
+            - libbz2-dev
+            - liblzma-dev
+      env:
+        - MATRIX_EVAL="CC=clang-7 && CXX=clang++-7"
+      compiler: clang
+
     # OSX begin
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
-        - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+        - MATRIX_EVAL="brew update && brew install gcc@5 && CC=gcc-5 && CXX=g++-5"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
-        - MATRIX_EVAL="brew update && brew install gcc5 && CC=gcc-5 && CXX=g++-5"
+        - MATRIX_EVAL="brew update && brew install gcc@6 && CC=gcc-6 && CXX=g++-6"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
-        - MATRIX_EVAL="brew update && brew install gcc6 && CC=gcc-6 && CXX=g++-6"
+        - MATRIX_EVAL="brew update && brew install gcc@7 && CC=gcc-7 && CXX=g++-7"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       env:
-        - MATRIX_EVAL="brew update && brew install gcc && CC=gcc-7 && CXX=g++-7"
+        - MATRIX_EVAL="brew update && brew install gcc@8 && CC=gcc-8 && CXX=g++-8"
 
 
 before_install:
@@ -227,5 +320,5 @@ before_install:
 
 script:
   - git submodule update --recursive
-  - make -j4
-
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then make -j 4 2>/dev/null; fi
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then make -j 4; fi

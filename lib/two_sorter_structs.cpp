@@ -8,7 +8,7 @@ std::thread* twk_sort_slave::Start(IndexOutput& rdr){
 	if(t - f == 0) return nullptr;
 	//delete thread;
 
-	stream = std::ifstream(filename,std::ios::binary | std::ios::in);
+	stream.open(filename,std::ios::binary | std::ios::in);
 	if(stream.good() == false){
 		std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open \"" << filename << "\"..." << std::endl;
 		return nullptr;
@@ -25,7 +25,7 @@ std::thread* twk_sort_slave::Start(IndexOutput& rdr){
 	blk->resize((m_limit*1e9)/sizeof(twk1_two_t));
 	it->stream = &stream;
 
-	ostream = std::ofstream(tmp_filename, std::ios::binary | std::ios::out);
+	ostream.open(tmp_filename, std::ios::binary | std::ios::out);
 	if(ostream.good() == false){
 		std::cerr << utility::timestamp("ERROR","THREAD") << "Failed to open temp output file \"" << tmp_filename << "\"..." << std::endl;
 		return nullptr;
@@ -191,7 +191,7 @@ bool twk_two_stream_iterator::Open(const std::string file,
 		const uint32_t n_uncompressed,
 		const uint32_t n_compressed)
 {
-	stream = std::ifstream(file, std::ios::binary);
+	stream.open(file, std::ios::binary);
 	if(stream.good() == false){
 		std::cerr << utility::timestamp("ERROR") << "Could not open \"" << file << "\"..." << std::endl;
 		return false;

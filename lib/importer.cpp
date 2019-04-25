@@ -1,6 +1,5 @@
 #include "importer.h"
 
-#include <omp.h>
 #include <thread>
 
 #include "zstd.h"
