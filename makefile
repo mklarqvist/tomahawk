@@ -168,7 +168,11 @@ library: $(OBJECTS)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) libtomahawk.$(SHARED_EXT)
 	ln -sf libtomahawk.$(SHARED_EXT).$(LIBVER) ltomahawk.$(SHARED_EXT)
 
-install: $(PROGRAMS)
+install_deps:
+	@$(MAKE) tomahawk
+	@$(MAKE) library library=true
+
+install: install_deps
 	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(includedir)/tomahawk $(DESTDIR)$(libdir)
 	$(INSTALL_DATA) include/*.h $(DESTDIR)$(includedir)/tomahawk
 	$(INSTALL_PROGRAM) tomahawk $(DESTDIR)$(bindir)
@@ -185,4 +189,4 @@ cleanmost:
 clean: cleanmost clean_examples
 	rm -f tomahawk libtomahawk.so libtomahawk.so.* ltomahawk.so libtomahawk.a libtomahawk.dylib* ltomahawk.dylib
 
-.PHONY: all clean clean_examples cleanmost library install
+.PHONY: all clean clean_examples cleanmost library install install_deps
