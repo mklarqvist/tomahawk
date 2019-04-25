@@ -291,22 +291,22 @@ matrix:
 
     # OSX begin
     - os: osx
-      osx_image: xcode10
+      osx_image: xcode10.2
       env:
         - MATRIX_EVAL="brew update && brew install gcc5 && CC=gcc-5 && CXX=g++-5"
 
     - os: osx
-      osx_image: xcode10
+      osx_image: xcode10.2
       env:
         - MATRIX_EVAL="brew update && brew install gcc6 && CC=gcc-6 && CXX=g++-6"
 
     - os: osx
-      osx_image: xcode10
+      osx_image: xcode10.2
       env:
         - MATRIX_EVAL="brew update && brew install gcc7 && CC=gcc-7 && CXX=g++-7"
 
     - os: osx
-      osx_image: xcode10
+      osx_image: xcode10.2
       env:
         - MATRIX_EVAL="brew update && brew install gcc8 && CC=gcc-8 && CXX=g++-8"
 
@@ -320,7 +320,4 @@ before_install:
 
 script:
   - git submodule update --recursive
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];
-    then make -j 4 2>&1 >/dev/null[:space:]]*\.section' -e '^[[:space:]]*\^[[:space:]]*~*';
-    else make -j 4;
-    fi
+  - make -j 4
