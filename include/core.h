@@ -674,7 +674,7 @@ public:
 	inline void reset(void){ memset(this->bv, 0, this->n*sizeof(uint64_t)); delete[] list; l_list = 0; }
 	//inline const bool operator[](const uint32_t p) const{ return(this->bv[p] & (1L << (p % 8))); }
 
-	__attribute__((always_inline)) inline const bool get(const uint32_t p) const{ return(this->bv[(p >> 6)] & (1L << ( p & (64 - 1) )));}
+	inline bool get(const uint32_t p) const{ return(this->bv[(p >> 6)] & (1L << ( p & (64 - 1) )));}
 	inline void set(const uint32_t p){ this->bv[p/64] |= (1L << (p % 64)); }
 	//inline void set(const uint32_t p, const bool val){ this->bv[p/64] |= ((uint64_t)1 << (p % 64)); }
 
@@ -727,8 +727,8 @@ public:
 	~twk_igt_vec();
 
 	inline void reset(void){ memset(this->data, 0, this->n*sizeof(uint64_t)); memset(this->mask, 0, this->n*sizeof(uint64_t)); }
-	inline const bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 64))); }
-	inline const bool get(const uint32_t p) const{ return(this->data[p/64] & (1L << (p % 64)));}
+	inline bool operator[](const uint32_t p) const{ return(this->data[p] & (1L << (p % 64))); }
+	inline bool get(const uint32_t p) const{ return(this->data[p/64] & (1L << (p % 64)));}
 	inline void SetData(const uint32_t p){ this->data[p/64] |= (1L << (p % 64)); }
 	inline void SetData(const uint32_t p, const bool val){ this->data[p/64] |= ((uint64_t)val << (p % 64)); }
 	inline void SetMask(const uint32_t p){ this->mask[p/64] |= (1L << (p % 64)); }

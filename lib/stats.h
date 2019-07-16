@@ -64,7 +64,7 @@ int stats(int argc, char** argv){
 	};
 
 	tomahawk::twk_two_settings settings;
-	int32_t bins = 100;
+	// int32_t bins = 100;
 
 	int c = 0;
 	int long_index = 0;

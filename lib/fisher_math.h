@@ -47,7 +47,7 @@ double kf_betai(double a, double b, double x);
  */
 double kt_fisher_exact(int n11, int n12, int n21, int n22, double *_left, double *_right, double *two);
 
-inline const double chi_squared(const double& n11, const double& n12, const double& n21, const double& n22){
+inline double chi_squared(const double& n11, const double& n12, const double& n21, const double& n22){
 	const double marginA_R = n11 + n12;
 	const double marginB_R = n21 + n22;
 	const double marginA_B = n11 + n21;

@@ -275,7 +275,7 @@ int aggregate(int argc, char** argv){
 	std::thread* psthread = progress_sort.Start();
 
 	tomahawk::twk_agg_slave* slaves = new tomahawk::twk_agg_slave[settings.n_threads];
-	uint32_t range_thread = oreader.index.n / settings.n_threads;
+	// uint32_t range_thread = oreader.index.n / settings.n_threads;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].f = ranges[i].first;
 		slaves[i].t = ranges[i].second;

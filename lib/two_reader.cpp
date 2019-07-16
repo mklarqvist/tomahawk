@@ -227,7 +227,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	std::thread* psthread = progress_sort.Start();
 
 	twk_sort_slave* slaves = new twk_sort_slave[settings.n_threads];
-	uint32_t range_thread = index.n / settings.n_threads;
+	// uint32_t range_thread = index.n / settings.n_threads;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].f = ranges[i].first;
 		slaves[i].t = ranges[i].second;
@@ -355,7 +355,7 @@ bool two_reader::Sort(two_sorter_settings& settings){
 	uint32_t ridA = queue.top().rec.ridA;
 
 	Timer timer; timer.Start();
-	uint64_t n_entries_out = 0;
+	// uint64_t n_entries_out = 0;
 	twk_sort_progress progress;
 	progress.n_cmps = n_recs;
 	std::thread* pthread = progress.Start();
@@ -693,7 +693,7 @@ bool two_reader::Aggregate(twk1_aggregate_t& agg,
 	if(progress) progress_sort.Start();
 
 	twk_agg_slave* slaves = new twk_agg_slave[settings.n_threads];
-	uint32_t range_thread = index.n / settings.n_threads;
+	// uint32_t range_thread = index.n / settings.n_threads;
 	for(int i = 0; i < settings.n_threads; ++i){
 		slaves[i].f = ranges[i].first;
 		slaves[i].t = ranges[i].second;
