@@ -90,6 +90,7 @@ RUN mkdir -p /opt
 RUN cd /opt \
     && git clone https://github.com/samtools/htslib.git \
     && cd /opt/htslib \
+    && git checkout f5b75ff \
     && make \
     && make lib-static \
     && make install
